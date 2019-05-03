@@ -1,4 +1,4 @@
-package main
+package ws
 
 type HttpFunction func(t *Stream)
 

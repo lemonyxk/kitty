@@ -86,8 +86,12 @@ func (stream *Stream) ParseQuery() (*Query, error) {
 
 func (q *Query) Get(key string) *value {
 
+	var val = &value{}
+
 	if v, ok := q.params[key]; ok {
-		return &value{v: v}
+		val.v = v
+		return val
 	}
-	return nil
+
+	return val
 }

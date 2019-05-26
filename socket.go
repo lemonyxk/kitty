@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -15,6 +16,8 @@ type Message struct {
 	MessageType int
 	Message     []byte
 }
+
+type M map[string]interface{}
 
 type WebSocketFunction func(conn *Connection, messageType int, message []byte, context interface{})
 
@@ -96,6 +99,23 @@ func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
 	}
 
 	socket.Connections[fd].push <- &Message{fd, messageType, message}
+
+	return <-socket.Connections[fd].back
+}
+
+// Push Json 发送消息
+func (socket *Socket) Json(fd uint32, messageType int, message M) error {
+
+	if _, ok := socket.Connections[fd]; !ok {
+		return fmt.Errorf("client %d is close", fd)
+	}
+
+	messageJson, err := json.Marshal(message)
+	if err != nil {
+		return fmt.Errorf("message error: %v", err)
+	}
+
+	socket.Connections[fd].push <- &Message{fd, messageType, messageJson}
 
 	return <-socket.Connections[fd].back
 }
@@ -286,7 +306,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 			// 关闭连接
 			if err != nil {
-				//log.Println(err)
+				// log.Println(err)
 				break
 			}
 

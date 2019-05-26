@@ -67,7 +67,7 @@ func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
 			var err error
 			var tool Stream
 
-			tool.reqs = reqs{w, r, context}
+			tool.rs = rs{w, r, context}
 
 			if hh.Middle != nil {
 				context, err = hh.Middle(&tool)

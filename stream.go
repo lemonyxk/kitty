@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 type Wson map[string]interface{}
@@ -14,14 +15,31 @@ type Query struct {
 	params map[string]string
 }
 
-type reqs struct {
+type rs struct {
 	Response http.ResponseWriter
 	Request  *http.Request
 	Context  interface{}
 }
 
 type Stream struct {
-	reqs
+	rs
+}
+
+type value struct {
+	v string
+}
+
+func (v *value) Int() int {
+	r, err := strconv.Atoi(v.v)
+	if err != nil {
+		return 0
+	}
+
+	return r
+}
+
+func (v *value) String() string {
+	return v.v
 }
 
 func (stream *Stream) Json(data interface{}) {
@@ -66,10 +84,10 @@ func (stream *Stream) ParseQuery() (*Query, error) {
 	return &query, nil
 }
 
-func (q *Query) Get(key string) string {
+func (q *Query) Get(key string) *value {
 
 	if v, ok := q.params[key]; ok {
-		return v
+		return &value{v: v}
 	}
-	return ""
+	return nil
 }

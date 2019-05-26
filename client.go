@@ -61,8 +61,8 @@ func (c *Client) SetRoute(route string, f func(c *Client, messageType int, messa
 	c.MessageRouter[route] = f
 }
 
-// PushJSON 发送JSON字符
-func (c *Client) PushJSON(route string, message map[string]interface{}) error {
+// Json 发送JSON字符
+func (c *Client) Json(route string, message M) error {
 
 	if c.BeforeSend != nil {
 		err := c.BeforeSend(route, message)
@@ -72,17 +72,17 @@ func (c *Client) PushJSON(route string, message map[string]interface{}) error {
 	}
 
 	if message == nil {
-		message = make(map[string]interface{})
+		message = make(M)
 	}
 
-	jsonMessage := map[string]interface{}{
+	jsonMessage := M{
 		"event": route,
 		"data":  message,
 	}
 
 	if c.GlobalConfig != nil {
 		for k, v := range c.GlobalConfig {
-			jsonMessage["data"].(map[string]interface{})[k] = v
+			jsonMessage["data"].(M)[k] = v
 		}
 	}
 

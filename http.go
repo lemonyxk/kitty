@@ -1,5 +1,7 @@
 package ws
 
+import "strings"
+
 type HttpFunction func(t *Stream)
 
 type HttpMiddle func(t *Stream) (interface{}, error)
@@ -9,20 +11,32 @@ type HttpHandle struct {
 	Routers map[string]map[string]HttpFunction
 }
 
-func (h *HttpHandle) Init() {
-	h.Routers = make(map[string]map[string]HttpFunction)
-}
-
 func (h *HttpHandle) HSetRoute(method string, router string, f HttpFunction) {
-	if _, ok := h.Routers[method]; !ok {
-		h.Routers[method] = make(map[string]HttpFunction)
+
+	if h.Routers == nil {
+		h.Routers = make(map[string]map[string]HttpFunction)
 	}
-	h.Routers[method][router] = f
+
+	var m = strings.ToUpper(method)
+
+	if _, ok := h.Routers[m]; !ok {
+		h.Routers[m] = make(map[string]HttpFunction)
+	}
+
+	h.Routers[m][router] = f
 }
 
 func (h *HttpHandle) HGetRoute(method string, router string) HttpFunction {
-	if f, ok := h.Routers[method][router]; ok {
+
+	if h.Routers == nil {
+		h.Routers = make(map[string]map[string]HttpFunction)
+	}
+
+	var m = strings.ToUpper(method)
+
+	if f, ok := h.Routers[m][router]; ok {
 		return f
 	}
+
 	return nil
 }

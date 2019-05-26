@@ -46,9 +46,9 @@ type Client struct {
 
 	MessageRouter map[string]func(c *Client, messageType int, message []byte)
 
-	GlobalConfig map[string]interface{}
+	GlobalConfig M
 
-	BeforeSend func(route string, message map[string]interface{}) error
+	BeforeSend func(route string, message M) error
 
 	mux sync.RWMutex
 }
@@ -171,7 +171,9 @@ func (c *Client) Connect() {
 
 	var dialer websocket.Dialer
 
-	c.GlobalConfig = make(map[string]interface{})
+	c.GlobalConfig = make(M)
+
+	c.MessageRouter = make(map[string]func(c *Client, messageType int, message []byte))
 
 	// 握手
 	if c.HandshakeTimeout == 0 {

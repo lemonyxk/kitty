@@ -54,10 +54,16 @@ type Client struct {
 }
 
 func (c *Client) SetGlobalConfig(key string, value interface{}) {
+	if c.GlobalConfig == nil {
+		c.GlobalConfig = make(M)
+	}
 	c.GlobalConfig[key] = value
 }
 
 func (c *Client) SetRoute(route string, f func(c *Client, messageType int, message []byte)) {
+	if c.MessageRouter == nil {
+		c.MessageRouter = make(map[string]func(c *Client, messageType int, message []byte))
+	}
 	c.MessageRouter[route] = f
 }
 
@@ -170,10 +176,6 @@ func (c *Client) Connect() {
 	}
 
 	var dialer websocket.Dialer
-
-	c.GlobalConfig = make(M)
-
-	c.MessageRouter = make(map[string]func(c *Client, messageType int, message []byte))
 
 	// 握手
 	if c.HandshakeTimeout == 0 {

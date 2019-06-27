@@ -12,8 +12,8 @@ import (
 )
 
 type dataPackage struct {
-	event string
-	data  interface{}
+	Event string      `json:"event"`
+	Data  interface{} `json:"data"`
 }
 
 type Message struct {
@@ -132,7 +132,7 @@ func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, mes
 
 func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, message interface{}) error {
 
-	var data = dataPackage{event: event, data: message}
+	var data = dataPackage{Event: event, Data: message}
 
 	messageJson, err := json.Marshal(data)
 	if err != nil {

@@ -78,7 +78,7 @@ func (c *Client) protoBufEmit(messageType int, event string, message M) error {
 
 func (c *Client) jsonEmit(messageType int, event string, message M) error {
 
-	var data = dataPackage{event: event, data: message}
+	var data = dataPackage{Event: event, Data: message}
 
 	messageJson, err := json.Marshal(data)
 	if err != nil {

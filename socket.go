@@ -11,9 +11,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type DataPackage struct {
-	Event string
-	Data  interface{}
+type dataPackage struct {
+	event string
+	data  interface{}
 }
 
 type Message struct {
@@ -132,7 +132,7 @@ func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, mes
 
 func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, message interface{}) error {
 
-	var data = DataPackage{Event: event, Data: message}
+	var data = dataPackage{event: event, data: message}
 
 	messageJson, err := json.Marshal(data)
 	if err != nil {

@@ -2,7 +2,7 @@ package ws
 
 import "github.com/tidwall/gjson"
 
-func (c *Client) InitRouter(route string, f WebSocketClientFunction) {
+func (c *Client) InitRouter() {
 	c.WebSocketRouter = make(map[string]WebSocketClientFunction)
 }
 

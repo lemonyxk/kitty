@@ -38,7 +38,6 @@ type Socket struct {
 	Connections map[uint32]*Connection
 	OnClose     func(conn *Connection)
 	OnMessage   func(conn *Connection, message *Message)
-	OnRouter    func(conn *Connection, message *Message)
 	OnOpen      func(conn *Connection)
 	OnError     func(err error)
 
@@ -313,7 +312,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 					socket.OnMessage(&connection, &Message{Fd: connection.Fd, MessageType: messageType, Message: message})
 				}
 
-				if socket.OnRouter != nil {
+				if socket.WebSocketRouter != nil {
 					socket.router(&connection, &Message{Fd: connection.Fd, MessageType: messageType, Message: message})
 				}
 

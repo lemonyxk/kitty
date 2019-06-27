@@ -149,10 +149,6 @@ func (c *Client) Connect() {
 		log.Panicln("OnClose must set")
 	}
 
-	if c.OnMessage == nil {
-		log.Panicln("OnMessage must set")
-	}
-
 	if c.OnError == nil {
 		log.Panicln("OnError must set")
 	}

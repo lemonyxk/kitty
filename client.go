@@ -125,6 +125,10 @@ func (c *Client) Connect() {
 
 	defer c.catchError()
 
+	if c.TsProto == 0 {
+		c.TsProto = Json
+	}
+
 	if c.Host == "" {
 		c.Host = "127.0.0.1"
 	}

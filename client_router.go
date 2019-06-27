@@ -29,7 +29,7 @@ func (c *Client) router(client *Client, messageType int, message []byte) {
 }
 
 func (c *Client) jsonRouter(client *Client, messageType int, message []byte) {
-	var event = gjson.GetBytes(message, "Event").Str
+	var event = gjson.GetBytes(message, "event").Str
 
 	var f = c.GetRouter(event)
 

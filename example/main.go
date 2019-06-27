@@ -17,7 +17,7 @@ func main() {
 
 	handlerSocket.InitRouter()
 
-	handlerSocket.WSetRoute("hello1", func(conn *ws.Connection, message *ws.Message, context interface{}) {
+	handlerSocket.SetRouter("hello1", func(conn *ws.Connection, message *ws.Message, context interface{}) {
 		log.Println(message.Fd)
 	})
 
@@ -27,10 +27,6 @@ func main() {
 
 	handlerSocket.OnError = func(err error) {
 		log.Println(err)
-	}
-
-	handlerSocket.OnRouter = func(conn *ws.Connection, message *ws.Message) {
-		log.Println(*message)
 	}
 
 	handlerSocket.OnOpen = func(conn *ws.Connection) {

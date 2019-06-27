@@ -5,14 +5,14 @@ import (
 )
 
 func (socket *Socket) InitRouter() {
-	socket.WebSocketRouter = make(map[string]WebSocketFunction)
+	socket.WebSocketRouter = make(map[string]WebSocketServerFunction)
 }
 
-func (socket *Socket) WSetRoute(route string, f WebSocketFunction) {
+func (socket *Socket) SetRouter(route string, f WebSocketServerFunction) {
 	socket.WebSocketRouter[route] = f
 }
 
-func (socket *Socket) WGetRouter(route string) WebSocketFunction {
+func (socket *Socket) GetRouter(route string) WebSocketServerFunction {
 	if f, ok := socket.WebSocketRouter[route]; ok {
 		return f
 	}
@@ -21,24 +21,20 @@ func (socket *Socket) WGetRouter(route string) WebSocketFunction {
 
 func (socket *Socket) router(conn *Connection, message *Message) {
 
-	// Json router
-	if socket.TsProto == "json" {
+	switch socket.TsProto {
+	case Json:
 		socket.jsonRouter(conn, message)
-		return
+	case ProtoBuf:
+		socket.protoBufRouter(conn, message)
 	}
 
-	// ProtoBuf router
-	if socket.TsProto == "protobuf" {
-		socket.protoBufRouter(conn, message)
-		return
-	}
 }
 
 func (socket *Socket) jsonRouter(conn *Connection, message *Message) {
 
 	var event = gjson.GetBytes(message.Message, "Event").Str
 
-	var f = socket.WGetRouter(event)
+	var f = socket.GetRouter(event)
 
 	if f == nil {
 		return

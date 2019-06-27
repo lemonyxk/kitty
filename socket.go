@@ -11,6 +11,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type DataPackage struct {
+	Event string
+	Data  M
+}
+
 type Message struct {
 	Fd          uint32
 	MessageType int
@@ -19,7 +24,22 @@ type Message struct {
 
 type M map[string]interface{}
 
-type WebSocketFunction func(conn *Connection, message *Message, context interface{})
+type WebSocketServerFunction func(conn *Connection, message *Message, context interface{})
+
+// PingMessage PING
+const PingMessage int = websocket.PingMessage
+
+// PongMessage PONG
+const PongMessage int = websocket.PongMessage
+
+// TextMessage 文本
+const TextMessage int = websocket.TextMessage
+
+// BinaryMessage 二进制
+const BinaryMessage int = websocket.BinaryMessage
+
+const Json = 1
+const ProtoBuf = 2
 
 // Connection Connection
 type Connection struct {
@@ -52,18 +72,9 @@ type Socket struct {
 	Before func() error
 	After  func() error
 
-	// PingMessage PING
-	PingMessage int
-	// PongMessage PONG
-	PongMessage int
-	// TextMessage 文本
-	TextMessage int
-	// BinaryMessage 二进制
-	BinaryMessage int
+	WebSocketRouter map[string]WebSocketServerFunction
 
-	WebSocketRouter map[string]WebSocketFunction
-
-	TsProto string
+	TsProto int
 }
 
 func (socket *Connection) IP() (string, string, error) {
@@ -94,18 +105,42 @@ func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
 // Push Json 发送消息
 func (socket *Socket) Json(fd uint32, messageType int, message M) error {
 
-	if _, ok := socket.Connections[fd]; !ok {
-		return fmt.Errorf("client %d is close", fd)
-	}
-
 	messageJson, err := json.Marshal(message)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	socket.Connections[fd].push <- &Message{fd, messageType, messageJson}
+	return socket.Push(fd, messageType, messageJson)
+}
 
-	return <-socket.Connections[fd].back
+func (socket *Socket) Emit(fd uint32, messageType int, event string, message M) error {
+
+	switch socket.TsProto {
+	case Json:
+		return socket.jsonEmit(fd, messageType, event, message)
+	case ProtoBuf:
+		return socket.protoBufEmit(fd, messageType, event, message)
+	}
+
+	return fmt.Errorf("unknown ts ptoto")
+
+}
+
+func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, message M) error {
+	return nil
+}
+
+func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, message M) error {
+
+	var data = DataPackage{Event: event, Data: message}
+
+	messageJson, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("message error: %v", err)
+	}
+
+	return socket.Push(fd, messageType, messageJson)
+
 }
 
 func (socket *Socket) ProtoBuf(fd uint32, messageType int, message M) error {
@@ -157,8 +192,8 @@ func (socket *Socket) delConnect(conn *Connection) {
 // WebSocket 默认设置
 func WebSocket(socket *Socket) http.HandlerFunc {
 
-	if socket.TsProto == "" {
-		socket.TsProto = "json"
+	if socket.TsProto == 0 {
+		socket.TsProto = Json
 	}
 
 	if socket.HeartBeatTimeout == 0 {
@@ -208,14 +243,6 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			log.Println(err)
 		}
 	}
-
-	socket.PingMessage = websocket.PingMessage
-
-	socket.PongMessage = websocket.PongMessage
-
-	socket.TextMessage = websocket.TextMessage
-
-	socket.BinaryMessage = websocket.BinaryMessage
 
 	upgrade := websocket.Upgrader{
 		HandshakeTimeout: time.Duration(socket.HandshakeTimeout) * time.Second,

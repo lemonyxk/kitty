@@ -10,6 +10,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type WebSocketClientFunction func(c *Client, messageType int, message []byte)
+
 // Client 客户端
 type Client struct {
 	// 服务器信息
@@ -18,6 +20,7 @@ type Client struct {
 	Port     int
 	Path     string
 	// Origin   http.Header
+
 	// 客户端信息
 	Conn              *websocket.Conn
 	AutoHeartBeat     bool
@@ -28,6 +31,7 @@ type Client struct {
 	WriteBufferSize   int
 	ReadBufferSize    int
 	HandshakeTimeout  int
+
 	// 消息处理
 	OnOpen    func(c *Client)
 	OnClose   func(c *Client)
@@ -35,69 +39,53 @@ type Client struct {
 	OnError   func(err interface{})
 	Status    bool
 
-	// PingMessage PING
-	PingMessage int
-	// PongMessage PONG
-	PongMessage int
-	// TextMessage 文本
-	TextMessage int
-	// BinaryMessage 二进制
-	BinaryMessage int
-
-	MessageRouter map[string]func(c *Client, messageType int, message []byte)
-
-	GlobalConfig M
-
-	BeforeSend func(route string, message M) error
+	WebSocketRouter map[string]WebSocketClientFunction
 
 	mux sync.RWMutex
-}
 
-func (c *Client) SetGlobalConfig(key string, value interface{}) {
-	if c.GlobalConfig == nil {
-		c.GlobalConfig = make(M)
-	}
-	c.GlobalConfig[key] = value
-}
-
-func (c *Client) SetRoute(route string, f func(c *Client, messageType int, message []byte)) {
-	if c.MessageRouter == nil {
-		c.MessageRouter = make(map[string]func(c *Client, messageType int, message []byte))
-	}
-	c.MessageRouter[route] = f
+	TsProto int
 }
 
 // Json 发送JSON字符
-func (c *Client) Json(route string, message M) error {
+func (c *Client) Json(messageType int, message M) error {
 
-	if c.BeforeSend != nil {
-		err := c.BeforeSend(route, message)
-		if err != nil {
-			return err
-		}
-	}
-
-	if message == nil {
-		message = make(M)
-	}
-
-	jsonMessage := M{
-		"event": route,
-		"data":  message,
-	}
-
-	if c.GlobalConfig != nil {
-		for k, v := range c.GlobalConfig {
-			jsonMessage["data"].(M)[k] = v
-		}
-	}
-
-	data, err := json.Marshal(jsonMessage)
+	data, err := json.Marshal(message)
 	if err != nil {
-		return err
+		return fmt.Errorf("message error: %v", err)
 	}
 
-	return c.Push(c.TextMessage, data)
+	return c.Push(messageType, data)
+}
+
+func (c *Client) ProtoBuf(messageType int, message []byte) error {
+	return nil
+}
+
+func (c *Client) Emit(messageType int, event string, message M) error {
+	switch c.TsProto {
+	case Json:
+		return c.jsonEmit(messageType, event, message)
+	case ProtoBuf:
+		return c.protoBufEmit(messageType, event, message)
+	}
+
+	return fmt.Errorf("unknown ts ptoto")
+}
+
+func (c *Client) protoBufEmit(messageType int, event string, message M) error {
+	return nil
+}
+
+func (c *Client) jsonEmit(messageType int, event string, message M) error {
+
+	var data = DataPackage{Event: event, Data: message}
+
+	messageJson, err := json.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("message error: %v", err)
+	}
+
+	return c.Push(messageType, messageJson)
 }
 
 // Push 发送消息
@@ -113,7 +101,7 @@ func (c *Client) Push(messageType int, message []byte) error {
 	return c.Conn.WriteMessage(messageType, message)
 }
 
-func (c *Client) Reconnecting() {
+func (c *Client) reconnecting() {
 	if c.Reconnect == true {
 		time.AfterFunc(time.Duration(c.ReconnectInterval)*time.Second, func() {
 			c.Connect()
@@ -121,11 +109,11 @@ func (c *Client) Reconnecting() {
 	}
 }
 
-func (c *Client) CatchError() {
+func (c *Client) catchError() {
 	if err := recover(); err != nil {
 		log.Println(err)
 		c.OnError(err)
-		c.Reconnecting()
+		c.reconnecting()
 	}
 }
 
@@ -133,7 +121,7 @@ func (c *Client) CatchError() {
 func (c *Client) Connect() {
 	// 设置LOG信息
 
-	defer c.CatchError()
+	defer c.catchError()
 
 	if c.Host == "" {
 		c.Host = "127.0.0.1"
@@ -150,14 +138,6 @@ func (c *Client) Connect() {
 	if c.Path == "" {
 		c.Path = "/"
 	}
-
-	c.PingMessage = websocket.PingMessage
-
-	c.PongMessage = websocket.PongMessage
-
-	c.TextMessage = websocket.TextMessage
-
-	c.BinaryMessage = websocket.BinaryMessage
 
 	if c.OnOpen == nil {
 		log.Panicln("OnOpen must set")
@@ -229,7 +209,7 @@ func (c *Client) Connect() {
 	if c.AutoHeartBeat == true {
 		if c.HeartBeat == nil {
 			c.HeartBeat = func(c *Client) {
-				c.Push(websocket.PingMessage, nil)
+				_ = c.Push(websocket.PingMessage, nil)
 			}
 		}
 	} else {
@@ -238,14 +218,19 @@ func (c *Client) Connect() {
 
 	go func() {
 
-		defer c.CatchError()
+		defer c.catchError()
 
 		for {
 			select {
 			case <-ticker.C:
 				c.HeartBeat(c)
 			case message := <-ch:
-				c.OnMessage(c, messageType, message)
+				if c.OnMessage != nil {
+					c.OnMessage(c, messageType, message)
+				}
+				if c.WebSocketRouter != nil {
+					c.router(c, messageType, message)
+				}
 			}
 		}
 
@@ -269,9 +254,9 @@ func (c *Client) Connect() {
 	// 更改状态
 	c.Status = false
 	// 关闭连接
-	client.Close()
+	_ = client.Close()
 	// 触发回调
 	c.OnClose(c)
 	// 触发重连设置
-	c.Reconnecting()
+	c.reconnecting()
 }

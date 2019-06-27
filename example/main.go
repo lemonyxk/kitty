@@ -11,9 +11,15 @@ func init() {
 
 func main() {
 
-	var webSocket = &ws.Server{Host: "127.0.0.1", Port: 5858, Path: "/"}
+	var webSocket = &ws.Server{Host: "127.0.0.1", Port: 5858, Path: "/Game-Robot"}
 
 	var handlerSocket = &ws.Socket{}
+
+	handlerSocket.InitRouter()
+
+	handlerSocket.WSetRoute("hello1", func(conn *ws.Connection, message *ws.Message, context interface{}) {
+		log.Println(message.Fd)
+	})
 
 	handlerSocket.OnClose = func(conn *ws.Connection) {
 		log.Println(conn.Fd, "is close")
@@ -23,7 +29,7 @@ func main() {
 		log.Println(err)
 	}
 
-	handlerSocket.OnMessage = func(conn *ws.Connection, message *ws.Message) {
+	handlerSocket.OnRouter = func(conn *ws.Connection, message *ws.Message) {
 		log.Println(*message)
 	}
 

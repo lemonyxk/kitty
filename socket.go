@@ -19,7 +19,7 @@ type Message struct {
 
 type M map[string]interface{}
 
-type WebSocketFunction func(conn *Connection, messageType int, message []byte, context interface{})
+type WebSocketFunction func(conn *Connection, message *Message, context interface{})
 
 // Connection Connection
 type Connection struct {
@@ -38,6 +38,7 @@ type Socket struct {
 	Connections map[uint32]*Connection
 	OnClose     func(conn *Connection)
 	OnMessage   func(conn *Connection, message *Message)
+	OnRouter    func(conn *Connection, message *Message)
 	OnOpen      func(conn *Connection)
 	OnError     func(err error)
 
@@ -49,7 +50,8 @@ type Socket struct {
 	WaitQueueSize     int
 	CheckOrigin       func(r *http.Request) bool
 
-	BeforeSend func() error
+	Before func() error
+	After  func() error
 
 	// PingMessage PING
 	PingMessage int
@@ -61,6 +63,8 @@ type Socket struct {
 	BinaryMessage int
 
 	WebSocketRouter map[string]WebSocketFunction
+
+	TsProto string
 }
 
 func (socket *Connection) IP() (string, string, error) {
@@ -74,21 +78,6 @@ func (socket *Connection) IP() (string, string, error) {
 	}
 
 	return net.SplitHostPort(socket.Request.RemoteAddr)
-}
-
-func (socket *Socket) InitRouter() {
-	socket.WebSocketRouter = make(map[string]WebSocketFunction)
-}
-
-func (socket *Socket) WSetRoute(route string, f WebSocketFunction) {
-	socket.WebSocketRouter[route] = f
-}
-
-func (socket *Socket) WGetRouter(route string) WebSocketFunction {
-	if f, ok := socket.WebSocketRouter[route]; ok {
-		return f
-	}
-	return nil
 }
 
 // Push 发送消息
@@ -120,7 +109,11 @@ func (socket *Socket) Json(fd uint32, messageType int, message M) error {
 	return <-socket.Connections[fd].back
 }
 
-func (socket *Socket) AddConnect(conn *Connection) {
+func (socket *Socket) ProtoBuf(fd uint32, messageType int, message M) error {
+	return nil
+}
+
+func (socket *Socket) addConnect(conn *Connection) {
 
 	// +1
 	socket.Fd++
@@ -157,13 +150,17 @@ func (socket *Socket) AddConnect(conn *Connection) {
 	// 触发OPEN事件
 	socket.OnOpen(conn)
 }
-func (socket *Socket) DelConnect(conn *Connection) {
+func (socket *Socket) delConnect(conn *Connection) {
 	delete(socket.Connections, conn.Fd)
 	socket.OnClose(conn)
 }
 
 // WebSocket 默认设置
 func WebSocket(socket *Socket) http.HandlerFunc {
+
+	if socket.TsProto == "" {
+		socket.TsProto = "json"
+	}
 
 	if socket.HeartBeatTimeout == 0 {
 		socket.HeartBeatTimeout = 30
@@ -198,12 +195,6 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 	if socket.OnOpen == nil {
 		socket.OnOpen = func(conn *Connection) {
 			log.Println(conn.Fd, "is open at", time.Now())
-		}
-	}
-
-	if socket.OnMessage == nil {
-		socket.OnMessage = func(conn *Connection, message *Message) {
-			log.Println(*message)
 		}
 	}
 
@@ -246,9 +237,9 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		for {
 			select {
 			case conn := <-connOpen:
-				socket.AddConnect(conn)
+				socket.addConnect(conn)
 			case conn := <-connClose:
-				socket.DelConnect(conn)
+				socket.delConnect(conn)
 			}
 		}
 	}()
@@ -284,7 +275,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 		// 关闭连接 清理
 		defer func() {
-			conn.Close()
+			_ = conn.Close()
 			connClose <- &connection
 		}()
 
@@ -301,7 +292,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		for {
 
 			// 重置心跳
-			conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+			_ = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 			messageType, message, err := conn.ReadMessage()
 
 			// 关闭连接
@@ -310,8 +301,27 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				break
 			}
 
-			// 处理消息
-			go socket.OnMessage(&connection, &Message{Fd: connection.Fd, MessageType: messageType, Message: message})
+			go func() {
+				// 处理消息
+				if socket.Before != nil {
+					if err := socket.Before(); err != nil {
+						return
+					}
+				}
+
+				if socket.OnMessage != nil {
+					socket.OnMessage(&connection, &Message{Fd: connection.Fd, MessageType: messageType, Message: message})
+				}
+
+				if socket.OnRouter != nil {
+					socket.router(&connection, &Message{Fd: connection.Fd, MessageType: messageType, Message: message})
+				}
+
+				if socket.After != nil {
+					_ = socket.After()
+				}
+			}()
+
 		}
 
 	}

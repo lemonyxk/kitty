@@ -44,6 +44,8 @@ type Client struct {
 	mux sync.RWMutex
 
 	TsProto int
+
+	Context interface{}
 }
 
 // Json 发送JSON字符

@@ -243,7 +243,7 @@ func (c *Client) Connect() {
 		messageType, message, err = client.ReadMessage()
 
 		if err != nil {
-			log.Println(err)
+			c.OnError(err)
 			break
 		}
 

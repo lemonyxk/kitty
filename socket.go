@@ -13,7 +13,7 @@ import (
 
 type DataPackage struct {
 	Event string
-	Data  M
+	Data  interface{}
 }
 
 type Message struct {
@@ -113,7 +113,7 @@ func (socket *Socket) Json(fd uint32, messageType int, message M) error {
 	return socket.Push(fd, messageType, messageJson)
 }
 
-func (socket *Socket) Emit(fd uint32, messageType int, event string, message M) error {
+func (socket *Socket) Emit(fd uint32, messageType int, event string, message interface{}) error {
 
 	switch socket.TsProto {
 	case Json:
@@ -126,11 +126,11 @@ func (socket *Socket) Emit(fd uint32, messageType int, event string, message M) 
 
 }
 
-func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, message M) error {
+func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, message interface{}) error {
 	return nil
 }
 
-func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, message M) error {
+func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, message interface{}) error {
 
 	var data = DataPackage{Event: event, Data: message}
 

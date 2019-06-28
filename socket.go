@@ -160,7 +160,7 @@ func (socket *Socket) Emit(fte *Fte, msg interface{}) error {
 
 }
 
-func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, message interface{}) error {
+func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, msg interface{}) error {
 	return nil
 }
 
@@ -172,7 +172,7 @@ func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, msg int
 		data["data"] = string(j)
 	}
 
-	return socket.Json(&Fte{Fd: fd, Type: messageType}, msg)
+	return socket.Json(&Fte{Fd: fd, Type: messageType, Event: event}, msg)
 
 }
 
@@ -341,8 +341,8 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		go func() {
 			for {
 				select {
-				case message := <-connection.push:
-					connection.back <- socket.Connections[message.Fd].Socket.WriteMessage(message.Type, message.Msg)
+				case fteD := <-connection.push:
+					connection.back <- socket.Connections[fteD.Fte.Fd].Socket.WriteMessage(fteD.Fte.Type, fteD.Msg)
 				}
 			}
 		}()

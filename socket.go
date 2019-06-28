@@ -131,6 +131,14 @@ func (socket *Socket) EmitAll(event string, message *Message) {
 
 func (socket *Socket) Emit(event string, message *Message) error {
 
+	if message.MessageType == BinaryMessage {
+		if j, b := message.Message.([]byte); b {
+			return socket.Push(message.Fd, message.MessageType, j)
+		}
+
+		return fmt.Errorf("message type is bin that message must be []byte")
+	}
+
 	switch socket.TsProto {
 	case Json:
 		return socket.jsonEmit(message.Fd, message.MessageType, event, message.Message)
@@ -148,17 +156,13 @@ func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, mes
 
 func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, message interface{}) error {
 
-	var data = map[string]interface{}{
-		"event": event,
-		"data":  message,
+	var data = M{"event": event, "data": message}
+
+	if j, b := message.([]byte); b {
+		data["data"] = string(j)
 	}
 
-	messageJson, err := json.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("message error: %v", err)
-	}
-
-	return socket.Push(fd, messageType, messageJson)
+	return socket.Json(&Message{Fd: fd, MessageType: messageType, Message: data})
 
 }
 

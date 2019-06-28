@@ -15,20 +15,20 @@ func (socket *Socket) GetRouter(route string) WebSocketServerFunction {
 	return nil
 }
 
-func (socket *Socket) router(conn *Connection, message *BM) {
+func (socket *Socket) router(conn *Connection, ftd *Fte, msg []byte) {
 
 	switch socket.TsProto {
 	case Json:
-		socket.jsonRouter(conn, message)
+		socket.jsonRouter(conn, ftd, msg)
 	case ProtoBuf:
-		socket.protoBufRouter(conn, message)
+		socket.protoBufRouter(conn, ftd, msg)
 	}
 
 }
 
-func (socket *Socket) jsonRouter(conn *Connection, message *BM) {
+func (socket *Socket) jsonRouter(conn *Connection, fte *Fte, msg []byte) {
 
-	var event, data = parseMessage(message.Msg)
+	var event, data = parseMessage(msg)
 
 	var f = socket.GetRouter(event)
 
@@ -36,13 +36,12 @@ func (socket *Socket) jsonRouter(conn *Connection, message *BM) {
 		return
 	}
 
-	message.Event = event
-	message.Msg = data
+	fte.Event = event
 
-	f(conn, message, nil)
+	f(conn, fte, data)
 }
 
-func (socket *Socket) protoBufRouter(conn *Connection, message *BM) {
+func (socket *Socket) protoBufRouter(conn *Connection, fte *Fte, msg []byte) {
 
 }
 

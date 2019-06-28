@@ -17,23 +17,20 @@ import (
 // 	Event string
 // }
 
-type IM struct {
+type Fte struct {
 	Fd    uint32
 	Type  int
 	Event string
-	Msg   interface{}
 }
 
-type BM struct {
-	Fd    uint32
-	Type  int
-	Event string
-	Msg   []byte
+type FteD struct {
+	Fte
+	Msg []byte
 }
 
 type M map[string]interface{}
 
-type WebSocketServerFunction func(conn *Connection, message *BM, context interface{})
+type WebSocketServerFunction func(conn *Connection, fte *Fte, msg []byte)
 
 // PingMessage PING
 const PingMessage int = websocket.PingMessage
@@ -57,7 +54,7 @@ type Connection struct {
 	Handler  *Socket
 	Response http.ResponseWriter
 	Request  *http.Request
-	push     chan *BM
+	push     chan *FteD
 	back     chan error
 }
 
@@ -66,7 +63,7 @@ type Socket struct {
 	Fd          uint32
 	Connections map[uint32]*Connection
 	OnClose     func(conn *Connection)
-	OnMessage   func(conn *Connection, message *BM)
+	OnMessage   func(conn *Connection, fte *Fte, msg []byte)
 	OnOpen      func(conn *Connection)
 	OnError     func(err error)
 
@@ -99,16 +96,16 @@ func (conn *Connection) IP() (string, string, error) {
 	return net.SplitHostPort(conn.Request.RemoteAddr)
 }
 
-func (conn *Connection) Emit(event string, message *IM) error {
-	return conn.Handler.Emit(event, message)
+func (conn *Connection) Emit(fte *Fte, msg interface{}) error {
+	return conn.Handler.Emit(fte, msg)
 }
 
-func (conn *Connection) EmitAll(event string, message *IM) {
-	conn.Handler.EmitAll(event, message)
+func (conn *Connection) EmitAll(fte *Fte, msg interface{}) {
+	conn.Handler.EmitAll(fte, msg)
 }
 
 // Push 发送消息
-func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
+func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 
 	if _, ok := socket.Connections[fd]; !ok {
 		return fmt.Errorf("client %d is close", fd)
@@ -119,34 +116,34 @@ func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
 		messageType = TextMessage
 	}
 
-	socket.Connections[fd].push <- &BM{fd, messageType, "", message}
+	socket.Connections[fd].push <- &FteD{Fte{fd, messageType, ""}, msg}
 
 	return <-socket.Connections[fd].back
 }
 
 // Push Json 发送消息
-func (socket *Socket) Json(message *IM) error {
+func (socket *Socket) Json(fte *Fte, msg interface{}) error {
 
-	messageJson, err := json.Marshal(message.Msg)
+	messageJson, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return socket.Push(message.Fd, message.Type, messageJson)
+	return socket.Push(fte.Fd, fte.Type, messageJson)
 }
 
-func (socket *Socket) EmitAll(event string, message *IM) {
+func (socket *Socket) EmitAll(fte *Fte, msg interface{}) {
 	for _, conn := range socket.Connections {
-		message.Fd = conn.Fd
-		_ = socket.Emit(event, message)
+		fte.Fd = conn.Fd
+		_ = socket.Emit(fte, msg)
 	}
 }
 
-func (socket *Socket) Emit(event string, message *IM) error {
+func (socket *Socket) Emit(fte *Fte, msg interface{}) error {
 
-	if message.Type == BinaryMessage {
-		if j, b := message.Msg.([]byte); b {
-			return socket.Push(message.Fd, message.Type, j)
+	if fte.Type == BinaryMessage {
+		if j, b := msg.([]byte); b {
+			return socket.Push(fte.Fd, fte.Type, j)
 		}
 
 		return fmt.Errorf("message type is bin that message must be []byte")
@@ -154,9 +151,9 @@ func (socket *Socket) Emit(event string, message *IM) error {
 
 	switch socket.TsProto {
 	case Json:
-		return socket.jsonEmit(message.Fd, message.Type, event, message.Msg)
+		return socket.jsonEmit(fte.Fd, fte.Type, fte.Event, msg)
 	case ProtoBuf:
-		return socket.protoBufEmit(message.Fd, message.Type, event, message.Msg)
+		return socket.protoBufEmit(fte.Fd, fte.Type, fte.Event, msg)
 	}
 
 	return fmt.Errorf("unknown ts ptoto")
@@ -167,15 +164,15 @@ func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, mes
 	return nil
 }
 
-func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, message interface{}) error {
+func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, msg interface{}) error {
 
-	var data = M{"event": event, "data": message}
+	var data = M{"event": event, "data": msg}
 
-	if j, b := message.([]byte); b {
+	if j, b := msg.([]byte); b {
 		data["data"] = string(j)
 	}
 
-	return socket.Json(&IM{Fd: fd, Type: messageType, Msg: data})
+	return socket.Json(&Fte{Fd: fd, Type: messageType}, msg)
 
 }
 
@@ -328,7 +325,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			Handler:  socket,
 			Response: w,
 			Request:  r,
-			push:     make(chan *BM, 1024),
+			push:     make(chan *FteD, 1024),
 			back:     make(chan error, 1024),
 		}
 
@@ -372,11 +369,11 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				}
 
 				if socket.OnMessage != nil {
-					socket.OnMessage(&connection, &BM{Fd: connection.Fd, Type: messageType, Msg: message})
+					socket.OnMessage(&connection, &Fte{Fd: connection.Fd, Type: messageType}, message)
 				}
 
 				if socket.WebSocketRouter != nil {
-					socket.router(&connection, &BM{Fd: connection.Fd, Type: messageType, Msg: message})
+					socket.router(&connection, &Fte{Fd: connection.Fd, Type: messageType}, message)
 				}
 
 				if socket.After != nil {

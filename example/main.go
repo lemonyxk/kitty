@@ -17,8 +17,8 @@ func main() {
 
 	handlerSocket.InitRouter()
 
-	handlerSocket.SetRouter("hello1", func(conn *ws.Connection, message *ws.BM, context interface{}) {
-		log.Println(message.Fd)
+	handlerSocket.SetRouter("hello1", func(conn *ws.Connection, ftd *ws.Fte, msg []byte) {
+		log.Println(ftd.Fd)
 	})
 
 	handlerSocket.OnClose = func(conn *ws.Connection) {

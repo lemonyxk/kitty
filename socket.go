@@ -11,16 +11,29 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Message struct {
-	Fd          uint32
-	MessageType int
-	Message     interface{}
-	Event       string
+// type Message struct {
+// 	Fd    uint32
+// 	Type  int
+// 	Event string
+// }
+
+type IM struct {
+	Fd    uint32
+	Type  int
+	Event string
+	Msg   interface{}
+}
+
+type BM struct {
+	Fd    uint32
+	Type  int
+	Event string
+	Msg   []byte
 }
 
 type M map[string]interface{}
 
-type WebSocketServerFunction func(conn *Connection, message *Message, context interface{})
+type WebSocketServerFunction func(conn *Connection, message *BM, context interface{})
 
 // PingMessage PING
 const PingMessage int = websocket.PingMessage
@@ -44,7 +57,7 @@ type Connection struct {
 	Handler  *Socket
 	Response http.ResponseWriter
 	Request  *http.Request
-	push     chan *Message
+	push     chan *BM
 	back     chan error
 }
 
@@ -53,7 +66,7 @@ type Socket struct {
 	Fd          uint32
 	Connections map[uint32]*Connection
 	OnClose     func(conn *Connection)
-	OnMessage   func(conn *Connection, message *Message)
+	OnMessage   func(conn *Connection, message *BM)
 	OnOpen      func(conn *Connection)
 	OnError     func(err error)
 
@@ -86,11 +99,11 @@ func (conn *Connection) IP() (string, string, error) {
 	return net.SplitHostPort(conn.Request.RemoteAddr)
 }
 
-func (conn *Connection) Emit(event string, message *Message) error {
+func (conn *Connection) Emit(event string, message *IM) error {
 	return conn.Handler.Emit(event, message)
 }
 
-func (conn *Connection) EmitAll(event string, message *Message) {
+func (conn *Connection) EmitAll(event string, message *IM) {
 	conn.Handler.EmitAll(event, message)
 }
 
@@ -106,34 +119,34 @@ func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
 		messageType = TextMessage
 	}
 
-	socket.Connections[fd].push <- &Message{fd, messageType, message, ""}
+	socket.Connections[fd].push <- &BM{fd, messageType, "", message}
 
 	return <-socket.Connections[fd].back
 }
 
 // Push Json 发送消息
-func (socket *Socket) Json(message *Message) error {
+func (socket *Socket) Json(message *IM) error {
 
-	messageJson, err := json.Marshal(message.Message)
+	messageJson, err := json.Marshal(message.Msg)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return socket.Push(message.Fd, message.MessageType, messageJson)
+	return socket.Push(message.Fd, message.Type, messageJson)
 }
 
-func (socket *Socket) EmitAll(event string, message *Message) {
+func (socket *Socket) EmitAll(event string, message *IM) {
 	for _, conn := range socket.Connections {
 		message.Fd = conn.Fd
 		_ = socket.Emit(event, message)
 	}
 }
 
-func (socket *Socket) Emit(event string, message *Message) error {
+func (socket *Socket) Emit(event string, message *IM) error {
 
-	if message.MessageType == BinaryMessage {
-		if j, b := message.Message.([]byte); b {
-			return socket.Push(message.Fd, message.MessageType, j)
+	if message.Type == BinaryMessage {
+		if j, b := message.Msg.([]byte); b {
+			return socket.Push(message.Fd, message.Type, j)
 		}
 
 		return fmt.Errorf("message type is bin that message must be []byte")
@@ -141,9 +154,9 @@ func (socket *Socket) Emit(event string, message *Message) error {
 
 	switch socket.TsProto {
 	case Json:
-		return socket.jsonEmit(message.Fd, message.MessageType, event, message.Message)
+		return socket.jsonEmit(message.Fd, message.Type, event, message.Msg)
 	case ProtoBuf:
-		return socket.protoBufEmit(message.Fd, message.MessageType, event, message.Message)
+		return socket.protoBufEmit(message.Fd, message.Type, event, message.Msg)
 	}
 
 	return fmt.Errorf("unknown ts ptoto")
@@ -162,7 +175,7 @@ func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, message
 		data["data"] = string(j)
 	}
 
-	return socket.Json(&Message{Fd: fd, MessageType: messageType, Message: data})
+	return socket.Json(&IM{Fd: fd, Type: messageType, Msg: data})
 
 }
 
@@ -315,7 +328,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			Handler:  socket,
 			Response: w,
 			Request:  r,
-			push:     make(chan *Message, 1024),
+			push:     make(chan *BM, 1024),
 			back:     make(chan error, 1024),
 		}
 
@@ -332,7 +345,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			for {
 				select {
 				case message := <-connection.push:
-					connection.back <- socket.Connections[message.Fd].Socket.WriteMessage(message.MessageType, message.Message.([]byte))
+					connection.back <- socket.Connections[message.Fd].Socket.WriteMessage(message.Type, message.Msg)
 				}
 			}
 		}()
@@ -359,11 +372,11 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				}
 
 				if socket.OnMessage != nil {
-					socket.OnMessage(&connection, &Message{Fd: connection.Fd, MessageType: messageType, Message: message})
+					socket.OnMessage(&connection, &BM{Fd: connection.Fd, Type: messageType, Msg: message})
 				}
 
 				if socket.WebSocketRouter != nil {
-					socket.router(&connection, &Message{Fd: connection.Fd, MessageType: messageType, Message: message})
+					socket.router(&connection, &BM{Fd: connection.Fd, Type: messageType, Msg: message})
 				}
 
 				if socket.After != nil {

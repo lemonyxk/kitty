@@ -113,6 +113,12 @@ func (socket *Socket) Json(fd uint32, messageType int, message M) error {
 	return socket.Push(fd, messageType, messageJson)
 }
 
+func (socket *Socket) EmitAll(messageType int, event string, message interface{}) {
+	for _, conn := range socket.Connections {
+		_ = socket.Emit(conn.Fd, messageType, event, message)
+	}
+}
+
 func (socket *Socket) Emit(fd uint32, messageType int, event string, message interface{}) error {
 
 	switch socket.TsProto {

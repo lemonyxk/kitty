@@ -28,6 +28,10 @@ func (socket *Socket) router(conn *Connection, ftd *Fte, msg []byte) {
 
 func (socket *Socket) jsonRouter(conn *Connection, fte *Fte, msg []byte) {
 
+	if len(msg) < 22 {
+		return
+	}
+
 	var event, data = parseMessage(msg)
 
 	var f = socket.GetRouter(event)
@@ -49,23 +53,50 @@ func parseMessage(bts []byte) (string, []byte) {
 
 	var s, e int
 
-	for i, b := range bts {
-		if b == 58 {
-			s = i
+	var l = len(bts)
+
+	// 正序
+	if bts[8] == 58 {
+
+		s = 8
+
+		for i, b := range bts {
+			if b == 44 {
+				e = i
+				break
+			}
 		}
-		if b == 44 {
-			e = i
-			break
+
+		if e == 0 {
+			return string(bts[s+2:]), nil
 		}
+
+		return string(bts[s+2 : e-1]), bts[e+8 : l-1]
+
+	} else {
+
+		for i := l - 1; i >= 0; i-- {
+
+			if bts[i] == 58 {
+				s = i
+			}
+
+			if bts[i] == 44 {
+				e = i
+				break
+			}
+		}
+
+		if s == 0 {
+			return "", nil
+		}
+
+		if e == 0 {
+			return string(bts[s+2 : l-2]), nil
+		}
+
+		return string(bts[s+2 : l-2]), bts[8:e]
 	}
 
-	if s == 0 {
-		return "", nil
-	}
-
-	if e == 0 {
-		return string(bts[s+2:]), nil
-	}
-
-	return string(bts[s+2 : e-1]), bts[e+8 : len(bts)-1]
+	return "", nil
 }

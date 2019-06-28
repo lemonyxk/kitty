@@ -172,7 +172,7 @@ func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, msg int
 		data["data"] = string(j)
 	}
 
-	return socket.Json(&Fte{Fd: fd, Type: messageType, Event: event}, msg)
+	return socket.Json(&Fte{Fd: fd, Type: messageType, Event: event}, data)
 
 }
 

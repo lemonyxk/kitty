@@ -1,9 +1,5 @@
 package ws
 
-import (
-	"log"
-)
-
 func (socket *Socket) InitRouter() {
 	socket.WebSocketRouter = make(map[string]WebSocketServerFunction)
 }
@@ -55,12 +51,10 @@ func parseMessage(bts []byte) (string, []byte) {
 	var s, e int
 
 	for i, b := range bts {
-		if string(b) == `:` {
-			log.Println(":", i)
+		if b == 58 {
 			s = i
 		}
-		if string(b) == `,` {
-			log.Println(",", i)
+		if b == 44 {
 			e = i
 			break
 		}

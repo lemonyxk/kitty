@@ -90,11 +90,11 @@ func (conn *Connection) IP() (string, string, error) {
 	return net.SplitHostPort(conn.Request.RemoteAddr)
 }
 
-func (conn *Connection) Emit(event string, message Message) error {
+func (conn *Connection) Emit(event string, message *Message) error {
 	return conn.Handler.Emit(event, message)
 }
 
-func (conn *Connection) EmitAll(event string, message Message) {
+func (conn *Connection) EmitAll(event string, message *Message) {
 	conn.Handler.EmitAll(event, message)
 }
 
@@ -116,7 +116,7 @@ func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
 }
 
 // Push Json 发送消息
-func (socket *Socket) Json(message Message) error {
+func (socket *Socket) Json(message *Message) error {
 
 	messageJson, err := json.Marshal(message.Message)
 	if err != nil {
@@ -126,14 +126,14 @@ func (socket *Socket) Json(message Message) error {
 	return socket.Push(message.Fd, message.MessageType, messageJson)
 }
 
-func (socket *Socket) EmitAll(event string, message Message) {
+func (socket *Socket) EmitAll(event string, message *Message) {
 	for _, conn := range socket.Connections {
 		message.Fd = conn.Fd
 		_ = socket.Emit(event, message)
 	}
 }
 
-func (socket *Socket) Emit(event string, message Message) error {
+func (socket *Socket) Emit(event string, message *Message) error {
 
 	switch socket.TsProto {
 	case Json:

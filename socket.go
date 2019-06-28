@@ -22,6 +22,12 @@ type Message struct {
 	Message     []byte
 }
 
+type InterfaceMessage struct {
+	Fd          uint32
+	MessageType int
+	Message     interface{}
+}
+
 type M map[string]interface{}
 
 type WebSocketServerFunction func(conn *Connection, message *Message, context interface{})
@@ -103,29 +109,30 @@ func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
 }
 
 // Push Json 发送消息
-func (socket *Socket) Json(fd uint32, messageType int, message M) error {
+func (socket *Socket) Json(message Message) error {
 
 	messageJson, err := json.Marshal(message)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return socket.Push(fd, messageType, messageJson)
+	return socket.Push(message.Fd, message.MessageType, messageJson)
 }
 
-func (socket *Socket) EmitAll(messageType int, event string, message interface{}) {
+func (socket *Socket) EmitAll(event string, im InterfaceMessage) {
 	for _, conn := range socket.Connections {
-		_ = socket.Emit(conn.Fd, messageType, event, message)
+		im.Fd = conn.Fd
+		_ = socket.Emit(event, im)
 	}
 }
 
-func (socket *Socket) Emit(fd uint32, messageType int, event string, message interface{}) error {
+func (socket *Socket) Emit(event string, im InterfaceMessage) error {
 
 	switch socket.TsProto {
 	case Json:
-		return socket.jsonEmit(fd, messageType, event, message)
+		return socket.jsonEmit(im.Fd, im.MessageType, event, im.Message)
 	case ProtoBuf:
-		return socket.protoBufEmit(fd, messageType, event, message)
+		return socket.protoBufEmit(im.Fd, im.MessageType, event, im.Message)
 	}
 
 	return fmt.Errorf("unknown ts ptoto")

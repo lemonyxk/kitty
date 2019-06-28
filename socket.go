@@ -11,15 +11,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type dataPackage struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
-}
-
 type Message struct {
 	Fd          uint32
 	MessageType int
 	Message     interface{}
+	Event       string
 }
 
 type M map[string]interface{}
@@ -110,7 +106,7 @@ func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
 		messageType = TextMessage
 	}
 
-	socket.Connections[fd].push <- &Message{fd, messageType, message}
+	socket.Connections[fd].push <- &Message{fd, messageType, message, ""}
 
 	return <-socket.Connections[fd].back
 }
@@ -152,7 +148,10 @@ func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, mes
 
 func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, message interface{}) error {
 
-	var data = dataPackage{Event: event, Data: message}
+	var data = map[string]interface{}{
+		"event": event,
+		"data":  message,
+	}
 
 	messageJson, err := json.Marshal(data)
 	if err != nil {

@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"github.com/tidwall/gjson"
+	"log"
 )
 
 func (socket *Socket) InitRouter() {
@@ -32,7 +32,7 @@ func (socket *Socket) router(conn *Connection, message *Message) {
 
 func (socket *Socket) jsonRouter(conn *Connection, message *Message) {
 
-	var event = gjson.GetBytes(message.Message.([]byte), "event").Str
+	var event, data = parseMessage(message.Message.([]byte))
 
 	var f = socket.GetRouter(event)
 
@@ -40,9 +40,39 @@ func (socket *Socket) jsonRouter(conn *Connection, message *Message) {
 		return
 	}
 
+	message.Event = event
+	message.Message = data
+
 	f(conn, message, nil)
 }
 
 func (socket *Socket) protoBufRouter(conn *Connection, message *Message) {
 
+}
+
+func parseMessage(bts []byte) (string, []byte) {
+
+	var s, e int
+
+	for i, b := range bts {
+		if string(b) == `:` {
+			log.Println(":", i)
+			s = i
+		}
+		if string(b) == `,` {
+			log.Println(",", i)
+			e = i
+			break
+		}
+	}
+
+	if s == 0 {
+		return "", nil
+	}
+
+	if e == 0 {
+		return string(bts[s+2:]), nil
+	}
+
+	return string(bts[s+2 : e-1]), bts[e+8 : len(bts)-1]
 }

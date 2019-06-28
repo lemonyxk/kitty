@@ -80,7 +80,10 @@ func (c *Client) protoBufEmit(messageType int, event string, message M) error {
 
 func (c *Client) jsonEmit(messageType int, event string, message M) error {
 
-	var data = dataPackage{Event: event, Data: message}
+	var data = map[string]interface{}{
+		"event": event,
+		"data":  message,
+	}
 
 	messageJson, err := json.Marshal(data)
 	if err != nil {

@@ -19,12 +19,6 @@ type dataPackage struct {
 type Message struct {
 	Fd          uint32
 	MessageType int
-	Message     []byte
-}
-
-type InterfaceMessage struct {
-	Fd          uint32
-	MessageType int
 	Message     interface{}
 }
 
@@ -83,17 +77,25 @@ type Socket struct {
 	TsProto int
 }
 
-func (socket *Connection) IP() (string, string, error) {
+func (conn *Connection) IP() (string, string, error) {
 
-	if ip := socket.Request.Header.Get("X-Real-IP"); ip != "" {
+	if ip := conn.Request.Header.Get("X-Real-IP"); ip != "" {
 		return net.SplitHostPort(ip)
 	}
 
-	if ip := socket.Request.Header.Get("X-Forwarded-For"); ip != "" {
+	if ip := conn.Request.Header.Get("X-Forwarded-For"); ip != "" {
 		return net.SplitHostPort(ip)
 	}
 
-	return net.SplitHostPort(socket.Request.RemoteAddr)
+	return net.SplitHostPort(conn.Request.RemoteAddr)
+}
+
+func (conn *Connection) Emit(event string, message Message) error {
+	return conn.Handler.Emit(event, message)
+}
+
+func (conn *Connection) EmitAll(event string, message Message) {
+	conn.Handler.EmitAll(event, message)
 }
 
 // Push 发送消息
@@ -101,6 +103,11 @@ func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
 
 	if _, ok := socket.Connections[fd]; !ok {
 		return fmt.Errorf("client %d is close", fd)
+	}
+
+	// 默认为文本
+	if messageType == 0 {
+		messageType = TextMessage
 	}
 
 	socket.Connections[fd].push <- &Message{fd, messageType, message}
@@ -111,7 +118,7 @@ func (socket *Socket) Push(fd uint32, messageType int, message []byte) error {
 // Push Json 发送消息
 func (socket *Socket) Json(message Message) error {
 
-	messageJson, err := json.Marshal(message)
+	messageJson, err := json.Marshal(message.Message)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
@@ -119,20 +126,20 @@ func (socket *Socket) Json(message Message) error {
 	return socket.Push(message.Fd, message.MessageType, messageJson)
 }
 
-func (socket *Socket) EmitAll(event string, im InterfaceMessage) {
+func (socket *Socket) EmitAll(event string, message Message) {
 	for _, conn := range socket.Connections {
-		im.Fd = conn.Fd
-		_ = socket.Emit(event, im)
+		message.Fd = conn.Fd
+		_ = socket.Emit(event, message)
 	}
 }
 
-func (socket *Socket) Emit(event string, im InterfaceMessage) error {
+func (socket *Socket) Emit(event string, message Message) error {
 
 	switch socket.TsProto {
 	case Json:
-		return socket.jsonEmit(im.Fd, im.MessageType, event, im.Message)
+		return socket.jsonEmit(message.Fd, message.MessageType, event, message.Message)
 	case ProtoBuf:
-		return socket.protoBufEmit(im.Fd, im.MessageType, event, im.Message)
+		return socket.protoBufEmit(message.Fd, message.MessageType, event, message.Message)
 	}
 
 	return fmt.Errorf("unknown ts ptoto")
@@ -322,7 +329,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			for {
 				select {
 				case message := <-connection.push:
-					connection.back <- socket.Connections[message.Fd].Socket.WriteMessage(message.MessageType, message.Message)
+					connection.back <- socket.Connections[message.Fd].Socket.WriteMessage(message.MessageType, message.Message.([]byte))
 				}
 			}
 		}()

@@ -32,7 +32,7 @@ func (socket *Socket) router(conn *Connection, message *Message) {
 
 func (socket *Socket) jsonRouter(conn *Connection, message *Message) {
 
-	var event = gjson.GetBytes(message.Message, "event").Str
+	var event = gjson.GetBytes(message.Message.([]byte), "event").Str
 
 	var f = socket.GetRouter(event)
 

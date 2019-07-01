@@ -42,6 +42,8 @@ func (c *Client) jsonRouter(client *Client, fte *Fte, msg []byte) {
 		return
 	}
 
+	fte.Event = event
+
 	f(c, fte, data)
 }
 

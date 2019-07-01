@@ -36,7 +36,9 @@ func (c *Client) jsonRouter(client *Client, fte *Fte, msg []byte) {
 
 	var event, data = ParseMessage(msg)
 
-	var f = c.GetRouter(strings.ReplaceAll(event, "\\", ""))
+	event = strings.ReplaceAll(event, "\\", "")
+
+	var f = c.GetRouter(event)
 
 	if f == nil {
 		return

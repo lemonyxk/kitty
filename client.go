@@ -116,6 +116,11 @@ func (c *Client) Push(messageType int, message []byte) error {
 	return c.Conn.WriteMessage(messageType, message)
 }
 
+func (c *Client) Close() error {
+	c.Reconnect = false
+	return c.Conn.Close()
+}
+
 func (c *Client) reconnecting() {
 	if c.Reconnect == true {
 		time.AfterFunc(time.Duration(c.ReconnectInterval)*time.Second, func() {

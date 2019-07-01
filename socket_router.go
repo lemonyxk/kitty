@@ -1,5 +1,7 @@
 package ws
 
+import "strings"
+
 func (socket *Socket) InitRouter() {
 	socket.WebSocketRouter = make(map[string]WebSocketServerFunction)
 }
@@ -34,7 +36,7 @@ func (socket *Socket) jsonRouter(conn *Connection, fte *Fte, msg []byte) {
 
 	var event, data = ParseMessage(msg)
 
-	var f = socket.GetRouter(event)
+	var f = socket.GetRouter(strings.ReplaceAll(event, "\\", ""))
 
 	if f == nil {
 		return

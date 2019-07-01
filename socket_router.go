@@ -32,7 +32,7 @@ func (socket *Socket) jsonRouter(conn *Connection, fte *Fte, msg []byte) {
 		return
 	}
 
-	var event, data = parseMessage(msg)
+	var event, data = ParseMessage(msg)
 
 	var f = socket.GetRouter(event)
 
@@ -49,7 +49,7 @@ func (socket *Socket) protoBufRouter(conn *Connection, fte *Fte, msg []byte) {
 
 }
 
-func parseMessage(bts []byte) (string, []byte) {
+func ParseMessage(bts []byte) (string, []byte) {
 
 	var s, e int
 
@@ -97,6 +97,4 @@ func parseMessage(bts []byte) (string, []byte) {
 
 		return string(bts[s+2 : l-2]), bts[8:e]
 	}
-
-	return "", nil
 }

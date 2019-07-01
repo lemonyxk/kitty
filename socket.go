@@ -132,6 +132,10 @@ func (socket *Socket) Json(fte *Fte, msg interface{}) error {
 	return socket.Push(fte.Fd, fte.Type, messageJson)
 }
 
+func (socket *Socket) ProtoBuf(fte *Fte, msg interface{}) error {
+	return nil
+}
+
 func (socket *Socket) EmitAll(fte *Fte, msg interface{}) {
 	for _, conn := range socket.Connections {
 		fte.Fd = conn.Fd
@@ -166,18 +170,14 @@ func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, msg
 
 func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, msg interface{}) error {
 
-	var data = M{"event": event, "data": msg}
+	var messageJson = M{"event": event, "data": msg}
 
 	if j, b := msg.([]byte); b {
-		data["data"] = string(j)
+		messageJson["data"] = string(j)
 	}
 
-	return socket.Json(&Fte{Fd: fd, Type: messageType, Event: event}, data)
+	return socket.Json(&Fte{Fd: fd, Type: messageType, Event: event}, messageJson)
 
-}
-
-func (socket *Socket) ProtoBuf(fd uint32, messageType int, message M) error {
-	return nil
 }
 
 func (socket *Socket) addConnect(conn *Connection) {

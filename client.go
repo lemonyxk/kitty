@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type WebSocketClientFunction func(c *Client, messageType int, message []byte)
+type WebSocketClientFunction func(c *Client, fte *Fte, message []byte)
 
 // Client 客户端
 type Client struct {
@@ -35,7 +35,7 @@ type Client struct {
 	// 消息处理
 	OnOpen    func(c *Client)
 	OnClose   func(c *Client)
-	OnMessage func(c *Client, messageType int, message []byte)
+	OnMessage func(c *Client, fte *Fte, message []byte)
 	OnError   func(err interface{})
 	Status    bool
 
@@ -49,48 +49,53 @@ type Client struct {
 }
 
 // Json 发送JSON字符
-func (c *Client) Json(messageType int, message M) error {
+func (c *Client) Json(fte *Fte, msg interface{}) error {
 
-	data, err := json.Marshal(message)
+	messageJson, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return c.Push(messageType, data)
+	return c.Push(fte.Type, messageJson)
 }
 
-func (c *Client) ProtoBuf(messageType int, message []byte) error {
+func (c *Client) ProtoBuf(fte *Fte, msg interface{}) error {
 	return nil
 }
 
-func (c *Client) Emit(messageType int, event string, message M) error {
+func (c *Client) Emit(fte *Fte, msg interface{}) error {
+
+	if fte.Type == BinaryMessage {
+		if j, b := msg.([]byte); b {
+			return c.Push(fte.Type, j)
+		}
+
+		return fmt.Errorf("message type is bin that message must be []byte")
+	}
+
 	switch c.TsProto {
 	case Json:
-		return c.jsonEmit(messageType, event, message)
+		return c.jsonEmit(fte.Type, fte.Event, msg)
 	case ProtoBuf:
-		return c.protoBufEmit(messageType, event, message)
+		return c.protoBufEmit(fte.Type, fte.Event, msg)
 	}
 
 	return fmt.Errorf("unknown ts ptoto")
 }
 
-func (c *Client) protoBufEmit(messageType int, event string, message M) error {
+func (c *Client) protoBufEmit(messageType int, event string, msg interface{}) error {
 	return nil
 }
 
-func (c *Client) jsonEmit(messageType int, event string, message M) error {
+func (c *Client) jsonEmit(messageType int, event string, msg interface{}) error {
 
-	var data = map[string]interface{}{
-		"event": event,
-		"data":  message,
+	var messageJson = M{"event": event, "data": msg}
+
+	if j, b := msg.([]byte); b {
+		messageJson["data"] = string(j)
 	}
 
-	messageJson, err := json.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("message error: %v", err)
-	}
-
-	return c.Push(messageType, messageJson)
+	return c.Json(&Fte{Type: messageType}, messageJson)
 }
 
 // Push 发送消息
@@ -98,6 +103,11 @@ func (c *Client) Push(messageType int, message []byte) error {
 
 	if c.Status == false {
 		return fmt.Errorf("client is close")
+	}
+
+	// 默认为文本
+	if messageType == 0 {
+		messageType = TextMessage
 	}
 
 	c.mux.Lock()
@@ -231,10 +241,10 @@ func (c *Client) Connect() {
 				c.HeartBeat(c)
 			case message := <-ch:
 				if c.OnMessage != nil {
-					c.OnMessage(c, messageType, message)
+					c.OnMessage(c, &Fte{Type: messageType}, message)
 				}
 				if c.WebSocketRouter != nil {
-					c.router(c, messageType, message)
+					c.router(c, &Fte{Type: messageType}, message)
 				}
 			}
 		}

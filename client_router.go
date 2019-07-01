@@ -1,7 +1,5 @@
 package ws
 
-import "github.com/tidwall/gjson"
-
 func (c *Client) InitRouter() {
 	c.WebSocketRouter = make(map[string]WebSocketClientFunction)
 }
@@ -17,19 +15,24 @@ func (c *Client) GetRouter(route string) WebSocketClientFunction {
 	return nil
 }
 
-func (c *Client) router(client *Client, messageType int, message []byte) {
+func (c *Client) router(client *Client, fte *Fte, message []byte) {
 
 	switch c.TsProto {
 	case Json:
-		c.jsonRouter(c, messageType, message)
+		c.jsonRouter(c, fte, message)
 	case ProtoBuf:
-		c.protoBufRouter(c, messageType, message)
+		c.protoBufRouter(c, fte, message)
 	}
 
 }
 
-func (c *Client) jsonRouter(client *Client, messageType int, message []byte) {
-	var event = gjson.GetBytes(message, "event").Str
+func (c *Client) jsonRouter(client *Client, fte *Fte, msg []byte) {
+
+	if len(msg) < 22 {
+		return
+	}
+
+	var event, data = ParseMessage(msg)
 
 	var f = c.GetRouter(event)
 
@@ -37,7 +40,7 @@ func (c *Client) jsonRouter(client *Client, messageType int, message []byte) {
 		return
 	}
 
-	f(c, messageType, message)
+	f(c, fte, data)
 }
 
-func (c *Client) protoBufRouter(client *Client, messageType int, message []byte) {}
+func (c *Client) protoBufRouter(client *Client, fte *Fte, message []byte) {}

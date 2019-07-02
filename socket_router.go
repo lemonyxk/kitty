@@ -30,7 +30,7 @@ func (socket *Socket) router(conn *Connection, ftd *Fte, msg []byte) {
 
 func (socket *Socket) jsonRouter(conn *Connection, fte *Fte, msg []byte) {
 
-	if len(msg) < 22 {
+	if len(msg) < 12 {
 		return
 	}
 

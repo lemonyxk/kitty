@@ -32,7 +32,7 @@ func (c *Client) router(client *Client, fte *Fte, message []byte) {
 
 func (c *Client) jsonRouter(client *Client, fte *Fte, msg []byte) {
 
-	if len(msg) < 22 {
+	if len(msg) < 12 {
 		return
 	}
 

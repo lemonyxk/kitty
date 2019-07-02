@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"github.com/tidwall/gjson"
+	"strings"
 )
 
 func (c *Client) InitRouter() {
@@ -36,9 +36,9 @@ func (c *Client) jsonRouter(client *Client, fte *Fte, msg []byte) {
 		return
 	}
 
-	var event = gjson.GetBytes(msg, "event").Str
+	var event, data = ParseMessage(msg)
 
-	var data = []byte(gjson.GetBytes(msg, "data").Str)
+	event = strings.ReplaceAll(event, "\\", "")
 
 	var f = c.GetRouter(event)
 

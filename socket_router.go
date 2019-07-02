@@ -1,6 +1,8 @@
 package ws
 
-import "strings"
+import (
+	"github.com/tidwall/gjson"
+)
 
 func (socket *Socket) InitRouter() {
 	socket.WebSocketRouter = make(map[string]WebSocketServerFunction)
@@ -34,9 +36,9 @@ func (socket *Socket) jsonRouter(conn *Connection, fte *Fte, msg []byte) {
 		return
 	}
 
-	var event, data = ParseMessage(msg)
+	var event = gjson.GetBytes(msg, "event").Str
 
-	event = strings.ReplaceAll(event, "\\", "")
+	var data = []byte(gjson.GetBytes(msg, "data").Str)
 
 	var f = socket.GetRouter(event)
 

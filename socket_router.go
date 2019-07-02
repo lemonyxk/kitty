@@ -71,7 +71,7 @@ func ParseMessage(bts []byte) (string, []byte) {
 		}
 
 		if e == 0 {
-			return string(bts[s+2 : l-1]), nil
+			return string(bts[s+2 : l-2]), nil
 		}
 
 		return string(bts[s+2 : e-1]), bts[e+8 : l-1]

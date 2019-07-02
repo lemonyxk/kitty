@@ -75,8 +75,8 @@ type Socket struct {
 	WaitQueueSize     int
 	CheckOrigin       func(r *http.Request) bool
 
-	Before func() error
-	After  func() error
+	Before func(conn *Connection, fte *Fte, msg []byte) error
+	After  func(conn *Connection, fte *Fte, msg []byte) error
 
 	WebSocketRouter map[string]WebSocketServerFunction
 
@@ -363,7 +363,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			go func() {
 				// 处理消息
 				if socket.Before != nil {
-					if err := socket.Before(); err != nil {
+					if err := socket.Before(&connection, &Fte{Fd: connection.Fd, Type: messageType}, message); err != nil {
 						return
 					}
 				}
@@ -377,7 +377,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				}
 
 				if socket.After != nil {
-					_ = socket.After()
+					_ = socket.After(&connection, &Fte{Fd: connection.Fd, Type: messageType}, message)
 				}
 			}()
 

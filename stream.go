@@ -3,7 +3,6 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -42,24 +41,27 @@ func (v *value) String() string {
 	return v.v
 }
 
-func (stream *Stream) Json(data interface{}) {
+func (stream *Stream) Json(data interface{}) error {
 
 	stream.Response.Header().Add("Content-Type", "application/json")
 
 	j, err := json.Marshal(data)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 
-	stream.Response.Write(j)
+	_, err = stream.Response.Write(j)
+
+	return err
 }
 
-func (stream *Stream) End(data interface{}) {
+func (stream *Stream) End(data interface{}) error {
 
 	stream.Response.Header().Add("Content-Type", "text/html")
 
-	fmt.Fprint(stream.Response, data)
+	_, err := fmt.Fprint(stream.Response, data)
+
+	return err
 }
 
 func (stream *Stream) ParseQuery() (*Query, error) {
@@ -70,6 +72,28 @@ func (stream *Stream) ParseQuery() (*Query, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	var data = make(map[string]string)
+
+	for k, v := range parse {
+		data[k] = v[0]
+	}
+
+	var query Query
+
+	query.params = data
+
+	return &query, nil
+}
+
+func (stream *Stream) ParseForm() (*Query, error) {
+
+	err := stream.Request.ParseForm()
+	if err != nil {
+		return nil, err
+	}
+
+	var parse = stream.Request.PostForm
 
 	var data = make(map[string]string)
 

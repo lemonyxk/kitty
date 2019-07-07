@@ -292,6 +292,9 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 	// 关闭
 	var connClose = make(chan *Connection, socket.WaitQueueSize)
 
+	// 写入
+	var connPush = make(chan *FteD, socket.WaitQueueSize)
+
 	go func() {
 		for {
 			select {
@@ -299,6 +302,8 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				socket.addConnect(conn)
 			case conn := <-connClose:
 				socket.delConnect(conn)
+			case fteD := <-connPush:
+				socket.Connections[fteD.Fte.Fd].back <- socket.Connections[fteD.Fte.Fd].Socket.WriteMessage(fteD.Fte.Type, fteD.Msg)
 			}
 		}
 	}()
@@ -342,7 +347,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			for {
 				select {
 				case fteD := <-connection.push:
-					connection.back <- socket.Connections[fteD.Fte.Fd].Socket.WriteMessage(fteD.Fte.Type, fteD.Msg)
+					connPush <- fteD
 				}
 			}
 		}()

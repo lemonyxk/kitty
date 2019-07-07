@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -132,6 +133,7 @@ func (c *Client) reconnecting() {
 func (c *Client) catchError() {
 	if err := recover(); err != nil {
 		log.Println(err)
+		log.Println(string(debug.Stack()))
 		c.OnError(err)
 		c.reconnecting()
 	}

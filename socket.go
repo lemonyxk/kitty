@@ -28,6 +28,11 @@ type FteD struct {
 	Msg []byte
 }
 
+type FteDC struct {
+	FteD
+	Conn *Connection
+}
+
 type M map[string]interface{}
 
 type WebSocketServerFunction func(conn *Connection, fte *Fte, msg []byte)
@@ -54,7 +59,7 @@ type Connection struct {
 	Handler  *Socket
 	Response http.ResponseWriter
 	Request  *http.Request
-	push     chan *FteD
+	push     chan *FteDC
 	back     chan error
 }
 
@@ -107,7 +112,9 @@ func (conn *Connection) EmitAll(fte *Fte, msg interface{}) {
 // Push 发送消息
 func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 
-	if _, ok := socket.Connections[fd]; !ok {
+	conn, ok := socket.Connections[fd]
+
+	if !ok {
 		return fmt.Errorf("client %d is close", fd)
 	}
 
@@ -116,9 +123,15 @@ func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 		messageType = TextMessage
 	}
 
-	socket.Connections[fd].push <- &FteD{Fte{fd, messageType, ""}, msg}
+	conn.push <- &FteDC{
+		FteD{
+			Fte{fd, messageType, ""},
+			msg,
+		},
+		conn,
+	}
 
-	return <-socket.Connections[fd].back
+	return <-conn.back
 }
 
 // Push Json 发送消息
@@ -293,7 +306,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 	var connClose = make(chan *Connection, socket.WaitQueueSize)
 
 	// 写入
-	var connPush = make(chan *FteD, socket.WaitQueueSize)
+	//var connPush = make(chan *FteD, socket.WaitQueueSize)
 
 	go func() {
 		for {
@@ -302,8 +315,6 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				socket.addConnect(conn)
 			case conn := <-connClose:
 				socket.delConnect(conn)
-			case fteD := <-connPush:
-				socket.Connections[fteD.Fte.Fd].back <- socket.Connections[fteD.Fte.Fd].Socket.WriteMessage(fteD.Fte.Type, fteD.Msg)
 			}
 		}
 	}()
@@ -330,7 +341,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			Handler:  socket,
 			Response: w,
 			Request:  r,
-			push:     make(chan *FteD, 1024),
+			push:     make(chan *FteDC, 1024),
 			back:     make(chan error, 1024),
 		}
 
@@ -346,8 +357,10 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		go func() {
 			for {
 				select {
-				case fteD := <-connection.push:
-					connPush <- fteD
+				case fteDC := <-connection.push:
+					var fteD = fteDC.FteD
+					var conn = fteDC.Conn
+					conn.back <- conn.Socket.WriteMessage(fteD.Fte.Type, fteD.Msg)
 				}
 			}
 		}()

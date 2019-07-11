@@ -29,6 +29,11 @@ type FteD struct {
 	Msg []byte
 }
 
+type FteDC struct {
+	FteD
+	Conn *Connection
+}
+
 type M map[string]interface{}
 
 type WebSocketServerFunction func(conn *Connection, fte *Fte, msg []byte)
@@ -55,6 +60,11 @@ type Connection struct {
 	Handler  *Socket
 	Response http.ResponseWriter
 	Request  *http.Request
+<<<<<<< HEAD
+=======
+	push     chan *FteDC
+	back     chan error
+>>>>>>> 7643d1b32c7e832c34ab20dacbaed937deb69e61
 }
 
 // Socket conn
@@ -122,7 +132,19 @@ func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 		messageType = TextMessage
 	}
 
+<<<<<<< HEAD
 	return conn.Socket.WriteMessage(messageType, msg)
+=======
+	conn.push <- &FteDC{
+		FteD{
+			Fte{fd, messageType, ""},
+			msg,
+		},
+		conn,
+	}
+
+	return <-conn.back
+>>>>>>> 7643d1b32c7e832c34ab20dacbaed937deb69e61
 }
 
 // Push Json 发送消息
@@ -296,6 +318,29 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 	socket.Connections = make(map[uint32]*Connection)
 
+<<<<<<< HEAD
+=======
+	// 连接
+	var connOpen = make(chan *Connection, socket.WaitQueueSize)
+
+	// 关闭
+	var connClose = make(chan *Connection, socket.WaitQueueSize)
+
+	// 写入
+	//var connPush = make(chan *FteD, socket.WaitQueueSize)
+
+	go func() {
+		for {
+			select {
+			case conn := <-connOpen:
+				socket.addConnect(conn)
+			case conn := <-connClose:
+				socket.delConnect(conn)
+			}
+		}
+	}()
+
+>>>>>>> 7643d1b32c7e832c34ab20dacbaed937deb69e61
 	var handler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 
 		// 升级协议
@@ -318,6 +363,11 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			Handler:  socket,
 			Response: w,
 			Request:  r,
+<<<<<<< HEAD
+=======
+			push:     make(chan *FteDC, 1024),
+			back:     make(chan error, 1024),
+>>>>>>> 7643d1b32c7e832c34ab20dacbaed937deb69e61
 		}
 
 		// 打开连接 记录
@@ -326,7 +376,22 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		// 关闭连接 清理
 		defer func() {
 			_ = conn.Close()
+<<<<<<< HEAD
 			socket.delConnect(&connection)
+=======
+			connClose <- &connection
+		}()
+
+		go func() {
+			for {
+				select {
+				case fteDC := <-connection.push:
+					var fteD = fteDC.FteD
+					var conn = fteDC.Conn
+					conn.back <- conn.Socket.WriteMessage(fteD.Fte.Type, fteD.Msg)
+				}
+			}
+>>>>>>> 7643d1b32c7e832c34ab20dacbaed937deb69e61
 		}()
 
 		// 收到消息 处理 单一连接接受不冲突 但是不能并发写入

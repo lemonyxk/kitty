@@ -115,8 +115,8 @@ func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 		return fmt.Errorf("client %d is close", fd)
 	}
 
-	socket.mux.Lock()
-	defer socket.mux.Unlock()
+	conn.mux.Lock()
+	defer conn.mux.Unlock()
 
 	// 默认为文本
 	if messageType == 0 {

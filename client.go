@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -132,6 +133,7 @@ func (c *Client) reconnecting() {
 func (c *Client) catchError() {
 	if err := recover(); err != nil {
 		log.Println(err)
+		log.Println(string(debug.Stack()))
 		c.OnError(err)
 		c.reconnecting()
 	}
@@ -216,12 +218,6 @@ func (c *Client) Connect() {
 	// 连接成功
 	c.OnOpen(c)
 
-	// 接收消息
-	ch := make(chan []byte)
-
-	var messageType int
-	var message []byte
-
 	// 定时器 心跳
 	ticker := time.NewTicker(time.Duration(c.HeartBeatInterval) * time.Second)
 
@@ -244,13 +240,6 @@ func (c *Client) Connect() {
 			select {
 			case <-ticker.C:
 				c.HeartBeat(c)
-			case message := <-ch:
-				if c.OnMessage != nil {
-					c.OnMessage(c, &Fte{Type: messageType}, message)
-				}
-				if c.WebSocketRouter != nil {
-					c.router(c, &Fte{Type: messageType}, message)
-				}
 			}
 		}
 
@@ -258,14 +247,20 @@ func (c *Client) Connect() {
 
 	for {
 
-		messageType, message, err = client.ReadMessage()
+		messageType, message, err := client.ReadMessage()
 
 		if err != nil {
 			c.OnError(err)
 			break
 		}
 
-		ch <- message
+		if c.OnMessage != nil {
+			c.OnMessage(c, &Fte{Type: messageType}, message)
+		}
+
+		if c.WebSocketRouter != nil {
+			c.router(c, &Fte{Type: messageType}, message)
+		}
 
 	}
 

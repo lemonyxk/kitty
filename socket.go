@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -54,8 +55,6 @@ type Connection struct {
 	Handler  *Socket
 	Response http.ResponseWriter
 	Request  *http.Request
-	push     chan *FteD
-	back     chan error
 }
 
 // Socket conn
@@ -81,6 +80,8 @@ type Socket struct {
 	WebSocketRouter map[string]WebSocketServerFunction
 
 	TsProto int
+
+	mux sync.RWMutex
 }
 
 func (conn *Connection) IP() (string, string, error) {
@@ -107,18 +108,21 @@ func (conn *Connection) EmitAll(fte *Fte, msg interface{}) {
 // Push 发送消息
 func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 
-	if _, ok := socket.Connections[fd]; !ok {
+	conn, ok := socket.Connections[fd]
+
+	if !ok {
 		return fmt.Errorf("client %d is close", fd)
 	}
+
+	socket.mux.Lock()
+	defer socket.mux.Unlock()
 
 	// 默认为文本
 	if messageType == 0 {
 		messageType = TextMessage
 	}
 
-	socket.Connections[fd].push <- &FteD{Fte{fd, messageType, ""}, msg}
-
-	return <-socket.Connections[fd].back
+	return conn.Socket.WriteMessage(messageType, msg)
 }
 
 // Push Json 发送消息
@@ -182,6 +186,9 @@ func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, msg int
 
 func (socket *Socket) addConnect(conn *Connection) {
 
+	socket.mux.Lock()
+	defer socket.mux.Unlock()
+
 	// +1
 	socket.Fd++
 
@@ -218,6 +225,9 @@ func (socket *Socket) addConnect(conn *Connection) {
 	socket.OnOpen(conn)
 }
 func (socket *Socket) delConnect(conn *Connection) {
+	socket.mux.Lock()
+	defer socket.mux.Unlock()
+
 	delete(socket.Connections, conn.Fd)
 	socket.OnClose(conn)
 }
@@ -286,23 +296,6 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 	socket.Connections = make(map[uint32]*Connection)
 
-	// 连接
-	var connOpen = make(chan *Connection, socket.WaitQueueSize)
-
-	// 关闭
-	var connClose = make(chan *Connection, socket.WaitQueueSize)
-
-	go func() {
-		for {
-			select {
-			case conn := <-connOpen:
-				socket.addConnect(conn)
-			case conn := <-connClose:
-				socket.delConnect(conn)
-			}
-		}
-	}()
-
 	var handler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 
 		// 升级协议
@@ -325,29 +318,18 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			Handler:  socket,
 			Response: w,
 			Request:  r,
-			push:     make(chan *FteD, 1024),
-			back:     make(chan error, 1024),
 		}
 
 		// 打开连接 记录
-		connOpen <- &connection
+		socket.addConnect(&connection)
 
 		// 关闭连接 清理
 		defer func() {
 			_ = conn.Close()
-			connClose <- &connection
+			socket.delConnect(&connection)
 		}()
 
-		go func() {
-			for {
-				select {
-				case fteD := <-connection.push:
-					connection.back <- socket.Connections[fteD.Fte.Fd].Socket.WriteMessage(fteD.Fte.Type, fteD.Msg)
-				}
-			}
-		}()
-
-		// 收到消息 处理 单一连接收发不冲突 但是不能并发写入
+		// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
 		for {
 
 			// 重置心跳

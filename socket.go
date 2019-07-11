@@ -51,10 +51,11 @@ const ProtoBuf = 2
 // Connection Connection
 type Connection struct {
 	Fd       uint32
-	Socket   *websocket.Conn
-	Handler  *Socket
+	Conn     *websocket.Conn
+	Socket   *Socket
 	Response http.ResponseWriter
 	Request  *http.Request
+	mux      sync.RWMutex
 }
 
 // Socket conn
@@ -98,11 +99,11 @@ func (conn *Connection) IP() (string, string, error) {
 }
 
 func (conn *Connection) Emit(fte *Fte, msg interface{}) error {
-	return conn.Handler.Emit(fte, msg)
+	return conn.Socket.Emit(fte, msg)
 }
 
 func (conn *Connection) EmitAll(fte *Fte, msg interface{}) {
-	conn.Handler.EmitAll(fte, msg)
+	conn.Socket.EmitAll(fte, msg)
 }
 
 // Push 发送消息
@@ -122,7 +123,7 @@ func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 		messageType = TextMessage
 	}
 
-	return conn.Socket.WriteMessage(messageType, msg)
+	return conn.Conn.WriteMessage(messageType, msg)
 }
 
 // Push Json 发送消息
@@ -313,9 +314,8 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		})
 
 		connection := Connection{
-			Fd:       0,
-			Socket:   conn,
-			Handler:  socket,
+			Conn:     conn,
+			Socket:   socket,
 			Response: w,
 			Request:  r,
 		}

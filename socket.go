@@ -12,19 +12,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// type Message struct {
-// 	Fd    uint32
-// 	Type  int
-// 	Event string
-// }
-
 type Fte struct {
 	Fd    uint32
 	Type  int
 	Event string
 }
 
-type FteD struct {
+type FteMessage struct {
 	Fte
 	Msg []byte
 }
@@ -55,6 +49,7 @@ type Connection struct {
 	Socket   *Socket
 	Response http.ResponseWriter
 	Request  *http.Request
+	mux      sync.RWMutex
 }
 
 // Socket conn
@@ -108,14 +103,14 @@ func (conn *Connection) EmitAll(fte *Fte, msg interface{}) {
 // Push 发送消息
 func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 
-	socket.mux.Lock()
-	defer socket.mux.Unlock()
-
 	conn, ok := socket.Connections[fd]
 
 	if !ok {
 		return fmt.Errorf("client %d is close", fd)
 	}
+
+	conn.mux.Lock()
+	defer conn.mux.Unlock()
 
 	// 默认为文本
 	if messageType == 0 {

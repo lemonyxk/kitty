@@ -187,34 +187,41 @@ func (socket *Socket) addConnect(conn *Connection) {
 	// +1
 	socket.Fd++
 
-	// 赋值
-	conn.Fd = socket.Fd
+	// 溢出
+	if socket.Fd == 0 {
+		socket.Fd++
+	}
 
 	// 如果不存在 则存储
-	if _, ok := socket.Connections[conn.Fd]; !ok {
-		socket.Connections[conn.Fd] = conn
+	if _, ok := socket.Connections[socket.Fd]; !ok {
+		socket.Connections[socket.Fd] = conn
 	} else {
 
 		// 否则查找最大值
 		var maxFd uint32 = 0
 
-		for fd, _ := range socket.Connections {
-			if fd > maxFd {
-				maxFd = fd
-			}
-		}
+		for {
 
-		// +1
-		maxFd++
-
-		// 溢出
-		if maxFd == 0 {
 			maxFd++
+
+			if maxFd == 0 {
+				log.Println("connections overflow")
+				return
+			}
+
+			if _, ok := socket.Connections[maxFd]; !ok {
+				socket.Connections[maxFd] = conn
+				break
+			}
+
 		}
 
-		socket.Connections[maxFd] = conn
+		socket.Fd = maxFd
 
 	}
+
+	// 赋值
+	conn.Fd = socket.Fd
 
 	// 触发OPEN事件
 	socket.OnOpen(conn)

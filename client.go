@@ -166,15 +166,15 @@ func (c *Client) Connect() {
 	}
 
 	if c.OnOpen == nil {
-		log.Panicln("OnOpen must set")
+		panic("OnOpen must set")
 	}
 
 	if c.OnClose == nil {
-		log.Panicln("OnClose must set")
+		panic("OnClose must set")
 	}
 
 	if c.OnError == nil {
-		log.Panicln("OnError must set")
+		panic("OnError must set")
 	}
 
 	var dialer websocket.Dialer
@@ -208,7 +208,7 @@ func (c *Client) Connect() {
 	// 连接服务器
 	client, _, err := dialer.Dial(fmt.Sprintf("%s://%s:%d%s", c.Protocol, c.Host, c.Port, c.Path), nil)
 	if err != nil {
-		log.Panicln(err)
+		panic(err)
 	}
 
 	c.Conn = client

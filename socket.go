@@ -181,7 +181,6 @@ func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, msg int
 func (socket *Socket) addConnect(conn *Connection) {
 
 	socket.mux.Lock()
-	defer socket.mux.Unlock()
 
 	// +1
 	socket.Fd++
@@ -205,6 +204,7 @@ func (socket *Socket) addConnect(conn *Connection) {
 
 			if maxFd == 0 {
 				log.Println("connections overflow")
+				socket.mux.Unlock()
 				return
 			}
 
@@ -222,14 +222,18 @@ func (socket *Socket) addConnect(conn *Connection) {
 	// 赋值
 	conn.Fd = socket.Fd
 
+	socket.mux.Unlock()
+
 	// 触发OPEN事件
 	socket.OnOpen(conn)
 }
 func (socket *Socket) delConnect(conn *Connection) {
 	socket.mux.Lock()
-	defer socket.mux.Unlock()
 
 	delete(socket.Connections, conn.Fd)
+
+	socket.mux.Unlock()
+
 	socket.OnClose(conn)
 }
 

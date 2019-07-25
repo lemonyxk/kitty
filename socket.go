@@ -135,8 +135,16 @@ func (socket *Socket) ProtoBuf(fte *Fte, msg interface{}) error {
 }
 
 func (socket *Socket) EmitAll(fte *Fte, msg interface{}) {
-	for _, conn := range socket.Connections {
-		fte.Fd = conn.Fd
+
+	socket.mux.RLock()
+	var fds []uint32
+	for fd := range socket.Connections {
+		fds = append(fds, fd)
+	}
+	socket.mux.RUnlock()
+
+	for _, fd := range fds {
+		fte.Fd = fd
 		_ = socket.Emit(fte, msg)
 	}
 }

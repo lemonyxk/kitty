@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -64,7 +65,7 @@ type Connection struct {
 // Socket conn
 type Socket struct {
 	Fd          uint32
-	Connections map[uint32]*Connection
+	Connections sync.Map
 	OnClose     func(conn *Connection)
 	OnMessage   func(conn *Connection, fte *Fte, msg []byte)
 	OnOpen      func(conn *Connection)
@@ -139,11 +140,11 @@ func (socket *Socket) ProtoBuf(fte *Fte, msg interface{}) error {
 }
 
 func (socket *Socket) EmitAll(fte *Fte, msg interface{}) {
-
-	for fd := range socket.Connections {
-		fte.Fd = fd
-		_ = socket.Emit(fte, msg)
-	}
+	socket.Connections.Range(func(key, value interface{}) bool {
+		fte.Fd = key.(uint32)
+		_ = value.(*Connection).Emit(fte, msg)
+		return true
+	})
 }
 
 func (socket *Socket) Emit(fte *Fte, msg interface{}) error {
@@ -193,11 +194,11 @@ func (socket *Socket) addConnect(conn *Connection) {
 		socket.Fd++
 	}
 
-	// 如果不存在 则存储
-	if _, ok := socket.Connections[socket.Fd]; !ok {
-		socket.Connections[socket.Fd] = conn
-	} else {
+	var _, ok = socket.Connections.Load(socket.Fd)
 
+	if !ok {
+		socket.Connections.Store(socket.Fd, conn)
+	} else {
 		// 否则查找最大值
 		var maxFd uint32 = 0
 
@@ -210,15 +211,16 @@ func (socket *Socket) addConnect(conn *Connection) {
 				return
 			}
 
-			if _, ok := socket.Connections[maxFd]; !ok {
-				socket.Connections[maxFd] = conn
+			var _, ok = socket.Connections.Load(socket.Fd)
+
+			if !ok {
+				socket.Connections.Store(maxFd, conn)
 				break
 			}
 
 		}
 
 		socket.Fd = maxFd
-
 	}
 
 	// 赋值
@@ -226,7 +228,7 @@ func (socket *Socket) addConnect(conn *Connection) {
 
 }
 func (socket *Socket) delConnect(conn *Connection) {
-	delete(socket.Connections, conn.Fd)
+	socket.Connections.Delete(conn.Fd)
 }
 
 // WebSocket 默认设置
@@ -291,8 +293,6 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		CheckOrigin:      socket.CheckOrigin,
 	}
 
-	socket.Connections = make(map[uint32]*Connection)
-
 	// 连接
 	connOpen = make(chan *Connection, socket.WaitQueueSize)
 
@@ -316,10 +316,13 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				// 触发CLOSE事件
 				go socket.OnClose(conn)
 			case push := <-connPush:
-				if conn, ok := socket.Connections[push.Fd]; !ok {
+
+				var conn, ok = socket.Connections.Load(push.Fd)
+
+				if !ok {
 					connBack <- fmt.Errorf("client %d is close", push.Fd)
 				} else {
-					connBack <- conn.Conn.WriteMessage(push.Type, push.Msg)
+					connBack <- conn.(*Connection).Conn.WriteMessage(push.Type, push.Msg)
 				}
 			}
 		}

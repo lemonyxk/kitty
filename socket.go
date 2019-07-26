@@ -310,11 +310,11 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			case conn := <-connOpen:
 				socket.addConnect(conn)
 				// 触发OPEN事件
-				socket.OnOpen(conn)
+				go socket.OnOpen(conn)
 			case conn := <-connClose:
 				socket.delConnect(conn)
 				// 触发CLOSE事件
-				socket.OnClose(conn)
+				go socket.OnClose(conn)
 			case push := <-connPush:
 				if conn, ok := socket.Connections[push.Fd]; !ok {
 					connBack <- fmt.Errorf("client %d is close", push.Fd)

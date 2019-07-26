@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -22,6 +21,17 @@ type FteMessage struct {
 	Fte
 	Msg []byte
 }
+
+// 连接
+var connOpen chan *Connection
+
+// 关闭
+var connClose chan *Connection
+
+// 写入
+var connPush chan *FteMessage
+
+var connBack chan error
 
 type M map[string]interface{}
 
@@ -74,8 +84,6 @@ type Socket struct {
 	WebSocketRouter map[string]WebSocketServerFunction
 
 	TsProto int
-
-	mux sync.RWMutex
 }
 
 func (conn *Connection) IP() (string, string, error) {
@@ -102,21 +110,17 @@ func (conn *Connection) EmitAll(fte *Fte, msg interface{}) {
 // Push 发送消息
 func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 
-	socket.mux.Lock()
-	defer socket.mux.Unlock()
-
-	conn, ok := socket.Connections[fd]
-
-	if !ok {
-		return fmt.Errorf("client %d is close", fd)
-	}
-
 	// 默认为文本
 	if messageType == 0 {
 		messageType = TextMessage
 	}
 
-	return conn.Conn.WriteMessage(messageType, msg)
+	connPush <- &FteMessage{
+		Fte: Fte{Fd: fd, Event: "", Type: messageType},
+		Msg: msg,
+	}
+
+	return <-connBack
 }
 
 // Push Json 发送消息
@@ -136,14 +140,7 @@ func (socket *Socket) ProtoBuf(fte *Fte, msg interface{}) error {
 
 func (socket *Socket) EmitAll(fte *Fte, msg interface{}) {
 
-	socket.mux.RLock()
-	var fds []uint32
 	for fd := range socket.Connections {
-		fds = append(fds, fd)
-	}
-	socket.mux.RUnlock()
-
-	for _, fd := range fds {
 		fte.Fd = fd
 		_ = socket.Emit(fte, msg)
 	}
@@ -188,8 +185,6 @@ func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, msg int
 
 func (socket *Socket) addConnect(conn *Connection) {
 
-	socket.mux.Lock()
-
 	// +1
 	socket.Fd++
 
@@ -212,7 +207,6 @@ func (socket *Socket) addConnect(conn *Connection) {
 
 			if maxFd == 0 {
 				log.Println("connections overflow")
-				socket.mux.Unlock()
 				return
 			}
 
@@ -230,19 +224,9 @@ func (socket *Socket) addConnect(conn *Connection) {
 	// 赋值
 	conn.Fd = socket.Fd
 
-	socket.mux.Unlock()
-
-	// 触发OPEN事件
-	socket.OnOpen(conn)
 }
 func (socket *Socket) delConnect(conn *Connection) {
-	socket.mux.Lock()
-
 	delete(socket.Connections, conn.Fd)
-
-	socket.mux.Unlock()
-
-	socket.OnClose(conn)
 }
 
 // WebSocket 默认设置
@@ -309,6 +293,38 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 	socket.Connections = make(map[uint32]*Connection)
 
+	// 连接
+	connOpen = make(chan *Connection, socket.WaitQueueSize)
+
+	// 关闭
+	connClose = make(chan *Connection, socket.WaitQueueSize)
+
+	// 写入
+	connPush = make(chan *FteMessage, socket.WaitQueueSize)
+
+	connBack = make(chan error, socket.WaitQueueSize)
+
+	go func() {
+		for {
+			select {
+			case conn := <-connOpen:
+				socket.addConnect(conn)
+				// 触发OPEN事件
+				socket.OnOpen(conn)
+			case conn := <-connClose:
+				socket.delConnect(conn)
+				// 触发CLOSE事件
+				socket.OnClose(conn)
+			case push := <-connPush:
+				if conn, ok := socket.Connections[push.Fd]; !ok {
+					connBack <- fmt.Errorf("client %d is close", push.Fd)
+				} else {
+					connBack <- conn.Conn.WriteMessage(push.Type, push.Msg)
+				}
+			}
+		}
+	}()
+
 	var handler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 
 		// 升级协议
@@ -333,12 +349,12 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		}
 
 		// 打开连接 记录
-		socket.addConnect(&connection)
+		connOpen <- &connection
 
 		// 关闭连接 清理
 		defer func() {
 			_ = conn.Close()
-			socket.delConnect(&connection)
+			connClose <- &connection
 		}()
 
 		// 收到消息 处理 单一连接接受不冲突 但是不能并发写入

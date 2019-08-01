@@ -2,16 +2,25 @@ package ws
 
 import "strings"
 
+var globalSocketPath = ""
+
 func (socket *Socket) InitRouter() {
 	socket.WebSocketRouter = make(map[string]WebSocketServerFunction)
 }
 
-func (socket *Socket) SetRouter(route string, f WebSocketServerFunction) {
-	socket.WebSocketRouter[route] = f
+func (socket *Socket) Group(path string, fn func()) {
+	globalSocketPath = path
+	fn()
+	globalSocketPath = ""
 }
 
-func (socket *Socket) GetRouter(route string) WebSocketServerFunction {
-	if f, ok := socket.WebSocketRouter[route]; ok {
+func (socket *Socket) SetRouter(path string, f WebSocketServerFunction) {
+	path = globalSocketPath + path
+	socket.WebSocketRouter[path] = f
+}
+
+func (socket *Socket) GetRouter(path string) WebSocketServerFunction {
+	if f, ok := socket.WebSocketRouter[path]; ok {
 		return f
 	}
 	return nil

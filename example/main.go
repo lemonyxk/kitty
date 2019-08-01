@@ -33,6 +33,12 @@ func main() {
 		log.Println(conn.Fd, "is open")
 	}
 
-	webSocket.Start(ws.WebSocket(handlerSocket), nil)
+	var httpHandler = &ws.HttpHandle{}
+
+	httpHandler.SetRoute("GET", "/hello", func(t *ws.Stream) {
+		_ = t.End("hello world!")
+	})
+
+	webSocket.Start(ws.WebSocket(handlerSocket), httpHandler)
 
 }

@@ -57,7 +57,7 @@ const ProtoBuf = 2
 type Connection struct {
 	Fd       uint32
 	Conn     *websocket.Conn
-	Socket   *Socket
+	socket   *Socket
 	Response http.ResponseWriter
 	Request  *http.Request
 }
@@ -101,11 +101,27 @@ func (conn *Connection) IP() (string, string, error) {
 }
 
 func (conn *Connection) Emit(fte *Fte, msg interface{}) error {
-	return conn.Socket.Emit(fte, msg)
+	return conn.socket.Emit(fte, msg)
 }
 
 func (conn *Connection) EmitAll(fte *Fte, msg interface{}) {
-	conn.Socket.EmitAll(fte, msg)
+	conn.socket.EmitAll(fte, msg)
+}
+
+func (conn *Connection) GetConnections() []*Connection {
+
+	var connections []*Connection
+
+	conn.socket.Connections.Range(func(key, value interface{}) bool {
+		connections = append(connections, value.(*Connection))
+		return true
+	})
+
+	return connections
+}
+
+func (conn *Connection) GetConnection(fd uint32) (*Connection, bool) {
+	return conn.socket.GetConnection(fd)
 }
 
 // Push 发送消息
@@ -227,8 +243,17 @@ func (socket *Socket) addConnect(conn *Connection) {
 	conn.Fd = socket.Fd
 
 }
+
 func (socket *Socket) delConnect(conn *Connection) {
 	socket.Connections.Delete(conn.Fd)
+}
+
+func (socket *Socket) GetConnection(fd uint32) (*Connection, bool) {
+	conn, ok := socket.Connections.Load(fd)
+	if !ok {
+		return nil, false
+	}
+	return conn.(*Connection), true
 }
 
 // WebSocket 默认设置
@@ -346,7 +371,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 		connection := Connection{
 			Conn:     conn,
-			Socket:   socket,
+			socket:   socket,
 			Response: w,
 			Request:  r,
 		}

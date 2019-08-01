@@ -6,12 +6,22 @@ type HttpFunction func(t *Stream)
 
 type HttpMiddle func(t *Stream) (interface{}, error)
 
+var globalHttpPath = ""
+
 type HttpHandle struct {
 	Middle  HttpMiddle
 	Routers map[string]map[string]HttpFunction
 }
 
-func (h *HttpHandle) HSetRoute(method string, router string, f HttpFunction) {
+func (h *HttpHandle) Group(path string, fn func()) {
+	globalHttpPath = path
+	fn()
+	globalHttpPath = ""
+}
+
+func (h *HttpHandle) SetRoute(method string, path string, f HttpFunction) {
+
+	path = globalHttpPath + path
 
 	if h.Routers == nil {
 		h.Routers = make(map[string]map[string]HttpFunction)
@@ -23,10 +33,10 @@ func (h *HttpHandle) HSetRoute(method string, router string, f HttpFunction) {
 		h.Routers[m] = make(map[string]HttpFunction)
 	}
 
-	h.Routers[m][router] = f
+	h.Routers[m][path] = f
 }
 
-func (h *HttpHandle) HGetRoute(method string, router string) HttpFunction {
+func (h *HttpHandle) GetRoute(method string, path string) HttpFunction {
 
 	if h.Routers == nil {
 		h.Routers = make(map[string]map[string]HttpFunction)
@@ -34,9 +44,17 @@ func (h *HttpHandle) HGetRoute(method string, router string) HttpFunction {
 
 	var m = strings.ToUpper(method)
 
-	if f, ok := h.Routers[m][router]; ok {
+	if f, ok := h.Routers[m][path]; ok {
 		return f
 	}
 
 	return nil
+}
+
+func (h *HttpHandle) Get(path string, f HttpFunction) {
+	h.SetRoute("GET", path, f)
+}
+
+func (h *HttpHandle) Post(path string, f HttpFunction) {
+	h.SetRoute("POST", path, f)
 }

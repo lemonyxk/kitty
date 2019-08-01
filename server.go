@@ -50,15 +50,15 @@ func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
 			// Not exists
 			if hh == nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write(nil)
+				_, _ = w.Write(nil)
 				return
 			}
 
 			// Get the router
-			f := hh.HGetRoute(strings.ToUpper(r.Method), r.URL.Path)
+			f := hh.GetRoute(strings.ToUpper(r.Method), r.URL.Path)
 			if f == nil {
 				w.WriteHeader(http.StatusNotFound)
-				w.Write(nil)
+				_, _ = w.Write(nil)
 				return
 			}
 

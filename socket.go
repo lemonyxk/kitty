@@ -89,11 +89,11 @@ type Socket struct {
 
 func (conn *Connection) IP() (string, string, error) {
 
-	if ip := conn.Request.Header.Get("X-Real-IP"); ip != "" {
+	if ip := conn.Request.Header.Get(XRealIP); ip != "" {
 		return net.SplitHostPort(ip)
 	}
 
-	if ip := conn.Request.Header.Get("X-Forwarded-For"); ip != "" {
+	if ip := conn.Request.Header.Get(XForwardedFor); ip != "" {
 		return net.SplitHostPort(ip)
 	}
 

@@ -63,17 +63,23 @@ func (stream *Stream) End(data interface{}) error {
 	return err
 }
 
-func (stream *Stream) IP() (string, string, error) {
+func (stream *Stream) IP() string {
 
-	if ip := stream.Request.Header.Get("X-Real-IP"); ip != "" {
-		return net.SplitHostPort(ip)
+	remoteAddr := stream.Request.RemoteAddr
+
+	if ip := stream.Request.Header.Get(XRealIP); ip != "" {
+		remoteAddr = ip
+	} else if ip = stream.Request.Header.Get(XForwardedFor); ip != "" {
+		remoteAddr = ip
+	} else {
+		remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
 	}
 
-	if ip := stream.Request.Header.Get("X-Forwarded-For"); ip != "" {
-		return net.SplitHostPort(ip)
+	if remoteAddr == "::1" {
+		remoteAddr = "127.0.0.1"
 	}
 
-	return net.SplitHostPort(stream.Request.RemoteAddr)
+	return remoteAddr
 }
 
 func (stream *Stream) ParseQuery() (*Query, error) {

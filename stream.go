@@ -3,12 +3,11 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 )
-
-type Wson map[string]interface{}
 
 type Query struct {
 	params map[string]string
@@ -62,6 +61,19 @@ func (stream *Stream) End(data interface{}) error {
 	_, err := fmt.Fprint(stream.Response, data)
 
 	return err
+}
+
+func (stream *Stream) IP() (string, string, error) {
+
+	if ip := stream.Request.Header.Get("X-Real-IP"); ip != "" {
+		return net.SplitHostPort(ip)
+	}
+
+	if ip := stream.Request.Header.Get("X-Forwarded-For"); ip != "" {
+		return net.SplitHostPort(ip)
+	}
+
+	return net.SplitHostPort(stream.Request.RemoteAddr)
 }
 
 func (stream *Stream) ParseQuery() (*Query, error) {

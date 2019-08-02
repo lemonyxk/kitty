@@ -72,7 +72,7 @@ func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
 			if hh.Middle != nil {
 				context, err = hh.Middle(&tool)
 				if err != nil {
-					log.Println(err)
+					//log.Println(err)
 					return
 				}
 				tool.Context = context

@@ -65,7 +65,8 @@ type Connection struct {
 // Socket conn
 type Socket struct {
 	Fd          uint32
-	Connections sync.Map
+	count       uint32
+	connections sync.Map
 	OnClose     func(conn *Connection)
 	OnMessage   func(conn *Connection, fte *Fte, msg []byte)
 	OnOpen      func(conn *Connection)
@@ -109,15 +110,11 @@ func (conn *Connection) EmitAll(fte *Fte, msg interface{}) {
 }
 
 func (conn *Connection) GetConnections() []*Connection {
+	return conn.socket.GetConnections()
+}
 
-	var connections []*Connection
-
-	conn.socket.Connections.Range(func(key, value interface{}) bool {
-		connections = append(connections, value.(*Connection))
-		return true
-	})
-
-	return connections
+func (conn *Connection) GetConnectionsCount() uint32 {
+	return conn.socket.GetConnectionsCount()
 }
 
 func (conn *Connection) GetConnection(fd uint32) (*Connection, bool) {
@@ -156,7 +153,7 @@ func (socket *Socket) ProtoBuf(fte *Fte, msg interface{}) error {
 }
 
 func (socket *Socket) EmitAll(fte *Fte, msg interface{}) {
-	socket.Connections.Range(func(key, value interface{}) bool {
+	socket.connections.Range(func(key, value interface{}) bool {
 		fte.Fd = key.(uint32)
 		_ = value.(*Connection).Emit(fte, msg)
 		return true
@@ -210,10 +207,10 @@ func (socket *Socket) addConnect(conn *Connection) {
 		socket.Fd++
 	}
 
-	var _, ok = socket.Connections.Load(socket.Fd)
+	var _, ok = socket.connections.Load(socket.Fd)
 
 	if !ok {
-		socket.Connections.Store(socket.Fd, conn)
+		socket.connections.Store(socket.Fd, conn)
 	} else {
 		// 否则查找最大值
 		var maxFd uint32 = 0
@@ -227,10 +224,10 @@ func (socket *Socket) addConnect(conn *Connection) {
 				return
 			}
 
-			var _, ok = socket.Connections.Load(socket.Fd)
+			var _, ok = socket.connections.Load(socket.Fd)
 
 			if !ok {
-				socket.Connections.Store(maxFd, conn)
+				socket.connections.Store(maxFd, conn)
 				break
 			}
 
@@ -245,15 +242,31 @@ func (socket *Socket) addConnect(conn *Connection) {
 }
 
 func (socket *Socket) delConnect(conn *Connection) {
-	socket.Connections.Delete(conn.Fd)
+	socket.connections.Delete(conn.Fd)
+}
+
+func (socket *Socket) GetConnections() []*Connection {
+
+	var connections []*Connection
+
+	socket.connections.Range(func(key, value interface{}) bool {
+		connections = append(connections, value.(*Connection))
+		return true
+	})
+
+	return connections
 }
 
 func (socket *Socket) GetConnection(fd uint32) (*Connection, bool) {
-	conn, ok := socket.Connections.Load(fd)
+	conn, ok := socket.connections.Load(fd)
 	if !ok {
 		return nil, false
 	}
 	return conn.(*Connection), true
+}
+
+func (socket *Socket) GetConnectionsCount() uint32 {
+	return socket.count
 }
 
 // WebSocket 默认设置
@@ -327,6 +340,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 	// 写入
 	connPush = make(chan *FteMessage, socket.WaitQueueSize)
 
+	// 返回
 	connBack = make(chan error, socket.WaitQueueSize)
 
 	go func() {
@@ -334,15 +348,17 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			select {
 			case conn := <-connOpen:
 				socket.addConnect(conn)
+				socket.count++
 				// 触发OPEN事件
 				go socket.OnOpen(conn)
 			case conn := <-connClose:
 				socket.delConnect(conn)
+				socket.count--
 				// 触发CLOSE事件
 				go socket.OnClose(conn)
 			case push := <-connPush:
 
-				var conn, ok = socket.Connections.Load(push.Fd)
+				var conn, ok = socket.connections.Load(push.Fd)
 
 				if !ok {
 					connBack <- fmt.Errorf("client %d is close", push.Fd)
@@ -366,6 +382,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 		// 设置PING处理函数
 		conn.SetPingHandler(func(status string) error {
+			_ = conn.WriteMessage(PongMessage, nil)
 			return conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 		})
 

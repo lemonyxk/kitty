@@ -113,6 +113,10 @@ func (conn *Connection) GetConnections() []*Connection {
 	return conn.socket.GetConnections()
 }
 
+func (conn *Connection) GetSocket() *Socket {
+	return conn.socket
+}
+
 func (conn *Connection) GetConnectionsCount() uint32 {
 	return conn.socket.GetConnectionsCount()
 }

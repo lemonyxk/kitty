@@ -4,10 +4,6 @@ import "strings"
 
 var globalSocketPath = ""
 
-func (socket *Socket) InitRouter() {
-	socket.WebSocketRouter = make(map[string]WebSocketServerFunction)
-}
-
 func (socket *Socket) Group(path string, fn func()) {
 	globalSocketPath = path
 	fn()
@@ -15,11 +11,21 @@ func (socket *Socket) Group(path string, fn func()) {
 }
 
 func (socket *Socket) SetRouter(path string, f WebSocketServerFunction) {
+
+	if socket.WebSocketRouter == nil {
+		socket.WebSocketRouter = make(map[string]WebSocketServerFunction)
+	}
+
 	path = globalSocketPath + path
 	socket.WebSocketRouter[path] = f
 }
 
 func (socket *Socket) GetRouter(path string) WebSocketServerFunction {
+
+	if socket.WebSocketRouter == nil {
+		return nil
+	}
+
 	if f, ok := socket.WebSocketRouter[path]; ok {
 		return f
 	}

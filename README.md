@@ -15,8 +15,6 @@
     
         var socketHandler = &ws.Socket{}
     
-        socketHandler.InitRouter()
-    
         socketHandler.SetRouter("hello1", func(conn *ws.Connection, ftd *ws.Fte, msg []byte) {
             log.Println(ftd.Fd)
         })

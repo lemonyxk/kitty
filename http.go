@@ -94,7 +94,7 @@ func (h *HttpHandle) SetRoute(method string, path string, v ...interface{}) {
 func (h *HttpHandle) GetRoute(method string, path string) *hba {
 
 	if h.Routers == nil {
-		h.Routers = make(map[string]map[string]*hba)
+		return nil
 	}
 
 	var m = strings.ToUpper(method)

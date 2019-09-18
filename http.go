@@ -2,44 +2,103 @@ package ws
 
 import "strings"
 
+type GroupFunction func()
+
 type HttpFunction func(t *Stream)
 
-type HttpMiddle func(t *Stream) (interface{}, error)
+type Before func(t *Stream) (interface{}, error)
 
-var globalHttpPath = ""
+type After func(t *Stream) error
 
 type HttpHandle struct {
-	Middle  HttpMiddle
-	Routers map[string]map[string]HttpFunction
+	Routers map[string]map[string]*hba
 }
 
-func (h *HttpHandle) Group(path string, fn func()) {
+type hba struct {
+	Handler HttpFunction
+	Before  []Before
+	After   []After
+}
+
+var globalHttpPath string
+var globalBefore []Before
+var globalAfter []After
+
+func (h *HttpHandle) Group(path string, v ...interface{}) {
+
+	if v == nil {
+		panic("Group function length is 0")
+	}
+
+	var g GroupFunction
+
+	for _, fn := range v {
+		switch fn.(type) {
+		case GroupFunction:
+			g = fn.(GroupFunction)
+		case Before:
+			globalBefore = fn.([]Before)
+		case After:
+			globalAfter = fn.([]After)
+		}
+	}
+
+	if g == nil {
+		panic("Group function is nil")
+	}
+
 	globalHttpPath = path
-	fn()
+	g()
 	globalHttpPath = ""
+	globalBefore = nil
+	globalAfter = nil
 }
 
-func (h *HttpHandle) SetRoute(method string, path string, f HttpFunction) {
+func (h *HttpHandle) SetRoute(method string, path string, v ...interface{}) {
 
 	path = globalHttpPath + path
 
 	if h.Routers == nil {
-		h.Routers = make(map[string]map[string]HttpFunction)
+		h.Routers = make(map[string]map[string]*hba)
 	}
 
 	var m = strings.ToUpper(method)
 
 	if _, ok := h.Routers[m]; !ok {
-		h.Routers[m] = make(map[string]HttpFunction)
+		h.Routers[m] = make(map[string]*hba)
 	}
 
-	h.Routers[m][path] = f
+	if h.Routers[m][path] != nil {
+		println(m, path, "already set route")
+		return
+	}
+
+	var hba = &hba{}
+
+	for _, fn := range v {
+		switch fn.(type) {
+		case HttpFunction:
+			hba.Handler = fn.(HttpFunction)
+		case Before:
+			if globalBefore != nil {
+				hba.Before = globalBefore
+			}
+			hba.Before = append(hba.Before, fn.([]Before)...)
+		case After:
+			if globalAfter != nil {
+				hba.After = globalAfter
+			}
+			hba.After = append(hba.After, fn.([]After)...)
+		}
+	}
+
+	h.Routers[m][path] = hba
 }
 
-func (h *HttpHandle) GetRoute(method string, path string) HttpFunction {
+func (h *HttpHandle) GetRoute(method string, path string) *hba {
 
 	if h.Routers == nil {
-		h.Routers = make(map[string]map[string]HttpFunction)
+		h.Routers = make(map[string]map[string]*hba)
 	}
 
 	var m = strings.ToUpper(method)

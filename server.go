@@ -52,8 +52,8 @@ func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
 			}
 
 			// Get the router
-			f := hh.GetRoute(strings.ToUpper(r.Method), r.URL.Path)
-			if f == nil {
+			hba := hh.GetRoute(strings.ToUpper(r.Method), r.URL.Path)
+			if hba == nil {
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = w.Write(nil)
 				return
@@ -66,16 +66,19 @@ func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
 
 			tool.rs = rs{w, r, context}
 
-			if hh.Middle != nil {
-				context, err = hh.Middle(&tool)
+			for _, before := range hba.Before {
+				context, err = before(&tool)
 				if err != nil {
-					// log.Println(err)
 					return
 				}
 				tool.Context = context
 			}
 
-			f(&tool)
+			hba.Handler(&tool)
+
+			for _, after := range hba.After {
+				_ = after(&tool)
+			}
 		})
 	}
 
@@ -84,11 +87,9 @@ func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
 
 // Start 启动
 func (s *Server) Run(handler http.Handler) {
-
 	if s.Protocol == "TLS" {
 		log.Panicln(http.ListenAndServeTLS(fmt.Sprintf("%s:%d", s.Host, s.Port), s.CertFile, s.KeyFile, handler))
+	} else {
+		log.Panicln(http.ListenAndServe(fmt.Sprintf("%s:%d", s.Host, s.Port), handler))
 	}
-
-	log.Panicln(http.ListenAndServe(fmt.Sprintf("%s:%d", s.Host, s.Port), handler))
-
 }

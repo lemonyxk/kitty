@@ -11,25 +11,25 @@ func init() {
 
 func main() {
 
-	var webSocket = &ws.Server{Host: "127.0.0.1", Port: 5858, Path: "/Game-Robot"}
+	var server = &ws.Server{Host: "127.0.0.1", Port: 5858, Path: "/Game-Robot"}
 
-	var handlerSocket = &ws.Socket{}
+	var socketHandler = &ws.Socket{}
 
-	handlerSocket.InitRouter()
+	socketHandler.InitRouter()
 
-	handlerSocket.SetRouter("hello1", func(conn *ws.Connection, ftd *ws.Fte, msg []byte) {
+	socketHandler.SetRouter("hello1", func(conn *ws.Connection, ftd *ws.Fte, msg []byte) {
 		log.Println(ftd.Fd)
 	})
 
-	handlerSocket.OnClose = func(conn *ws.Connection) {
+	socketHandler.OnClose = func(conn *ws.Connection) {
 		log.Println(conn.Fd, "is close")
 	}
 
-	handlerSocket.OnError = func(err error) {
+	socketHandler.OnError = func(err error) {
 		log.Println(err)
 	}
 
-	handlerSocket.OnOpen = func(conn *ws.Connection) {
+	socketHandler.OnOpen = func(conn *ws.Connection) {
 		log.Println(conn.Fd, "is open")
 	}
 
@@ -52,6 +52,6 @@ func main() {
 		},
 	})
 
-	webSocket.Start(ws.WebSocket(handlerSocket), httpHandler)
+	server.Start(ws.WebSocket(socketHandler), httpHandler)
 
 }

@@ -34,8 +34,8 @@ func (h *HttpHandle) Group(path string, v ...interface{}) {
 
 	for _, fn := range v {
 		switch fn.(type) {
-		case GroupFunction:
-			g = fn.(GroupFunction)
+		case func():
+			g = fn.(func())
 		case []Before:
 			globalBefore = fn.([]Before)
 		case []After:
@@ -77,8 +77,8 @@ func (h *HttpHandle) SetRoute(method string, path string, v ...interface{}) {
 
 	for _, fn := range v {
 		switch fn.(type) {
-		case HttpFunction:
-			hba.Handler = fn.(HttpFunction)
+		case func(t *Stream):
+			hba.Handler = fn.(func(t *Stream))
 		case []Before:
 			if globalBefore != nil {
 				hba.Before = globalBefore

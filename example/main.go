@@ -35,8 +35,10 @@ func main() {
 
 	var httpHandler = &ws.HttpHandle{}
 
-	httpHandler.SetRoute("GET", "/hello", func(t *ws.Stream) {
-		_ = t.End("hello world!")
+	httpHandler.Group("/hello", func() {
+		httpHandler.Get("/xixi", func(t *ws.Stream) {
+			_ = t.End("hello")
+		})
 	})
 
 	webSocket.Start(ws.WebSocket(handlerSocket), httpHandler)

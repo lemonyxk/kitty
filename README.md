@@ -35,17 +35,29 @@
     
         httpHandler.Group("/hello", []ws.Before{
             func(t *ws.Stream) (i interface{}, e error) {
-                log.Println("before")
+                log.Println("before1")
+                return nil, nil
+            },
+            func(t *ws.Stream) (i interface{}, e error) {
+                log.Println("before2")
                 return nil, nil
             },
         }, func() {
-            httpHandler.Get("/xixi", func(t *ws.Stream) {
-                log.Println("now")
-                _ = t.Json("hello2")
+            httpHandler.Get("/1", func(t *ws.Stream) {
+                log.Println("now1")
+                _ = t.Json("hello1")
+            })
+            httpHandler.Get("/2", func(t *ws.Stream) {
+                log.Println("now2")
+                _ = t.End("hello2")
             })
         }, []ws.After{
             func(t *ws.Stream) error {
-                log.Println("after")
+                log.Println("after1")
+                return nil
+            },
+            func(t *ws.Stream) error {
+                log.Println("after2")
                 return nil
             },
         })

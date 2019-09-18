@@ -74,20 +74,16 @@ func (h *HttpHandle) SetRoute(method string, path string, v ...interface{}) {
 	}
 
 	var hba = &hba{}
+	hba.Before = globalBefore
+	hba.After = globalAfter
 
 	for _, fn := range v {
 		switch fn.(type) {
 		case func(t *Stream):
 			hba.Handler = fn.(func(t *Stream))
 		case []Before:
-			if globalBefore != nil {
-				hba.Before = globalBefore
-			}
 			hba.Before = append(hba.Before, fn.([]Before)...)
 		case []After:
-			if globalAfter != nil {
-				hba.After = globalAfter
-			}
 			hba.After = append(hba.After, fn.([]After)...)
 		}
 	}

@@ -35,10 +35,21 @@ func main() {
 
 	var httpHandler = &ws.HttpHandle{}
 
-	httpHandler.Group("/hello", func() {
+	httpHandler.Group("/hello", []ws.Before{
+		func(t *ws.Stream) (i interface{}, e error) {
+			log.Println("before")
+			return nil, nil
+		},
+	}, func() {
 		httpHandler.Get("/xixi", func(t *ws.Stream) {
-			_ = t.End("hello")
+			log.Println("now")
+			_ = t.Json("hello2")
 		})
+	}, []ws.After{
+		func(t *ws.Stream) error {
+			log.Println("after")
+			return nil
+		},
 	})
 
 	webSocket.Start(ws.WebSocket(handlerSocket), httpHandler)

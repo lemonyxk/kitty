@@ -54,11 +54,11 @@ func (stream *Stream) Json(data interface{}) error {
 	return err
 }
 
-func (stream *Stream) End(data interface{}) error {
+func (stream *Stream) End(data ...interface{}) error {
 
 	stream.Response.Header().Add("Content-Type", "text/html")
 
-	_, err := fmt.Fprint(stream.Response, data)
+	_, err := fmt.Fprint(stream.Response, data...)
 
 	return err
 }

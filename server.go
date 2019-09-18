@@ -32,9 +32,6 @@ func (s *Server) CatchError() {
 // Start 启动 WebSocket
 func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
 
-	// 挂载函数
-	var f = http.HandlerFunc(sh)
-
 	// 中间件函数
 	var handler = func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +69,7 @@ func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
 			if hh.Middle != nil {
 				context, err = hh.Middle(&tool)
 				if err != nil {
-					//log.Println(err)
+					// log.Println(err)
 					return
 				}
 				tool.Context = context
@@ -82,7 +79,7 @@ func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
 		})
 	}
 
-	s.Run(handler(f))
+	s.Run(handler(sh))
 }
 
 // Start 启动

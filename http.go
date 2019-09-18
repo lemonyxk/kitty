@@ -111,9 +111,9 @@ func (h *HttpHandle) GetRoute(method string, path string) *hba {
 }
 
 func (h *HttpHandle) Get(path string, v ...interface{}) {
-	h.SetRoute("GET", path, v)
+	h.SetRoute("GET", path, v...)
 }
 
 func (h *HttpHandle) Post(path string, v ...interface{}) {
-	h.SetRoute("POST", path, v)
+	h.SetRoute("POST", path, v...)
 }

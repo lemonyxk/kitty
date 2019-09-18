@@ -36,9 +36,9 @@ func (h *HttpHandle) Group(path string, v ...interface{}) {
 		switch fn.(type) {
 		case GroupFunction:
 			g = fn.(GroupFunction)
-		case Before:
+		case []Before:
 			globalBefore = fn.([]Before)
-		case After:
+		case []After:
 			globalAfter = fn.([]After)
 		}
 	}
@@ -79,12 +79,12 @@ func (h *HttpHandle) SetRoute(method string, path string, v ...interface{}) {
 		switch fn.(type) {
 		case HttpFunction:
 			hba.Handler = fn.(HttpFunction)
-		case Before:
+		case []Before:
 			if globalBefore != nil {
 				hba.Before = globalBefore
 			}
 			hba.Before = append(hba.Before, fn.([]Before)...)
-		case After:
+		case []After:
 			if globalAfter != nil {
 				hba.After = globalAfter
 			}
@@ -110,10 +110,10 @@ func (h *HttpHandle) GetRoute(method string, path string) *hba {
 	return nil
 }
 
-func (h *HttpHandle) Get(path string, f HttpFunction) {
-	h.SetRoute("GET", path, f)
+func (h *HttpHandle) Get(path string, v ...interface{}) {
+	h.SetRoute("GET", path, v)
 }
 
-func (h *HttpHandle) Post(path string, f HttpFunction) {
-	h.SetRoute("POST", path, f)
+func (h *HttpHandle) Post(path string, v ...interface{}) {
+	h.SetRoute("POST", path, v)
 }

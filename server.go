@@ -30,7 +30,7 @@ func (s *Server) CatchError() {
 }
 
 // Start 启动 WebSocket
-func (s *Server) Start(sh http.HandlerFunc, hh *HttpHandle) {
+func (s *Server) Start(sh http.HandlerFunc, hh *Http) {
 
 	// 中间件函数
 	var handler = func(next http.Handler) http.Handler {

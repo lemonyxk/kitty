@@ -10,7 +10,7 @@ type Before func(t *Stream) (interface{}, error)
 
 type After func(t *Stream) error
 
-type HttpHandle struct {
+type Http struct {
 	Routers map[string]map[string]*hba
 }
 
@@ -24,7 +24,7 @@ var globalHttpPath string
 var globalBefore []Before
 var globalAfter []After
 
-func (h *HttpHandle) Group(path string, v ...interface{}) {
+func (h *Http) Group(path string, v ...interface{}) {
 
 	if v == nil {
 		panic("Group function length is 0")
@@ -54,7 +54,7 @@ func (h *HttpHandle) Group(path string, v ...interface{}) {
 	globalAfter = nil
 }
 
-func (h *HttpHandle) SetRoute(method string, path string, v ...interface{}) {
+func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 
 	path = globalHttpPath + path
 
@@ -91,7 +91,7 @@ func (h *HttpHandle) SetRoute(method string, path string, v ...interface{}) {
 	h.Routers[m][path] = hba
 }
 
-func (h *HttpHandle) GetRoute(method string, path string) *hba {
+func (h *Http) GetRoute(method string, path string) *hba {
 
 	if h.Routers == nil {
 		return nil
@@ -106,10 +106,10 @@ func (h *HttpHandle) GetRoute(method string, path string) *hba {
 	return nil
 }
 
-func (h *HttpHandle) Get(path string, v ...interface{}) {
+func (h *Http) Get(path string, v ...interface{}) {
 	h.SetRoute("GET", path, v...)
 }
 
-func (h *HttpHandle) Post(path string, v ...interface{}) {
+func (h *Http) Post(path string, v ...interface{}) {
 	h.SetRoute("POST", path, v...)
 }

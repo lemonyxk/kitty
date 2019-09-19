@@ -31,7 +31,7 @@ func main() {
 		log.Println(conn.Fd, "is open")
 	}
 
-	var httpHandler = &ws.HttpHandle{}
+	var httpHandler = &ws.Http{}
 
 	httpHandler.Group("/hello", []ws.Before{
 		func(t *ws.Stream) (i interface{}, e error) {

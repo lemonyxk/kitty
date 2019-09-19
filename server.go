@@ -21,6 +21,8 @@ type Server struct {
 	CertFile string
 	// TLS KEY
 	KeyFile string
+	// 忽略大小写
+	IgnoreCase bool
 }
 
 func (s *Server) CatchError() {
@@ -38,8 +40,16 @@ func (s *Server) Start(sh http.HandlerFunc, hh *Http) {
 
 			defer s.CatchError()
 
+			var requestPath = r.URL.Path
+			var serverPath = s.Path
+
+			if s.IgnoreCase {
+				requestPath = strings.ToUpper(r.URL.Path)
+				serverPath = strings.ToUpper(s.Path)
+			}
+
 			// Match the websocket router
-			if r.URL.Path == s.Path {
+			if requestPath == serverPath {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -52,7 +62,7 @@ func (s *Server) Start(sh http.HandlerFunc, hh *Http) {
 			}
 
 			// Get the router
-			hba := hh.GetRoute(strings.ToUpper(r.Method), r.URL.Path)
+			hba := hh.GetRoute(strings.ToUpper(r.Method), requestPath)
 			if hba == nil {
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = w.Write(nil)

@@ -11,7 +11,8 @@ type Before func(t *Stream) (interface{}, error)
 type After func(t *Stream) error
 
 type Http struct {
-	Routers map[string]map[string]*hba
+	IgnoreCase bool
+	Routers    map[string]map[string]*hba
 }
 
 type hba struct {
@@ -57,6 +58,10 @@ func (h *Http) Group(path string, v ...interface{}) {
 func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 
 	path = globalHttpPath + path
+
+	if h.IgnoreCase {
+		path = strings.ToUpper(path)
+	}
 
 	if h.Routers == nil {
 		h.Routers = make(map[string]map[string]*hba)

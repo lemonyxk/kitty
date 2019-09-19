@@ -62,6 +62,6 @@ func main() {
 		},
 	})
 
-	server.Start(ws.WebSocket(socketHandler), httpHandler)
+	server.Start(socketHandler, httpHandler)
 
 }

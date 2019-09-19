@@ -85,7 +85,8 @@ type Socket struct {
 
 	WebSocketRouter map[string]WebSocketServerFunction
 
-	TsProto int
+	TsProto    int
+	IgnoreCase bool
 }
 
 func (conn *Connection) IP() (string, string, error) {

@@ -21,8 +21,6 @@ type Server struct {
 	CertFile string
 	// TLS KEY
 	KeyFile string
-	// 忽略大小写
-	IgnoreCase bool
 }
 
 func (s *Server) CatchError() {
@@ -32,7 +30,9 @@ func (s *Server) CatchError() {
 }
 
 // Start 启动 WebSocket
-func (s *Server) Start(sh http.HandlerFunc, hh *Http) {
+func (s *Server) Start(sh *Socket, hh *Http) {
+
+	var ss = WebSocket(sh)
 
 	// 中间件函数
 	var handler = func(next http.Handler) http.Handler {
@@ -40,16 +40,21 @@ func (s *Server) Start(sh http.HandlerFunc, hh *Http) {
 
 			defer s.CatchError()
 
-			var requestPath = r.URL.Path
+			var socketPath = r.URL.Path
+			var httpPath = r.URL.Path
 			var serverPath = s.Path
 
-			if s.IgnoreCase {
-				requestPath = strings.ToUpper(r.URL.Path)
-				serverPath = strings.ToUpper(s.Path)
+			if sh.IgnoreCase {
+				socketPath = strings.ToUpper(socketPath)
+				serverPath = strings.ToUpper(serverPath)
+			}
+
+			if hh.IgnoreCase {
+				httpPath = strings.ToUpper(httpPath)
 			}
 
 			// Match the websocket router
-			if requestPath == serverPath {
+			if socketPath == serverPath {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -62,7 +67,7 @@ func (s *Server) Start(sh http.HandlerFunc, hh *Http) {
 			}
 
 			// Get the router
-			hba := hh.GetRoute(strings.ToUpper(r.Method), requestPath)
+			hba := hh.GetRoute(strings.ToUpper(r.Method), httpPath)
 			if hba == nil {
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = w.Write(nil)
@@ -92,7 +97,7 @@ func (s *Server) Start(sh http.HandlerFunc, hh *Http) {
 		})
 	}
 
-	s.Run(handler(sh))
+	s.Run(handler(ss))
 }
 
 // Start 启动

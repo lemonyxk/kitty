@@ -26,7 +26,7 @@ type Server struct {
 
 func (s *Server) CatchError() {
 	if err := recover(); err != nil {
-		log.Println(debug.Stack(), err)
+		log.Println(string(debug.Stack()), err)
 	}
 }
 

@@ -50,10 +50,6 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 				serverPath = strings.ToUpper(serverPath)
 			}
 
-			if hh.IgnoreCase {
-				httpPath = strings.ToUpper(httpPath)
-			}
-
 			// Match the websocket router
 			if socketPath == serverPath {
 				next.ServeHTTP(w, r)
@@ -65,6 +61,10 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write(nil)
 				return
+			}
+
+			if hh.IgnoreCase {
+				httpPath = strings.ToUpper(httpPath)
 			}
 
 			// Get the router

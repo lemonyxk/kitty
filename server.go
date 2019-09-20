@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime/debug"
 	"strings"
 )
 
@@ -25,7 +26,7 @@ type Server struct {
 
 func (s *Server) CatchError() {
 	if err := recover(); err != nil {
-		log.Println(err)
+		log.Println(debug.Stack(), err)
 	}
 }
 

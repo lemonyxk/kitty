@@ -17,6 +17,11 @@ func (socket *Socket) SetRouter(path string, f WebSocketServerFunction) {
 	}
 
 	path = globalSocketPath + path
+
+	if socket.IgnoreCase {
+		path = strings.ToUpper(path)
+	}
+
 	socket.WebSocketRouter[path] = f
 }
 

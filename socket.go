@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -87,6 +88,14 @@ type Socket struct {
 
 	TsProto    int
 	IgnoreCase bool
+}
+
+func (socket *Socket) CheckPath(p1 string, p2 string) bool {
+	if socket.IgnoreCase {
+		p1 = strings.ToUpper(p1)
+		p2 = strings.ToUpper(p2)
+	}
+	return p1 == p2
 }
 
 func (conn *Connection) IP() (string, string, error) {

@@ -1,8 +1,10 @@
 package main
 
 import (
-	"github.com/Lemo-yxk/ws"
 	"log"
+	"strings"
+
+	"github.com/Lemo-yxk/ws"
 )
 
 func init() {
@@ -11,7 +13,7 @@ func init() {
 
 func main() {
 
-	var server = &ws.Server{Host: "127.0.0.1", Port: 5858, Path: "/Game-Robot"}
+	var server = &ws.Server{Host: "127.0.0.1", Port: 12345, Path: "/Game-Robot"}
 
 	var socketHandler = &ws.Socket{}
 
@@ -33,34 +35,26 @@ func main() {
 
 	var httpHandler = &ws.Http{}
 
-	httpHandler.Group("/hello", []ws.Before{
-		func(t *ws.Stream) (i interface{}, e error) {
-			log.Println("before1")
-			return nil, nil
+	httpHandler.Group("/hello",
+		[]ws.Before{
+			func(t *ws.Stream) (i interface{}, e error) {
+				// log.Println("before group")
+				_ = t.End("group")
+				return nil, nil
+			},
 		},
-		func(t *ws.Stream) (i interface{}, e error) {
-			log.Println("before2")
-			return nil, nil
-		},
-	}, func() {
-		httpHandler.Get("/1", func(t *ws.Stream) {
-			log.Println("now1")
-			_ = t.Json("hello1")
+		func() {
+			httpHandler.Get("/2", []ws.After{
+				func(t *ws.Stream) error {
+					_ = t.End("after")
+					return nil
+				},
+			}, func(t *ws.Stream) {
+				_ = t.End(t.End(strings.Repeat("bow", 10000)))
+			})
 		})
-		httpHandler.Get("/2", func(t *ws.Stream) {
-			log.Println("now2")
-			_ = t.End("hello2")
-		})
-	}, []ws.After{
-		func(t *ws.Stream) error {
-			log.Println("after1")
-			return nil
-		},
-		func(t *ws.Stream) error {
-			log.Println("after2")
-			return nil
-		},
-	})
+
+	log.Println(ws.PassAfter, ws.PassBefore, ws.ForceAfter, ws.ForceBefore)
 
 	server.Start(socketHandler, httpHandler)
 

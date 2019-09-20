@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
-	"strings"
 )
 
 // Server 服务结构
@@ -45,11 +44,6 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 			var httpPath = r.URL.Path
 			var serverPath = s.Path
 
-			if sh.IgnoreCase {
-				socketPath = strings.ToUpper(socketPath)
-				serverPath = strings.ToUpper(serverPath)
-			}
-
 			// Match the websocket router
 			if socketPath == serverPath {
 				next.ServeHTTP(w, r)
@@ -63,12 +57,8 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 				return
 			}
 
-			if hh.IgnoreCase {
-				httpPath = strings.ToUpper(httpPath)
-			}
-
 			// Get the router
-			hba := hh.GetRoute(strings.ToUpper(r.Method), httpPath)
+			hba, p := hh.GetRoute(r.Method, httpPath)
 			if hba == nil {
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = w.Write(nil)
@@ -79,8 +69,9 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 			var context interface{}
 			var err error
 			var tool Stream
+			var params = p
 
-			tool.rs = rs{w, r, context}
+			tool.rs = rs{w, r, context, params}
 
 			for _, before := range hba.Before {
 				context, err = before(&tool)

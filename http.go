@@ -1,6 +1,17 @@
 package ws
 
-import "strings"
+import (
+	"log"
+	"strings"
+)
+
+func init() {
+	var tree = new(node)
+
+	tree.addRoute("/a/:name", &Hba{})
+
+	log.Println(tree.getValue("/a/1"))
+}
 
 type GroupFunction func()
 
@@ -12,10 +23,12 @@ type After func(t *Stream) error
 
 type Http struct {
 	IgnoreCase bool
-	Routers    map[string]map[string]*hba
+	// Routers    map[string]map[string]*Hba
+	Router *node
 }
 
-type hba struct {
+type Hba struct {
+	Method  string
 	Handler HttpFunction
 	Before  []Before
 	After   []After
@@ -24,6 +37,13 @@ type hba struct {
 var globalHttpPath string
 var globalBefore []Before
 var globalAfter []After
+
+const (
+	PassBefore uint8 = 1 << iota
+	PassAfter
+	ForceBefore
+	ForceAfter
+)
 
 func (h *Http) Group(path string, v ...interface{}) {
 
@@ -57,58 +77,116 @@ func (h *Http) Group(path string, v ...interface{}) {
 
 func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 
+	var m = strings.ToUpper(method)
+
 	path = globalHttpPath + path
 
 	if h.IgnoreCase {
 		path = strings.ToUpper(path)
 	}
 
-	if h.Routers == nil {
-		h.Routers = make(map[string]map[string]*hba)
+	if h.Router == nil {
+		h.Router = new(node)
 	}
+	//
+	// if _, ok := h.Routers[m]; !ok {
+	// 	h.Routers[m] = make(map[string]*Hba)
+	// }
+	//
+	// if h.Routers[m][path] != nil {
+	// 	println(m, path, "already set route")
+	// 	return
+	// }
 
-	var m = strings.ToUpper(method)
+	var hba = &Hba{}
 
-	if _, ok := h.Routers[m]; !ok {
-		h.Routers[m] = make(map[string]*hba)
+	var handler HttpFunction
+	var before []Before
+	var after []After
+
+	var passBefore = false
+	var passAfter = false
+	var forceBefore = false
+	var forceAfter = false
+
+	for _, mark := range v {
+		switch mark.(type) {
+		case uint8:
+			if mark.(uint8) == PassBefore {
+				passBefore = true
+			}
+			if mark.(uint8) == PassAfter {
+				passAfter = true
+			}
+			if mark.(uint8) == ForceBefore {
+				forceBefore = true
+			}
+			if mark.(uint8) == ForceAfter {
+				forceAfter = true
+			}
+		}
 	}
-
-	if h.Routers[m][path] != nil {
-		println(m, path, "already set route")
-		return
-	}
-
-	var hba = &hba{}
-	hba.Before = globalBefore
-	hba.After = globalAfter
 
 	for _, fn := range v {
 		switch fn.(type) {
 		case func(t *Stream):
-			hba.Handler = fn.(func(t *Stream))
+			handler = fn.(func(t *Stream))
 		case []Before:
-			hba.Before = append(hba.Before, fn.([]Before)...)
+			before = fn.([]Before)
 		case []After:
-			hba.After = append(hba.After, fn.([]After)...)
+			after = fn.([]After)
 		}
 	}
 
-	h.Routers[m][path] = hba
+	if handler == nil {
+		println(m, path, "handler function is nil")
+		return
+	}
+
+	hba.Handler = handler
+
+	hba.Before = append(globalBefore, before...)
+	if passBefore {
+		hba.Before = nil
+	}
+	if forceBefore {
+		hba.Before = before
+	}
+
+	hba.After = append(globalAfter, after...)
+	if passAfter {
+		hba.After = nil
+	}
+	if forceAfter {
+		hba.After = after
+	}
+
+	// h.Routers[m][path] = hba
+
+	hba.Method = m
+
+	h.Router.addRoute(path, hba)
 }
 
-func (h *Http) GetRoute(method string, path string) *hba {
+func (h *Http) GetRoute(method string, path string) (*Hba, Params) {
 
-	if h.Routers == nil {
-		return nil
+	if h.IgnoreCase {
+		path = strings.ToUpper(path)
 	}
 
-	var m = strings.ToUpper(method)
-
-	if f, ok := h.Routers[m][path]; ok {
-		return f
+	if h.Router == nil {
+		return nil, nil
 	}
 
-	return nil
+	// var m = strings.ToUpper(method)
+
+	// if f, ok := h.Routers[m][path]; ok {
+	// 	return f
+	// }
+
+	handle, p, _ := h.Router.getValue(path)
+
+	return handle, p
 }
 
 func (h *Http) Get(path string, v ...interface{}) {

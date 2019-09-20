@@ -17,6 +17,7 @@ type rs struct {
 	Response http.ResponseWriter
 	Request  *http.Request
 	Context  interface{}
+	Params   Params
 }
 
 type Stream struct {

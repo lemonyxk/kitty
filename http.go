@@ -1,17 +1,8 @@
 package ws
 
 import (
-	"log"
 	"strings"
 )
-
-func init() {
-	var tree = new(node)
-
-	tree.addRoute("/a/:name", &Hba{})
-
-	log.Println(tree.getValue("/a/1"))
-}
 
 type GroupFunction func()
 

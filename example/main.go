@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"strings"
 
 	"github.com/Lemo-yxk/ws"
 )
@@ -35,26 +34,12 @@ func main() {
 
 	var httpHandler = &ws.Http{}
 
-	httpHandler.Group("/hello",
-		[]ws.Before{
-			func(t *ws.Stream) (i interface{}, e error) {
-				// log.Println("before group")
-				_ = t.End("group")
-				return nil, nil
-			},
-		},
-		func() {
-			httpHandler.Get("/2", []ws.After{
-				func(t *ws.Stream) error {
-					_ = t.End("after")
-					return nil
-				},
-			}, func(t *ws.Stream) {
-				_ = t.End(t.End(strings.Repeat("bow", 10000)))
-			})
+	httpHandler.Group("/hello", func() {
+		httpHandler.Get("/:name", func(t *ws.Stream) {
+			log.Println(t.Params)
+			_ = t.End(t.Params.ByName("name"))
 		})
-
-	log.Println(ws.PassAfter, ws.PassBefore, ws.ForceAfter, ws.ForceBefore)
+	})
 
 	server.Start(socketHandler, httpHandler)
 

@@ -34,10 +34,23 @@ func main() {
 
 	var httpHandler = &ws.Http{}
 
+	var before = []ws.Before{
+		func(t *ws.Stream) (i interface{}, e error) {
+			_ = t.End("before")
+			return nil, nil
+		},
+	}
+
+	var after = []ws.After{
+		func(t *ws.Stream) (e error) {
+			_ = t.End("after")
+			return nil
+		},
+	}
+
 	httpHandler.Group("/hello", func() {
-		httpHandler.Get("/:name", func(t *ws.Stream) {
-			log.Println(t.Params)
-			_ = t.End(t.Params.ByName("name"))
+		httpHandler.Post("/", before, after, func(t *ws.Stream) {
+			_ = t.End("hello")
 		})
 	})
 

@@ -92,8 +92,8 @@ type Socket struct {
 
 func (socket *Socket) CheckPath(p1 string, p2 string) bool {
 	if socket.IgnoreCase {
-		p1 = strings.ToUpper(p1)
-		p2 = strings.ToUpper(p2)
+		p1 = strings.ToLower(p1)
+		p2 = strings.ToLower(p2)
 	}
 	return p1 == p2
 }

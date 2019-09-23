@@ -17,7 +17,21 @@ type rs struct {
 	Response http.ResponseWriter
 	Request  *http.Request
 	Context  interface{}
-	Params   Params
+	Params   *Params
+}
+
+type Params struct {
+	Keys   []string
+	Values []string
+}
+
+func (ps *Params) ByName(name string) string {
+	for i := range ps.Keys {
+		if ps.Keys[i] == name {
+			return ps.Values[i]
+		}
+	}
+	return ""
 }
 
 type Stream struct {

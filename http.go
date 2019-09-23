@@ -1,12 +1,15 @@
 package ws
 
 import (
+	"net/http"
 	"strings"
 )
 
 type GroupFunction func()
 
-type HttpFunction func(t *Stream)
+type StreamFunction func(t *Stream)
+
+type HttpFunction func(w http.ResponseWriter, r *http.Request)
 
 type Before func(t *Stream) (interface{}, error)
 
@@ -14,15 +17,15 @@ type After func(t *Stream) error
 
 type Http struct {
 	IgnoreCase bool
-	// Routers    map[string]map[string]*Hba
-	Router *node
+	Router     *tire
 }
 
 type Hba struct {
-	Method  string
-	Handler HttpFunction
-	Before  []Before
-	After   []After
+	Method         string
+	StreamFunction StreamFunction
+	HttpFunction   HttpFunction
+	Before         []Before
+	After          []After
 }
 
 var globalHttpPath string
@@ -73,25 +76,17 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 	path = globalHttpPath + path
 
 	if h.IgnoreCase {
-		path = strings.ToUpper(path)
+		path = strings.ToLower(path)
 	}
 
 	if h.Router == nil {
-		h.Router = new(node)
+		h.Router = new(tire)
 	}
-	//
-	// if _, ok := h.Routers[m]; !ok {
-	// 	h.Routers[m] = make(map[string]*Hba)
-	// }
-	//
-	// if h.Routers[m][path] != nil {
-	// 	println(m, path, "already set route")
-	// 	return
-	// }
 
 	var hba = &Hba{}
 
-	var handler HttpFunction
+	var streamFunction StreamFunction
+	var httpFunction HttpFunction
 	var before []Before
 	var after []After
 
@@ -120,8 +115,10 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 
 	for _, fn := range v {
 		switch fn.(type) {
+		case func(w http.ResponseWriter, r *http.Request):
+			httpFunction = fn.(func(w http.ResponseWriter, r *http.Request))
 		case func(t *Stream):
-			handler = fn.(func(t *Stream))
+			streamFunction = fn.(func(t *Stream))
 		case []Before:
 			before = fn.([]Before)
 		case []After:
@@ -129,12 +126,18 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 		}
 	}
 
-	if handler == nil {
-		println(m, path, "handler function is nil")
+	if streamFunction == nil && httpFunction == nil {
+		println(m, path, "Stream function and Http function are both nil")
 		return
 	}
 
-	hba.Handler = handler
+	if streamFunction != nil && httpFunction != nil {
+		println(m, path, "Stream function and Http function are both exists")
+		return
+	}
+
+	hba.StreamFunction = streamFunction
+	hba.HttpFunction = httpFunction
 
 	hba.Before = append(globalBefore, before...)
 	if passBefore {
@@ -152,32 +155,45 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 		hba.After = after
 	}
 
-	// h.Routers[m][path] = hba
-
 	hba.Method = m
 
-	h.Router.addRoute(path, hba)
+	h.Router.Insert(path, hba)
 }
 
-func (h *Http) GetRoute(method string, path string) (*Hba, Params) {
+func (h *Http) GetRoute(method string, path string) *tire {
+
+	var m = strings.ToUpper(method)
 
 	if h.IgnoreCase {
-		path = strings.ToUpper(path)
+		path = strings.ToLower(path)
 	}
 
 	if h.Router == nil {
-		return nil, nil
+		return nil
 	}
 
-	// var m = strings.ToUpper(method)
+	var tire = h.Router.GetValue([]byte(path))
 
-	// if f, ok := h.Routers[m][path]; ok {
-	// 	return f
+	if tire == nil {
+		return nil
+	}
+
+	var hba = tire.data.(*Hba)
+
+	if hba.Method != m {
+		return nil
+	}
+
+	return tire
+
+	// handle, p, tsr := h.Router.getValue(path)
+	//
+	// if handle.Method != m {
+	// 	return nil, nil, false
 	// }
+	//
+	// return handle, p, tsr
 
-	handle, p, _ := h.Router.getValue(path)
-
-	return handle, p
 }
 
 func (h *Http) Get(path string, v ...interface{}) {
@@ -186,4 +202,20 @@ func (h *Http) Get(path string, v ...interface{}) {
 
 func (h *Http) Post(path string, v ...interface{}) {
 	h.SetRoute("POST", path, v...)
+}
+
+func (h *Http) Delete(path string, v ...interface{}) {
+	h.SetRoute("DELETE", path, v...)
+}
+
+func (h *Http) Put(path string, v ...interface{}) {
+	h.SetRoute("PUT", path, v...)
+}
+
+func (h *Http) Patch(path string, v ...interface{}) {
+	h.SetRoute("PATCH", path, v...)
+}
+
+func (h *Http) Option(path string, v ...interface{}) {
+	h.SetRoute("OPTION", path, v...)
 }

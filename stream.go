@@ -217,7 +217,7 @@ func (stream *Stream) AutoParse() *Query {
 
 	var header = stream.Request.Header.Get("Content-Type")
 
-	var query = new(Query)
+	var query *Query
 
 	if strings.HasPrefix(header, "multipart/form-data") {
 		query = stream.ParseMultipart()
@@ -225,6 +225,10 @@ func (stream *Stream) AutoParse() *Query {
 		query = stream.ParseForm()
 	} else if strings.HasPrefix(header, "application/json") {
 		query = stream.ParseJson()
+	}
+
+	if query == nil {
+		query = new(Query)
 	}
 
 	return query

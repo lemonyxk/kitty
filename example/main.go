@@ -48,9 +48,9 @@ func main() {
 		},
 	}
 
-	httpHandler.Group("/hello", func() {
-		httpHandler.Post("/", before, after, func(t *ws.Stream) {
-			_ = t.End("hello")
+	httpHandler.Group("/:hello", func() {
+		httpHandler.Get("/:12/1/:22/world/:xixi/", before, after, func(t *ws.Stream) {
+			_ = t.End(t.Params.ByName("xixi"))
 		})
 	})
 

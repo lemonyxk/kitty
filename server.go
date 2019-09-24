@@ -40,12 +40,12 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 
 			defer s.CatchError()
 
-			var socketPath = r.URL.Path
-			var httpPath = r.URL.Path
-			var serverPath = s.Path
+			// var socketPath = r.URL.Path
+			// var httpPath = r.URL.Path
+			// var serverPath = s.Path
 
 			// Match the websocket router
-			if sh.CheckPath(socketPath, serverPath) {
+			if sh.CheckPath(r.URL.Path, s.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -58,23 +58,22 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 			}
 
 			// Get the router
-			tire := hh.GetRoute(r.Method, httpPath)
+			tire := hh.GetRoute(r.Method, r.URL.Path)
 			if tire == nil {
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = w.Write(nil)
 				return
 			}
 
-			var hba = tire.data.(*Hba)
+			var hba = tire.Data.(*Hba)
 
 			// Get the middleware
 			var context interface{}
 			var err error
 			var tool Stream
 			var params = new(Params)
-			params.Keys = tire.keys
-			params.Values = tire.values
-
+			params.Keys = tire.Keys
+			params.Values = tire.ParseParams(hba.Path)
 			tool.rs = rs{w, r, context, params}
 
 			for _, before := range hba.Before {

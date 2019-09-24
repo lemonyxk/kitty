@@ -3,6 +3,8 @@ package ws
 import (
 	"net/http"
 	"strings"
+
+	"github.com/Lemo-yxk/tire"
 )
 
 type GroupFunction func()
@@ -17,10 +19,12 @@ type After func(t *Stream) error
 
 type Http struct {
 	IgnoreCase bool
-	Router     *tire
+	Router     *tire.Tire
 }
 
 type Hba struct {
+	Path           []byte
+	Route          []byte
 	Method         string
 	StreamFunction StreamFunction
 	HttpFunction   HttpFunction
@@ -73,14 +77,10 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 
 	var m = strings.ToUpper(method)
 
-	path = globalHttpPath + path
-
-	if h.IgnoreCase {
-		path = strings.ToLower(path)
-	}
+	path = h.FormatPath(globalHttpPath + path)
 
 	if h.Router == nil {
-		h.Router = new(tire)
+		h.Router = new(tire.Tire)
 	}
 
 	var hba = &Hba{}
@@ -156,35 +156,47 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 	}
 
 	hba.Method = m
+	hba.Route = []byte(path)
 
 	h.Router.Insert(path, hba)
 }
 
-func (h *Http) GetRoute(method string, path string) *tire {
-
-	var m = strings.ToUpper(method)
+func (h *Http) FormatPath(path string) string {
 
 	if h.IgnoreCase {
 		path = strings.ToLower(path)
 	}
 
+	return path
+}
+
+func (h *Http) GetRoute(method string, path string) *tire.Tire {
+
+	var m = strings.ToUpper(method)
+
+	path = h.FormatPath(path)
+
+	var pathB = []byte(path)
+
 	if h.Router == nil {
 		return nil
 	}
 
-	var tire = h.Router.GetValue([]byte(path))
+	var t = h.Router.GetValue(pathB)
 
-	if tire == nil {
+	if t == nil {
 		return nil
 	}
 
-	var hba = tire.data.(*Hba)
+	var hba = t.Data.(*Hba)
 
 	if hba.Method != m {
 		return nil
 	}
 
-	return tire
+	hba.Path = pathB
+
+	return t
 
 	// handle, p, tsr := h.Router.getValue(path)
 	//

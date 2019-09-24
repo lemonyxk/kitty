@@ -26,7 +26,7 @@ type rs struct {
 	Request  *http.Request
 	Context  interface{}
 	Params   *Params
-	URL      *URL
+	url      *URL
 }
 
 type Params struct {
@@ -243,8 +243,8 @@ type URL struct {
 
 func (stream *Stream) Url() *URL {
 
-	if stream.URL != nil {
-		return stream.URL
+	if stream.url != nil {
+		return stream.url
 	}
 
 	var buff bytes.Buffer
@@ -265,16 +265,16 @@ func (stream *Stream) Url() *URL {
 		buff.WriteString(stream.Request.URL.Fragment)
 	}
 
-	stream.URL = &URL{}
+	stream.url = &URL{}
 
-	stream.URL.Url = buff.String()
-	stream.URL.Scheme = scheme
-	stream.URL.Host = stream.Request.Host
-	stream.URL.Path = stream.Request.URL.Path
-	stream.URL.QueryString = stream.Request.URL.RawQuery
-	stream.URL.Fragment = stream.Request.URL.Fragment
+	stream.url.Url = buff.String()
+	stream.url.Scheme = scheme
+	stream.url.Host = stream.Request.Host
+	stream.url.Path = stream.Request.URL.Path
+	stream.url.QueryString = stream.Request.URL.RawQuery
+	stream.url.Fragment = stream.Request.URL.Fragment
 
-	return stream.URL
+	return stream.url
 }
 
 func (q *Query) Get(key string) *value {

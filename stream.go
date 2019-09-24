@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,6 +14,10 @@ import (
 
 type Query struct {
 	params map[string]string
+}
+
+type Files struct {
+	files map[string][]*multipart.FileHeader
 }
 
 type rs struct {
@@ -120,14 +125,30 @@ func (stream *Stream) ParseJson() *Query {
 	return &query
 }
 
-func (stream *Stream) ParseMultipart() *Query {
+func (stream *Stream) Files() *Files {
 
-	err := stream.Request.ParseMultipartForm(0)
+	err := stream.Request.ParseMultipartForm(20 * 1024 * 1024)
 	if err != nil {
 		return nil
 	}
 
-	var parse = stream.Request.PostForm
+	var data = stream.Request.MultipartForm.File
+
+	var query Files
+
+	query.files = data
+
+	return &query
+}
+
+func (stream *Stream) ParseMultipart() *Query {
+
+	err := stream.Request.ParseMultipartForm(2 * 1024 * 1024)
+	if err != nil {
+		return nil
+	}
+
+	var parse = stream.Request.MultipartForm.Value
 
 	var data = make(map[string]string)
 

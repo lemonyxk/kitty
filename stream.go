@@ -3,6 +3,7 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -95,6 +96,49 @@ func (stream *Stream) IP() string {
 	}
 
 	return remoteAddr
+}
+
+func (stream *Stream) ParseJson() (*Query, error) {
+
+	jsonBody, err := ioutil.ReadAll(stream.Request.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var data = make(map[string]string)
+
+	err = json.Unmarshal(jsonBody, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	var query Query
+
+	query.params = data
+
+	return &query, nil
+}
+
+func (stream *Stream) ParseMultipart() (*Query, error) {
+
+	err := stream.Request.ParseMultipartForm(0)
+	if err != nil {
+		return nil, err
+	}
+
+	var parse = stream.Request.PostForm
+
+	var data = make(map[string]string)
+
+	for k, v := range parse {
+		data[k] = v[0]
+	}
+
+	var query Query
+
+	query.params = data
+
+	return &query, nil
 }
 
 func (stream *Stream) ParseQuery() (*Query, error) {

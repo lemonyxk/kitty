@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 type Query struct {
@@ -98,32 +99,32 @@ func (stream *Stream) IP() string {
 	return remoteAddr
 }
 
-func (stream *Stream) ParseJson() (*Query, error) {
+func (stream *Stream) ParseJson() *Query {
 
 	jsonBody, err := ioutil.ReadAll(stream.Request.Body)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	var data = make(map[string]string)
 
 	err = json.Unmarshal(jsonBody, &data)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	var query Query
 
 	query.params = data
 
-	return &query, nil
+	return &query
 }
 
-func (stream *Stream) ParseMultipart() (*Query, error) {
+func (stream *Stream) ParseMultipart() *Query {
 
 	err := stream.Request.ParseMultipartForm(0)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	var parse = stream.Request.PostForm
@@ -138,16 +139,16 @@ func (stream *Stream) ParseMultipart() (*Query, error) {
 
 	query.params = data
 
-	return &query, nil
+	return &query
 }
 
-func (stream *Stream) ParseQuery() (*Query, error) {
+func (stream *Stream) ParseQuery() *Query {
 
 	var params = stream.Request.URL.RawQuery
 
 	parse, err := url.ParseQuery(params)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	var data = make(map[string]string)
@@ -160,14 +161,14 @@ func (stream *Stream) ParseQuery() (*Query, error) {
 
 	query.params = data
 
-	return &query, nil
+	return &query
 }
 
-func (stream *Stream) ParseForm() (*Query, error) {
+func (stream *Stream) ParseForm() *Query {
 
 	err := stream.Request.ParseForm()
 	if err != nil {
-		return nil, err
+		return nil
 	}
 
 	var parse = stream.Request.PostForm
@@ -182,7 +183,30 @@ func (stream *Stream) ParseForm() (*Query, error) {
 
 	query.params = data
 
-	return &query, nil
+	return &query
+}
+
+func (stream *Stream) Auto() *Query {
+
+	if strings.ToUpper(stream.Request.Method) == "GET" {
+		return stream.ParseQuery()
+	}
+
+	var header = stream.Request.Header.Get("Content-Type")
+
+	if strings.HasPrefix(header, "multipart/form-data") {
+		return stream.ParseMultipart()
+	}
+
+	if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
+		return stream.ParseForm()
+	}
+
+	if strings.HasPrefix(header, "application/json") {
+		return stream.ParseJson()
+	}
+
+	return nil
 }
 
 func (q *Query) Get(key string) *value {

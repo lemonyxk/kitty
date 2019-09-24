@@ -231,6 +231,46 @@ func (stream *Stream) AutoParse() *Query {
 	return nil
 }
 
+type URL struct {
+	Url         string
+	Scheme      string
+	Host        string
+	Path        string
+	QueryString string
+	Fragment    string
+}
+
+func (stream *Stream) Url() *URL {
+	var buff bytes.Buffer
+
+	var scheme = "http"
+
+	if stream.Request.TLS != nil {
+		scheme = "https"
+	}
+
+	buff.WriteString(scheme)
+	buff.WriteString("://")
+	buff.WriteString(stream.Request.Host)
+	buff.WriteString(stream.Request.URL.Path)
+	buff.WriteString(stream.Request.URL.RawQuery)
+	if stream.Request.URL.Fragment != "" {
+		buff.WriteString("#")
+		buff.WriteString(stream.Request.URL.Fragment)
+	}
+
+	var url = &URL{}
+
+	url.Url = buff.String()
+	url.Scheme = scheme
+	url.Host = stream.Request.Host
+	url.Path = stream.Request.URL.Path
+	url.QueryString = stream.Request.URL.RawQuery
+	url.Fragment = stream.Request.URL.Fragment
+
+	return url
+}
+
 func (q *Query) Get(key string) *value {
 
 	var val = &value{}
@@ -253,6 +293,10 @@ func (q *Query) String() string {
 		buff.WriteString(":")
 		buff.WriteString(value)
 		buff.WriteString(" ")
+	}
+
+	if buff.Len() == 0 {
+		return ""
 	}
 
 	var res = buff.String()

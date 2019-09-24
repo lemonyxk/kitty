@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -240,4 +241,21 @@ func (q *Query) Get(key string) *value {
 	}
 
 	return val
+}
+
+func (q *Query) String() string {
+
+	var buff bytes.Buffer
+
+	for key, value := range q.params {
+
+		buff.WriteString(key)
+		buff.WriteString(":")
+		buff.WriteString(value)
+		buff.WriteString(" ")
+	}
+
+	var res = buff.String()
+
+	return res[:len(res)-1]
 }

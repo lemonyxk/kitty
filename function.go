@@ -3,6 +3,7 @@ package ws
 import (
 	"encoding/binary"
 	"net"
+	"strings"
 )
 
 func GetLocalhostIp() string {
@@ -32,4 +33,41 @@ func Ip2long(ipstr string) uint32 {
 	}
 	ip = ip.To4()
 	return binary.BigEndian.Uint32(ip)
+}
+
+func IsLocalIP(ip string) bool {
+	return IsLocalNet(net.ParseIP(ip))
+}
+
+var localNetworks = []string{
+	"10.0.0.0/8",
+	"169.254.0.0/16",
+	"172.16.0.0/12",
+	"172.17.0.0/12",
+	"172.18.0.0/12",
+	"172.19.0.0/12",
+	"172.20.0.0/12",
+	"172.21.0.0/12",
+	"172.22.0.0/12",
+	"172.23.0.0/12",
+	"172.24.0.0/12",
+	"172.25.0.0/12",
+	"172.26.0.0/12",
+	"172.27.0.0/12",
+	"172.28.0.0/12",
+	"172.29.0.0/12",
+	"172.30.0.0/12",
+	"172.31.0.0/12",
+	"192.168.0.0/16",
+}
+
+func IsLocalNet(ip net.IP) bool {
+
+	for _, network := range localNetworks {
+		if strings.Contains(network, ip.String()) {
+			return true
+		}
+	}
+
+	return ip.IsLoopback()
 }

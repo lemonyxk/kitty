@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 
 	"github.com/Lemo-yxk/ws"
 )
@@ -53,6 +54,8 @@ func main() {
 			_ = t.End(t.Params.ByName("xixi"))
 		})
 	})
+
+	log.Println(net.InterfaceAddrs())
 
 	server.Start(socketHandler, httpHandler)
 

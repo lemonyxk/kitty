@@ -74,7 +74,8 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 			var params = new(Params)
 			params.Keys = tire.Keys
 			params.Values = tire.ParseParams(hba.Path)
-			tool.rs = rs{w, r, context, params}
+
+			tool.rs = rs{w, r, context, params, nil}
 
 			for _, before := range hba.Before {
 				context, err = before(&tool)

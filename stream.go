@@ -87,7 +87,7 @@ func (stream *Stream) End(data ...interface{}) error {
 	return err
 }
 
-func (stream *Stream) IP() string {
+func (stream *Stream) ClientIP() string {
 
 	remoteAddr := stream.Request.RemoteAddr
 

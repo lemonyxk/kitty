@@ -207,7 +207,7 @@ func (stream *Stream) ParseForm() *Query {
 	return &query
 }
 
-func (stream *Stream) Auto() *Query {
+func (stream *Stream) AutoParse() *Query {
 
 	if strings.ToUpper(stream.Request.Method) == "GET" {
 		return stream.ParseQuery()

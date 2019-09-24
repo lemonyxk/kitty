@@ -217,19 +217,17 @@ func (stream *Stream) AutoParse() *Query {
 
 	var header = stream.Request.Header.Get("Content-Type")
 
+	var query = new(Query)
+
 	if strings.HasPrefix(header, "multipart/form-data") {
-		return stream.ParseMultipart()
+		query = stream.ParseMultipart()
+	} else if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
+		query = stream.ParseForm()
+	} else if strings.HasPrefix(header, "application/json") {
+		query = stream.ParseJson()
 	}
 
-	if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
-		return stream.ParseForm()
-	}
-
-	if strings.HasPrefix(header, "application/json") {
-		return stream.ParseJson()
-	}
-
-	return nil
+	return query
 }
 
 type URL struct {

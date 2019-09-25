@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net"
+	"net/http/pprof"
 
 	"github.com/Lemo-yxk/lemo"
 )
@@ -49,9 +50,15 @@ func main() {
 		},
 	}
 
+	httpHandler.Get("/debug/pprof/", pprof.Index)
+	httpHandler.Get("/debug/pprof/cmdline", pprof.Cmdline)
+	httpHandler.Get("/debug/pprof/profile", pprof.Profile)
+	httpHandler.Get("/debug/pprof/symbol", pprof.Symbol)
+	httpHandler.Get("/debug/pprof/trace", pprof.Trace)
+
 	httpHandler.Group("/:hello", func() {
-		httpHandler.Get("/:12/1/:22/world/:xixi/", before, after, func(t *lemo.Stream) func() *lemo.Error {
-			_ = t.End(t.Params.ByName("xixi"))
+		httpHandler.Get("/:12", before, after, func(t *lemo.Stream) func() *lemo.Error {
+			_ = t.End(t.Params.ByName("12"))
 			return nil
 		})
 	})

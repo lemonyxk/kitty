@@ -80,14 +80,7 @@ func (stream *Stream) Json(data interface{}) error {
 
 	stream.Response.Header().Add("Content-Type", "application/json")
 
-	j, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
-	_, err = stream.Response.Write(j)
-
-	return err
+	return json.NewEncoder(stream.Response).Encode(data)
 }
 
 func (stream *Stream) End(data ...interface{}) error {

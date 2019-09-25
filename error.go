@@ -20,8 +20,8 @@ type Error struct {
 	Error error
 }
 
-func New(err error) func() *Error {
-	_, file, line, ok := runtime.Caller(3)
+func NewError(err error) func() *Error {
+	_, file, line, ok := runtime.Caller(1)
 	if !ok {
 		return nil
 	}

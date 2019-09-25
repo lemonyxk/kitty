@@ -9,17 +9,20 @@ import (
 
 type GroupFunction func()
 
-type StreamFunction func(t *Stream)
+type StreamFunction func(t *Stream) error
 
-type HttpFunction func(w http.ResponseWriter, r *http.Request)
+type HttpFunction func(w http.ResponseWriter, r *http.Request) error
 
 type Before func(t *Stream) (interface{}, error)
 
 type After func(t *Stream) error
 
+type ErrorFunction func(err error)
+
 type Http struct {
 	IgnoreCase bool
 	Router     *tire.Tire
+	OnError    ErrorFunction
 }
 
 type Hba struct {
@@ -116,9 +119,9 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 	for _, fn := range v {
 		switch fn.(type) {
 		case func(w http.ResponseWriter, r *http.Request):
-			httpFunction = fn.(func(w http.ResponseWriter, r *http.Request))
+			httpFunction = fn.(func(w http.ResponseWriter, r *http.Request) error)
 		case func(t *Stream):
-			streamFunction = fn.(func(t *Stream))
+			streamFunction = fn.(func(t *Stream) error)
 		case []Before:
 			before = fn.([]Before)
 		case []After:

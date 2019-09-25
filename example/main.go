@@ -50,8 +50,8 @@ func main() {
 	}
 
 	httpHandler.Group("/:hello", func() {
-		httpHandler.Get("/:12/1/:22/world/:xixi/", before, after, func(t *lemo.Stream) {
-			_ = t.End(t.Params.ByName("xixi"))
+		httpHandler.Get("/:12/1/:22/world/:xixi/", before, after, func(t *lemo.Stream) error {
+			return t.End(t.Params.ByName("xixi"))
 		})
 	})
 

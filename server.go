@@ -79,20 +79,30 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 
 			for _, before := range hba.Before {
 				context, err = before(&tool)
-				if err != nil {
+				if err != nil && hh.OnError != nil {
+					hh.OnError(err)
 					return
 				}
 				tool.Context = context
 			}
 
 			if hba.StreamFunction != nil {
-				hba.StreamFunction(&tool)
+				err = hba.StreamFunction(&tool)
+				if err != nil && hh.OnError != nil {
+					hh.OnError(err)
+				}
 			} else {
-				hba.HttpFunction(tool.Response, tool.Request)
+				err = hba.HttpFunction(tool.Response, tool.Request)
+				if err != nil && hh.OnError != nil {
+					hh.OnError(err)
+				}
 			}
 
 			for _, after := range hba.After {
-				_ = after(&tool)
+				err = after(&tool)
+				if err != nil && hh.OnError != nil {
+					hh.OnError(err)
+				}
 			}
 		})
 	}

@@ -63,6 +63,15 @@ func (v *value) Int() int {
 	return r
 }
 
+func (v *value) Float64() float64 {
+	r, err := strconv.ParseFloat(v.v, 64)
+	if err != nil {
+		return 0
+	}
+
+	return r
+}
+
 func (v *value) String() string {
 	return v.v
 }
@@ -304,6 +313,11 @@ func (stream *Stream) Url() *URL {
 	stream.url.Fragment = stream.Request.URL.Fragment
 
 	return stream.url
+}
+
+func (q *Query) Has(key string) bool {
+	_, ok := (*q.params)[key]
+	return ok
 }
 
 func (q *Query) Get(key string) *value {

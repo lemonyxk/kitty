@@ -4,7 +4,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/Lemo-yxk/ws"
+	"github.com/Lemo-yxk/lemo"
 )
 
 func init() {
@@ -13,15 +13,15 @@ func init() {
 
 func main() {
 
-	var server = &ws.Server{Host: "127.0.0.1", Port: 12345, Path: "/Game-Robot"}
+	var server = &lemo.Server{Host: "127.0.0.1", Port: 12345, Path: "/Game-Robot"}
 
-	var socketHandler = &ws.Socket{}
+	var socketHandler = &lemo.Socket{}
 
-	socketHandler.SetRouter("hello1", func(conn *ws.Connection, ftd *ws.Fte, msg []byte) {
+	socketHandler.SetRouter("hello1", func(conn *lemo.Connection, ftd *lemo.Fte, msg []byte) {
 		log.Println(ftd.Fd)
 	})
 
-	socketHandler.OnClose = func(conn *ws.Connection) {
+	socketHandler.OnClose = func(conn *lemo.Connection) {
 		log.Println(conn.Fd, "is close")
 	}
 
@@ -29,28 +29,28 @@ func main() {
 		log.Println(err)
 	}
 
-	socketHandler.OnOpen = func(conn *ws.Connection) {
+	socketHandler.OnOpen = func(conn *lemo.Connection) {
 		log.Println(conn.Fd, "is open")
 	}
 
-	var httpHandler = &ws.Http{}
+	var httpHandler = &lemo.Http{}
 
-	var before = []ws.Before{
-		func(t *ws.Stream) (i interface{}, e error) {
+	var before = []lemo.Before{
+		func(t *lemo.Stream) (i interface{}, e error) {
 			_ = t.End("before")
 			return nil, nil
 		},
 	}
 
-	var after = []ws.After{
-		func(t *ws.Stream) (e error) {
+	var after = []lemo.After{
+		func(t *lemo.Stream) (e error) {
 			_ = t.End("after")
 			return nil
 		},
 	}
 
 	httpHandler.Group("/:hello", func() {
-		httpHandler.Get("/:12/1/:22/world/:xixi/", before, after, func(t *ws.Stream) {
+		httpHandler.Get("/:12/1/:22/world/:xixi/", before, after, func(t *lemo.Stream) {
 			_ = t.End(t.Params.ByName("xixi"))
 		})
 	})

@@ -12,15 +12,15 @@
     
     func main() {
     
-        var server = &ws.Server{Host: "127.0.0.1", Port: 12345, Path: "/Game-Robot"}
+        var server = &lemo.Server{Host: "127.0.0.1", Port: 12345, Path: "/Game-Robot"}
     
-        var socketHandler = &ws.Socket{}
+        var socketHandler = &lemo.Socket{}
     
-        socketHandler.SetRouter("hello1", func(conn *ws.Connection, ftd *ws.Fte, msg []byte) {
+        socketHandler.SetRouter("hello1", func(conn *lemo.Connection, ftd *lemo.Fte, msg []byte) {
             log.Println(ftd.Fd)
         })
     
-        socketHandler.OnClose = func(conn *ws.Connection) {
+        socketHandler.OnClose = func(conn *lemo.Connection) {
             log.Println(conn.Fd, "is close")
         }
     
@@ -28,14 +28,14 @@
             log.Println(err)
         }
     
-        socketHandler.OnOpen = func(conn *ws.Connection) {
+        socketHandler.OnOpen = func(conn *lemo.Connection) {
             log.Println(conn.Fd, "is open")
         }
     
-        var httpHandler = &ws.Http{}
+        var httpHandler = &lemo.Http{}
     
         httpHandler.Group("/hello", func() {
-            httpHandler.Get("/:name", func(t *ws.Stream) {
+            httpHandler.Get("/:name", func(t *lemo.Stream) {
                 log.Println(t.Params)
                 _ = t.End(t.Params.ByName("name"))
             })

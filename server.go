@@ -69,7 +69,6 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 
 			// Get the middleware
 			var context interface{}
-			var err error
 			var tool Stream
 			var params = new(Params)
 			params.Keys = tire.Keys
@@ -78,7 +77,7 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 			tool.rs = rs{w, r, context, params, nil, nil, nil}
 
 			for _, before := range hba.Before {
-				context, err = before(&tool)
+				context, err := before(&tool)
 				if err != nil && hh.OnError != nil {
 					hh.OnError(err)
 					return
@@ -87,19 +86,16 @@ func (s *Server) Start(sh *Socket, hh *Http) {
 			}
 
 			if hba.StreamFunction != nil {
-				err = hba.StreamFunction(&tool)
+				err := hba.StreamFunction(&tool)
 				if err != nil && hh.OnError != nil {
 					hh.OnError(err)
 				}
 			} else {
-				err = hba.HttpFunction(tool.Response, tool.Request)
-				if err != nil && hh.OnError != nil {
-					hh.OnError(err)
-				}
+				hba.HttpFunction(tool.Response, tool.Request)
 			}
 
 			for _, after := range hba.After {
-				err = after(&tool)
+				err := after(&tool)
 				if err != nil && hh.OnError != nil {
 					hh.OnError(err)
 				}

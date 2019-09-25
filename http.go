@@ -9,15 +9,15 @@ import (
 
 type GroupFunction func()
 
-type StreamFunction func(t *Stream) error
+type StreamFunction func(t *Stream) func() error
 
-type HttpFunction func(w http.ResponseWriter, r *http.Request) error
+type HttpFunction func(w http.ResponseWriter, r *http.Request)
 
-type Before func(t *Stream) (interface{}, error)
+type Before func(t *Stream) (interface{}, func() error)
 
-type After func(t *Stream) error
+type After func(t *Stream) func() error
 
-type ErrorFunction func(err error)
+type ErrorFunction func(func() error)
 
 type Http struct {
 	IgnoreCase bool
@@ -118,10 +118,10 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 
 	for _, fn := range v {
 		switch fn.(type) {
-		case func(w http.ResponseWriter, r *http.Request) error:
-			httpFunction = fn.(func(w http.ResponseWriter, r *http.Request) error)
-		case func(t *Stream) error:
-			streamFunction = fn.(func(t *Stream) error)
+		case func(w http.ResponseWriter, r *http.Request):
+			httpFunction = fn.(func(w http.ResponseWriter, r *http.Request))
+		case func(t *Stream) func() error:
+			streamFunction = fn.(func(t *Stream) func() error)
 		case []Before:
 			before = fn.([]Before)
 		case []After:

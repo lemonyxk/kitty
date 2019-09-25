@@ -14,11 +14,11 @@ import (
 )
 
 type Query struct {
-	params map[string]string
+	params *map[string]string
 }
 
 type Files struct {
-	files map[string][]*multipart.FileHeader
+	files *map[string][]*multipart.FileHeader
 }
 
 type rs struct {
@@ -26,7 +26,10 @@ type rs struct {
 	Request  *http.Request
 	Context  interface{}
 	Params   *Params
-	url      *URL
+	Query    *Query
+	Files    *Files
+
+	url *URL
 }
 
 type Params struct {
@@ -120,14 +123,18 @@ func (stream *Stream) ParseJson() *Query {
 		return nil
 	}
 
-	var query Query
+	var query = new(Query)
 
-	query.params = data
+	query.params = &data
 
-	return &query
+	return query
 }
 
-func (stream *Stream) Files() *Files {
+func (stream *Stream) ParseFiles() *Files {
+
+	if stream.Files != nil {
+		return stream.Files
+	}
 
 	err := stream.Request.ParseMultipartForm(20 * 1024 * 1024)
 	if err != nil {
@@ -136,14 +143,20 @@ func (stream *Stream) Files() *Files {
 
 	var data = stream.Request.MultipartForm.File
 
-	var query Files
+	var file = new(Files)
 
-	query.files = data
+	file.files = &data
 
-	return &query
+	stream.Files = file
+
+	return file
 }
 
 func (stream *Stream) ParseMultipart() *Query {
+
+	if stream.Query != nil {
+		return stream.Query
+	}
 
 	err := stream.Request.ParseMultipartForm(2 * 1024 * 1024)
 	if err != nil {
@@ -158,14 +171,18 @@ func (stream *Stream) ParseMultipart() *Query {
 		data[k] = v[0]
 	}
 
-	var query Query
+	var query = new(Query)
 
-	query.params = data
+	query.params = &data
 
-	return &query
+	return query
 }
 
 func (stream *Stream) ParseQuery() *Query {
+
+	if stream.Query != nil {
+		return stream.Query
+	}
 
 	var params = stream.Request.URL.RawQuery
 
@@ -180,14 +197,18 @@ func (stream *Stream) ParseQuery() *Query {
 		data[k] = v[0]
 	}
 
-	var query Query
+	var query = new(Query)
 
-	query.params = data
+	query.params = &data
 
-	return &query
+	return query
 }
 
 func (stream *Stream) ParseForm() *Query {
+
+	if stream.Query != nil {
+		return stream.Query
+	}
 
 	err := stream.Request.ParseForm()
 	if err != nil {
@@ -202,34 +223,40 @@ func (stream *Stream) ParseForm() *Query {
 		data[k] = v[0]
 	}
 
-	var query Query
+	var query = new(Query)
 
-	query.params = data
+	query.params = &data
 
-	return &query
+	return query
 }
 
 func (stream *Stream) AutoParse() *Query {
 
-	if strings.ToUpper(stream.Request.Method) == "GET" {
-		return stream.ParseQuery()
+	if stream.Query != nil {
+		return stream.Query
 	}
 
 	var header = stream.Request.Header.Get("Content-Type")
 
 	var query *Query
 
-	if strings.HasPrefix(header, "multipart/form-data") {
-		query = stream.ParseMultipart()
-	} else if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
-		query = stream.ParseForm()
-	} else if strings.HasPrefix(header, "application/json") {
-		query = stream.ParseJson()
+	if strings.ToUpper(stream.Request.Method) == "GET" {
+		query = stream.ParseQuery()
+	} else {
+		if strings.HasPrefix(header, "multipart/form-data") {
+			query = stream.ParseMultipart()
+		} else if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
+			query = stream.ParseForm()
+		} else if strings.HasPrefix(header, "application/json") {
+			query = stream.ParseJson()
+		}
 	}
 
 	if query == nil {
 		query = new(Query)
 	}
+
+	stream.Query = query
 
 	return query
 }
@@ -283,7 +310,7 @@ func (q *Query) Get(key string) *value {
 
 	var val = &value{}
 
-	if v, ok := q.params[key]; ok {
+	if v, ok := (*q.params)[key]; ok {
 		val.v = v
 		return val
 	}
@@ -291,11 +318,15 @@ func (q *Query) Get(key string) *value {
 	return val
 }
 
+func (q *Query) All() *map[string]string {
+	return q.params
+}
+
 func (q *Query) String() string {
 
 	var buff bytes.Buffer
 
-	for key, value := range q.params {
+	for key, value := range *q.params {
 
 		buff.WriteString(key)
 		buff.WriteString(":")

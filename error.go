@@ -21,6 +21,11 @@ type Error struct {
 }
 
 func NewError(err error) func() *Error {
+
+	if err != nil {
+		return nil
+	}
+
 	_, file, line, ok := runtime.Caller(1)
 	if !ok {
 		return nil
@@ -29,4 +34,5 @@ func NewError(err error) func() *Error {
 	return func() *Error {
 		return &Error{file, line, err}
 	}
+
 }

@@ -22,7 +22,7 @@ type Error struct {
 
 func NewError(err error) func() *Error {
 
-	if err != nil {
+	if err == nil {
 		return nil
 	}
 

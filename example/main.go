@@ -36,21 +36,21 @@ func main() {
 	var httpHandler = &lemo.Http{}
 
 	var before = []lemo.Before{
-		func(t *lemo.Stream) (interface{}, func() error) {
+		func(t *lemo.Stream) (interface{}, func() *lemo.Error) {
 			_ = t.End("before")
 			return nil, nil
 		},
 	}
 
 	var after = []lemo.After{
-		func(t *lemo.Stream) func() error {
+		func(t *lemo.Stream) func() *lemo.Error {
 			_ = t.End("after")
 			return nil
 		},
 	}
 
 	httpHandler.Group("/:hello", func() {
-		httpHandler.Get("/:12/1/:22/world/:xixi/", before, after, func(t *lemo.Stream) func() error {
+		httpHandler.Get("/:12/1/:22/world/:xixi/", before, after, func(t *lemo.Stream) func() *lemo.Error {
 			_ = t.End(t.Params.ByName("xixi"))
 			return nil
 		})

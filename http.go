@@ -118,9 +118,9 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 
 	for _, fn := range v {
 		switch fn.(type) {
-		case func(w http.ResponseWriter, r *http.Request):
+		case func(w http.ResponseWriter, r *http.Request) error:
 			httpFunction = fn.(func(w http.ResponseWriter, r *http.Request) error)
-		case func(t *Stream):
+		case func(t *Stream) error:
 			streamFunction = fn.(func(t *Stream) error)
 		case []Before:
 			before = fn.([]Before)

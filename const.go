@@ -1,4 +1,4 @@
-package ws
+package lemo
 
 const (
 	XForwardedFor = "X-Forwarded-For"

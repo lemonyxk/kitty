@@ -132,8 +132,7 @@ func (c *Client) reconnecting() {
 
 func (c *Client) catchError() {
 	if err := recover(); err != nil {
-		log.Println(err)
-		log.Println(string(debug.Stack()))
+		log.Println(string(debug.Stack()), err)
 		c.OnError(err)
 		c.reconnecting()
 	}

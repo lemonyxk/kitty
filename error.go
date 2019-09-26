@@ -11,6 +11,8 @@
 package lemo
 
 import (
+	"errors"
+	"fmt"
 	"runtime"
 )
 
@@ -20,7 +22,7 @@ type Error struct {
 	Error error
 }
 
-func NewError(err error) func() *Error {
+func NewError(err interface{}) func() *Error {
 
 	if err == nil {
 		return nil
@@ -31,8 +33,19 @@ func NewError(err error) func() *Error {
 		return nil
 	}
 
-	return func() *Error {
-		return &Error{file, line, err}
+	switch err.(type) {
+	case error:
+		return func() *Error {
+			return &Error{file, line, err.(error)}
+		}
+	case string:
+		return func() *Error {
+			return &Error{file, line, errors.New(err.(string))}
+		}
+	default:
+		return func() *Error {
+			return &Error{file, line, fmt.Errorf("%s", err)}
+		}
 	}
 
 }

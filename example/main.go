@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net"
 	"net/http/pprof"
 
 	"github.com/Lemo-yxk/lemo"
@@ -58,12 +57,22 @@ func main() {
 
 	httpHandler.Group("/:hello", func() {
 		httpHandler.Get("/:12", before, after, func(t *lemo.Stream) func() *lemo.Error {
-			_ = t.End(t.Params.ByName("12"))
-			return nil
+
+			var params = t.Params.ByName("hello")
+
+			err := t.Json(lemo.M{"hello": params})
+
+			return lemo.NewError(err)
 		})
 	})
 
-	log.Println(net.InterfaceAddrs())
+	httpHandler.OnError = func(ef func() *lemo.Error) {
+		var err = ef()
+		if err == nil {
+			return
+		}
+		log.Println(err)
+	}
 
 	server.Start(socketHandler, httpHandler)
 

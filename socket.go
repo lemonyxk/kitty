@@ -344,7 +344,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		}
 	}
 
-	upgrade := websocket.Upgrader{
+	var upgrade = &websocket.Upgrader{
 		HandshakeTimeout: time.Duration(socket.HandshakeTimeout) * time.Second,
 		ReadBufferSize:   socket.ReadBufferSize,
 		WriteBufferSize:  socket.WriteBufferSize,

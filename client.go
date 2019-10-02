@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -24,6 +25,7 @@ type Client struct {
 
 	// 客户端信息
 	Conn              *websocket.Conn
+	Response          *http.Response
 	AutoHeartBeat     bool
 	HeartBeatInterval int
 	HeartBeat         func(c *Client)
@@ -176,22 +178,19 @@ func (c *Client) Connect() {
 		panic("OnError must set")
 	}
 
-	var dialer websocket.Dialer
-
 	// 握手
 	if c.HandshakeTimeout == 0 {
 		c.HandshakeTimeout = 2
 	}
-	dialer.HandshakeTimeout = time.Duration(c.HandshakeTimeout) * time.Second
 
 	// 写入BUF大小
 	if c.WriteBufferSize == 0 {
-		dialer.WriteBufferSize = 1024 * 1024 * 2
+		c.WriteBufferSize = 1024 * 1024 * 2
 	}
 
 	// 读出BUF大小
 	if c.ReadBufferSize == 0 {
-		dialer.ReadBufferSize = 1024 * 1024 * 2
+		c.ReadBufferSize = 1024 * 1024 * 2
 	}
 
 	// 定时心跳间隔
@@ -204,13 +203,21 @@ func (c *Client) Connect() {
 		c.ReconnectInterval = 1
 	}
 
+	var dialer = &websocket.Dialer{
+		HandshakeTimeout: time.Duration(c.HandshakeTimeout) * time.Second,
+		WriteBufferSize:  c.WriteBufferSize,
+		ReadBufferSize:   c.ReadBufferSize,
+	}
+
 	// 连接服务器
-	client, _, err := dialer.Dial(fmt.Sprintf("%s://%s:%d%s", c.Protocol, c.Host, c.Port, c.Path), nil)
+	client, response, err := dialer.Dial(fmt.Sprintf("%s://%s:%d%s", c.Protocol, c.Host, c.Port, c.Path), nil)
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()
 		return
 	}
+
+	c.Response = response
 
 	c.Conn = client
 

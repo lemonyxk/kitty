@@ -28,7 +28,7 @@ type Client struct {
 	Response          *http.Response
 	AutoHeartBeat     bool
 	HeartBeatInterval int
-	HeartBeat         func(c *Client)
+	HeartBeat         func(c *Client) error
 	Reconnect         bool
 	ReconnectInterval int
 	WriteBufferSize   int
@@ -146,6 +146,8 @@ func (c *Client) Connect() {
 
 	defer c.catchError()
 
+	var closeChan = make(chan bool)
+
 	if c.TsProto == 0 {
 		c.TsProto = Json
 	}
@@ -232,8 +234,8 @@ func (c *Client) Connect() {
 	// 如果有心跳设置
 	if c.AutoHeartBeat == true {
 		if c.HeartBeat == nil {
-			c.HeartBeat = func(c *Client) {
-				_ = c.Push(websocket.PingMessage, nil)
+			c.HeartBeat = func(c *Client) error {
+				return c.Push(websocket.PingMessage, nil)
 			}
 		}
 	} else {
@@ -241,35 +243,40 @@ func (c *Client) Connect() {
 	}
 
 	go func() {
-
-		defer c.catchError()
-
 		for {
 			select {
 			case <-ticker.C:
-				c.HeartBeat(c)
+				if err := c.HeartBeat(c); err != nil {
+					closeChan <- false
+					break
+				}
 			}
 		}
 
 	}()
 
-	for {
+	go func() {
+		for {
 
-		messageType, message, err := client.ReadMessage()
+			messageType, message, err := client.ReadMessage()
 
-		if err != nil {
-			break
+			if err != nil {
+				closeChan <- false
+				break
+			}
+
+			if c.OnMessage != nil {
+				c.OnMessage(c, &Fte{Type: messageType}, message)
+			}
+
+			if c.WebSocketRouter != nil {
+				c.router(c, &Fte{Type: messageType}, message)
+			}
+
 		}
+	}()
 
-		if c.OnMessage != nil {
-			c.OnMessage(c, &Fte{Type: messageType}, message)
-		}
-
-		if c.WebSocketRouter != nil {
-			c.router(c, &Fte{Type: messageType}, message)
-		}
-
-	}
+	<-closeChan
 
 	// 关闭定时器
 	ticker.Stop()

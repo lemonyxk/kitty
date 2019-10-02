@@ -377,9 +377,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				// 触发CLOSE事件
 				go socket.OnClose(conn)
 			case push := <-connPush:
-
 				var conn, ok = socket.connections.Load(push.Fd)
-
 				if !ok {
 					connBack <- fmt.Errorf("client %d is close", push.Fd)
 				} else {
@@ -417,12 +415,6 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		// 打开连接 记录
 		connOpen <- &connection
 
-		// 关闭连接 清理
-		defer func() {
-			_ = conn.Close()
-			connClose <- &connection
-		}()
-
 		// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
 		for {
 
@@ -432,7 +424,6 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 			// 关闭连接
 			if err != nil {
-				// log.Println(err)
 				break
 			}
 
@@ -459,6 +450,9 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 		}
 
+		// 关闭连接 清理
+		_ = conn.Close()
+		connClose <- &connection
 	}
 
 	return handler

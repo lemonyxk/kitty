@@ -283,6 +283,12 @@ func (socket *Socket) GetConnectionsCount() uint32 {
 	return socket.count
 }
 
+func (socket *Socket) CatchError() {
+	if err := recover(); err != nil {
+		socket.OnError(fmt.Errorf("%s", err))
+	}
+}
+
 // WebSocket 默认设置
 func WebSocket(socket *Socket) http.HandlerFunc {
 
@@ -396,8 +402,9 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 		// 设置PING处理函数
 		conn.SetPingHandler(func(status string) error {
-			_ = conn.WriteMessage(PongMessage, nil)
-			return conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+			err := conn.WriteMessage(PongMessage, nil)
+			err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+			return err
 		})
 
 		connection := Connection{
@@ -420,7 +427,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		for {
 
 			// 重置心跳
-			_ = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+			err := conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 			messageType, message, err := conn.ReadMessage()
 
 			// 关闭连接

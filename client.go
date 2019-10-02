@@ -251,7 +251,6 @@ func (c *Client) Connect() {
 		messageType, message, err := client.ReadMessage()
 
 		if err != nil {
-			c.OnError(err)
 			break
 		}
 

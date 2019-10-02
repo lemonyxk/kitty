@@ -3,9 +3,7 @@ package lemo
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -134,8 +132,7 @@ func (c *Client) reconnecting() {
 
 func (c *Client) catchError() {
 	if err := recover(); err != nil {
-		log.Println(string(debug.Stack()), err)
-		c.OnError(err)
+		go c.OnError(err)
 		c.reconnecting()
 	}
 }
@@ -214,9 +211,7 @@ func (c *Client) Connect() {
 	// 连接服务器
 	client, response, err := dialer.Dial(fmt.Sprintf("%s://%s:%d%s", c.Protocol, c.Host, c.Port, c.Path), nil)
 	if err != nil {
-		c.OnError(err)
-		c.reconnecting()
-		return
+		panic(err)
 	}
 
 	c.Response = response
@@ -226,7 +221,7 @@ func (c *Client) Connect() {
 	c.Status = true
 
 	// 连接成功
-	c.OnOpen(c)
+	go c.OnOpen(c)
 
 	// 定时器 心跳
 	ticker := time.NewTicker(time.Duration(c.HeartBeatInterval) * time.Second)
@@ -265,13 +260,15 @@ func (c *Client) Connect() {
 				break
 			}
 
-			if c.OnMessage != nil {
-				c.OnMessage(c, &Fte{Type: messageType}, message)
-			}
+			go func() {
+				if c.OnMessage != nil {
+					c.OnMessage(c, &Fte{Type: messageType}, message)
+				}
 
-			if c.WebSocketRouter != nil {
-				c.router(c, &Fte{Type: messageType}, message)
-			}
+				if c.WebSocketRouter != nil {
+					c.router(c, &Fte{Type: messageType}, message)
+				}
+			}()
 
 		}
 	}()
@@ -285,7 +282,7 @@ func (c *Client) Connect() {
 	// 关闭连接
 	_ = client.Close()
 	// 触发回调
-	c.OnClose(c)
+	go c.OnClose(c)
 	// 触发重连设置
 	c.reconnecting()
 }

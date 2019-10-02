@@ -207,7 +207,9 @@ func (c *Client) Connect() {
 	// 连接服务器
 	client, _, err := dialer.Dial(fmt.Sprintf("%s://%s:%d%s", c.Protocol, c.Host, c.Port, c.Path), nil)
 	if err != nil {
-		panic(err)
+		c.OnError(err)
+		c.reconnecting()
+		return
 	}
 
 	c.Conn = client

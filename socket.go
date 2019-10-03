@@ -67,7 +67,7 @@ type Socket struct {
 	Fd          uint32
 	count       uint32
 	connections sync.Map
-	OnClose     func(conn *Connection)
+	OnClose     func(fd uint32)
 	OnMessage   func(conn *Connection, fte *Fte, msg []byte)
 	OnOpen      func(conn *Connection)
 	OnError     func(err func() *Error)
@@ -336,8 +336,8 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 	}
 
 	if socket.OnClose == nil {
-		socket.OnClose = func(conn *Connection) {
-			println(conn.Fd, "is close")
+		socket.OnClose = func(fd uint32) {
+			println(fd, "is close")
 		}
 	}
 
@@ -375,10 +375,12 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				// 触发OPEN事件
 				go socket.OnOpen(conn)
 			case conn := <-connClose:
+				var fd = conn.Fd
 				socket.delConnect(conn)
 				socket.count--
+				conn = nil
 				// 触发CLOSE事件
-				go socket.OnClose(conn)
+				go socket.OnClose(fd)
 			case push := <-connPush:
 				var conn, ok = socket.connections.Load(push.Fd)
 				if !ok {

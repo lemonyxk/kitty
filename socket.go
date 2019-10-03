@@ -55,9 +55,9 @@ const ProtoBuf = 2
 
 // Connection Connection
 type Connection struct {
-	Fd   uint32
-	Conn *websocket.Conn
-	// socket   *Socket
+	Fd       uint32
+	Conn     *websocket.Conn
+	socket   *Socket
 	Response http.ResponseWriter
 	Request  *http.Request
 }
@@ -110,29 +110,29 @@ func (conn *Connection) IP() (string, string, error) {
 	return net.SplitHostPort(conn.Request.RemoteAddr)
 }
 
-// func (conn *Connection) Emit(fte Fte, msg interface{}) error {
-// 	return conn.socket.Emit(fte, msg)
-// }
-//
-// func (conn *Connection) EmitAll(fte Fte, msg interface{}) {
-// 	conn.socket.EmitAll(fte, msg)
-// }
-//
-// func (conn *Connection) GetConnections() []*Connection {
-// 	return conn.socket.GetConnections()
-// }
-//
-// func (conn *Connection) GetSocket() *Socket {
-// 	return conn.socket
-// }
-//
-// func (conn *Connection) GetConnectionsCount() uint32 {
-// 	return conn.socket.GetConnectionsCount()
-// }
-//
-// func (conn *Connection) GetConnection(fd uint32) (*Connection, bool) {
-// 	return conn.socket.GetConnection(fd)
-// }
+func (conn *Connection) Emit(fte Fte, msg interface{}) error {
+	return conn.socket.Emit(fte, msg)
+}
+
+func (conn *Connection) EmitAll(fte Fte, msg interface{}) {
+	conn.socket.EmitAll(fte, msg)
+}
+
+func (conn *Connection) GetConnections() []*Connection {
+	return conn.socket.GetConnections()
+}
+
+func (conn *Connection) GetSocket() *Socket {
+	return conn.socket
+}
+
+func (conn *Connection) GetConnectionsCount() uint32 {
+	return conn.socket.GetConnectionsCount()
+}
+
+func (conn *Connection) GetConnection(fd uint32) (*Connection, bool) {
+	return conn.socket.GetConnection(fd)
+}
 
 // Push 发送消息
 func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
@@ -165,13 +165,13 @@ func (socket *Socket) ProtoBuf(fte Fte, msg interface{}) error {
 	return nil
 }
 
-// func (socket *Socket) EmitAll(fte Fte, msg interface{}) {
-// 	socket.connections.Range(func(key, value interface{}) bool {
-// 		fte.Fd = key.(uint32)
-// 		_ = value.(*Connection).Emit(fte, msg)
-// 		return true
-// 	})
-// }
+func (socket *Socket) EmitAll(fte Fte, msg interface{}) {
+	socket.connections.Range(func(key, value interface{}) bool {
+		fte.Fd = key.(uint32)
+		_ = value.(*Connection).Emit(fte, msg)
+		return true
+	})
+}
 
 func (socket *Socket) Emit(fte Fte, msg interface{}) error {
 
@@ -410,8 +410,8 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		})
 
 		connection := &Connection{
-			Conn: conn,
-			// socket:   socket,
+			Conn:     conn,
+			socket:   socket,
 			Response: w,
 			Request:  r,
 		}

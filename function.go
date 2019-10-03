@@ -6,24 +6,34 @@ import (
 	"strings"
 )
 
-func GetLocalhostIp() string {
-	addrs, err := net.InterfaceAddrs()
+var defaultIP = ""
 
-	if err != nil {
-		return ""
+func GetLocalhostIp() string {
+
+	if defaultIP != "" {
+		return defaultIP
 	}
 
-	for _, address := range addrs {
+	addresses, err := net.InterfaceAddrs()
+
+	if err != nil {
+		defaultIP = "127.0.0.1"
+		return defaultIP
+	}
+
+	for _, address := range addresses {
 
 		// 检查ip地址判断是否回环地址
 		if ipNet, ok := address.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
 			if ipNet.IP.To4() != nil {
-				return ipNet.IP.String()
+				defaultIP = ipNet.IP.String()
+				return defaultIP
 			}
 		}
 	}
 
-	return ""
+	defaultIP = "127.0.0.1"
+	return defaultIP
 }
 
 func Ip2long(ipstr string) uint32 {

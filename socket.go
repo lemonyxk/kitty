@@ -3,7 +3,6 @@ package lemo
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -71,7 +70,7 @@ type Socket struct {
 	OnClose     func(conn *Connection)
 	OnMessage   func(conn *Connection, fte *Fte, msg []byte)
 	OnOpen      func(conn *Connection)
-	OnError     func(err error)
+	OnError     func(err func() *Error)
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -234,7 +233,7 @@ func (socket *Socket) addConnect(conn *Connection) {
 			maxFd++
 
 			if maxFd == 0 {
-				log.Println("connections overflow")
+				println("connections overflow")
 				return
 			}
 
@@ -285,12 +284,16 @@ func (socket *Socket) GetConnectionsCount() uint32 {
 
 func (socket *Socket) CatchError() {
 	if err := recover(); err != nil {
-		socket.OnError(fmt.Errorf("%s", err))
+		if socket.OnError != nil {
+			go socket.OnError(NewErrorFromDeep(err, 2))
+		}
 	}
 }
 
 // WebSocket 默认设置
 func WebSocket(socket *Socket) http.HandlerFunc {
+
+	defer socket.CatchError()
 
 	if socket.TsProto == 0 {
 		socket.TsProto = Json
@@ -328,19 +331,19 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 	if socket.OnOpen == nil {
 		socket.OnOpen = func(conn *Connection) {
-			log.Println(conn.Fd, "is open at", time.Now())
+			println(conn.Fd, "is open at", time.Now())
 		}
 	}
 
 	if socket.OnClose == nil {
 		socket.OnClose = func(conn *Connection) {
-			log.Println(conn.Fd, "is close at", time.Now())
+			println(conn.Fd, "is close at", time.Now())
 		}
 	}
 
 	if socket.OnError == nil {
 		socket.OnError = func(err error) {
-			log.Println(err)
+			println(err)
 		}
 	}
 
@@ -394,7 +397,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 		// 错误处理
 		if err != nil {
-			socket.OnError(err)
+			go socket.OnError(err)
 			return
 		}
 

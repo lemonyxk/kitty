@@ -25,12 +25,16 @@ type Error struct {
 }
 
 func NewError(err interface{}) func() *Error {
+	return NewErrorFromDeep(err, 2)
+}
+
+func NewErrorFromDeep(err interface{}, deep int) func() *Error {
 
 	if err == nil {
 		return nil
 	}
 
-	_, file, line, ok := runtime.Caller(1)
+	_, file, line, ok := runtime.Caller(deep)
 	if !ok {
 		return nil
 	}

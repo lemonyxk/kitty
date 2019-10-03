@@ -37,7 +37,7 @@ type Client struct {
 	OnOpen    func(c *Client)
 	OnClose   func(c *Client)
 	OnMessage func(c *Client, fte *Fte, message []byte)
-	OnError   func(err interface{})
+	OnError   func(err func() *Error)
 	Status    bool
 
 	WebSocketRouter map[string]WebSocketClientFunction
@@ -132,7 +132,9 @@ func (c *Client) reconnecting() {
 
 func (c *Client) catchError() {
 	if err := recover(); err != nil {
-		go c.OnError(err)
+		if c.OnError != nil {
+			go c.OnError(NewErrorFromDeep(err, 2))
+		}
 		c.reconnecting()
 	}
 }

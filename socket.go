@@ -331,19 +331,19 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 	if socket.OnOpen == nil {
 		socket.OnOpen = func(conn *Connection) {
-			println(conn.Fd, "is open at", time.Now())
+			println(conn.Fd, "is open")
 		}
 	}
 
 	if socket.OnClose == nil {
 		socket.OnClose = func(conn *Connection) {
-			println(conn.Fd, "is close at", time.Now())
+			println(conn.Fd, "is close")
 		}
 	}
 
 	if socket.OnError == nil {
-		socket.OnError = func(err error) {
-			println(err)
+		socket.OnError = func(err func() *Error) {
+			println(err())
 		}
 	}
 
@@ -397,7 +397,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 		// 错误处理
 		if err != nil {
-			go socket.OnError(err)
+			go socket.OnError(NewError(err))
 			return
 		}
 

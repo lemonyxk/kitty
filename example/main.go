@@ -25,8 +25,8 @@ func main() {
 		log.Println(conn.Fd, "is close")
 	}
 
-	socketHandler.OnError = func(err error) {
-		log.Println(err)
+	socketHandler.OnError = func(err func() *lemo.Error) {
+		log.Println(err())
 	}
 
 	socketHandler.OnOpen = func(conn *lemo.Connection) {

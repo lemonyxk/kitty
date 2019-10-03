@@ -13,13 +13,17 @@ func init() {
 
 func main() {
 
-	var server = &lemo.Server{Host: "127.0.0.1", Port: 12345, Path: "/Game-Robot"}
+	var server = &lemo.Server{Host: "0.0.0.0", Port: 12345, Path: "/Game-Robot"}
 
 	var socketHandler = &lemo.Socket{}
 
-	socketHandler.SetRouter("hello1", func(conn *lemo.Connection, ftd *lemo.Fte, msg []byte) {
-		log.Println(ftd.Fd)
-	})
+	// socketHandler.SetRouter("hello1", func(conn *lemo.Connection, ftd *lemo.Fte, msg []byte) {
+	// 	log.Println(ftd.Fd)
+	// })
+
+	socketHandler.OnMessage = func(conn *lemo.Connection, fte lemo.Fte, msg []byte) {
+		log.Println(string(msg))
+	}
 
 	socketHandler.OnClose = func(fd uint32) {
 		log.Println(fd, "is close")

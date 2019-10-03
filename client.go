@@ -10,7 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type WebSocketClientFunction func(c *Client, fte *Fte, message []byte)
+type WebSocketClientFunction func(c *Client, fte Fte, message []byte)
 
 // Client 客户端
 type Client struct {
@@ -36,7 +36,7 @@ type Client struct {
 	// 消息处理
 	OnOpen    func(c *Client)
 	OnClose   func(c *Client)
-	OnMessage func(c *Client, fte *Fte, message []byte)
+	OnMessage func(c *Client, fte Fte, message []byte)
 	OnError   func(err func() *Error)
 	Status    bool
 
@@ -50,7 +50,7 @@ type Client struct {
 }
 
 // Json 发送JSON字符
-func (c *Client) Json(fte *Fte, msg interface{}) error {
+func (c *Client) Json(fte Fte, msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
@@ -60,11 +60,11 @@ func (c *Client) Json(fte *Fte, msg interface{}) error {
 	return c.Push(fte.Type, messageJson)
 }
 
-func (c *Client) ProtoBuf(fte *Fte, msg interface{}) error {
+func (c *Client) ProtoBuf(fte Fte, msg interface{}) error {
 	return nil
 }
 
-func (c *Client) Emit(fte *Fte, msg interface{}) error {
+func (c *Client) Emit(fte Fte, msg interface{}) error {
 
 	if fte.Type == BinaryMessage {
 		if j, b := msg.([]byte); b {
@@ -96,7 +96,7 @@ func (c *Client) jsonEmit(messageType int, event string, msg interface{}) error 
 		messageJson["data"] = string(j)
 	}
 
-	return c.Json(&Fte{Type: messageType}, messageJson)
+	return c.Json(Fte{Type: messageType}, messageJson)
 }
 
 // Push 发送消息
@@ -264,11 +264,11 @@ func (c *Client) Connect() {
 
 			go func() {
 				if c.OnMessage != nil {
-					c.OnMessage(c, &Fte{Type: messageType}, message)
+					c.OnMessage(c, Fte{Type: messageType}, message)
 				}
 
 				if c.WebSocketRouter != nil {
-					c.router(c, &Fte{Type: messageType}, message)
+					c.router(c, Fte{Type: messageType}, message)
 				}
 			}()
 

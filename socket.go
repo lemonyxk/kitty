@@ -30,13 +30,13 @@ var connOpen chan *Connection
 var connClose chan *Connection
 
 // 写入
-var connPush chan *FteMessage
+var connPush chan FteMessage
 
 var connBack chan error
 
 type M map[string]interface{}
 
-type WebSocketServerFunction func(conn *Connection, fte *Fte, msg []byte)
+type WebSocketServerFunction func(conn *Connection, fte Fte, msg []byte)
 
 // PingMessage PING
 const PingMessage int = websocket.PingMessage
@@ -68,7 +68,7 @@ type Socket struct {
 	count       uint32
 	connections sync.Map
 	OnClose     func(fd uint32)
-	OnMessage   func(conn *Connection, fte *Fte, msg []byte)
+	OnMessage   func(conn *Connection, fte Fte, msg []byte)
 	OnOpen      func(conn *Connection)
 	OnError     func(err func() *Error)
 
@@ -80,8 +80,8 @@ type Socket struct {
 	WaitQueueSize     int
 	CheckOrigin       func(r *http.Request) bool
 
-	Before func(conn *Connection, fte *Fte, msg []byte) error
-	After  func(conn *Connection, fte *Fte, msg []byte) error
+	Before func(conn *Connection, fte Fte, msg []byte) error
+	After  func(conn *Connection, fte Fte, msg []byte) error
 
 	WebSocketRouter map[string]WebSocketServerFunction
 
@@ -110,11 +110,11 @@ func (conn *Connection) IP() (string, string, error) {
 	return net.SplitHostPort(conn.Request.RemoteAddr)
 }
 
-func (conn *Connection) Emit(fte *Fte, msg interface{}) error {
+func (conn *Connection) Emit(fte Fte, msg interface{}) error {
 	return conn.socket.Emit(fte, msg)
 }
 
-func (conn *Connection) EmitAll(fte *Fte, msg interface{}) {
+func (conn *Connection) EmitAll(fte Fte, msg interface{}) {
 	conn.socket.EmitAll(fte, msg)
 }
 
@@ -142,7 +142,7 @@ func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 		messageType = TextMessage
 	}
 
-	connPush <- &FteMessage{
+	connPush <- FteMessage{
 		Fte: Fte{Fd: fd, Event: "", Type: messageType},
 		Msg: msg,
 	}
@@ -151,7 +151,7 @@ func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 }
 
 // Push Json 发送消息
-func (socket *Socket) Json(fte *Fte, msg interface{}) error {
+func (socket *Socket) Json(fte Fte, msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
@@ -161,11 +161,11 @@ func (socket *Socket) Json(fte *Fte, msg interface{}) error {
 	return socket.Push(fte.Fd, fte.Type, messageJson)
 }
 
-func (socket *Socket) ProtoBuf(fte *Fte, msg interface{}) error {
+func (socket *Socket) ProtoBuf(fte Fte, msg interface{}) error {
 	return nil
 }
 
-func (socket *Socket) EmitAll(fte *Fte, msg interface{}) {
+func (socket *Socket) EmitAll(fte Fte, msg interface{}) {
 	socket.connections.Range(func(key, value interface{}) bool {
 		fte.Fd = key.(uint32)
 		_ = value.(*Connection).Emit(fte, msg)
@@ -173,7 +173,7 @@ func (socket *Socket) EmitAll(fte *Fte, msg interface{}) {
 	})
 }
 
-func (socket *Socket) Emit(fte *Fte, msg interface{}) error {
+func (socket *Socket) Emit(fte Fte, msg interface{}) error {
 
 	if fte.Type == BinaryMessage {
 		if j, b := msg.([]byte); b {
@@ -206,7 +206,7 @@ func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, msg int
 		messageJson["data"] = string(j)
 	}
 
-	return socket.Json(&Fte{Fd: fd, Type: messageType, Event: event}, messageJson)
+	return socket.Json(Fte{Fd: fd, Type: messageType, Event: event}, messageJson)
 
 }
 
@@ -361,7 +361,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 	connClose = make(chan *Connection, socket.WaitQueueSize)
 
 	// 写入
-	connPush = make(chan *FteMessage, socket.WaitQueueSize)
+	connPush = make(chan FteMessage, socket.WaitQueueSize)
 
 	// 返回
 	connBack = make(chan error, socket.WaitQueueSize)
@@ -378,7 +378,9 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				var fd = conn.Fd
 				socket.delConnect(conn)
 				socket.count--
-				*conn = Connection{}
+				conn.socket = nil
+				conn.Response = nil
+				conn.Request = nil
 				conn = nil
 				// 触发CLOSE事件
 				go socket.OnClose(fd)
@@ -411,7 +413,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			return err
 		})
 
-		connection := Connection{
+		connection := &Connection{
 			Conn:     conn,
 			socket:   socket,
 			Response: w,
@@ -419,7 +421,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		}
 
 		// 打开连接 记录
-		connOpen <- &connection
+		connOpen <- connection
 
 		// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
 		for {
@@ -436,21 +438,21 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 			go func() {
 				// 处理消息
 				if socket.Before != nil {
-					if err := socket.Before(&connection, &Fte{Fd: connection.Fd, Type: messageType}, message); err != nil {
+					if err := socket.Before(connection, Fte{Fd: connection.Fd, Type: messageType}, message); err != nil {
 						return
 					}
 				}
 
 				if socket.OnMessage != nil {
-					socket.OnMessage(&connection, &Fte{Fd: connection.Fd, Type: messageType}, message)
+					socket.OnMessage(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
 				}
 
 				if socket.WebSocketRouter != nil {
-					socket.router(&connection, &Fte{Fd: connection.Fd, Type: messageType}, message)
+					socket.router(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
 				}
 
 				if socket.After != nil {
-					_ = socket.After(&connection, &Fte{Fd: connection.Fd, Type: messageType}, message)
+					_ = socket.After(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
 				}
 			}()
 
@@ -458,7 +460,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 
 		// 关闭连接 清理
 		_ = conn.Close()
-		connClose <- &connection
+		connClose <- connection
 	}
 
 	return handler

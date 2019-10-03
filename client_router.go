@@ -28,7 +28,7 @@ func (c *Client) GetRouter(path string) WebSocketClientFunction {
 	return nil
 }
 
-func (c *Client) router(client *Client, fte *Fte, message []byte) {
+func (c *Client) router(client *Client, fte Fte, message []byte) {
 
 	switch c.TsProto {
 	case Json:
@@ -39,7 +39,7 @@ func (c *Client) router(client *Client, fte *Fte, message []byte) {
 
 }
 
-func (c *Client) jsonRouter(client *Client, fte *Fte, msg []byte) {
+func (c *Client) jsonRouter(client *Client, fte Fte, msg []byte) {
 
 	if len(msg) < 12 {
 		return
@@ -60,4 +60,4 @@ func (c *Client) jsonRouter(client *Client, fte *Fte, msg []byte) {
 	f(c, fte, data)
 }
 
-func (c *Client) protoBufRouter(client *Client, fte *Fte, message []byte) {}
+func (c *Client) protoBufRouter(client *Client, fte Fte, message []byte) {}

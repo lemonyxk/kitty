@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -378,12 +379,9 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				var fd = conn.Fd
 				socket.delConnect(conn)
 				socket.count--
-				conn.socket = nil
-				conn.Response = nil
-				conn.Request = nil
-				conn = nil
 				// 触发CLOSE事件
 				go socket.OnClose(fd)
+				runtime.GC()
 			case push := <-connPush:
 				var conn, ok = socket.connections.Load(push.Fd)
 				if !ok {

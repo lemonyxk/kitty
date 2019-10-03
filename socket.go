@@ -378,6 +378,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 				var fd = conn.Fd
 				socket.delConnect(conn)
 				socket.count--
+				*conn = Connection{}
 				conn = nil
 				// 触发CLOSE事件
 				go socket.OnClose(fd)

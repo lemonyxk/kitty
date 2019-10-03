@@ -13,7 +13,7 @@ func init() {
 
 func main() {
 
-	var server = &lemo.Server{Host: "0.0.0.0", Port: 12345, Path: "/Game-Robot"}
+	var server = &lemo.Server{Host: "0.0.0.0", Port: 12345, Path: "/"}
 
 	var socketHandler = &lemo.Socket{}
 
@@ -54,6 +54,7 @@ func main() {
 	}
 
 	httpHandler.Get("/debug/pprof/", pprof.Index)
+	httpHandler.Get("/debug/pprof/heap", pprof.Index)
 	httpHandler.Get("/debug/pprof/cmdline", pprof.Cmdline)
 	httpHandler.Get("/debug/pprof/profile", pprof.Profile)
 	httpHandler.Get("/debug/pprof/symbol", pprof.Symbol)

@@ -5,6 +5,9 @@ import (
 	"net/http"
 )
 
+// Version
+var Version string = "1.0.1"
+
 // Server 服务结构
 type Server struct {
 	// Host 服务Host

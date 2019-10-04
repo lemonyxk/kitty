@@ -2,6 +2,12 @@ github.com/Lemo-yxk/go-watch v0.0.0-20190926034102-e6f2fe2a9e51 h1:wq2YWJA0IuVDs
 github.com/Lemo-yxk/go-watch v0.0.0-20190926034102-e6f2fe2a9e51/go.mod h1:BDkdfD3SSLTNMZoihQqZ18U9IN9ajHNH6ZSkYK015E8=
 github.com/Lemo-yxk/tire v0.0.0-20190924080400-ca6e4a17ec7e h1:Cx9axMeUFS4pEseq3SVk5JZc470MttVh4lguElEx0X4=
 github.com/Lemo-yxk/tire v0.0.0-20190924080400-ca6e4a17ec7e/go.mod h1:7gK7eQqHZfYtaL7mOy6VwngkpYT7kS3kQz07A/vwC40=
+github.com/Lemo-yxk/tire v0.0.0-20191004074341-a8b8846f70dd h1:ScVSOzmOw1yhwrRwuwSFPOeRCxKMm90jOSddMm0tnoI=
+github.com/Lemo-yxk/tire v0.0.0-20191004074341-a8b8846f70dd/go.mod h1:7gK7eQqHZfYtaL7mOy6VwngkpYT7kS3kQz07A/vwC40=
+github.com/Lemo-yxk/tire v0.0.0-20191004074609-d8f84c248e1b h1:ist4sfQdbjwPkPzs+/QpY07hd/m3TTUKfgJt1n8Bb50=
+github.com/Lemo-yxk/tire v0.0.0-20191004074609-d8f84c248e1b/go.mod h1:7gK7eQqHZfYtaL7mOy6VwngkpYT7kS3kQz07A/vwC40=
+github.com/Lemo-yxk/tire v0.0.0-20191004100557-5bef625ebbce h1:TOGqRUVnJUGOelpn9tjaTDvfA8Xq3zSu8IL13FbbZaU=
+github.com/Lemo-yxk/tire v0.0.0-20191004100557-5bef625ebbce/go.mod h1:7gK7eQqHZfYtaL7mOy6VwngkpYT7kS3kQz07A/vwC40=
 github.com/Lemo-yxk/ws v0.0.0-20190925113501-e77abfbb1d9a h1:BGfZjoKdrR3FGtndjPIZS71xMPTwHQ2qdnBJcHOX6d8=
 github.com/Lemo-yxk/ws v0.0.0-20190925113501-e77abfbb1d9a/go.mod h1:MaPIOwfPWDd+dngUTdx92e6frqtPRoGBZvPbR8msDnc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

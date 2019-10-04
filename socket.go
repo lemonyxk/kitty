@@ -341,9 +341,9 @@ func (socket *Socket) Init() {
 
 	upgrade = websocket.Upgrader{
 		HandshakeTimeout: time.Duration(socket.HandshakeTimeout) * time.Second,
-		// ReadBufferSize:   socket.ReadBufferSize,
-		// WriteBufferSize:  socket.WriteBufferSize,
-		CheckOrigin: socket.CheckOrigin,
+		ReadBufferSize:   socket.ReadBufferSize,
+		WriteBufferSize:  socket.WriteBufferSize,
+		CheckOrigin:      socket.CheckOrigin,
 	}
 
 	// 连接

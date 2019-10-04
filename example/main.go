@@ -54,11 +54,13 @@ func main() {
 	}
 
 	httpHandler.Get("/debug/pprof/", pprof.Index)
-	httpHandler.Get("/debug/pprof/heap", pprof.Index)
+	httpHandler.Get("/debug/pprof/:tip", pprof.Index)
 	httpHandler.Get("/debug/pprof/cmdline", pprof.Cmdline)
 	httpHandler.Get("/debug/pprof/profile", pprof.Profile)
 	httpHandler.Get("/debug/pprof/symbol", pprof.Symbol)
 	httpHandler.Get("/debug/pprof/trace", pprof.Trace)
+
+	log.Println(httpHandler.Router.GetValue([]byte("/debug/pprof/heap")))
 
 	httpHandler.Group("/:hello", func() {
 		httpHandler.Get("/:12", before, after, func(t *lemo.Stream) func() *lemo.Error {

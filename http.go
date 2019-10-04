@@ -86,8 +86,6 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 		h.Router = new(tire.Tire)
 	}
 
-	var hba = &Hba{}
-
 	var streamFunction StreamFunction
 	var httpFunction HttpFunction
 	var before []Before
@@ -138,6 +136,8 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 		println(m, path, "Stream function and Http function are both exists")
 		return
 	}
+
+	var hba = &Hba{}
 
 	hba.StreamFunction = streamFunction
 	hba.HttpFunction = httpFunction
@@ -201,14 +201,61 @@ func (h *Http) GetRoute(method string, path string) *tire.Tire {
 
 	return t
 
-	// handle, p, tsr := h.Router.getValue(path)
-	//
-	// if handle.Method != m {
-	// 	return nil, nil, false
-	// }
-	//
-	// return handle, p, tsr
+}
 
+func (h *Http) handle(w http.ResponseWriter, r *http.Request) {
+
+	// Get the router
+	node := h.GetRoute(r.Method, r.URL.Path)
+	if node == nil {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write(nil)
+		return
+	}
+
+	var hba = node.Data.(*Hba)
+
+	// Get the middleware
+	var context interface{}
+	var tool Stream
+	var params = new(Params)
+	params.Keys = node.Keys
+	params.Values = node.ParseParams(hba.Path)
+
+	tool.rs = rs{w, r, context, params, nil, nil, nil}
+
+	for _, before := range hba.Before {
+		context, err := before(&tool)
+		if err != nil {
+			if h.OnError != nil {
+				h.OnError(err)
+			}
+			return
+		}
+		tool.Context = context
+	}
+
+	if hba.StreamFunction != nil {
+		err := hba.StreamFunction(&tool)
+		if err != nil {
+			if h.OnError != nil {
+				h.OnError(err)
+			}
+			return
+		}
+	} else {
+		hba.HttpFunction(tool.Response, tool.Request)
+	}
+
+	for _, after := range hba.After {
+		err := after(&tool)
+		if err != nil {
+			if h.OnError != nil {
+				h.OnError(err)
+			}
+			return
+		}
+	}
 }
 
 func (h *Http) Get(path string, v ...interface{}) {

@@ -34,6 +34,8 @@ var connPush chan FteMessage
 
 var connBack chan error
 
+var upgrade websocket.Upgrader
+
 type M map[string]interface{}
 
 type WebSocketServerFunction func(conn *Connection, fte Fte, msg []byte)
@@ -79,6 +81,7 @@ type Socket struct {
 	WriteBufferSize   int
 	WaitQueueSize     int
 	CheckOrigin       func(r *http.Request) bool
+	Path              string
 
 	Before func(conn *Connection, fte Fte, msg []byte) error
 	After  func(conn *Connection, fte Fte, msg []byte) error
@@ -282,19 +285,7 @@ func (socket *Socket) GetConnectionsCount() uint32 {
 	return socket.count
 }
 
-func (socket *Socket) CatchError() {
-	if err := recover(); err != nil {
-		if socket.OnError != nil {
-			go socket.OnError(NewErrorFromDeep(err, 2))
-		}
-	}
-}
-
-// WebSocket 默认设置
-func WebSocket(socket *Socket) http.HandlerFunc {
-
-	defer socket.CatchError()
-
+func (socket *Socket) Init() {
 	if socket.TsProto == 0 {
 		socket.TsProto = Json
 	}
@@ -311,12 +302,13 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		socket.HandshakeTimeout = 2
 	}
 
+	// must be 4096 or the memory will leak
 	if socket.ReadBufferSize == 0 {
-		socket.ReadBufferSize = 2 * 1024 * 1024
+		socket.ReadBufferSize = 4096
 	}
-
+	// must be 4096 or the memory will leak
 	if socket.WriteBufferSize == 0 {
-		socket.WriteBufferSize = 2 * 1024 * 1024
+		socket.WriteBufferSize = 4096
 	}
 
 	if socket.WaitQueueSize == 0 {
@@ -347,7 +339,7 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		}
 	}
 
-	var upgrade = &websocket.Upgrader{
+	upgrade = websocket.Upgrader{
 		HandshakeTimeout: time.Duration(socket.HandshakeTimeout) * time.Second,
 		ReadBufferSize:   socket.ReadBufferSize,
 		WriteBufferSize:  socket.WriteBufferSize,
@@ -391,73 +383,84 @@ func WebSocket(socket *Socket) http.HandlerFunc {
 		}
 	}()
 
-	var handler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
+}
 
-		// 升级协议
-		conn, err := upgrade.Upgrade(w, r, nil)
+func (socket *Socket) catchError() {
+	if err := recover(); err != nil {
+		socket.OnError(NewErrorFromDeep(err, 2))
+	}
+}
 
-		// 错误处理
-		if err != nil {
-			go socket.OnError(NewError(err))
-			return
-		}
+func (socket *Socket) upgrade(w http.ResponseWriter, r *http.Request) {
 
-		// 设置PING处理函数
-		conn.SetPingHandler(func(status string) error {
-			err := conn.WriteMessage(PongMessage, nil)
-			err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
-			return err
-		})
+	defer socket.catchError()
 
-		connection := &Connection{
-			Conn:     conn,
-			socket:   socket,
-			Response: w,
-			Request:  r,
-		}
+	// 升级协议
+	conn, err := upgrade.Upgrade(w, r, nil)
 
-		// 打开连接 记录
-		connOpen <- connection
-
-		// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
-		for {
-
-			// 重置心跳
-			err := conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
-			messageType, message, err := conn.ReadMessage()
-
-			// 关闭连接
-			if err != nil {
-				break
-			}
-
-			go func() {
-				// 处理消息
-				if socket.Before != nil {
-					if err := socket.Before(connection, Fte{Fd: connection.Fd, Type: messageType}, message); err != nil {
-						return
-					}
-				}
-
-				if socket.OnMessage != nil {
-					socket.OnMessage(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
-				}
-
-				if socket.WebSocketRouter != nil {
-					socket.router(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
-				}
-
-				if socket.After != nil {
-					_ = socket.After(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
-				}
-			}()
-
-		}
-
-		// 关闭连接 清理
-		_ = conn.Close()
-		connClose <- connection
+	// 错误处理
+	if err != nil {
+		go socket.OnError(NewError(err))
+		return
 	}
 
-	return handler
+	// 设置PING处理函数
+	conn.SetPingHandler(func(status string) error {
+		err := conn.WriteMessage(PongMessage, nil)
+		err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+		return err
+	})
+
+	connection := &Connection{
+		Conn:     conn,
+		socket:   socket,
+		Response: w,
+		Request:  r,
+	}
+
+	// 打开连接 记录
+	connOpen <- connection
+
+	// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
+	for {
+
+		// 重置心跳
+		err := conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+		messageType, message, err := conn.ReadMessage()
+
+		// 关闭连接
+		if err != nil {
+			break
+		}
+
+		go func() {
+			// 处理消息
+			if socket.Before != nil {
+				if err := socket.Before(connection, Fte{Fd: connection.Fd, Type: messageType}, message); err != nil {
+					go socket.OnError(NewError(err))
+					return
+				}
+			}
+
+			if socket.OnMessage != nil {
+				socket.OnMessage(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
+			}
+
+			if socket.WebSocketRouter != nil {
+				socket.router(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
+			}
+
+			if socket.After != nil {
+				if err := socket.After(connection, Fte{Fd: connection.Fd, Type: messageType}, message); err != nil {
+					go socket.OnError(NewError(err))
+					return
+				}
+			}
+		}()
+
+	}
+
+	// 关闭连接 清理
+	_ = conn.Close()
+	connClose <- connection
 }

@@ -204,7 +204,7 @@ func (c *Client) Connect() {
 		c.ReconnectInterval = 1
 	}
 
-	var dialer = &websocket.Dialer{
+	var dialer = websocket.Dialer{
 		HandshakeTimeout: time.Duration(c.HandshakeTimeout) * time.Second,
 		WriteBufferSize:  c.WriteBufferSize,
 		ReadBufferSize:   c.ReadBufferSize,

@@ -12,15 +12,16 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Fte struct {
-	Fd    uint32
+type MessagePackage struct {
 	Type  int
 	Event string
+	Msg   interface{}
 }
 
-type FteMessage struct {
-	Fte
-	Msg []byte
+type PushPackage struct {
+	Type int
+	FD   uint32
+	Msg  []byte
 }
 
 // 连接
@@ -30,7 +31,7 @@ var connOpen chan *Connection
 var connClose chan *Connection
 
 // 写入
-var connPush chan FteMessage
+var connPush chan *PushPackage
 
 var connBack chan error
 
@@ -38,7 +39,7 @@ var upgrade websocket.Upgrader
 
 type M map[string]interface{}
 
-type WebSocketServerFunction func(conn *Connection, fte Fte, msg []byte)
+type WebSocketServerFunction func(conn *Connection, msg *MessagePackage)
 
 // PingMessage PING
 const PingMessage int = websocket.PingMessage
@@ -70,7 +71,7 @@ type Socket struct {
 	count       uint32
 	connections sync.Map
 	OnClose     func(fd uint32)
-	OnMessage   func(conn *Connection, fte Fte, msg []byte)
+	OnMessage   func(conn *Connection, messageType int, msg []byte)
 	OnOpen      func(conn *Connection)
 	OnError     func(err func() *Error)
 
@@ -83,13 +84,13 @@ type Socket struct {
 	CheckOrigin       func(r *http.Request) bool
 	Path              string
 
-	Before func(conn *Connection, fte Fte, msg []byte) error
-	After  func(conn *Connection, fte Fte, msg []byte) error
+	Before func(conn *Connection, msg *MessagePackage) error
+	After  func(conn *Connection, msg *MessagePackage) error
 
 	WebSocketRouter map[string]WebSocketServerFunction
 
-	TsProto    int
-	IgnoreCase bool
+	TransportType int
+	IgnoreCase    bool
 }
 
 func (socket *Socket) CheckPath(p1 string, p2 string) bool {
@@ -113,12 +114,12 @@ func (conn *Connection) IP() (string, string, error) {
 	return net.SplitHostPort(conn.Request.RemoteAddr)
 }
 
-func (conn *Connection) Emit(fte Fte, msg interface{}) error {
-	return conn.socket.Emit(fte, msg)
+func (conn *Connection) Emit(fd uint32, msg *MessagePackage) error {
+	return conn.socket.Emit(fd, msg)
 }
 
-func (conn *Connection) EmitAll(fte Fte, msg interface{}) {
-	conn.socket.EmitAll(fte, msg)
+func (conn *Connection) EmitAll(msg *MessagePackage) {
+	conn.socket.EmitAll(msg)
 }
 
 func (conn *Connection) GetConnections() []*Connection {
@@ -145,71 +146,58 @@ func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 		messageType = TextMessage
 	}
 
-	connPush <- FteMessage{
-		Fte: Fte{Fd: fd, Event: "", Type: messageType},
-		Msg: msg,
+	connPush <- &PushPackage{
+		Type: messageType,
+		FD:   fd,
+		Msg:  msg,
 	}
 
 	return <-connBack
 }
 
 // Push Json 发送消息
-func (socket *Socket) Json(fte Fte, msg interface{}) error {
+func (socket *Socket) Json(fd uint32, messageType int, msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return socket.Push(fte.Fd, fte.Type, messageJson)
+	return socket.Push(fd, messageType, messageJson)
 }
 
-func (socket *Socket) ProtoBuf(fte Fte, msg interface{}) error {
+func (socket *Socket) ProtoBuf(fd uint32, messageType int, msg interface{}) error {
 	return nil
 }
 
-func (socket *Socket) EmitAll(fte Fte, msg interface{}) {
+func (socket *Socket) EmitAll(msg *MessagePackage) {
 	socket.connections.Range(func(key, value interface{}) bool {
-		fte.Fd = key.(uint32)
-		_ = value.(*Connection).Emit(fte, msg)
+		_ = value.(*Connection).Emit(key.(uint32), msg)
 		return true
 	})
 }
 
-func (socket *Socket) Emit(fte Fte, msg interface{}) error {
+func (socket *Socket) Emit(fd uint32, msg *MessagePackage) error {
 
-	if fte.Type == BinaryMessage {
-		if j, b := msg.([]byte); b {
-			return socket.Push(fte.Fd, fte.Type, j)
-		}
-
-		return fmt.Errorf("message type is bin that message must be []byte")
-	}
-
-	switch socket.TsProto {
+	switch socket.TransportType {
 	case Json:
-		return socket.jsonEmit(fte.Fd, fte.Type, fte.Event, msg)
+		return socket.jsonEmit(fd, msg)
 	case ProtoBuf:
-		return socket.protoBufEmit(fte.Fd, fte.Type, fte.Event, msg)
+		return socket.protoBufEmit(fd, msg)
 	}
 
-	return fmt.Errorf("unknown ts ptoto")
-
+	return fmt.Errorf("unknown Transport Type")
 }
 
-func (socket *Socket) protoBufEmit(fd uint32, messageType int, event string, msg interface{}) error {
+func (socket *Socket) protoBufEmit(fd uint32, msg *MessagePackage) error {
 	return nil
 }
 
-func (socket *Socket) jsonEmit(fd uint32, messageType int, event string, msg interface{}) error {
+func (socket *Socket) jsonEmit(fd uint32, msg *MessagePackage) error {
 
-	var messageJson = M{"event": event, "data": msg}
+	var messageJson = &M{"event": msg.Event, "data": msg.Msg}
 
-	if j, b := msg.([]byte); b {
-		messageJson["data"] = string(j)
-	}
-
-	return socket.Json(Fte{Fd: fd, Type: messageType, Event: event}, messageJson)
+	return socket.Json(fd, msg.Type, messageJson)
 
 }
 
@@ -286,8 +274,8 @@ func (socket *Socket) GetConnectionsCount() uint32 {
 }
 
 func (socket *Socket) Init() {
-	if socket.TsProto == 0 {
-		socket.TsProto = Json
+	if socket.TransportType == 0 {
+		socket.TransportType = Json
 	}
 
 	if socket.HeartBeatTimeout == 0 {
@@ -353,7 +341,7 @@ func (socket *Socket) Init() {
 	connClose = make(chan *Connection, socket.WaitQueueSize)
 
 	// 写入
-	connPush = make(chan FteMessage, socket.WaitQueueSize)
+	connPush = make(chan *PushPackage, socket.WaitQueueSize)
 
 	// 返回
 	connBack = make(chan error, socket.WaitQueueSize)
@@ -373,9 +361,9 @@ func (socket *Socket) Init() {
 				// 触发CLOSE事件
 				go socket.OnClose(fd)
 			case push := <-connPush:
-				var conn, ok = socket.connections.Load(push.Fd)
+				var conn, ok = socket.connections.Load(push.FD)
 				if !ok {
-					connBack <- fmt.Errorf("client %d is close", push.Fd)
+					connBack <- fmt.Errorf("client %d is close", push.FD)
 				} else {
 					connBack <- conn.(*Connection).Conn.WriteMessage(push.Type, push.Msg)
 				}
@@ -434,28 +422,41 @@ func (socket *Socket) upgrade(w http.ResponseWriter, r *http.Request) {
 		}
 
 		go func() {
-			// 处理消息
-			if socket.Before != nil {
-				if err := socket.Before(connection, Fte{Fd: connection.Fd, Type: messageType}, message); err != nil {
-					go socket.OnError(NewError(err))
-					return
-				}
-			}
 
 			if socket.OnMessage != nil {
-				socket.OnMessage(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
+				socket.OnMessage(connection, messageType, message)
 			}
 
 			if socket.WebSocketRouter != nil {
-				socket.router(connection, Fte{Fd: connection.Fd, Type: messageType}, message)
-			}
 
-			if socket.After != nil {
-				if err := socket.After(connection, Fte{Fd: connection.Fd, Type: messageType}, message); err != nil {
-					go socket.OnError(NewError(err))
+				if len(message) < 12 {
 					return
 				}
+
+				var event, data = ParseMessage(message)
+				event = strings.Replace(event, "\\", "", -1)
+
+				var msg = &MessagePackage{Type: messageType, Event: event, Msg: data}
+
+				// TODO
+				// should change router
+				if socket.Before != nil {
+					if err := socket.Before(connection, msg); err != nil {
+						go socket.OnError(NewError(err))
+						return
+					}
+				}
+
+				socket.router(connection, msg)
+
+				if socket.After != nil {
+					if err := socket.After(connection, msg); err != nil {
+						go socket.OnError(NewError(err))
+						return
+					}
+				}
 			}
+
 		}()
 
 	}

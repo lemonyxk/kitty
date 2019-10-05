@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
-type WebSocketClientFunction func(c *Client, fte Fte, message []byte)
+type WebSocketClientFunction func(c *Client, msg *MessagePackage)
 
 // Client 客户端
 type Client struct {
@@ -36,7 +37,7 @@ type Client struct {
 	// 消息处理
 	OnOpen    func(c *Client)
 	OnClose   func(c *Client)
-	OnMessage func(c *Client, fte Fte, message []byte)
+	OnMessage func(c *Client, messageType int, msg []byte)
 	OnError   func(err func() *Error)
 	Status    bool
 
@@ -50,35 +51,27 @@ type Client struct {
 }
 
 // Json 发送JSON字符
-func (c *Client) Json(fte Fte, msg interface{}) error {
+func (c *Client) Json(messageType int, msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return c.Push(fte.Type, messageJson)
+	return c.Push(messageType, messageJson)
 }
 
-func (c *Client) ProtoBuf(fte Fte, msg interface{}) error {
+func (c *Client) ProtoBuf(messageType int, msg interface{}) error {
 	return nil
 }
 
-func (c *Client) Emit(fte Fte, msg interface{}) error {
-
-	if fte.Type == BinaryMessage {
-		if j, b := msg.([]byte); b {
-			return c.Push(fte.Type, j)
-		}
-
-		return fmt.Errorf("message type is bin that message must be []byte")
-	}
+func (c *Client) Emit(msg *MessagePackage) error {
 
 	switch c.TsProto {
 	case Json:
-		return c.jsonEmit(fte.Type, fte.Event, msg)
+		return c.jsonEmit(msg.Type, msg.Event, msg.Msg)
 	case ProtoBuf:
-		return c.protoBufEmit(fte.Type, fte.Event, msg)
+		return c.protoBufEmit(msg.Type, msg.Event, msg.Msg)
 	}
 
 	return fmt.Errorf("unknown ts ptoto")
@@ -92,11 +85,7 @@ func (c *Client) jsonEmit(messageType int, event string, msg interface{}) error 
 
 	var messageJson = M{"event": event, "data": msg}
 
-	if j, b := msg.([]byte); b {
-		messageJson["data"] = string(j)
-	}
-
-	return c.Json(Fte{Type: messageType}, messageJson)
+	return c.Json(messageType, messageJson)
 }
 
 // Push 发送消息
@@ -263,12 +252,23 @@ func (c *Client) Connect() {
 			}
 
 			go func() {
+
 				if c.OnMessage != nil {
-					c.OnMessage(c, Fte{Type: messageType}, message)
+					c.OnMessage(c, messageType, message)
 				}
 
 				if c.WebSocketRouter != nil {
-					c.router(c, Fte{Type: messageType}, message)
+
+					if len(message) < 12 {
+						return
+					}
+
+					var event, data = ParseMessage(message)
+					event = strings.Replace(event, "\\", "", -1)
+
+					var msg = &MessagePackage{Type: messageType, Event: event, Msg: data}
+
+					c.router(c, msg)
 				}
 			}()
 

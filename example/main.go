@@ -21,7 +21,7 @@ func main() {
 	// 	log.Println(ftd.Fd)
 	// })
 
-	socketHandler.OnMessage = func(conn *lemo.Connection, fte lemo.Fte, msg []byte) {
+	socketHandler.OnMessage = func(conn *lemo.Connection, messageType int, msg []byte) {
 		log.Println(string(msg))
 	}
 

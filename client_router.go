@@ -1,9 +1,5 @@
 package lemo
 
-import (
-	"strings"
-)
-
 var globalClientPath = ""
 
 func (c *Client) InitRouter() {
@@ -28,36 +24,26 @@ func (c *Client) GetRouter(path string) WebSocketClientFunction {
 	return nil
 }
 
-func (c *Client) router(client *Client, fte Fte, message []byte) {
+func (c *Client) router(client *Client, msg *MessagePackage) {
 
 	switch c.TsProto {
 	case Json:
-		c.jsonRouter(c, fte, message)
+		c.jsonRouter(c, msg)
 	case ProtoBuf:
-		c.protoBufRouter(c, fte, message)
+		c.protoBufRouter(c, msg)
 	}
 
 }
 
-func (c *Client) jsonRouter(client *Client, fte Fte, msg []byte) {
+func (c *Client) jsonRouter(client *Client, msg *MessagePackage) {
 
-	if len(msg) < 12 {
-		return
-	}
-
-	var event, data = ParseMessage(msg)
-
-	event = strings.Replace(event, "\\", "", -1)
-
-	var f = c.GetRouter(event)
+	var f = c.GetRouter(msg.Event)
 
 	if f == nil {
 		return
 	}
 
-	fte.Event = event
-
-	f(c, fte, data)
+	f(c, msg)
 }
 
-func (c *Client) protoBufRouter(client *Client, fte Fte, message []byte) {}
+func (c *Client) protoBufRouter(client *Client, msg *MessagePackage) {}

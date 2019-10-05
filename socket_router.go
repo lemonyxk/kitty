@@ -1,40 +1,159 @@
 package lemo
 
-import "strings"
+import (
+	"strings"
 
-var globalSocketPath = ""
+	"github.com/Lemo-yxk/tire"
+)
 
-func (socket *Socket) Group(path string, fn func()) {
-	globalSocketPath = path
-	fn()
-	globalSocketPath = ""
-}
+type WebSocketGroupFunction func()
 
-func (socket *Socket) SetRouter(path string, f WebSocketServerFunction) {
+type WebSocketFunction func(conn *Connection, msg *Receive) func() *Error
 
-	if socket.WebSocketRouter == nil {
-		socket.WebSocketRouter = make(map[string]WebSocketServerFunction)
-	}
+type WebSocketBefore func(conn *Connection, msg *MessagePackage) (Context, func() *Error)
 
-	path = globalSocketPath + path
+type WebSocketAfter func(conn *Connection, msg *MessagePackage) func() *Error
+
+var globalSocketPath string
+var globalSocketBefore []WebSocketBefore
+var globalSocketAfter []WebSocketAfter
+
+func (socket *Socket) FormatPath(path string) string {
 
 	if socket.IgnoreCase {
 		path = strings.ToLower(path)
 	}
 
-	socket.WebSocketRouter[path] = f
+	return path
 }
 
-func (socket *Socket) GetRouter(path string) WebSocketServerFunction {
+func (socket *Socket) Group(path string, v ...interface{}) {
 
-	if socket.WebSocketRouter == nil {
+	if v == nil {
+		panic("Group function length is 0")
+	}
+
+	var g WebSocketGroupFunction
+
+	for _, fn := range v {
+		switch fn.(type) {
+		case func():
+			g = fn.(func())
+		case []WebSocketBefore:
+			globalSocketBefore = fn.([]WebSocketBefore)
+		case []WebSocketAfter:
+			globalSocketAfter = fn.([]WebSocketAfter)
+		}
+	}
+
+	if g == nil {
+		panic("Group function is nil")
+	}
+
+	globalSocketPath = path
+	g()
+	globalSocketPath = ""
+	globalSocketBefore = nil
+	globalSocketAfter = nil
+}
+
+func (socket *Socket) SetRouter(path string, v ...interface{}) {
+
+	path = socket.FormatPath(globalSocketPath + path)
+
+	if socket.Router == nil {
+		socket.Router = new(tire.Tire)
+	}
+
+	var webSocketFunction WebSocketFunction
+	var before []WebSocketBefore
+	var after []WebSocketAfter
+
+	var passBefore = false
+	var passAfter = false
+	var forceBefore = false
+	var forceAfter = false
+
+	for _, mark := range v {
+		switch mark.(type) {
+		case uint8:
+			if mark.(uint8) == PassBefore {
+				passBefore = true
+			}
+			if mark.(uint8) == PassAfter {
+				passAfter = true
+			}
+			if mark.(uint8) == ForceBefore {
+				forceBefore = true
+			}
+			if mark.(uint8) == ForceAfter {
+				forceAfter = true
+			}
+		}
+	}
+
+	for _, fn := range v {
+		switch fn.(type) {
+		case func(conn *Connection, msg *Receive) func() *Error:
+			webSocketFunction = fn.(func(conn *Connection, msg *Receive) func() *Error)
+		case []WebSocketBefore:
+			before = fn.([]WebSocketBefore)
+		case []WebSocketAfter:
+			after = fn.([]WebSocketAfter)
+		}
+	}
+
+	if webSocketFunction == nil {
+		println(path, "WebSocket function is nil")
+		return
+	}
+
+	var wba = &WBA{}
+
+	wba.WebSocketFunction = webSocketFunction
+
+	wba.Before = append(globalSocketBefore, before...)
+	if passBefore {
+		wba.Before = nil
+	}
+	if forceBefore {
+		wba.Before = before
+	}
+
+	wba.After = append(globalSocketAfter, after...)
+	if passAfter {
+		wba.After = nil
+	}
+	if forceAfter {
+		wba.After = after
+	}
+
+	wba.Route = []byte(path)
+
+	socket.Router.Insert(path, wba)
+}
+
+func (socket *Socket) GetRoute(path string) *tire.Tire {
+
+	path = socket.FormatPath(path)
+
+	var pathB = []byte(path)
+
+	if socket.Router == nil {
 		return nil
 	}
 
-	if f, ok := socket.WebSocketRouter[path]; ok {
-		return f
+	var t = socket.Router.GetValue(pathB)
+
+	if t == nil {
+		return nil
 	}
-	return nil
+
+	var wba = t.Data.(*WBA)
+
+	wba.Path = pathB
+
+	return t
 }
 
 func (socket *Socket) router(conn *Connection, msg *MessagePackage) {
@@ -50,65 +169,60 @@ func (socket *Socket) router(conn *Connection, msg *MessagePackage) {
 
 func (socket *Socket) jsonRouter(conn *Connection, msg *MessagePackage) {
 
-	var f = socket.GetRouter(msg.Event)
-
-	if f == nil {
+	node := socket.GetRoute(msg.Event)
+	if node == nil {
 		return
 	}
 
-	f(conn, msg)
+	var wba = node.Data.(*WBA)
+
+	var params = new(Params)
+	params.Keys = node.Keys
+	params.Values = node.ParseParams(wba.Path)
+
+	var receive = &Receive{}
+	receive.Message = msg
+	receive.Context = nil
+	receive.Params = params
+
+	for _, before := range wba.Before {
+		context, err := before(conn, msg)
+		if err != nil {
+			if socket.OnError != nil {
+				socket.OnError(err)
+			}
+			return
+		}
+		receive.Context = context
+	}
+
+	err := wba.WebSocketFunction(conn, receive)
+	if err != nil {
+		if socket.OnError != nil {
+			socket.OnError(err)
+		}
+		return
+	}
+
+	for _, after := range wba.After {
+		err := after(conn, msg)
+		if err != nil {
+			if socket.OnError != nil {
+				socket.OnError(err)
+			}
+			return
+		}
+	}
 }
 
 func (socket *Socket) protoBufRouter(conn *Connection, msg *MessagePackage) {
 
 }
 
-func ParseMessage(bts []byte) (string, []byte) {
-
-	var s, e int
-
-	var l = len(bts)
-
-	// 正序
-	if bts[8] == 58 {
-
-		s = 8
-
-		for i, b := range bts {
-			if b == 44 {
-				e = i
-				break
-			}
-		}
-
-		if e == 0 {
-			return string(bts[s+2 : l-2]), nil
-		}
-
-		return string(bts[s+2 : e-1]), bts[e+8 : l-1]
-
-	} else {
-
-		for i := l - 1; i >= 0; i-- {
-
-			if bts[i] == 58 {
-				s = i
-			}
-
-			if bts[i] == 44 {
-				e = i
-				break
-			}
-		}
-
-		if s == 0 {
-			return "", nil
-		}
-
-		if e == 0 {
-			return string(bts[s+2 : l-2]), nil
-		}
-
-		return string(bts[s+2 : l-2]), bts[8:e]
-	}
+type WBA struct {
+	Path              []byte
+	Route             []byte
+	WebSocketFunction WebSocketFunction
+	Before            []WebSocketBefore
+	After             []WebSocketAfter
 }

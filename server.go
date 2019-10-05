@@ -27,6 +27,8 @@ type Handler struct {
 	httpHandler   *Http
 }
 
+type Context interface{}
+
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Match the websocket router

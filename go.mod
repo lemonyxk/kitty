@@ -7,6 +7,7 @@ require (
 	github.com/Lemo-yxk/tire v0.0.0-20191004100557-5bef625ebbce
 	github.com/Lemo-yxk/ws v0.0.0-20190925113501-e77abfbb1d9a
 	github.com/davecheney/gcvis v0.0.0-20190313012026-3e1bb5e04774 // indirect
+	github.com/golang/protobuf v1.3.2
 	github.com/gorilla/websocket v1.4.1
 	github.com/pkg/browser v0.0.0-20180916011732-0a3d74bf9ce4 // indirect
 	github.com/tidwall/gjson v1.2.1

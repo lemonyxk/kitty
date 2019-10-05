@@ -7,15 +7,15 @@ import (
 	"github.com/Lemo-yxk/tire"
 )
 
-type GroupFunction func()
+type HttpGroupFunction func()
 
 type StreamFunction func(t *Stream) func() *Error
 
 type HttpFunction func(w http.ResponseWriter, r *http.Request)
 
-type Before func(t *Stream) (interface{}, func() *Error)
+type HttpBefore func(t *Stream) (Context, func() *Error)
 
-type After func(t *Stream) func() *Error
+type HttpAfter func(t *Stream) func() *Error
 
 type ErrorFunction func(func() *Error)
 
@@ -25,19 +25,19 @@ type Http struct {
 	OnError    ErrorFunction
 }
 
-type Hba struct {
+type HBA struct {
 	Path           []byte
 	Route          []byte
 	Method         string
 	StreamFunction StreamFunction
 	HttpFunction   HttpFunction
-	Before         []Before
-	After          []After
+	Before         []HttpBefore
+	After          []HttpAfter
 }
 
 var globalHttpPath string
-var globalBefore []Before
-var globalAfter []After
+var globalHttpBefore []HttpBefore
+var globalHttpAfter []HttpAfter
 
 const (
 	PassBefore uint8 = 1 << iota
@@ -52,16 +52,16 @@ func (h *Http) Group(path string, v ...interface{}) {
 		panic("Group function length is 0")
 	}
 
-	var g GroupFunction
+	var g HttpGroupFunction
 
 	for _, fn := range v {
 		switch fn.(type) {
 		case func():
 			g = fn.(func())
-		case []Before:
-			globalBefore = fn.([]Before)
-		case []After:
-			globalAfter = fn.([]After)
+		case []HttpBefore:
+			globalHttpBefore = fn.([]HttpBefore)
+		case []HttpAfter:
+			globalHttpAfter = fn.([]HttpAfter)
 		}
 	}
 
@@ -72,8 +72,8 @@ func (h *Http) Group(path string, v ...interface{}) {
 	globalHttpPath = path
 	g()
 	globalHttpPath = ""
-	globalBefore = nil
-	globalAfter = nil
+	globalHttpBefore = nil
+	globalHttpAfter = nil
 }
 
 func (h *Http) SetRoute(method string, path string, v ...interface{}) {
@@ -88,8 +88,8 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 
 	var streamFunction StreamFunction
 	var httpFunction HttpFunction
-	var before []Before
-	var after []After
+	var before []HttpBefore
+	var after []HttpAfter
 
 	var passBefore = false
 	var passAfter = false
@@ -120,10 +120,10 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 			httpFunction = fn.(func(w http.ResponseWriter, r *http.Request))
 		case func(t *Stream) func() *Error:
 			streamFunction = fn.(func(t *Stream) func() *Error)
-		case []Before:
-			before = fn.([]Before)
-		case []After:
-			after = fn.([]After)
+		case []HttpBefore:
+			before = fn.([]HttpBefore)
+		case []HttpAfter:
+			after = fn.([]HttpAfter)
 		}
 	}
 
@@ -137,12 +137,12 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 		return
 	}
 
-	var hba = &Hba{}
+	var hba = &HBA{}
 
 	hba.StreamFunction = streamFunction
 	hba.HttpFunction = httpFunction
 
-	hba.Before = append(globalBefore, before...)
+	hba.Before = append(globalHttpBefore, before...)
 	if passBefore {
 		hba.Before = nil
 	}
@@ -150,7 +150,7 @@ func (h *Http) SetRoute(method string, path string, v ...interface{}) {
 		hba.Before = before
 	}
 
-	hba.After = append(globalAfter, after...)
+	hba.After = append(globalHttpAfter, after...)
 	if passAfter {
 		hba.After = nil
 	}
@@ -191,7 +191,7 @@ func (h *Http) GetRoute(method string, path string) *tire.Tire {
 		return nil
 	}
 
-	var hba = t.Data.(*Hba)
+	var hba = t.Data.(*HBA)
 
 	if hba.Method != m {
 		return nil
@@ -213,16 +213,15 @@ func (h *Http) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var hba = node.Data.(*Hba)
+	var hba = node.Data.(*HBA)
 
 	// Get the middleware
-	var context interface{}
 	var tool Stream
 	var params = new(Params)
 	params.Keys = node.Keys
 	params.Values = node.ParseParams(hba.Path)
 
-	tool.rs = rs{w, r, context, params, nil, nil, nil}
+	tool.rs = rs{w, r, nil, params, nil, nil, nil}
 
 	for _, before := range hba.Before {
 		context, err := before(&tool)

@@ -9,8 +9,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Lemo-yxk/tire"
 	"github.com/gorilla/websocket"
 )
+
+type Receive struct {
+	Context Context
+	Params  *Params
+	Message *MessagePackage
+}
 
 type MessagePackage struct {
 	Type  int
@@ -38,8 +45,6 @@ var connBack chan error
 var upgrade websocket.Upgrader
 
 type M map[string]interface{}
-
-type WebSocketServerFunction func(conn *Connection, msg *MessagePackage)
 
 // PingMessage PING
 const PingMessage int = websocket.PingMessage
@@ -84,10 +89,7 @@ type Socket struct {
 	CheckOrigin       func(r *http.Request) bool
 	Path              string
 
-	Before func(conn *Connection, msg *MessagePackage) error
-	After  func(conn *Connection, msg *MessagePackage) error
-
-	WebSocketRouter map[string]WebSocketServerFunction
+	Router *tire.Tire
 
 	TransportType int
 	IgnoreCase    bool
@@ -427,7 +429,7 @@ func (socket *Socket) upgrade(w http.ResponseWriter, r *http.Request) {
 				socket.OnMessage(connection, messageType, message)
 			}
 
-			if socket.WebSocketRouter != nil {
+			if socket.Router != nil {
 
 				if len(message) < 12 {
 					return
@@ -438,23 +440,7 @@ func (socket *Socket) upgrade(w http.ResponseWriter, r *http.Request) {
 
 				var msg = &MessagePackage{Type: messageType, Event: event, Msg: data}
 
-				// TODO
-				// should change router
-				if socket.Before != nil {
-					if err := socket.Before(connection, msg); err != nil {
-						go socket.OnError(NewError(err))
-						return
-					}
-				}
-
 				socket.router(connection, msg)
-
-				if socket.After != nil {
-					if err := socket.After(connection, msg); err != nil {
-						go socket.OnError(NewError(err))
-						return
-					}
-				}
 			}
 
 		}()

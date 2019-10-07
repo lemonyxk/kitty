@@ -62,6 +62,7 @@ func (s *Server) Start(socketHandler *Socket, httpHandler *Http) {
 
 // Start 启动
 func (s *Server) Run(handler http.Handler) {
+
 	switch s.Protocol {
 	case "TLS":
 		panic(http.ListenAndServeTLS(fmt.Sprintf("%s:%d", s.Host, s.Port), s.CertFile, s.KeyFile, handler))

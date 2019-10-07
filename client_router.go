@@ -3,7 +3,7 @@ package lemo
 var globalClientPath = ""
 
 func (c *Client) InitRouter() {
-	c.WebSocketRouter = make(map[string]WebSocketClientFunction)
+	c.Router = make(map[string]WebSocketClientFunction)
 }
 
 func (c *Client) Group(path string, fn func()) {
@@ -14,36 +14,27 @@ func (c *Client) Group(path string, fn func()) {
 
 func (c *Client) SetRouter(path string, f WebSocketClientFunction) {
 	path = globalClientPath + path
-	c.WebSocketRouter[path] = f
+	c.Router[path] = f
 }
 
 func (c *Client) GetRouter(path string) WebSocketClientFunction {
-	if f, ok := c.WebSocketRouter[path]; ok {
+	if f, ok := c.Router[path]; ok {
 		return f
 	}
 	return nil
 }
 
-func (c *Client) router(client *Client, msg *MessagePackage) {
+func (c *Client) router(client *Client, receive *ReceivePackage) {
 
-	switch c.TsProto {
-	case Json:
-		c.jsonRouter(c, msg)
-	case ProtoBuf:
-		c.protoBufRouter(c, msg)
-	}
-
-}
-
-func (c *Client) jsonRouter(client *Client, msg *MessagePackage) {
-
-	var f = c.GetRouter(msg.Event)
+	var f = c.GetRouter(receive.Event)
 
 	if f == nil {
 		return
 	}
 
-	f(c, msg)
-}
+	err := f(c, receive)
+	if err != nil {
+		c.OnError(err)
+	}
 
-func (c *Client) protoBufRouter(client *Client, msg *MessagePackage) {}
+}

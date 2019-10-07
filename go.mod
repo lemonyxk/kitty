@@ -13,4 +13,5 @@ require (
 	github.com/tidwall/gjson v1.2.1
 	golang.org/x/crypto v0.0.0-20191002192127-34f69633bfdc // indirect
 	golang.org/x/sys v0.0.0-20191002091554-b397fe3ad8ed // indirect
+	sourcegraph.com/sourcegraph/prototools v0.0.0-20170105072749-b54ce590735f // indirect
 )

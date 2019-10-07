@@ -10,9 +10,9 @@ type WebSocketGroupFunction func()
 
 type WebSocketFunction func(conn *Connection, msg *Receive) func() *Error
 
-type WebSocketBefore func(conn *Connection, msg *MessagePackage) (Context, func() *Error)
+type WebSocketBefore func(conn *Connection, msg *Receive) (Context, func() *Error)
 
-type WebSocketAfter func(conn *Connection, msg *MessagePackage) func() *Error
+type WebSocketAfter func(conn *Connection, msg *Receive) func() *Error
 
 var globalSocketPath string
 var globalSocketBefore []WebSocketBefore
@@ -156,18 +156,7 @@ func (socket *Socket) GetRoute(path string) *tire.Tire {
 	return t
 }
 
-func (socket *Socket) router(conn *Connection, msg *MessagePackage) {
-
-	switch socket.TransportType {
-	case Json:
-		socket.jsonRouter(conn, msg)
-	case ProtoBuf:
-		socket.protoBufRouter(conn, msg)
-	}
-
-}
-
-func (socket *Socket) jsonRouter(conn *Connection, msg *MessagePackage) {
+func (socket *Socket) router(conn *Connection, msg *ReceivePackage) {
 
 	node := socket.GetRoute(msg.Event)
 	if node == nil {
@@ -186,7 +175,7 @@ func (socket *Socket) jsonRouter(conn *Connection, msg *MessagePackage) {
 	receive.Params = params
 
 	for _, before := range wba.Before {
-		context, err := before(conn, msg)
+		context, err := before(conn, receive)
 		if err != nil {
 			if socket.OnError != nil {
 				socket.OnError(err)
@@ -205,7 +194,7 @@ func (socket *Socket) jsonRouter(conn *Connection, msg *MessagePackage) {
 	}
 
 	for _, after := range wba.After {
-		err := after(conn, msg)
+		err := after(conn, receive)
 		if err != nil {
 			if socket.OnError != nil {
 				socket.OnError(err)
@@ -213,9 +202,6 @@ func (socket *Socket) jsonRouter(conn *Connection, msg *MessagePackage) {
 			return
 		}
 	}
-}
-
-func (socket *Socket) protoBufRouter(conn *Connection, msg *MessagePackage) {
 
 }
 

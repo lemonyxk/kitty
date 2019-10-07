@@ -2,7 +2,8 @@
 syntax = "proto3";
 
 package awesomepackage;
-    
-message AwesomeMessage { 
+
+message AwesomeMessage {
     string awesomeField = 1; // becomes awesomeField 
+    string awesomeKey = 2; // becomes awesomeField
 }

@@ -4,14 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
 
-type WebSocketClientFunction func(c *Client, msg *MessagePackage)
+type WebSocketClientFunction func(c *Client, receive *ReceivePackage) func() *Error
 
 // Client 客户端
 type Client struct {
@@ -41,7 +41,7 @@ type Client struct {
 	OnError   func(err func() *Error)
 	Status    bool
 
-	WebSocketRouter map[string]WebSocketClientFunction
+	Router map[string]WebSocketClientFunction
 
 	mux sync.RWMutex
 
@@ -51,41 +51,69 @@ type Client struct {
 }
 
 // Json 发送JSON字符
-func (c *Client) Json(messageType int, msg interface{}) error {
+func (c *Client) Json(msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return c.Push(messageType, messageJson)
+	return c.Push(TextMessage, messageJson)
 }
 
-func (c *Client) ProtoBuf(messageType int, msg interface{}) error {
-	return nil
-}
+func (c *Client) ProtoBuf(msg proto.Message) error {
 
-func (c *Client) Emit(msg *MessagePackage) error {
-
-	switch c.TsProto {
-	case Json:
-		return c.jsonEmit(msg.Type, msg.Event, msg.Msg)
-	case ProtoBuf:
-		return c.protoBufEmit(msg.Type, msg.Event, msg.Msg)
+	messageProtoBuf, err := proto.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return fmt.Errorf("unknown ts ptoto")
+	return c.Push(BinaryMessage, messageProtoBuf)
+
 }
 
-func (c *Client) protoBufEmit(messageType int, event string, msg interface{}) error {
-	return nil
+func (c *Client) JsonEmit(msg JsonPackage) error {
+
+	var data = []byte{13, 10}
+
+	if msg.Event == "" {
+		msg.Event = "/"
+	}
+
+	data = append(data, byte(len(msg.Event)), Json)
+	data = append(data, []byte(msg.Event)...)
+
+	messageJson, err := json.Marshal(msg.Message)
+	if err != nil {
+		return fmt.Errorf("protobuf error: %v", err)
+	}
+
+	data = append(data, messageJson...)
+
+	return c.Push(TextMessage, data)
+
 }
 
-func (c *Client) jsonEmit(messageType int, event string, msg interface{}) error {
+func (c *Client) ProtoBufEmit(msg ProtoBufPackage) error {
 
-	var messageJson = M{"event": event, "data": msg}
+	var data = []byte{13, 10}
 
-	return c.Json(messageType, messageJson)
+	if msg.Event == "" {
+		msg.Event = "/"
+	}
+
+	data = append(data, byte(len(msg.Event)), ProtoBuf)
+	data = append(data, []byte(msg.Event)...)
+
+	messageProtoBuf, err := proto.Marshal(msg.Message)
+	if err != nil {
+		return fmt.Errorf("protobuf error: %v", err)
+	}
+
+	data = append(data, messageProtoBuf...)
+
+	return c.Push(BinaryMessage, data)
+
 }
 
 // Push 发送消息
@@ -135,10 +163,6 @@ func (c *Client) Connect() {
 	defer c.catchError()
 
 	var closeChan = make(chan bool)
-
-	if c.TsProto == 0 {
-		c.TsProto = Json
-	}
 
 	if c.Host == "" {
 		c.Host = "127.0.0.1"
@@ -253,22 +277,49 @@ func (c *Client) Connect() {
 
 			go func() {
 
-				if c.OnMessage != nil {
-					c.OnMessage(c, messageType, message)
+				var mLen = len(message)
+				var event string
+				var data []byte
+
+				// 空消息
+				if mLen == 0 {
+					return
 				}
 
-				if c.WebSocketRouter != nil {
+				//
+				if mLen < 4 {
+					if c.OnMessage != nil {
+						c.OnMessage(c, messageType, message)
+					}
+					return
+				}
 
-					if len(message) < 12 {
+				// not proto or json type
+				if message[0] != 13 || message[1] != 10 || (message[3] != Json && message[3] != ProtoBuf) {
+					if c.OnMessage != nil {
+						c.OnMessage(c, messageType, message)
+					}
+					return
+				}
+
+				if message[2] == 0 {
+					event = "/"
+					data = nil
+				} else {
+					if mLen < int(message[2])+4 {
+						if c.OnMessage != nil {
+							c.OnMessage(c, messageType, message)
+						}
 						return
 					}
+					event = string(message[4 : 4+message[2]])
+					data = message[message[2]+4:]
+				}
 
-					var event, data = ParseMessage(message)
-					event = strings.Replace(event, "\\", "", -1)
-
-					var msg = &MessagePackage{Type: messageType, Event: event, Msg: data}
-
-					c.router(c, msg)
+				if c.Router != nil {
+					var receivePackage = &ReceivePackage{MessageType: messageType, Event: event, Message: data, FormatType: message[3]}
+					c.router(c, receivePackage)
+					return
 				}
 			}()
 

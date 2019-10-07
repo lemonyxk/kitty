@@ -10,25 +10,37 @@ import (
 	"time"
 
 	"github.com/Lemo-yxk/tire"
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
 
 type Receive struct {
 	Context Context
 	Params  *Params
-	Message *MessagePackage
+	Message *ReceivePackage
 }
 
-type MessagePackage struct {
-	Type  int
-	Event string
-	Msg   interface{}
+type ReceivePackage struct {
+	MessageType int
+	Event       string
+	Message     []byte
+	FormatType  byte
+}
+
+type JsonPackage struct {
+	Event   string
+	Message interface{}
+}
+
+type ProtoBufPackage struct {
+	Event   string
+	Message proto.Message
 }
 
 type PushPackage struct {
-	Type int
-	FD   uint32
-	Msg  []byte
+	MessageType int
+	FD          uint32
+	Message     []byte
 }
 
 // 连接
@@ -58,8 +70,9 @@ const TextMessage int = websocket.TextMessage
 // BinaryMessage 二进制
 const BinaryMessage int = websocket.BinaryMessage
 
-const Json = 1
-const ProtoBuf = 2
+const Text byte = 0
+const Json byte = 1
+const ProtoBuf byte = 2
 
 // Connection Connection
 type Connection struct {
@@ -91,8 +104,7 @@ type Socket struct {
 
 	Router *tire.Tire
 
-	TransportType int
-	IgnoreCase    bool
+	IgnoreCase bool
 }
 
 func (socket *Socket) CheckPath(p1 string, p2 string) bool {
@@ -116,12 +128,32 @@ func (conn *Connection) IP() (string, string, error) {
 	return net.SplitHostPort(conn.Request.RemoteAddr)
 }
 
-func (conn *Connection) Emit(fd uint32, msg *MessagePackage) error {
-	return conn.socket.Emit(fd, msg)
+func (conn *Connection) Push(fd uint32, messageType int, msg []byte) error {
+	return conn.socket.Push(fd, messageType, msg)
 }
 
-func (conn *Connection) EmitAll(msg *MessagePackage) {
-	conn.socket.EmitAll(msg)
+func (conn *Connection) Json(fd uint32, msg interface{}) error {
+	return conn.socket.Json(fd, msg)
+}
+
+func (conn *Connection) ProtoBuf(fd uint32, msg proto.Message) error {
+	return conn.socket.ProtoBuf(fd, msg)
+}
+
+func (conn *Connection) JsonEmit(fd uint32, msg JsonPackage) error {
+	return conn.socket.JsonEmit(fd, msg)
+}
+
+func (conn *Connection) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
+	return conn.socket.ProtoBufEmit(fd, msg)
+}
+
+func (conn *Connection) JsonEmitAll(msg JsonPackage) {
+	conn.socket.JsonEmitAll(msg)
+}
+
+func (conn *Connection) ProtoBufEmitAll(msg ProtoBufPackage) {
+	conn.socket.ProtoBufEmitAll(msg)
 }
 
 func (conn *Connection) GetConnections() []*Connection {
@@ -149,57 +181,90 @@ func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 	}
 
 	connPush <- &PushPackage{
-		Type: messageType,
-		FD:   fd,
-		Msg:  msg,
+		MessageType: messageType,
+		FD:          fd,
+		Message:     msg,
 	}
 
 	return <-connBack
 }
 
 // Push Json 发送消息
-func (socket *Socket) Json(fd uint32, messageType int, msg interface{}) error {
+func (socket *Socket) Json(fd uint32, msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return socket.Push(fd, messageType, messageJson)
+	return socket.Push(fd, TextMessage, messageJson)
 }
 
-func (socket *Socket) ProtoBuf(fd uint32, messageType int, msg interface{}) error {
-	return nil
+func (socket *Socket) ProtoBuf(fd uint32, msg proto.Message) error {
+
+	messageProtoBuf, err := proto.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("protobuf error: %v", err)
+	}
+
+	return socket.Push(fd, BinaryMessage, messageProtoBuf)
 }
 
-func (socket *Socket) EmitAll(msg *MessagePackage) {
+func (socket *Socket) JsonEmitAll(msg JsonPackage) {
 	socket.connections.Range(func(key, value interface{}) bool {
-		_ = value.(*Connection).Emit(key.(uint32), msg)
+		_ = socket.JsonEmit(key.(uint32), msg)
 		return true
 	})
 }
 
-func (socket *Socket) Emit(fd uint32, msg *MessagePackage) error {
+func (socket *Socket) ProtoBufEmitAll(msg ProtoBufPackage) {
+	socket.connections.Range(func(key, value interface{}) bool {
+		_ = socket.ProtoBufEmit(key.(uint32), msg)
+		return true
+	})
+}
 
-	switch socket.TransportType {
-	case Json:
-		return socket.jsonEmit(fd, msg)
-	case ProtoBuf:
-		return socket.protoBufEmit(fd, msg)
+func (socket *Socket) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
+
+	var data = []byte{13, 10}
+
+	if msg.Event == "" {
+		msg.Event = "/"
 	}
 
-	return fmt.Errorf("unknown Transport Type")
+	data = append(data, byte(len(msg.Event)), ProtoBuf)
+	data = append(data, []byte(msg.Event)...)
+
+	messageProtoBuf, err := proto.Marshal(msg.Message)
+	if err != nil {
+		return fmt.Errorf("protobuf error: %v", err)
+	}
+
+	data = append(data, messageProtoBuf...)
+
+	return socket.Push(fd, BinaryMessage, data)
+
 }
 
-func (socket *Socket) protoBufEmit(fd uint32, msg *MessagePackage) error {
-	return nil
-}
+func (socket *Socket) JsonEmit(fd uint32, msg JsonPackage) error {
 
-func (socket *Socket) jsonEmit(fd uint32, msg *MessagePackage) error {
+	var data = []byte{13, 10}
 
-	var messageJson = &M{"event": msg.Event, "data": msg.Msg}
+	if msg.Event == "" {
+		msg.Event = "/"
+	}
 
-	return socket.Json(fd, msg.Type, messageJson)
+	data = append(data, byte(len(msg.Event)), Json)
+	data = append(data, []byte(msg.Event)...)
+
+	messageProtoBuf, err := json.Marshal(msg.Message)
+	if err != nil {
+		return fmt.Errorf("protobuf error: %v", err)
+	}
+
+	data = append(data, messageProtoBuf...)
+
+	return socket.Push(fd, TextMessage, data)
 
 }
 
@@ -276,9 +341,6 @@ func (socket *Socket) GetConnectionsCount() uint32 {
 }
 
 func (socket *Socket) Init() {
-	if socket.TransportType == 0 {
-		socket.TransportType = Json
-	}
 
 	if socket.HeartBeatTimeout == 0 {
 		socket.HeartBeatTimeout = 30
@@ -367,7 +429,7 @@ func (socket *Socket) Init() {
 				if !ok {
 					connBack <- fmt.Errorf("client %d is close", push.FD)
 				} else {
-					connBack <- conn.(*Connection).Conn.WriteMessage(push.Type, push.Msg)
+					connBack <- conn.(*Connection).Conn.WriteMessage(push.MessageType, push.Message)
 				}
 			}
 		}
@@ -425,22 +487,49 @@ func (socket *Socket) upgrade(w http.ResponseWriter, r *http.Request) {
 
 		go func() {
 
-			if socket.OnMessage != nil {
-				socket.OnMessage(connection, messageType, message)
+			var mLen = len(message)
+			var event string
+			var data []byte
+
+			// 空消息
+			if mLen == 0 {
+				return
+			}
+
+			//
+			if mLen < 4 {
+				if socket.OnMessage != nil {
+					socket.OnMessage(connection, messageType, message)
+				}
+				return
+			}
+
+			// not proto or json type
+			if message[0] != 13 || message[1] != 10 || (message[3] != Json && message[3] != ProtoBuf) {
+				if socket.OnMessage != nil {
+					socket.OnMessage(connection, messageType, message)
+				}
+				return
+			}
+
+			if message[2] == 0 {
+				event = "/"
+				data = nil
+			} else {
+				if mLen < int(message[2])+4 {
+					if socket.OnMessage != nil {
+						socket.OnMessage(connection, messageType, message)
+					}
+					return
+				}
+				event = string(message[4 : 4+message[2]])
+				data = message[message[2]+4:]
 			}
 
 			if socket.Router != nil {
-
-				if len(message) < 12 {
-					return
-				}
-
-				var event, data = ParseMessage(message)
-				event = strings.Replace(event, "\\", "", -1)
-
-				var msg = &MessagePackage{Type: messageType, Event: event, Msg: data}
-
-				socket.router(connection, msg)
+				var receivePackage = &ReceivePackage{MessageType: messageType, Event: event, Message: data, FormatType: message[3]}
+				socket.router(connection, receivePackage)
+				return
 			}
 
 		}()

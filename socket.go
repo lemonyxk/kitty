@@ -257,6 +257,10 @@ func (socket *Socket) JsonEmit(fd uint32, msg JsonPackage) error {
 	data = append(data, byte(len(msg.Event)), Json)
 	data = append(data, []byte(msg.Event)...)
 
+	if mb, ok := msg.Message.([]byte); ok {
+		msg.Message = string(mb)
+	}
+
 	messageProtoBuf, err := json.Marshal(msg.Message)
 	if err != nil {
 		return fmt.Errorf("protobuf error: %v", err)

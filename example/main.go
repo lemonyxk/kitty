@@ -11,6 +11,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/Lemo-yxk/lemo"
+	"github.com/Lemo-yxk/lemo/logger"
 	awesomepackage "github.com/Lemo-yxk/lemo/protobuf-origin"
 )
 
@@ -55,7 +56,7 @@ func Server() {
 			return lemo.NewError(err)
 		}
 
-		log.Println(receive.Message.Event, receive.Message.MessageType, receive.Message.FormatType == lemo.ProtoBuf, awesome.AwesomeField, awesome.AwesomeKey)
+		logger.Log(receive.Message.Event, receive.Message.MessageType, receive.Message.FormatType == lemo.ProtoBuf, awesome.AwesomeField, awesome.AwesomeKey)
 		_ = conn.ProtoBufEmit(conn.Fd, lemo.ProtoBufPackage{Event: "/haha", Message: &awesomepackage.AwesomeMessage{AwesomeKey: "????", AwesomeField: "!!!!"}})
 		return nil
 	})
@@ -69,23 +70,23 @@ func Server() {
 		// err := proto.Unmarshal(msg[9:], awesome)
 		//
 		// if err != nil {
-		// 	log.Println("marshaling error: ", err)
+		// 	logger.Log("marshaling error: ", err)
 		// 	return
 		// }
 
-		log.Println(msg)
+		logger.Log(msg)
 	}
 
 	socketHandler.OnClose = func(fd uint32) {
-		log.Println(fd, "is close")
+		logger.Log(fd, "is close")
 	}
 
 	socketHandler.OnError = func(err func() *lemo.Error) {
-		log.Println(err())
+		logger.Log(err())
 	}
 
 	socketHandler.OnOpen = func(conn *lemo.Connection) {
-		log.Println(conn.Fd, "is open")
+		logger.Log(conn.Fd, "is open")
 	}
 
 	var httpHandler = &lemo.Http{}
@@ -127,7 +128,7 @@ func Server() {
 		if err == nil {
 			return
 		}
-		log.Println(err)
+		logger.Log(err)
 	}
 
 	server.Start(socketHandler, httpHandler)
@@ -147,29 +148,30 @@ func Client() {
 			return lemo.NewError(err)
 		}
 
-		log.Println(receive.Event, receive.MessageType, receive.FormatType == lemo.ProtoBuf, awesome.AwesomeField, awesome.AwesomeKey)
+		logger.Log(receive.Event, receive.MessageType, receive.FormatType == lemo.ProtoBuf, awesome.AwesomeField, awesome.AwesomeKey)
 
 		return nil
 	})
 
 	client.OnOpen = func(c *lemo.Client) {
-		log.Println("open")
+		logger.Log("open")
 
 		var data = &awesomepackage.AwesomeMessage{AwesomeField: "尼玛的", AwesomeKey: "他妈的"}
 
-		log.Println(c.ProtoBufEmit(lemo.ProtoBufPackage{Event: "/xixi", Message: data}))
+		logger.Log(c.ProtoBufEmit(lemo.ProtoBufPackage{Event: "/xixi", Message: data}))
+
 	}
 
 	client.OnMessage = func(c *lemo.Client, messageType int, msg []byte) {
-		log.Println(string(msg))
+		logger.Log(string(msg))
 	}
 
 	client.OnError = func(err func() *lemo.Error) {
-		log.Println(err())
+		logger.Err(err)
 	}
 
 	client.OnClose = func(c *lemo.Client) {
-		log.Println("close")
+		logger.Log("close")
 	}
 
 	client.Connect()

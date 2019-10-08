@@ -84,15 +84,14 @@ func (c *Client) JsonEmit(msg JsonPackage) error {
 	data = append(data, []byte(msg.Event)...)
 
 	if mb, ok := msg.Message.([]byte); ok {
-		msg.Message = string(mb)
+		data = append(data, mb...)
+	} else {
+		messageProtoBuf, err := json.Marshal(msg.Message)
+		if err != nil {
+			return fmt.Errorf("protobuf error: %v", err)
+		}
+		data = append(data, messageProtoBuf...)
 	}
-
-	messageJson, err := json.Marshal(msg.Message)
-	if err != nil {
-		return fmt.Errorf("protobuf error: %v", err)
-	}
-
-	data = append(data, messageJson...)
 
 	return c.Push(TextMessage, data)
 

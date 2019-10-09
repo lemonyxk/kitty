@@ -75,50 +75,30 @@ func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
 
 func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 
-	if msg.Event == "" {
-		msg.Event = "/"
-	}
-
-	var data = []byte{13, 10}
-
-	data = append(data, byte(len(msg.Event)))
-	data = append(data, Json)
-	data = append(data, []byte(msg.Event)...)
+	var data []byte
 
 	if mb, ok := msg.Message.([]byte); ok {
-		data = append(data, mb...)
+		data = mb
 	} else {
-		messageProtoBuf, err := json.Marshal(msg.Message)
+		messageJson, err := json.Marshal(msg.Message)
 		if err != nil {
 			return fmt.Errorf("protobuf error: %v", err)
 		}
-		data = append(data, messageProtoBuf...)
+		data = messageJson
 	}
 
-	return client.Push(TextMessage, data)
+	return client.Push(TextMessage, Pack([]byte(msg.Event), data, Json))
 
 }
 
 func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
-
-	if msg.Event == "" {
-		msg.Event = "/"
-	}
-
-	var data = []byte{13, 10}
-
-	data = append(data, byte(len(msg.Event)))
-	data = append(data, ProtoBuf)
-	data = append(data, []byte(msg.Event)...)
 
 	messageProtoBuf, err := proto.Marshal(msg.Message)
 	if err != nil {
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	data = append(data, messageProtoBuf...)
-
-	return client.Push(BinaryMessage, data)
+	return client.Push(BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf))
 
 }
 
@@ -281,49 +261,22 @@ func (client *WebSocketClient) Connect() {
 				break
 			}
 
+			if messageType == PongMessage || messageType == PingMessage {
+				break
+			}
+
 			go func() {
 
-				var mLen = len(message)
-				var event string
-				var data []byte
-
-				// 空消息
-				if mLen == 0 {
-					return
-				}
-
-				//
-				if mLen < 4 {
+				event, body := UnPack(message)
+				if event == nil {
 					if client.OnMessage != nil {
 						client.OnMessage(client, messageType, message)
 					}
 					return
-				}
-
-				// not proto or json type
-				if message[0] != 13 || message[1] != 10 || (message[3] != Json && message[3] != ProtoBuf) {
-					if client.OnMessage != nil {
-						client.OnMessage(client, messageType, message)
-					}
-					return
-				}
-
-				if message[2] == 0 {
-					event = "/"
-					data = nil
-				} else {
-					if mLen < int(message[2])+4 {
-						if client.OnMessage != nil {
-							client.OnMessage(client, messageType, message)
-						}
-						return
-					}
-					event = string(message[4 : 4+message[2]])
-					data = message[message[2]+4:]
 				}
 
 				if client.Router != nil {
-					var receivePackage = &ReceivePackage{MessageType: messageType, Event: event, Message: data, FormatType: message[3]}
+					var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(event), Message: body, FormatType: message[3]}
 					client.router(client, receivePackage)
 					return
 				}

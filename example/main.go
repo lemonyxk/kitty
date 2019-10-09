@@ -21,11 +21,13 @@ func init() {
 
 func main() {
 
+	// lemo.Socket()
+
 	go Server()
 
 	time.Sleep(time.Second)
 
-	Client()
+	go Client()
 
 	// 创建信号
 	signalChan := make(chan os.Signal, 1)

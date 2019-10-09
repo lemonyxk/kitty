@@ -70,10 +70,6 @@ const TextMessage int = websocket.TextMessage
 // BinaryMessage 二进制
 const BinaryMessage int = websocket.BinaryMessage
 
-const Text byte = 0
-const Json byte = 1
-const ProtoBuf byte = 2
-
 // Connection Connection
 type Connection struct {
 	Fd       uint32
@@ -226,50 +222,30 @@ func (socket *WebSocketServer) ProtoBufEmitAll(msg ProtoBufPackage) {
 
 func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
 
-	if msg.Event == "" {
-		msg.Event = "/"
-	}
-
-	var data = []byte{13, 10}
-
-	data = append(data, byte(len(msg.Event)))
-	data = append(data, ProtoBuf)
-	data = append(data, []byte(msg.Event)...)
-
 	messageProtoBuf, err := proto.Marshal(msg.Message)
 	if err != nil {
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	data = append(data, messageProtoBuf...)
-
-	return socket.Push(fd, BinaryMessage, data)
+	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf))
 
 }
 
 func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 
-	if msg.Event == "" {
-		msg.Event = "/"
-	}
-
-	var data = []byte{13, 10}
-
-	data = append(data, byte(len(msg.Event)))
-	data = append(data, Json)
-	data = append(data, []byte(msg.Event)...)
+	var data []byte
 
 	if mb, ok := msg.Message.([]byte); ok {
-		data = append(data, mb...)
+		data = mb
 	} else {
-		messageProtoBuf, err := json.Marshal(msg.Message)
+		messageJson, err := json.Marshal(msg.Message)
 		if err != nil {
 			return fmt.Errorf("protobuf error: %v", err)
 		}
-		data = append(data, messageProtoBuf...)
+		data = messageJson
 	}
 
-	return socket.Push(fd, TextMessage, data)
+	return socket.Push(fd, TextMessage, Pack([]byte(msg.Event), data, Json))
 
 }
 
@@ -492,47 +468,16 @@ func (socket *WebSocketServer) upgrade(w http.ResponseWriter, r *http.Request) {
 
 		go func() {
 
-			var mLen = len(message)
-			var event string
-			var data []byte
-
-			// 空消息
-			if mLen == 0 {
-				return
-			}
-
-			//
-			if mLen < 4 {
+			event, body := UnPack(message)
+			if event == nil {
 				if socket.OnMessage != nil {
 					socket.OnMessage(connection, messageType, message)
 				}
 				return
-			}
-
-			// not proto or json type
-			if message[0] != 13 || message[1] != 10 || (message[3] != Json && message[3] != ProtoBuf) {
-				if socket.OnMessage != nil {
-					socket.OnMessage(connection, messageType, message)
-				}
-				return
-			}
-
-			if message[2] == 0 {
-				event = "/"
-				data = nil
-			} else {
-				if mLen < int(message[2])+4 {
-					if socket.OnMessage != nil {
-						socket.OnMessage(connection, messageType, message)
-					}
-					return
-				}
-				event = string(message[4 : 4+message[2]])
-				data = message[message[2]+4:]
 			}
 
 			if socket.Router != nil {
-				var receivePackage = &ReceivePackage{MessageType: messageType, Event: event, Message: data, FormatType: message[3]}
+				var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(event), Message: body, FormatType: message[3]}
 				socket.router(connection, receivePackage)
 				return
 			}

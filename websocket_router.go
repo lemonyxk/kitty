@@ -6,19 +6,19 @@ import (
 	"github.com/Lemo-yxk/tire"
 )
 
-type WebSocketGroupFunction func()
+type WebSocketServerGroupFunction func()
 
-type WebSocketFunction func(conn *Connection, msg *Receive) func() *Error
+type WebSocketServerFunction func(conn *Connection, msg *Receive) func() *Error
 
-type WebSocketBefore func(conn *Connection, msg *Receive) (Context, func() *Error)
+type WebSocketServerBefore func(conn *Connection, msg *Receive) (Context, func() *Error)
 
-type WebSocketAfter func(conn *Connection, msg *Receive) func() *Error
+type WebSocketServerAfter func(conn *Connection, msg *Receive) func() *Error
 
-var globalSocketPath string
-var globalSocketBefore []WebSocketBefore
-var globalSocketAfter []WebSocketAfter
+var globalWebSocketServerPath string
+var globalWebSocketServerBefore []WebSocketServerBefore
+var globalWebSocketServerAfter []WebSocketServerAfter
 
-func (socket *Socket) FormatPath(path string) string {
+func (socket *WebSocketServer) FormatPath(path string) string {
 
 	if socket.IgnoreCase {
 		path = strings.ToLower(path)
@@ -27,22 +27,22 @@ func (socket *Socket) FormatPath(path string) string {
 	return path
 }
 
-func (socket *Socket) Group(path string, v ...interface{}) {
+func (socket *WebSocketServer) Group(path string, v ...interface{}) {
 
 	if v == nil {
 		panic("Group function length is 0")
 	}
 
-	var g WebSocketGroupFunction
+	var g WebSocketServerGroupFunction
 
 	for _, fn := range v {
 		switch fn.(type) {
 		case func():
 			g = fn.(func())
-		case []WebSocketBefore:
-			globalSocketBefore = fn.([]WebSocketBefore)
-		case []WebSocketAfter:
-			globalSocketAfter = fn.([]WebSocketAfter)
+		case []WebSocketServerBefore:
+			globalWebSocketServerBefore = fn.([]WebSocketServerBefore)
+		case []WebSocketServerAfter:
+			globalWebSocketServerAfter = fn.([]WebSocketServerAfter)
 		}
 	}
 
@@ -50,24 +50,24 @@ func (socket *Socket) Group(path string, v ...interface{}) {
 		panic("Group function is nil")
 	}
 
-	globalSocketPath = path
+	globalWebSocketServerPath = path
 	g()
-	globalSocketPath = ""
-	globalSocketBefore = nil
-	globalSocketAfter = nil
+	globalWebSocketServerPath = ""
+	globalWebSocketServerBefore = nil
+	globalWebSocketServerAfter = nil
 }
 
-func (socket *Socket) SetRouter(path string, v ...interface{}) {
+func (socket *WebSocketServer) SetRouter(path string, v ...interface{}) {
 
-	path = socket.FormatPath(globalSocketPath + path)
+	path = socket.FormatPath(globalWebSocketServerPath + path)
 
 	if socket.Router == nil {
 		socket.Router = new(tire.Tire)
 	}
 
-	var webSocketFunction WebSocketFunction
-	var before []WebSocketBefore
-	var after []WebSocketAfter
+	var webSocketServerFunction WebSocketServerFunction
+	var before []WebSocketServerBefore
+	var after []WebSocketServerAfter
 
 	var passBefore = false
 	var passAfter = false
@@ -95,24 +95,24 @@ func (socket *Socket) SetRouter(path string, v ...interface{}) {
 	for _, fn := range v {
 		switch fn.(type) {
 		case func(conn *Connection, msg *Receive) func() *Error:
-			webSocketFunction = fn.(func(conn *Connection, msg *Receive) func() *Error)
-		case []WebSocketBefore:
-			before = fn.([]WebSocketBefore)
-		case []WebSocketAfter:
-			after = fn.([]WebSocketAfter)
+			webSocketServerFunction = fn.(func(conn *Connection, msg *Receive) func() *Error)
+		case []WebSocketServerBefore:
+			before = fn.([]WebSocketServerBefore)
+		case []WebSocketServerAfter:
+			after = fn.([]WebSocketServerAfter)
 		}
 	}
 
-	if webSocketFunction == nil {
-		println(path, "WebSocket function is nil")
+	if webSocketServerFunction == nil {
+		println(path, "WebSocketServer function is nil")
 		return
 	}
 
 	var wba = &WBA{}
 
-	wba.WebSocketFunction = webSocketFunction
+	wba.WebSocketServerFunction = webSocketServerFunction
 
-	wba.Before = append(globalSocketBefore, before...)
+	wba.Before = append(globalWebSocketServerBefore, before...)
 	if passBefore {
 		wba.Before = nil
 	}
@@ -120,7 +120,7 @@ func (socket *Socket) SetRouter(path string, v ...interface{}) {
 		wba.Before = before
 	}
 
-	wba.After = append(globalSocketAfter, after...)
+	wba.After = append(globalWebSocketServerAfter, after...)
 	if passAfter {
 		wba.After = nil
 	}
@@ -133,7 +133,7 @@ func (socket *Socket) SetRouter(path string, v ...interface{}) {
 	socket.Router.Insert(path, wba)
 }
 
-func (socket *Socket) GetRoute(path string) *tire.Tire {
+func (socket *WebSocketServer) GetRoute(path string) *tire.Tire {
 
 	path = socket.FormatPath(path)
 
@@ -156,7 +156,7 @@ func (socket *Socket) GetRoute(path string) *tire.Tire {
 	return t
 }
 
-func (socket *Socket) router(conn *Connection, msg *ReceivePackage) {
+func (socket *WebSocketServer) router(conn *Connection, msg *ReceivePackage) {
 
 	node := socket.GetRoute(msg.Event)
 	if node == nil {
@@ -185,7 +185,7 @@ func (socket *Socket) router(conn *Connection, msg *ReceivePackage) {
 		receive.Context = context
 	}
 
-	err := wba.WebSocketFunction(conn, receive)
+	err := wba.WebSocketServerFunction(conn, receive)
 	if err != nil {
 		if socket.OnError != nil {
 			socket.OnError(err)
@@ -206,9 +206,9 @@ func (socket *Socket) router(conn *Connection, msg *ReceivePackage) {
 }
 
 type WBA struct {
-	Path              []byte
-	Route             []byte
-	WebSocketFunction WebSocketFunction
-	Before            []WebSocketBefore
-	After             []WebSocketAfter
+	Path                    []byte
+	Route                   []byte
+	WebSocketServerFunction WebSocketServerFunction
+	Before                  []WebSocketServerBefore
+	After                   []WebSocketServerAfter
 }

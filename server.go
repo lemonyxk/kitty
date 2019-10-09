@@ -23,7 +23,7 @@ type Server struct {
 }
 
 type Handler struct {
-	socketHandler *Socket
+	socketHandler *WebSocketServer
 	httpHandler   *Http
 }
 
@@ -48,8 +48,8 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// Start 启动 WebSocket
-func (s *Server) Start(socketHandler *Socket, httpHandler *Http) {
+// Start 启动 WebSocketServer
+func (s *Server) Start(socketHandler *WebSocketServer, httpHandler *Http) {
 	socketHandler.Init()
 
 	var handler = &Handler{

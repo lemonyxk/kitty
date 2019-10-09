@@ -39,7 +39,7 @@ func main() {
 func Server() {
 	var server = &lemo.Server{Host: "0.0.0.0", Port: 12345}
 
-	var socketHandler = &lemo.Socket{Path: "/"}
+	var socketHandler = &lemo.WebSocketServer{Path: "/"}
 
 	// var socketBefore = []lemo.WebSocketBefore{
 	// 	func(conn *lemo.Connection, msg *lemo.MessagePackage) (lemo.Context, func() *lemo.Error) {
@@ -135,25 +135,23 @@ func Server() {
 }
 
 func Client() {
-	var client = &lemo.Client{Host: "127.0.0.1", Port: 12345, Path: "/", HandshakeTimeout: 10, AutoHeartBeat: true}
+	var client = &lemo.WebSocketClient{Host: "127.0.0.1", Port: 12345, Path: "/", HandshakeTimeout: 10, AutoHeartBeat: true}
 
-	client.InitRouter()
-
-	client.SetRouter("/haha", func(c *lemo.Client, receive *lemo.ReceivePackage) func() *lemo.Error {
+	client.SetRouter("/haha", func(c *lemo.WebSocketClient, receive *lemo.Receive) func() *lemo.Error {
 
 		var awesome = &awesomepackage.AwesomeMessage{}
-		err := proto.Unmarshal(receive.Message, awesome)
+		err := proto.Unmarshal(receive.Message.Message, awesome)
 
 		if err != nil {
 			return lemo.NewError(err)
 		}
 
-		logger.Log(receive.Event, receive.MessageType, receive.FormatType == lemo.ProtoBuf, awesome.AwesomeField, awesome.AwesomeKey)
+		logger.Log(receive.Message.Event, receive.Message.MessageType, receive.Message.FormatType == lemo.ProtoBuf, awesome.AwesomeField, awesome.AwesomeKey)
 
 		return nil
 	})
 
-	client.OnOpen = func(c *lemo.Client) {
+	client.OnOpen = func(c *lemo.WebSocketClient) {
 		logger.Log("open")
 
 		var data = &awesomepackage.AwesomeMessage{AwesomeField: "尼玛的", AwesomeKey: "他妈的"}
@@ -162,7 +160,7 @@ func Client() {
 
 	}
 
-	client.OnMessage = func(c *lemo.Client, messageType int, msg []byte) {
+	client.OnMessage = func(c *lemo.WebSocketClient, messageType int, msg []byte) {
 		logger.Log(string(msg))
 	}
 
@@ -170,7 +168,7 @@ func Client() {
 		logger.Err(err)
 	}
 
-	client.OnClose = func(c *lemo.Client) {
+	client.OnClose = func(c *lemo.WebSocketClient) {
 		logger.Log("close")
 	}
 

@@ -78,13 +78,13 @@ const ProtoBuf byte = 2
 type Connection struct {
 	Fd       uint32
 	Conn     *websocket.Conn
-	socket   *Socket
+	socket   *WebSocketServer
 	Response http.ResponseWriter
 	Request  *http.Request
 }
 
-// Socket conn
-type Socket struct {
+// WebSocketServer conn
+type WebSocketServer struct {
 	Fd          uint32
 	count       uint32
 	connections sync.Map
@@ -107,7 +107,7 @@ type Socket struct {
 	IgnoreCase bool
 }
 
-func (socket *Socket) CheckPath(p1 string, p2 string) bool {
+func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
 	if socket.IgnoreCase {
 		p1 = strings.ToLower(p1)
 		p2 = strings.ToLower(p2)
@@ -160,7 +160,7 @@ func (conn *Connection) GetConnections() []*Connection {
 	return conn.socket.GetConnections()
 }
 
-func (conn *Connection) GetSocket() *Socket {
+func (conn *Connection) GetSocket() *WebSocketServer {
 	return conn.socket
 }
 
@@ -173,7 +173,7 @@ func (conn *Connection) GetConnection(fd uint32) (*Connection, bool) {
 }
 
 // Push 发送消息
-func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
+func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) error {
 
 	// 默认为文本
 	if messageType == 0 {
@@ -190,7 +190,7 @@ func (socket *Socket) Push(fd uint32, messageType int, msg []byte) error {
 }
 
 // Push Json 发送消息
-func (socket *Socket) Json(fd uint32, msg interface{}) error {
+func (socket *WebSocketServer) Json(fd uint32, msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
@@ -200,7 +200,7 @@ func (socket *Socket) Json(fd uint32, msg interface{}) error {
 	return socket.Push(fd, TextMessage, messageJson)
 }
 
-func (socket *Socket) ProtoBuf(fd uint32, msg proto.Message) error {
+func (socket *WebSocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
 
 	messageProtoBuf, err := proto.Marshal(msg)
 	if err != nil {
@@ -210,29 +210,30 @@ func (socket *Socket) ProtoBuf(fd uint32, msg proto.Message) error {
 	return socket.Push(fd, BinaryMessage, messageProtoBuf)
 }
 
-func (socket *Socket) JsonEmitAll(msg JsonPackage) {
+func (socket *WebSocketServer) JsonEmitAll(msg JsonPackage) {
 	socket.connections.Range(func(key, value interface{}) bool {
 		_ = socket.JsonEmit(key.(uint32), msg)
 		return true
 	})
 }
 
-func (socket *Socket) ProtoBufEmitAll(msg ProtoBufPackage) {
+func (socket *WebSocketServer) ProtoBufEmitAll(msg ProtoBufPackage) {
 	socket.connections.Range(func(key, value interface{}) bool {
 		_ = socket.ProtoBufEmit(key.(uint32), msg)
 		return true
 	})
 }
 
-func (socket *Socket) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
-
-	var data = []byte{13, 10}
+func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
 
 	if msg.Event == "" {
 		msg.Event = "/"
 	}
 
-	data = append(data, byte(len(msg.Event)), ProtoBuf)
+	var data = []byte{13, 10}
+
+	data = append(data, byte(len(msg.Event)))
+	data = append(data, ProtoBuf)
 	data = append(data, []byte(msg.Event)...)
 
 	messageProtoBuf, err := proto.Marshal(msg.Message)
@@ -246,15 +247,16 @@ func (socket *Socket) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
 
 }
 
-func (socket *Socket) JsonEmit(fd uint32, msg JsonPackage) error {
-
-	var data = []byte{13, 10}
+func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 
 	if msg.Event == "" {
 		msg.Event = "/"
 	}
 
-	data = append(data, byte(len(msg.Event)), Json)
+	var data = []byte{13, 10}
+
+	data = append(data, byte(len(msg.Event)))
+	data = append(data, Json)
 	data = append(data, []byte(msg.Event)...)
 
 	if mb, ok := msg.Message.([]byte); ok {
@@ -271,7 +273,7 @@ func (socket *Socket) JsonEmit(fd uint32, msg JsonPackage) error {
 
 }
 
-func (socket *Socket) addConnect(conn *Connection) {
+func (socket *WebSocketServer) addConnect(conn *Connection) {
 
 	// +1
 	socket.Fd++
@@ -315,11 +317,11 @@ func (socket *Socket) addConnect(conn *Connection) {
 
 }
 
-func (socket *Socket) delConnect(conn *Connection) {
+func (socket *WebSocketServer) delConnect(conn *Connection) {
 	socket.connections.Delete(conn.Fd)
 }
 
-func (socket *Socket) GetConnections() []*Connection {
+func (socket *WebSocketServer) GetConnections() []*Connection {
 
 	var connections []*Connection
 
@@ -331,7 +333,7 @@ func (socket *Socket) GetConnections() []*Connection {
 	return connections
 }
 
-func (socket *Socket) GetConnection(fd uint32) (*Connection, bool) {
+func (socket *WebSocketServer) GetConnection(fd uint32) (*Connection, bool) {
 	conn, ok := socket.connections.Load(fd)
 	if !ok {
 		return nil, false
@@ -339,11 +341,11 @@ func (socket *Socket) GetConnection(fd uint32) (*Connection, bool) {
 	return conn.(*Connection), true
 }
 
-func (socket *Socket) GetConnectionsCount() uint32 {
+func (socket *WebSocketServer) GetConnectionsCount() uint32 {
 	return socket.count
 }
 
-func (socket *Socket) Init() {
+func (socket *WebSocketServer) Init() {
 
 	if socket.HeartBeatTimeout == 0 {
 		socket.HeartBeatTimeout = 30
@@ -440,13 +442,13 @@ func (socket *Socket) Init() {
 
 }
 
-func (socket *Socket) catchError() {
+func (socket *WebSocketServer) catchError() {
 	if err := recover(); err != nil {
 		socket.OnError(NewErrorFromDeep(err, 2))
 	}
 }
 
-func (socket *Socket) upgrade(w http.ResponseWriter, r *http.Request) {
+func (socket *WebSocketServer) upgrade(w http.ResponseWriter, r *http.Request) {
 
 	defer socket.catchError()
 

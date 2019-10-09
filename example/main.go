@@ -58,8 +58,9 @@ func Server() {
 			return lemo.NewError(err)
 		}
 
-		logger.Log(receive.Message.Event, receive.Message.MessageType, receive.Message.FormatType == lemo.ProtoBuf, awesome.AwesomeField, awesome.AwesomeKey)
-		_ = conn.ProtoBufEmit(conn.Fd, lemo.ProtoBufPackage{Event: "/haha", Message: &awesomepackage.AwesomeMessage{AwesomeKey: "????", AwesomeField: "!!!!"}})
+		logger.Log(receive.Message.Event, receive.Message.MessageType, receive.Message.ProtoType == lemo.ProtoBuf, awesome.AwesomeField, awesome.AwesomeKey)
+		// _ = conn.JsonEmit(conn.Fd, lemo.JsonPackage{Event: "/haha", Message: "roland 这个傻吊"})
+		_ = conn.Json(conn.Fd, lemo.M{"key": "roland", "type": "people"})
 		return nil
 	})
 
@@ -141,14 +142,7 @@ func Client() {
 
 	client.SetRouter("/haha", func(c *lemo.WebSocketClient, receive *lemo.Receive) func() *lemo.Error {
 
-		var awesome = &awesomepackage.AwesomeMessage{}
-		err := proto.Unmarshal(receive.Message.Message, awesome)
-
-		if err != nil {
-			return lemo.NewError(err)
-		}
-
-		logger.Log(receive.Message.Event, receive.Message.MessageType, receive.Message.FormatType == lemo.ProtoBuf, awesome.AwesomeField, awesome.AwesomeKey)
+		logger.Log(receive.Message.Event, receive.Message.MessageType, receive.Message.ProtoType == lemo.Json, string(receive.Message.Message))
 
 		return nil
 	})

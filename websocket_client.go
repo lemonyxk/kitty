@@ -87,7 +87,7 @@ func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return client.Push(BinaryMessage, Pack([]byte(msg.Event), data, Json))
+	return client.Push(TextMessage, Pack([]byte(msg.Event), data, Json, TextMessage))
 
 }
 
@@ -98,7 +98,7 @@ func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return client.Push(BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf))
+	return client.Push(BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, BinaryMessage))
 
 }
 
@@ -262,7 +262,7 @@ func (client *WebSocketClient) Connect() {
 
 			go func() {
 
-				event, body := UnPack(message)
+				event, body, protoType := UnPack(message, messageType)
 				if event == nil {
 					if client.OnMessage != nil {
 						client.OnMessage(client, messageType, message)
@@ -271,7 +271,7 @@ func (client *WebSocketClient) Connect() {
 				}
 
 				if client.Router != nil {
-					var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(event), Message: body, FormatType: message[3]}
+					var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(event), Message: body, ProtoType: protoType}
 					client.router(client, receivePackage)
 					return
 				}

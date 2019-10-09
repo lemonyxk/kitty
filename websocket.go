@@ -24,7 +24,7 @@ type ReceivePackage struct {
 	MessageType int
 	Event       string
 	Message     []byte
-	FormatType  byte
+	ProtoType   byte
 }
 
 type JsonPackage struct {
@@ -222,7 +222,7 @@ func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) erro
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf))
+	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, BinaryMessage))
 
 }
 
@@ -240,7 +240,7 @@ func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), data, Json))
+	return socket.Push(fd, TextMessage, Pack([]byte(msg.Event), data, Json, TextMessage))
 
 }
 
@@ -463,7 +463,8 @@ func (socket *WebSocketServer) upgrade(w http.ResponseWriter, r *http.Request) {
 
 		go func() {
 
-			event, body := UnPack(message)
+			event, body, protoType := UnPack(message, messageType)
+
 			if event == nil {
 				if socket.OnMessage != nil {
 					socket.OnMessage(connection, messageType, message)
@@ -472,7 +473,7 @@ func (socket *WebSocketServer) upgrade(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if socket.Router != nil {
-				var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(event), Message: body, FormatType: message[3]}
+				var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(event), Message: body, ProtoType: protoType}
 				socket.router(connection, receivePackage)
 				return
 			}

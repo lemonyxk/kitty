@@ -171,11 +171,6 @@ func (conn *Connection) GetConnection(fd uint32) (*Connection, bool) {
 // Push 发送消息
 func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) error {
 
-	// 默认为文本
-	if messageType == 0 {
-		messageType = TextMessage
-	}
-
 	connPush <- &PushPackage{
 		MessageType: messageType,
 		FD:          fd,
@@ -245,7 +240,7 @@ func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return socket.Push(fd, TextMessage, Pack([]byte(msg.Event), data, Json))
+	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), data, Json))
 
 }
 

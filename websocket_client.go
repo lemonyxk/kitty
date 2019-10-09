@@ -87,7 +87,7 @@ func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return client.Push(TextMessage, Pack([]byte(msg.Event), data, Json))
+	return client.Push(BinaryMessage, Pack([]byte(msg.Event), data, Json))
 
 }
 
@@ -107,11 +107,6 @@ func (client *WebSocketClient) Push(messageType int, message []byte) error {
 
 	if client.Status == false {
 		return fmt.Errorf("client is close")
-	}
-
-	// 默认为文本
-	if messageType == 0 {
-		messageType = TextMessage
 	}
 
 	client.mux.Lock()

@@ -216,12 +216,11 @@ func (h *Http) handle(w http.ResponseWriter, r *http.Request) {
 	var hba = node.Data.(*HBA)
 
 	// Get the middleware
-	var tool Stream
 	var params = new(Params)
 	params.Keys = node.Keys
 	params.Values = node.ParseParams(hba.Path)
 
-	tool.rs = rs{w, r, nil, params, nil, nil, nil}
+	var tool = Stream{w, r, nil, params, nil, nil, nil}
 
 	for _, before := range hba.Before {
 		context, err := before(&tool)

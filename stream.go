@@ -14,22 +14,11 @@ import (
 )
 
 type Query struct {
-	params *map[string]string
+	params map[string]string
 }
 
 type Files struct {
-	files *map[string][]*multipart.FileHeader
-}
-
-type rs struct {
-	Response http.ResponseWriter
-	Request  *http.Request
-	Context  interface{}
-	Params   *Params
-	Query    *Query
-	Files    *Files
-
-	url *URL
+	files map[string][]*multipart.FileHeader
 }
 
 type Params struct {
@@ -47,14 +36,21 @@ func (ps *Params) ByName(name string) string {
 }
 
 type Stream struct {
-	rs
+	Response http.ResponseWriter
+	Request  *http.Request
+	Context  interface{}
+	Params   *Params
+	Query    *Query
+	Files    *Files
+
+	url *URL
 }
 
-type value struct {
+type Value struct {
 	v string
 }
 
-func (v *value) Int() int {
+func (v *Value) Int() int {
 	r, err := strconv.Atoi(v.v)
 	if err != nil {
 		return 0
@@ -63,7 +59,7 @@ func (v *value) Int() int {
 	return r
 }
 
-func (v *value) Float64() float64 {
+func (v *Value) Float64() float64 {
 	r, err := strconv.ParseFloat(v.v, 64)
 	if err != nil {
 		return 0
@@ -72,7 +68,7 @@ func (v *value) Float64() float64 {
 	return r
 }
 
-func (v *value) String() string {
+func (v *Value) String() string {
 	return v.v
 }
 
@@ -131,7 +127,7 @@ func (stream *Stream) ParseJson() *Query {
 
 	var query = new(Query)
 
-	query.params = &data
+	query.params = data
 
 	return query
 }
@@ -151,7 +147,7 @@ func (stream *Stream) ParseFiles() *Files {
 
 	var file = new(Files)
 
-	file.files = &data
+	file.files = data
 
 	stream.Files = file
 
@@ -179,7 +175,7 @@ func (stream *Stream) ParseMultipart() *Query {
 
 	var query = new(Query)
 
-	query.params = &data
+	query.params = data
 
 	return query
 }
@@ -205,7 +201,7 @@ func (stream *Stream) ParseQuery() *Query {
 
 	var query = new(Query)
 
-	query.params = &data
+	query.params = data
 
 	return query
 }
@@ -231,7 +227,7 @@ func (stream *Stream) ParseForm() *Query {
 
 	var query = new(Query)
 
-	query.params = &data
+	query.params = data
 
 	return query
 }
@@ -260,6 +256,7 @@ func (stream *Stream) AutoParse() *Query {
 
 	if query == nil {
 		query = new(Query)
+		query.params = make(map[string]string)
 	}
 
 	stream.Query = query
@@ -313,7 +310,7 @@ func (stream *Stream) Url() *URL {
 }
 
 func (q *Query) Has(key string) bool {
-	_, ok := (*q.params)[key]
+	_, ok := q.params[key]
 	return ok
 }
 
@@ -329,11 +326,11 @@ func (q *Query) IsFloatEmpty(key string) bool {
 	return q.Get(key).Float64() == 0.0
 }
 
-func (q *Query) Get(key string) *value {
+func (q *Query) Get(key string) *Value {
 
-	var val = &value{}
+	var val = &Value{}
 
-	if v, ok := (*q.params)[key]; ok {
+	if v, ok := q.params[key]; ok {
 		val.v = v
 		return val
 	}
@@ -341,7 +338,7 @@ func (q *Query) Get(key string) *value {
 	return val
 }
 
-func (q *Query) All() *map[string]string {
+func (q *Query) All() map[string]string {
 	return q.params
 }
 
@@ -349,7 +346,7 @@ func (q *Query) String() string {
 
 	var buff bytes.Buffer
 
-	for key, value := range *q.params {
+	for key, value := range q.params {
 
 		buff.WriteString(key)
 		buff.WriteString(":")

@@ -10,12 +10,14 @@
 
 package lemo
 
-// 0 message type
-// 1 route len
-// 2 body len
-// 3 body len
+// 0 version
+// 1 message type
+// 2 proto type
+// 3 route len
 // 4 body len
 // 5 body len
+// 6 body len
+// 7 body len
 
 const Text byte = 1
 const Json byte = 2
@@ -33,58 +35,71 @@ func Pack(route []byte, body []byte, protoType byte, messageType int) []byte {
 	return nil
 }
 
-func UnPack(message []byte, messageType int) ([]byte, []byte, byte) {
-
-	if messageType != TextMessage && messageType != BinaryMessage {
-		return nil, nil, 0
-	}
+func UnPack(message []byte) (version byte, messageType byte, protoType byte, route []byte, body []byte) {
 
 	var mLen = len(message)
 
-	if mLen < 6 {
-		return nil, nil, 0
+	if mLen < 8 {
+		return
 	}
 
-	if message[0] != Json && message[0] != ProtoBuf && message[0] != Text {
-		return nil, nil, 0
+	// version
+	if message[0] != 'V' {
+		return
 	}
 
-	if messageType == TextMessage {
-		if int(message[1]+(message[5]|message[4]<<7|message[3]<<14|message[2]<<21)) != mLen-6 {
-			return nil, nil, 0
+	// message type
+	if message[1] != byte(TextMessage) && message[1] != byte(BinaryMessage) {
+		return
+	}
+
+	// proto type
+	if message[2] != Json && message[2] != ProtoBuf && message[2] != Text {
+		return
+	}
+
+	if message[1] == byte(TextMessage) {
+		if int(message[3]+(message[7]|message[6]<<7|message[5]<<14|message[4]<<21)) != mLen-8 {
+			return
 		}
 	} else {
-		if int(message[1]+(message[5]|message[4]<<8|message[3]<<16|message[2]<<24)) != mLen-6 {
-			return nil, nil, 0
+		if int(message[3]+(message[7]|message[6]<<8|message[5]<<16|message[4]<<24)) != mLen-8 {
+			return
 		}
 	}
 
-	return message[6 : 6+message[1]], message[6+message[1]:], message[0]
+	return message[0], message[1], message[2], message[8 : 8+message[3]], message[8+message[3]:]
 }
 
 func packText(route []byte, body []byte, protoType byte) []byte {
 
 	var bl = len(body)
 
-	// tips
+	// data struct
 	var data []byte
 
+	// 0 version
+	data = append(data, 'V')
+
 	// 1 message type
+	data = append(data, byte(TextMessage))
+
+	// 2 proto type
 	data = append(data, protoType)
 
-	// 2 route len
+	// 3 route len
 	data = append(data, byte(len(route)&0x007f))
 
-	// 3 body len
+	// 4 body len
 	data = append(data, byte(bl>>21&0x007f))
 
-	// 4 body len
+	// 5 body len
 	data = append(data, byte(bl>>14&0x007f))
 
-	// 5 body len
+	// 6 body len
 	data = append(data, byte(bl>>7&0x007f))
 
-	// 6 body len
+	// 7 body len
 	data = append(data, byte(bl&0x007f))
 
 	data = append(data, route...)
@@ -98,25 +113,31 @@ func packBin(route []byte, body []byte, protoType byte) []byte {
 
 	var bl = len(body)
 
-	// tips
+	// data struct
 	var data []byte
 
+	// 0 version
+	data = append(data, 'V')
+
 	// 1 message type
+	data = append(data, byte(BinaryMessage))
+
+	// 2 proto type
 	data = append(data, protoType)
 
-	// 2 route len
+	// 3 route len
 	data = append(data, byte(len(route)&0x00ff))
 
-	// 3 body len
+	// 4 body len
 	data = append(data, byte(bl>>28&0x00ff))
 
-	// 4 body len
+	// 5 body len
 	data = append(data, byte(bl>>16&0x00ff))
 
-	// 5 body len
+	// 6 body len
 	data = append(data, byte(bl>>8&0x00ff))
 
-	// 6 body len
+	// 7 body len
 	data = append(data, byte(bl&0x00ff))
 
 	data = append(data, route...)

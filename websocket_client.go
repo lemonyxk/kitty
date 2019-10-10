@@ -262,8 +262,9 @@ func (client *WebSocketClient) Connect() {
 
 			go func() {
 
-				event, body, protoType := UnPack(message, messageType)
-				if event == nil {
+				_, _, protoType, route, body := UnPack(message)
+
+				if route == nil {
 					if client.OnMessage != nil {
 						client.OnMessage(client, messageType, message)
 					}
@@ -271,7 +272,7 @@ func (client *WebSocketClient) Connect() {
 				}
 
 				if client.Router != nil {
-					var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(event), Message: body, ProtoType: protoType}
+					var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
 					client.router(client, receivePackage)
 					return
 				}

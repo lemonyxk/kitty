@@ -77,7 +77,7 @@ func Server() {
 		// 	return
 		// }
 
-		logger.Log(msg)
+		logger.Log(string(msg))
 	}
 
 	socketHandler.OnClose = func(fd uint32) {

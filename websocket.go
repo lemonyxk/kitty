@@ -463,9 +463,9 @@ func (socket *WebSocketServer) upgrade(w http.ResponseWriter, r *http.Request) {
 
 		go func() {
 
-			event, body, protoType := UnPack(message, messageType)
+			_, _, protoType, route, body := UnPack(message)
 
-			if event == nil {
+			if route == nil {
 				if socket.OnMessage != nil {
 					socket.OnMessage(connection, messageType, message)
 				}
@@ -473,7 +473,7 @@ func (socket *WebSocketServer) upgrade(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if socket.Router != nil {
-				var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(event), Message: body, ProtoType: protoType}
+				var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
 				socket.router(connection, receivePackage)
 				return
 			}

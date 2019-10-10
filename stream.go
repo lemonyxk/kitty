@@ -98,22 +98,33 @@ func (v *Value) String() string {
 	}
 }
 
+func (stream *Stream) SetHeader(header string, content string) {
+	stream.Response.Header().Set(header, content)
+}
+
 func (stream *Stream) JsonFormat(status string, code int, msg interface{}) error {
 	return stream.Json(M{"status": status, "code": code, "msg": msg})
 }
 
 func (stream *Stream) Json(data interface{}) error {
 
-	stream.Response.Header().Add("Content-Type", "application/json")
+	stream.SetHeader("Content-Type", "application/json")
 
 	return json.NewEncoder(stream.Response).Encode(data)
 }
 
-func (stream *Stream) End(data ...interface{}) error {
+func (stream *Stream) End(data interface{}) error {
 
-	stream.Response.Header().Add("Content-Type", "text/html")
+	var err error
 
-	_, err := fmt.Fprint(stream.Response, data...)
+	switch data.(type) {
+	case []byte:
+		_, err = stream.Response.Write(data.([]byte))
+	case string:
+		_, err = stream.Response.Write([]byte(data.(string)))
+	default:
+		_, err = fmt.Fprint(stream.Response, data)
+	}
 
 	return err
 }

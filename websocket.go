@@ -152,7 +152,7 @@ func (conn *Connection) ProtoBufEmitAll(msg ProtoBufPackage) {
 	conn.socket.ProtoBufEmitAll(msg)
 }
 
-func (conn *Connection) GetConnections() []*Connection {
+func (conn *Connection) GetConnections() chan *Connection {
 	return conn.socket.GetConnections()
 }
 
@@ -292,16 +292,19 @@ func (socket *WebSocketServer) delConnect(conn *Connection) {
 	socket.connections.Delete(conn.Fd)
 }
 
-func (socket *WebSocketServer) GetConnections() []*Connection {
+func (socket *WebSocketServer) GetConnections() chan *Connection {
 
-	var connections []*Connection
+	var ch = make(chan *Connection, 1024)
 
-	socket.connections.Range(func(key, value interface{}) bool {
-		connections = append(connections, value.(*Connection))
-		return true
-	})
+	go func() {
+		socket.connections.Range(func(key, value interface{}) bool {
+			ch <- value.(*Connection)
+			return true
+		})
+		close(ch)
+	}()
 
-	return connections
+	return ch
 }
 
 func (socket *WebSocketServer) GetConnection(fd uint32) (*Connection, bool) {

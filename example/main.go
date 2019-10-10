@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
 	"net/http/pprof"
 	"os"
@@ -90,20 +91,26 @@ func Server() {
 
 	socketHandler.OnOpen = func(conn *lemo.Connection) {
 		logger.Log(conn.Fd, "is open")
+
+		for value := range conn.GetConnections() {
+			log.Println(value.Fd)
+		}
+
+		log.Println(1)
 	}
 
 	var httpHandler = &lemo.Http{}
 
 	var before = []lemo.HttpBefore{
 		func(t *lemo.Stream) (lemo.Context, func() *lemo.Error) {
-			_ = t.End("before")
+			// _ = t.End("before")
 			return nil, nil
 		},
 	}
 
 	var after = []lemo.HttpAfter{
 		func(t *lemo.Stream) func() *lemo.Error {
-			_ = t.End("after")
+			// _ = t.End("after")
 			return nil
 		},
 	}
@@ -123,6 +130,26 @@ func Server() {
 			err := t.Json(lemo.M{"hello": params})
 
 			return lemo.NewError(err)
+		})
+
+		httpHandler.Post("/xixi", before, after, func(t *lemo.Stream) func() *lemo.Error {
+
+			t.ParseFiles()
+
+			for _, value := range t.Files.All() {
+				for _, v := range value {
+					f, _ := v.Open()
+					d, _ := ioutil.ReadAll(f)
+					log.Println(t.End(d))
+					log.Println(v.Filename)
+				}
+			}
+
+			// var params = t.Params.ByName("hello")
+			//
+			// err := t.Json(lemo.M{"hello": params})
+
+			return lemo.NewError(nil)
 		})
 	})
 

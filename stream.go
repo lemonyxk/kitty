@@ -21,6 +21,17 @@ type Files struct {
 	files map[string][]*multipart.FileHeader
 }
 
+func (f *Files) All() map[string][]*multipart.FileHeader {
+	return f.files
+}
+
+func (f *Files) Get(fileName string) []*multipart.FileHeader {
+	if file, ok := f.files[fileName]; ok {
+		return file
+	}
+	return nil
+}
+
 type Params struct {
 	Keys   []string
 	Values []string

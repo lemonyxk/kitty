@@ -14,7 +14,7 @@ import (
 )
 
 type Query struct {
-	params map[string]string
+	params map[string]interface{}
 }
 
 type Files struct {
@@ -47,29 +47,55 @@ type Stream struct {
 }
 
 type Value struct {
-	v string
+	v interface{}
 }
 
 func (v *Value) Int() int {
-	r, err := strconv.Atoi(v.v)
-	if err != nil {
+
+	switch v.v.(type) {
+	case int:
+		return v.v.(int)
+	case string:
+		r, err := strconv.Atoi(v.v.(string))
+		if err != nil {
+			return 0
+		}
+		return r
+	case float64:
+		return int(v.v.(float64))
+	default:
 		return 0
 	}
-
-	return r
 }
 
 func (v *Value) Float64() float64 {
-	r, err := strconv.ParseFloat(v.v, 64)
-	if err != nil {
+	switch v.v.(type) {
+	case int:
+		return float64(v.v.(int))
+	case string:
+		r, err := strconv.ParseFloat(v.v.(string), 64)
+		if err != nil {
+			return 0
+		}
+		return r
+	case float64:
+		return v.v.(float64)
+	default:
 		return 0
 	}
-
-	return r
 }
 
 func (v *Value) String() string {
-	return v.v
+	switch v.v.(type) {
+	case int:
+		return strconv.Itoa(v.v.(int))
+	case string:
+		return v.v.(string)
+	case float64:
+		return strconv.FormatFloat(v.v.(float64), 'f', -1, 64)
+	default:
+		return ""
+	}
 }
 
 func (stream *Stream) JsonFormat(status string, code int, msg interface{}) error {
@@ -118,7 +144,7 @@ func (stream *Stream) ParseJson() *Query {
 		return nil
 	}
 
-	var data = make(map[string]string)
+	var data = make(map[string]interface{})
 
 	err = json.Unmarshal(jsonBody, &data)
 	if err != nil {
@@ -167,7 +193,7 @@ func (stream *Stream) ParseMultipart() *Query {
 
 	var parse = stream.Request.MultipartForm.Value
 
-	var data = make(map[string]string)
+	var data = make(map[string]interface{})
 
 	for k, v := range parse {
 		data[k] = v[0]
@@ -193,7 +219,7 @@ func (stream *Stream) ParseQuery() *Query {
 		return nil
 	}
 
-	var data = make(map[string]string)
+	var data = make(map[string]interface{})
 
 	for k, v := range parse {
 		data[k] = v[0]
@@ -219,7 +245,7 @@ func (stream *Stream) ParseForm() *Query {
 
 	var parse = stream.Request.PostForm
 
-	var data = make(map[string]string)
+	var data = make(map[string]interface{})
 
 	for k, v := range parse {
 		data[k] = v[0]
@@ -256,7 +282,7 @@ func (stream *Stream) AutoParse() *Query {
 
 	if query == nil {
 		query = new(Query)
-		query.params = make(map[string]string)
+		query.params = make(map[string]interface{})
 	}
 
 	stream.Query = query
@@ -338,7 +364,7 @@ func (q *Query) Get(key string) *Value {
 	return val
 }
 
-func (q *Query) All() map[string]string {
+func (q *Query) All() map[string]interface{} {
 	return q.params
 }
 
@@ -350,7 +376,18 @@ func (q *Query) String() string {
 
 		buff.WriteString(key)
 		buff.WriteString(":")
-		buff.WriteString(value)
+
+		switch value.(type) {
+		case int:
+			buff.WriteString(strconv.Itoa(value.(int)))
+		case string:
+			buff.WriteString(value.(string))
+		case float64:
+			buff.WriteString(strconv.FormatFloat(value.(float64), 'f', -1, 64))
+		default:
+			buff.WriteString(fmt.Sprintf("%s", value))
+		}
+
 		buff.WriteString(" ")
 	}
 

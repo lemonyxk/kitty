@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -22,13 +21,13 @@ func init() {
 
 func main() {
 
-	// lemo.Socket()
+	lemo.Socket()
 
-	go Server()
+	// go Server()
 
-	time.Sleep(time.Second)
+	// time.Sleep(time.Second)
 
-	go Client()
+	// go Client()
 
 	// 创建信号
 	signalChan := make(chan os.Signal, 1)

@@ -14,7 +14,57 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
 )
+
+func SocketClient() {
+	conn, err := net.Dial("tcp", "127.0.0.1:5000")
+	if err != nil {
+		panic(err)
+	}
+
+	defer func() { _ = conn.Close() }()
+
+	go func() {
+		for i := 0; i < 100; i++ {
+
+			// log.Println(len(msg), msg)
+
+			_, _ = conn.Write(Pack([]byte("/hello"), []byte("world"), 1, 2))
+		}
+	}()
+
+	go func() {
+		for {
+
+			buffer := make([]byte, 1024)
+
+			n, err := conn.Read(buffer)
+
+			// close normal
+			if err == io.EOF {
+				break
+			}
+
+			// close not normal
+			if err != nil {
+				log.Println("read error")
+				return
+			}
+
+			log.Println(n, string(buffer))
+		}
+	}()
+
+	// 创建信号
+	signalChan := make(chan os.Signal, 1)
+	// 通知
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	// 阻塞
+	<-signalChan
+}
 
 func Socket() {
 
@@ -33,13 +83,18 @@ func Socket() {
 		}
 
 		go func() {
-			for {
-				buffer := make([]byte, 1)
 
-				dl, err := conn.Read(buffer)
+			var data []byte
+
+			for {
+
+				buffer := make([]byte, 1024)
+
+				n, err := conn.Read(buffer)
 
 				// close normal
 				if err == io.EOF {
+					log.Println("normal close")
 					break
 				}
 
@@ -49,7 +104,11 @@ func Socket() {
 					return
 				}
 
-				log.Println(dl, string(buffer))
+				data = append(data, buffer[0:n]...)
+
+				log.Println(n, string(buffer))
+
+				_, _ = conn.Write(buffer)
 			}
 		}()
 	}

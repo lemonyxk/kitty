@@ -76,6 +76,10 @@ func (v *value) String() string {
 	return v.v
 }
 
+func (stream *Stream) JsonFormat(status string, code int, msg interface{}) error {
+	return stream.Json(M{"status": status, "code": code, "msg": msg})
+}
+
 func (stream *Stream) Json(data interface{}) error {
 
 	stream.Response.Header().Add("Content-Type", "application/json")

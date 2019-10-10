@@ -19,16 +19,21 @@ package lemo
 // 6 body len
 // 7 body len
 
-const Text byte = 1
-const Json byte = 2
-const ProtoBuf byte = 3
+const (
+	Text     byte = 1
+	Json     byte = 2
+	ProtoBuf byte = 3
 
-func Pack(route []byte, body []byte, protoType byte, messageType int) []byte {
+	TextData byte = 1
+	BinData  byte = 2
+)
+
+func Pack(route []byte, body []byte, protoType byte, messageType byte) []byte {
 
 	switch messageType {
-	case TextMessage:
+	case TextData:
 		return packText(route, body, protoType)
-	case BinaryMessage:
+	case BinData:
 		return packBin(route, body, protoType)
 	}
 
@@ -49,7 +54,7 @@ func UnPack(message []byte) (version byte, messageType byte, protoType byte, rou
 	}
 
 	// message type
-	if message[1] != byte(TextMessage) && message[1] != byte(BinaryMessage) {
+	if message[1] != TextData && message[1] != BinData {
 		return
 	}
 
@@ -58,7 +63,7 @@ func UnPack(message []byte) (version byte, messageType byte, protoType byte, rou
 		return
 	}
 
-	if message[1] == byte(TextMessage) {
+	if message[1] == TextData {
 		if int(message[3]+(message[7]|message[6]<<7|message[5]<<14|message[4]<<21)) != mLen-8 {
 			return
 		}
@@ -82,7 +87,7 @@ func packText(route []byte, body []byte, protoType byte) []byte {
 	data = append(data, 'V')
 
 	// 1 message type
-	data = append(data, byte(TextMessage))
+	data = append(data, TextData)
 
 	// 2 proto type
 	data = append(data, protoType)
@@ -120,7 +125,7 @@ func packBin(route []byte, body []byte, protoType byte) []byte {
 	data = append(data, 'V')
 
 	// 1 message type
-	data = append(data, byte(BinaryMessage))
+	data = append(data, BinData)
 
 	// 2 proto type
 	data = append(data, protoType)

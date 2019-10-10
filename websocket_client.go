@@ -87,7 +87,7 @@ func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return client.Push(TextMessage, Pack([]byte(msg.Event), data, Json, TextMessage))
+	return client.Push(TextMessage, Pack([]byte(msg.Event), data, Json, byte(TextMessage)))
 
 }
 
@@ -98,7 +98,7 @@ func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return client.Push(BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, BinaryMessage))
+	return client.Push(BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, byte(BinaryMessage)))
 
 }
 

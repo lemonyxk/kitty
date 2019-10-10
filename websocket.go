@@ -222,7 +222,7 @@ func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) erro
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, BinaryMessage))
+	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, byte(BinaryMessage)))
 
 }
 
@@ -240,7 +240,7 @@ func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return socket.Push(fd, TextMessage, Pack([]byte(msg.Event), data, Json, TextMessage))
+	return socket.Push(fd, TextMessage, Pack([]byte(msg.Event), data, Json, byte(TextMessage)))
 
 }
 

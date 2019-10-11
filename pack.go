@@ -20,63 +20,87 @@ package lemo
 // 7 body len
 
 const (
-	Text     byte = 1
-	Json     byte = 2
-	ProtoBuf byte = 3
+	// Version
+	Version byte = 'V'
 
-	TextData byte = 1
-	BinData  byte = 2
+	Text     int = 1
+	Json     int = 2
+	ProtoBuf int = 3
+
+	TextData int = 1
+	BinData  int = 2
+	PingData int = 9
+	PongData int = 10
 )
 
-func Pack(route []byte, body []byte, protoType byte, messageType byte) []byte {
+func Pack(route []byte, body []byte, protoType int, messageType int) []byte {
 
 	switch messageType {
 	case TextData:
 		return packText(route, body, protoType)
 	case BinData:
 		return packBin(route, body, protoType)
+	case PingData:
+		return []byte{Version, byte(PingData), byte(protoType), 0, 0, 0, 0, 0}
+	case PongData:
+		return []byte{Version, byte(PongData), byte(protoType), 0, 0, 0, 0, 0}
 	}
 
 	return nil
 }
 
-func UnPack(message []byte) (version byte, messageType byte, protoType byte, route []byte, body []byte) {
+func IsHeaderInvalid(message []byte) bool {
 
-	var mLen = len(message)
-
-	if mLen < 8 {
-		return
+	if len(message) < 8 {
+		return false
 	}
 
 	// version
-	if message[0] != 'V' {
-		return
+	if message[0] != Version {
+		return false
 	}
 
 	// message type
-	if message[1] != TextData && message[1] != BinData {
-		return
+	if message[1] != byte(TextData) && message[1] != byte(BinData) && message[1] != byte(PingData) && message[1] != byte(PongData) {
+		return false
 	}
 
 	// proto type
-	if message[2] != Json && message[2] != ProtoBuf && message[2] != Text {
+	if message[2] != byte(Json) && message[2] != byte(ProtoBuf) && message[2] != byte(Text) {
+		return false
+	}
+
+	return true
+}
+
+func GetLen(message []byte) int {
+	if message[1] == byte(TextData) {
+		return int(message[3]+(message[7]|message[6]<<7|message[5]<<14|message[4]<<21)) + 8
+	} else {
+		return int(message[3]+(message[7]|message[6]<<8|message[5]<<16|message[4]<<24)) + 8
+	}
+}
+
+func UnPack(message []byte) (version byte, messageType int, protoType int, route []byte, body []byte) {
+
+	if !IsHeaderInvalid(message) {
 		return
 	}
 
-	if message[1] == TextData {
-		if int(message[3]+(message[7]|message[6]<<7|message[5]<<14|message[4]<<21)) != mLen-8 {
+	if message[1] == byte(TextData) {
+		if int(message[3]+(message[7]|message[6]<<7|message[5]<<14|message[4]<<21))+8 != len(message) {
 			return
 		}
 	} else {
-		if int(message[3]+(message[7]|message[6]<<8|message[5]<<16|message[4]<<24)) != mLen-8 {
+		if int(message[3]+(message[7]|message[6]<<8|message[5]<<16|message[4]<<24))+8 != len(message) {
 			return
 		}
 	}
 
-	return message[0], message[1], message[2], message[8 : 8+message[3]], message[8+message[3]:]
+	return message[0], int(message[1]), int(message[2]), message[8 : 8+message[3]], message[8+message[3]:]
 }
 
-func packText(route []byte, body []byte, protoType byte) []byte {
+func packText(route []byte, body []byte, protoType int) []byte {
 
 	var bl = len(body)
 
@@ -84,13 +108,13 @@ func packText(route []byte, body []byte, protoType byte) []byte {
 	var data []byte
 
 	// 0 version
-	data = append(data, 'V')
+	data = append(data, Version)
 
 	// 1 message type
-	data = append(data, TextData)
+	data = append(data, byte(TextData))
 
 	// 2 proto type
-	data = append(data, protoType)
+	data = append(data, byte(protoType))
 
 	// 3 route len
 	data = append(data, byte(len(route)&0x007f))
@@ -114,7 +138,7 @@ func packText(route []byte, body []byte, protoType byte) []byte {
 	return data
 
 }
-func packBin(route []byte, body []byte, protoType byte) []byte {
+func packBin(route []byte, body []byte, protoType int) []byte {
 
 	var bl = len(body)
 
@@ -122,13 +146,13 @@ func packBin(route []byte, body []byte, protoType byte) []byte {
 	var data []byte
 
 	// 0 version
-	data = append(data, 'V')
+	data = append(data, Version)
 
 	// 1 message type
-	data = append(data, BinData)
+	data = append(data, byte(BinData))
 
 	// 2 proto type
-	data = append(data, protoType)
+	data = append(data, byte(protoType))
 
 	// 3 route len
 	data = append(data, byte(len(route)&0x00ff))

@@ -11,62 +11,53 @@
 package lemo
 
 import (
-	"io"
 	"log"
 	"net"
-	"os"
-	"os/signal"
-	"syscall"
+	"sync"
+
+	"github.com/Lemo-yxk/tire"
 )
 
-func SocketClient() {
-	conn, err := net.Dial("tcp", "127.0.0.1:5000")
-	if err != nil {
-		panic(err)
-	}
-
-	defer func() { _ = conn.Close() }()
-
-	go func() {
-		for i := 0; i < 100; i++ {
-
-			// log.Println(len(msg), msg)
-
-			_, _ = conn.Write(Pack([]byte("/hello"), []byte("world"), 1, 2))
-		}
-	}()
-
-	go func() {
-		for {
-
-			buffer := make([]byte, 1024)
-
-			n, err := conn.Read(buffer)
-
-			// close normal
-			if err == io.EOF {
-				break
-			}
-
-			// close not normal
-			if err != nil {
-				log.Println("read error")
-				return
-			}
-
-			log.Println(n, string(buffer))
-		}
-	}()
-
-	// 创建信号
-	signalChan := make(chan os.Signal, 1)
-	// 通知
-	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
-	// 阻塞
-	<-signalChan
+type Socket struct {
+	Fd     uint32
+	Conn   *net.Conn
+	socket *SocketServer
 }
 
-func Socket() {
+type SocketServer struct {
+	Fd          uint32
+	count       uint32
+	connections sync.Map
+	OnClose     func(fd uint32)
+	OnMessage   func(conn *Socket, messageType int, msg []byte)
+	OnOpen      func(conn *Socket)
+	OnError     func(err func() *Error)
+
+	HeartBeatTimeout  int
+	HeartBeatInterval int
+	HandshakeTimeout  int
+	ReadBufferSize    int
+	WriteBufferSize   int
+	WaitQueueSize     int
+
+	Router *tire.Tire
+
+	IgnoreCase bool
+
+	// 连接
+	connOpen chan *Socket
+
+	// 关闭
+	connClose chan *Socket
+
+	// 写入
+	connPush chan *PushPackage
+
+	// 返回
+	connBack chan error
+}
+
+func SocketTest() {
 
 	netListen, err := net.Listen("tcp", ":5000")
 	if err != nil {
@@ -79,12 +70,17 @@ func Socket() {
 
 		conn, err := netListen.Accept()
 		if err != nil {
+			OnError(err)
 			continue
 		}
 
 		go func() {
 
-			var data []byte
+			OnOpen(conn)
+
+			var singleMessageLen = 0
+
+			var message []byte
 
 			for {
 
@@ -92,24 +88,83 @@ func Socket() {
 
 				n, err := conn.Read(buffer)
 
-				// close normal
-				if err == io.EOF {
-					log.Println("normal close")
-					break
-				}
+				// // close normal
+				// if err == io.EOF {
+				// 	OnClose()
+				// 	return
+				// }
 
-				// close not normal
+				// close error
 				if err != nil {
-					log.Println("read error")
+					_ = conn.Close()
+					OnClose()
 					return
 				}
 
-				data = append(data, buffer[0:n]...)
+				message = append(message, buffer[0:n]...)
 
-				log.Println(n, string(buffer))
+				// read continue
+				if len(message) < 8 {
+					continue
+				}
 
-				_, _ = conn.Write(buffer)
+				for {
+
+					// jump out and read continue
+					if len(message) < 8 {
+						break
+					}
+
+					// just begin
+					if singleMessageLen == 0 {
+
+						// proto error
+						if !IsHeaderInvalid(message) {
+							_ = conn.Close()
+							OnClose()
+							return
+						}
+
+						singleMessageLen = GetLen(message)
+					}
+
+					// jump out and read continue
+					if len(message) < singleMessageLen {
+						break
+					}
+
+					// a complete message
+					OnMessage(message[0:singleMessageLen])
+
+					// delete this message
+					message = message[singleMessageLen:]
+
+					// reset len
+					singleMessageLen = 0
+
+				}
+
 			}
+
 		}()
 	}
+}
+
+func OnMessage(message []byte) {
+
+	version, messageType, protoType, route, body := UnPack(message)
+	log.Println(version, messageType, protoType, route, body)
+
+}
+
+func OnClose() {
+	log.Println("close")
+}
+
+func OnOpen(conn net.Conn) {
+	log.Println("open")
+}
+
+func OnError(err error) {
+	log.Println("error", err)
 }

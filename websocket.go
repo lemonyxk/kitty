@@ -24,7 +24,7 @@ type ReceivePackage struct {
 	MessageType int
 	Event       string
 	Message     []byte
-	ProtoType   byte
+	ProtoType   int
 }
 
 type JsonPackage struct {
@@ -43,19 +43,6 @@ type PushPackage struct {
 	Message     []byte
 }
 
-// 连接
-var connOpen chan *Connection
-
-// 关闭
-var connClose chan *Connection
-
-// 写入
-var connPush chan *PushPackage
-
-var connBack chan error
-
-var upgrade websocket.Upgrader
-
 type M map[string]interface{}
 
 // PingMessage PING
@@ -70,8 +57,8 @@ const TextMessage int = websocket.TextMessage
 // BinaryMessage 二进制
 const BinaryMessage int = websocket.BinaryMessage
 
-// Connection Connection
-type Connection struct {
+// WebSocket WebSocket
+type WebSocket struct {
 	Fd       uint32
 	Conn     *websocket.Conn
 	socket   *WebSocketServer
@@ -81,12 +68,12 @@ type Connection struct {
 
 // WebSocketServer conn
 type WebSocketServer struct {
-	Fd          uint32
+	fd          uint32
 	count       uint32
 	connections sync.Map
 	OnClose     func(fd uint32)
-	OnMessage   func(conn *Connection, messageType int, msg []byte)
-	OnOpen      func(conn *Connection)
+	OnMessage   func(conn *WebSocket, messageType int, msg []byte)
+	OnOpen      func(conn *WebSocket)
 	OnError     func(err func() *Error)
 
 	HeartBeatTimeout  int
@@ -101,6 +88,20 @@ type WebSocketServer struct {
 	Router *tire.Tire
 
 	IgnoreCase bool
+
+	// 连接
+	connOpen chan *WebSocket
+
+	// 关闭
+	connClose chan *WebSocket
+
+	// 写入
+	connPush chan *PushPackage
+
+	// 返回
+	connBack chan error
+
+	upgrade websocket.Upgrader
 }
 
 func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
@@ -111,7 +112,7 @@ func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
 	return p1 == p2
 }
 
-func (conn *Connection) IP() (string, string, error) {
+func (conn *WebSocket) IP() (string, string, error) {
 
 	if ip := conn.Request.Header.Get(XRealIP); ip != "" {
 		return net.SplitHostPort(ip)
@@ -124,60 +125,60 @@ func (conn *Connection) IP() (string, string, error) {
 	return net.SplitHostPort(conn.Request.RemoteAddr)
 }
 
-func (conn *Connection) Push(fd uint32, messageType int, msg []byte) error {
+func (conn *WebSocket) Push(fd uint32, messageType int, msg []byte) error {
 	return conn.socket.Push(fd, messageType, msg)
 }
 
-func (conn *Connection) Json(fd uint32, msg interface{}) error {
+func (conn *WebSocket) Json(fd uint32, msg interface{}) error {
 	return conn.socket.Json(fd, msg)
 }
 
-func (conn *Connection) ProtoBuf(fd uint32, msg proto.Message) error {
+func (conn *WebSocket) ProtoBuf(fd uint32, msg proto.Message) error {
 	return conn.socket.ProtoBuf(fd, msg)
 }
 
-func (conn *Connection) JsonEmit(fd uint32, msg JsonPackage) error {
+func (conn *WebSocket) JsonEmit(fd uint32, msg JsonPackage) error {
 	return conn.socket.JsonEmit(fd, msg)
 }
 
-func (conn *Connection) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
+func (conn *WebSocket) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
 	return conn.socket.ProtoBufEmit(fd, msg)
 }
 
-func (conn *Connection) JsonEmitAll(msg JsonPackage) {
+func (conn *WebSocket) JsonEmitAll(msg JsonPackage) {
 	conn.socket.JsonEmitAll(msg)
 }
 
-func (conn *Connection) ProtoBufEmitAll(msg ProtoBufPackage) {
+func (conn *WebSocket) ProtoBufEmitAll(msg ProtoBufPackage) {
 	conn.socket.ProtoBufEmitAll(msg)
 }
 
-func (conn *Connection) GetConnections() chan *Connection {
+func (conn *WebSocket) GetConnections() chan *WebSocket {
 	return conn.socket.GetConnections()
 }
 
-func (conn *Connection) GetSocket() *WebSocketServer {
+func (conn *WebSocket) GetSocket() *WebSocketServer {
 	return conn.socket
 }
 
-func (conn *Connection) GetConnectionsCount() uint32 {
+func (conn *WebSocket) GetConnectionsCount() uint32 {
 	return conn.socket.GetConnectionsCount()
 }
 
-func (conn *Connection) GetConnection(fd uint32) (*Connection, bool) {
+func (conn *WebSocket) GetConnection(fd uint32) (*WebSocket, bool) {
 	return conn.socket.GetConnection(fd)
 }
 
 // Push 发送消息
 func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) error {
 
-	connPush <- &PushPackage{
+	socket.connPush <- &PushPackage{
 		MessageType: messageType,
 		FD:          fd,
 		Message:     msg,
 	}
 
-	return <-connBack
+	return <-socket.connBack
 }
 
 // Push Json 发送消息
@@ -222,7 +223,7 @@ func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) erro
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, byte(BinaryMessage)))
+	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, BinaryMessage))
 
 }
 
@@ -240,24 +241,24 @@ func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return socket.Push(fd, TextMessage, Pack([]byte(msg.Event), data, Json, byte(TextMessage)))
+	return socket.Push(fd, TextMessage, Pack([]byte(msg.Event), data, Json, TextMessage))
 
 }
 
-func (socket *WebSocketServer) addConnect(conn *Connection) {
+func (socket *WebSocketServer) addConnect(conn *WebSocket) {
 
 	// +1
-	socket.Fd++
+	socket.fd++
 
 	// 溢出
-	if socket.Fd == 0 {
-		socket.Fd++
+	if socket.fd == 0 {
+		socket.fd++
 	}
 
-	var _, ok = socket.connections.Load(socket.Fd)
+	var _, ok = socket.connections.Load(socket.fd)
 
 	if !ok {
-		socket.connections.Store(socket.Fd, conn)
+		socket.connections.Store(socket.fd, conn)
 	} else {
 		// 否则查找最大值
 		var maxFd uint32 = 0
@@ -271,7 +272,7 @@ func (socket *WebSocketServer) addConnect(conn *Connection) {
 				return
 			}
 
-			var _, ok = socket.connections.Load(socket.Fd)
+			var _, ok = socket.connections.Load(socket.fd)
 
 			if !ok {
 				socket.connections.Store(maxFd, conn)
@@ -280,25 +281,25 @@ func (socket *WebSocketServer) addConnect(conn *Connection) {
 
 		}
 
-		socket.Fd = maxFd
+		socket.fd = maxFd
 	}
 
 	// 赋值
-	conn.Fd = socket.Fd
+	conn.Fd = socket.fd
 
 }
 
-func (socket *WebSocketServer) delConnect(conn *Connection) {
+func (socket *WebSocketServer) delConnect(conn *WebSocket) {
 	socket.connections.Delete(conn.Fd)
 }
 
-func (socket *WebSocketServer) GetConnections() chan *Connection {
+func (socket *WebSocketServer) GetConnections() chan *WebSocket {
 
-	var ch = make(chan *Connection, 1024)
+	var ch = make(chan *WebSocket, 1024)
 
 	go func() {
 		socket.connections.Range(func(key, value interface{}) bool {
-			ch <- value.(*Connection)
+			ch <- value.(*WebSocket)
 			return true
 		})
 		close(ch)
@@ -307,12 +308,12 @@ func (socket *WebSocketServer) GetConnections() chan *Connection {
 	return ch
 }
 
-func (socket *WebSocketServer) GetConnection(fd uint32) (*Connection, bool) {
+func (socket *WebSocketServer) GetConnection(fd uint32) (*WebSocket, bool) {
 	conn, ok := socket.connections.Load(fd)
 	if !ok {
 		return nil, false
 	}
-	return conn.(*Connection), true
+	return conn.(*WebSocket), true
 }
 
 func (socket *WebSocketServer) GetConnectionsCount() uint32 {
@@ -326,7 +327,7 @@ func (socket *WebSocketServer) Init() {
 	}
 
 	if socket.HeartBeatInterval == 0 {
-		socket.HeartBeatInterval = 20
+		socket.HeartBeatInterval = 15
 	}
 
 	if socket.HandshakeTimeout == 0 {
@@ -353,7 +354,7 @@ func (socket *WebSocketServer) Init() {
 	}
 
 	if socket.OnOpen == nil {
-		socket.OnOpen = func(conn *Connection) {
+		socket.OnOpen = func(conn *WebSocket) {
 			println(conn.Fd, "is open")
 		}
 	}
@@ -370,7 +371,7 @@ func (socket *WebSocketServer) Init() {
 		}
 	}
 
-	upgrade = websocket.Upgrader{
+	socket.upgrade = websocket.Upgrader{
 		HandshakeTimeout: time.Duration(socket.HandshakeTimeout) * time.Second,
 		ReadBufferSize:   socket.ReadBufferSize,
 		WriteBufferSize:  socket.WriteBufferSize,
@@ -378,37 +379,37 @@ func (socket *WebSocketServer) Init() {
 	}
 
 	// 连接
-	connOpen = make(chan *Connection, socket.WaitQueueSize)
+	socket.connOpen = make(chan *WebSocket, socket.WaitQueueSize)
 
 	// 关闭
-	connClose = make(chan *Connection, socket.WaitQueueSize)
+	socket.connClose = make(chan *WebSocket, socket.WaitQueueSize)
 
 	// 写入
-	connPush = make(chan *PushPackage, socket.WaitQueueSize)
+	socket.connPush = make(chan *PushPackage, socket.WaitQueueSize)
 
 	// 返回
-	connBack = make(chan error, socket.WaitQueueSize)
+	socket.connBack = make(chan error, socket.WaitQueueSize)
 
 	go func() {
 		for {
 			select {
-			case conn := <-connOpen:
+			case conn := <-socket.connOpen:
 				socket.addConnect(conn)
 				socket.count++
 				// 触发OPEN事件
 				go socket.OnOpen(conn)
-			case conn := <-connClose:
+			case conn := <-socket.connClose:
 				var fd = conn.Fd
 				socket.delConnect(conn)
 				socket.count--
 				// 触发CLOSE事件
 				go socket.OnClose(fd)
-			case push := <-connPush:
+			case push := <-socket.connPush:
 				var conn, ok = socket.connections.Load(push.FD)
 				if !ok {
-					connBack <- fmt.Errorf("client %d is close", push.FD)
+					socket.connBack <- fmt.Errorf("client %d is close", push.FD)
 				} else {
-					connBack <- conn.(*Connection).Conn.WriteMessage(push.MessageType, push.Message)
+					socket.connBack <- conn.(*WebSocket).Conn.WriteMessage(push.MessageType, push.Message)
 				}
 			}
 		}
@@ -416,18 +417,10 @@ func (socket *WebSocketServer) Init() {
 
 }
 
-func (socket *WebSocketServer) catchError() {
-	if err := recover(); err != nil {
-		socket.OnError(NewErrorFromDeep(err, 2))
-	}
-}
-
-func (socket *WebSocketServer) upgrade(w http.ResponseWriter, r *http.Request) {
-
-	defer socket.catchError()
+func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 
 	// 升级协议
-	conn, err := upgrade.Upgrade(w, r, nil)
+	conn, err := socket.upgrade.Upgrade(w, r, nil)
 
 	// 错误处理
 	if err != nil {
@@ -435,57 +428,91 @@ func (socket *WebSocketServer) upgrade(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 设置PING处理函数
-	conn.SetPingHandler(func(status string) error {
-		err := conn.WriteMessage(PongMessage, nil)
-		err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
-		return err
-	})
+	// 超时时间
+	err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+	if err != nil {
+		go socket.OnError(NewError(err))
+		return
+	}
 
-	connection := &Connection{
+	connection := &WebSocket{
+		Fd:       0,
 		Conn:     conn,
 		socket:   socket,
 		Response: w,
 		Request:  r,
 	}
 
+	// 设置PING处理函数
+	conn.SetPingHandler(func(appData string) error {
+		// unnecessary
+		// err := socket.Push(connection.Fd, PongMessage, nil)
+		return conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+	})
+
+	// 设置PONG处理函数
+	conn.SetPongHandler(func(appData string) error {
+		return nil
+	})
+
 	// 打开连接 记录
-	connOpen <- connection
+	socket.connOpen <- connection
 
 	// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
 	for {
 
-		// 重置心跳
-		err := conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
-		messageType, message, err := conn.ReadMessage()
-
-		// 关闭连接
+		// read message
+		frameType, message, err := conn.ReadMessage()
+		// close
 		if err != nil {
 			break
 		}
 
-		go func() {
+		// unpack
+		version, messageType, protoType, route, body := UnPack(message)
 
-			_, _, protoType, route, body := UnPack(message)
-
-			if route == nil {
-				if socket.OnMessage != nil {
-					socket.OnMessage(connection, messageType, message)
-				}
-				return
+		// check version
+		if version != Version {
+			if socket.OnMessage != nil {
+				go socket.OnMessage(connection, messageType, message)
 			}
+			continue
+		}
 
-			if socket.Router != nil {
-				var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
-				socket.router(connection, receivePackage)
-				return
+		// check message type
+		if frameType != messageType {
+			break
+		}
+
+		// Ping
+		if messageType == PingMessage {
+			err := conn.PingHandler()("")
+			if err != nil {
+				break
 			}
+			continue
+		}
 
-		}()
+		// Pong
+		if messageType == PongMessage {
+			err := conn.PongHandler()("")
+			if err != nil {
+				break
+			}
+			continue
+		}
+
+		// on router
+		if socket.Router != nil {
+			var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
+			go socket.router(connection, receivePackage)
+			continue
+		}
 
 	}
 
-	// 关闭连接 清理
+	// close and clean
 	_ = conn.Close()
-	connClose <- connection
+	socket.connClose <- connection
+
 }

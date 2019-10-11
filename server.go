@@ -5,9 +5,6 @@ import (
 	"net/http"
 )
 
-// Version
-var Version string = "1.0.1"
-
 // Server 服务结构
 type Server struct {
 	// Host 服务Host
@@ -33,7 +30,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Match the websocket router
 	if handler.socketHandler != nil && handler.socketHandler.CheckPath(r.URL.Path, handler.socketHandler.Path) {
-		handler.socketHandler.upgrade(w, r)
+		handler.socketHandler.handler(w, r)
 		return
 	}
 

@@ -8,11 +8,11 @@ import (
 
 type WebSocketServerGroupFunction func()
 
-type WebSocketServerFunction func(conn *Connection, msg *Receive) func() *Error
+type WebSocketServerFunction func(conn *WebSocket, msg *Receive) func() *Error
 
-type WebSocketServerBefore func(conn *Connection, msg *Receive) (Context, func() *Error)
+type WebSocketServerBefore func(conn *WebSocket, msg *Receive) (Context, func() *Error)
 
-type WebSocketServerAfter func(conn *Connection, msg *Receive) func() *Error
+type WebSocketServerAfter func(conn *WebSocket, msg *Receive) func() *Error
 
 var globalWebSocketServerPath string
 var globalWebSocketServerBefore []WebSocketServerBefore
@@ -94,8 +94,8 @@ func (socket *WebSocketServer) SetRouter(path string, v ...interface{}) {
 
 	for _, fn := range v {
 		switch fn.(type) {
-		case func(conn *Connection, msg *Receive) func() *Error:
-			webSocketServerFunction = fn.(func(conn *Connection, msg *Receive) func() *Error)
+		case func(conn *WebSocket, msg *Receive) func() *Error:
+			webSocketServerFunction = fn.(func(conn *WebSocket, msg *Receive) func() *Error)
 		case []WebSocketServerBefore:
 			before = fn.([]WebSocketServerBefore)
 		case []WebSocketServerAfter:
@@ -156,7 +156,7 @@ func (socket *WebSocketServer) GetRoute(path string) *tire.Tire {
 	return t
 }
 
-func (socket *WebSocketServer) router(conn *Connection, msg *ReceivePackage) {
+func (socket *WebSocketServer) router(conn *WebSocket, msg *ReceivePackage) {
 
 	node := socket.GetRoute(msg.Event)
 	if node == nil {

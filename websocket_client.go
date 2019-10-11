@@ -25,6 +25,7 @@ type WebSocketClient struct {
 	Conn              *websocket.Conn
 	Response          *http.Response
 	AutoHeartBeat     bool
+	HeartBeatTimeout  int
 	HeartBeatInterval int
 	HeartBeat         func(c *WebSocketClient) error
 	Reconnect         bool
@@ -87,7 +88,7 @@ func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return client.Push(TextMessage, Pack([]byte(msg.Event), data, Json, byte(TextMessage)))
+	return client.Push(TextMessage, Pack([]byte(msg.Event), data, Json, TextMessage))
 
 }
 
@@ -98,7 +99,7 @@ func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return client.Push(BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, byte(BinaryMessage)))
+	return client.Push(BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, BinaryMessage))
 
 }
 
@@ -128,20 +129,9 @@ func (client *WebSocketClient) reconnecting() {
 	}
 }
 
-func (client *WebSocketClient) catchError() {
-	if err := recover(); err != nil {
-		if client.OnError != nil {
-			go client.OnError(NewErrorFromDeep(err, 2))
-		}
-		client.reconnecting()
-	}
-}
-
 // Connect 连接服务器
 func (client *WebSocketClient) Connect() {
 	// 设置LOG信息
-
-	defer client.catchError()
 
 	var closeChan = make(chan bool)
 
@@ -193,9 +183,20 @@ func (client *WebSocketClient) Connect() {
 		client.HeartBeatInterval = 15
 	}
 
+	if client.HeartBeatTimeout == 0 {
+		client.HeartBeatTimeout = 30
+	}
+
 	// 自动重连间隔
 	if client.ReconnectInterval == 0 {
 		client.ReconnectInterval = 1
+	}
+
+	// heartbeat function
+	if client.HeartBeat == nil {
+		client.HeartBeat = func(client *WebSocketClient) error {
+			return client.Push(websocket.PingMessage, nil)
+		}
 	}
 
 	var dialer = websocket.Dialer{
@@ -210,6 +211,16 @@ func (client *WebSocketClient) Connect() {
 		panic(err)
 	}
 
+	// 设置PING处理函数
+	handler.SetPingHandler(func(appData string) error {
+		return nil
+	})
+
+	// 设置PONG处理函数
+	handler.SetPongHandler(func(appData string) error {
+		return nil
+	})
+
 	client.Response = response
 
 	client.Conn = handler
@@ -223,60 +234,72 @@ func (client *WebSocketClient) Connect() {
 	ticker := time.NewTicker(time.Duration(client.HeartBeatInterval) * time.Second)
 
 	// 如果有心跳设置
-	if client.AutoHeartBeat == true {
-		if client.HeartBeat == nil {
-			client.HeartBeat = func(client *WebSocketClient) error {
-				return client.Push(websocket.PingMessage, nil)
-			}
-		}
-	} else {
+	if client.AutoHeartBeat != true {
 		ticker.Stop()
 	}
 
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				if err := client.HeartBeat(client); err != nil {
-					closeChan <- false
-					break
-				}
+		for range ticker.C {
+			if err := client.HeartBeat(client); err != nil {
+				closeChan <- false
+				break
 			}
 		}
-
 	}()
 
 	go func() {
 		for {
 
-			messageType, message, err := client.Conn.ReadMessage()
-
+			// read message
+			frameType, message, err := client.Conn.ReadMessage()
 			if err != nil {
 				closeChan <- false
-				break
+				return
 			}
 
-			if messageType == PongMessage || messageType == PingMessage {
-				break
+			// unpack
+			version, messageType, protoType, route, body := UnPack(message)
+
+			// check version
+			if version != Version {
+				if client.OnMessage != nil {
+					go client.OnMessage(client, messageType, message)
+				}
+				continue
 			}
 
-			go func() {
+			// check message type
+			if frameType != messageType {
+				closeChan <- false
+				return
+			}
 
-				_, _, protoType, route, body := UnPack(message)
-
-				if route == nil {
-					if client.OnMessage != nil {
-						client.OnMessage(client, messageType, message)
-					}
+			// Ping
+			if messageType == PingMessage {
+				err := client.Conn.PingHandler()("")
+				if err != nil {
+					closeChan <- false
 					return
 				}
+				continue
+			}
 
-				if client.Router != nil {
-					var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
-					client.router(client, receivePackage)
+			// Pong
+			if messageType == PongMessage {
+				err := client.Conn.PongHandler()("")
+				if err != nil {
+					closeChan <- false
 					return
 				}
-			}()
+				continue
+			}
+
+			// on router
+			if client.Router != nil {
+				var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
+				go client.router(client, receivePackage)
+				continue
+			}
 
 		}
 	}()

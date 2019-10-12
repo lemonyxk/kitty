@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -22,13 +21,13 @@ func init() {
 
 func main() {
 
-	// lemo.SocketTest()
+	go SocketServer()
 
-	go Server()
-
-	time.Sleep(time.Second)
-
-	go Client()
+	// go Server()
+	//
+	// time.Sleep(time.Second)
+	//
+	// go Client()
 
 	// 创建信号
 	signalChan := make(chan os.Signal, 1)
@@ -39,7 +38,43 @@ func main() {
 
 }
 
-func Server() {
+func SocketServer() {
+
+	var server = lemo.SocketServer{Host: "0.0.0.0", Port: 5000, HeartBeatTimeout: 5, HeartBeatInterval: 3}
+
+	server.OnMessage = func(conn *lemo.Socket, messageType int, msg []byte) {
+		log.Println(string(msg))
+	}
+
+	server.Group("/hello").Handler(func(socket *lemo.SocketServer) {
+		socket.Route("/world").Handler(func(conn *lemo.Socket, msg *lemo.Receive) func() *lemo.Error {
+			log.Println(string(msg.Message.Event), string(msg.Message.Message))
+			return nil
+		})
+
+		socket.Route("/kid").Handler(func(conn *lemo.Socket, msg *lemo.Receive) func() *lemo.Error {
+			log.Println(string(msg.Message.Event), string(msg.Message.Message))
+			return nil
+		})
+	})
+
+	server.Group("/fuck").Handler(func(socket *lemo.SocketServer) {
+		socket.Route("/:world").Handler(func(conn *lemo.Socket, msg *lemo.Receive) func() *lemo.Error {
+			log.Println(string(msg.Message.Event), string(msg.Message.Message), msg.Params.ByName("world"))
+			return nil
+		})
+
+		socket.Route("/kid").Handler(func(conn *lemo.Socket, msg *lemo.Receive) func() *lemo.Error {
+			log.Println(string(msg.Message.Event), string(msg.Message.Message))
+			return nil
+		})
+	})
+
+	server.Start()
+
+}
+
+func WebSocketServer() {
 	var server = &lemo.Server{Host: "0.0.0.0", Port: 12345}
 
 	var socketHandler = &lemo.WebSocketServer{Path: "/", HeartBeatTimeout: 5, HeartBeatInterval: 3}
@@ -149,7 +184,7 @@ func Server() {
 			//
 			// err := t.Json(lemo.M{"hello": params})
 
-			return lemo.NewError(nil)
+			return nil
 		})
 	})
 
@@ -164,7 +199,7 @@ func Server() {
 	server.Start(socketHandler, httpHandler)
 }
 
-func Client() {
+func WebScoketClient() {
 	var client = &lemo.WebSocketClient{Host: "127.0.0.1", Port: 12345, Path: "/", AutoHeartBeat: false, HeartBeatTimeout: 5, HeartBeatInterval: 3}
 
 	client.SetRouter("/haha", func(c *lemo.WebSocketClient, receive *lemo.Receive) func() *lemo.Error {

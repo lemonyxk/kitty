@@ -2,6 +2,7 @@ package lemo
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -22,7 +23,7 @@ type Receive struct {
 
 type ReceivePackage struct {
 	MessageType int
-	Event       string
+	Event       []byte
 	Message     []byte
 	ProtoType   int
 }
@@ -101,7 +102,14 @@ type WebSocketServer struct {
 	// 返回
 	connBack chan error
 
+	// 错误
+	connError chan func() *Error
+
 	upgrade websocket.Upgrader
+
+	PingHandler func(connection *WebSocket) func(appData string) error
+
+	PongHandler func(connection *WebSocket) func(appData string) error
 }
 
 func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
@@ -320,7 +328,7 @@ func (socket *WebSocketServer) GetConnectionsCount() uint32 {
 	return socket.count
 }
 
-func (socket *WebSocketServer) Init() {
+func (socket *WebSocketServer) Ready() {
 
 	if socket.HeartBeatTimeout == 0 {
 		socket.HeartBeatTimeout = 30
@@ -371,6 +379,24 @@ func (socket *WebSocketServer) Init() {
 		}
 	}
 
+	if socket.PingHandler == nil {
+		socket.PingHandler = func(connection *WebSocket) func(appData string) error {
+			return func(appData string) error {
+				// unnecessary
+				// err := socket.Push(connection.Fd, PongMessage, nil)
+				return connection.Conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+			}
+		}
+	}
+
+	if socket.PongHandler == nil {
+		socket.PongHandler = func(connection *WebSocket) func(appData string) error {
+			return func(appData string) error {
+				return nil
+			}
+		}
+	}
+
 	socket.upgrade = websocket.Upgrader{
 		HandshakeTimeout: time.Duration(socket.HandshakeTimeout) * time.Second,
 		ReadBufferSize:   socket.ReadBufferSize,
@@ -390,6 +416,9 @@ func (socket *WebSocketServer) Init() {
 	// 返回
 	socket.connBack = make(chan error, socket.WaitQueueSize)
 
+	// 错误
+	socket.connError = make(chan func() *Error, socket.WaitQueueSize)
+
 	go func() {
 		for {
 			select {
@@ -400,6 +429,7 @@ func (socket *WebSocketServer) Init() {
 				go socket.OnOpen(conn)
 			case conn := <-socket.connClose:
 				var fd = conn.Fd
+				_ = conn.Conn.Close()
 				socket.delConnect(conn)
 				socket.count--
 				// 触发CLOSE事件
@@ -411,6 +441,8 @@ func (socket *WebSocketServer) Init() {
 				} else {
 					socket.connBack <- conn.(*WebSocket).Conn.WriteMessage(push.MessageType, push.Message)
 				}
+			case err := <-socket.connError:
+				go socket.OnError(err)
 			}
 		}
 	}()
@@ -424,14 +456,14 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 
 	// 错误处理
 	if err != nil {
-		go socket.OnError(NewError(err))
+		socket.connError <- NewError(err)
 		return
 	}
 
 	// 超时时间
 	err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 	if err != nil {
-		go socket.OnError(NewError(err))
+		socket.connError <- NewError(err)
 		return
 	}
 
@@ -444,16 +476,10 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 设置PING处理函数
-	conn.SetPingHandler(func(appData string) error {
-		// unnecessary
-		// err := socket.Push(connection.Fd, PongMessage, nil)
-		return conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
-	})
+	conn.SetPingHandler(socket.PingHandler(connection))
 
 	// 设置PONG处理函数
-	conn.SetPongHandler(func(appData string) error {
-		return nil
-	})
+	conn.SetPongHandler(socket.PongHandler(connection))
 
 	// 打开连接 记录
 	socket.connOpen <- connection
@@ -468,51 +494,74 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		// unpack
-		version, messageType, protoType, route, body := UnPack(message)
+		// do not let it dead
+		// but i want
+		// 超时时间
+		// err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+		// if err != nil {
+		// 	socket.connError <- err
+		// 	return
+		// }
 
-		// check version
-		if version != Version {
-			if socket.OnMessage != nil {
-				go socket.OnMessage(connection, messageType, message)
-			}
-			continue
-		}
-
-		// check message type
-		if frameType != messageType {
+		err = socket.decodeMessage(connection, frameType, message)
+		if err != nil {
+			socket.connError <- NewError(err)
 			break
-		}
-
-		// Ping
-		if messageType == PingMessage {
-			err := conn.PingHandler()("")
-			if err != nil {
-				break
-			}
-			continue
-		}
-
-		// Pong
-		if messageType == PongMessage {
-			err := conn.PongHandler()("")
-			if err != nil {
-				break
-			}
-			continue
-		}
-
-		// on router
-		if socket.Router != nil {
-			var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
-			go socket.router(connection, receivePackage)
-			continue
 		}
 
 	}
 
 	// close and clean
-	_ = conn.Close()
 	socket.connClose <- connection
 
+}
+
+func (socket *WebSocketServer) decodeMessage(connection *WebSocket, frameType int, message []byte) error {
+
+	// unpack
+	version, messageType, protoType, route, body := UnPack(message)
+
+	// check version
+	if version != Version {
+		if socket.OnMessage != nil {
+			go socket.OnMessage(connection, messageType, message)
+		}
+		return nil
+	}
+
+	// check message type
+	if frameType != messageType {
+		return errors.New("frame type not match message type")
+	}
+
+	// Ping
+	if messageType == PingMessage {
+		err := socket.PingHandler(connection)("")
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// Pong
+	if messageType == PongMessage {
+		err := socket.PongHandler(connection)("")
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	// on router
+	if socket.Router != nil {
+		var receivePackage = &ReceivePackage{MessageType: messageType, Event: route, Message: body, ProtoType: protoType}
+		go socket.router(connection, receivePackage)
+		return nil
+	}
+
+	// any way run check on message
+	if socket.OnMessage != nil {
+		go socket.OnMessage(connection, messageType, message)
+	}
+	return nil
 }

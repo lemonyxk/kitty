@@ -158,7 +158,7 @@ func (socket *WebSocketServer) GetRoute(path string) *tire.Tire {
 
 func (socket *WebSocketServer) router(conn *WebSocket, msg *ReceivePackage) {
 
-	node := socket.GetRoute(msg.Event)
+	node := socket.GetRoute(string(msg.Event))
 	if node == nil {
 		return
 	}

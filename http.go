@@ -46,6 +46,10 @@ const (
 	ForceAfter
 )
 
+func (h *Http) Ready() {
+
+}
+
 func (h *Http) Group(path string, v ...interface{}) {
 
 	if v == nil {

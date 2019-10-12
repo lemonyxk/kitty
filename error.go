@@ -24,6 +24,10 @@ type Error struct {
 	Error error
 }
 
+func (err *Error) String() string {
+	return fmt.Sprintf("%s %s:%d %s", err.Time, err.File, err.Line, err.Error)
+}
+
 func NewError(err interface{}) func() *Error {
 	return NewErrorFromDeep(err, 2)
 }

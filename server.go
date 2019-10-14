@@ -48,8 +48,13 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Start 启动 WebSocketServer
 func (s *Server) Start(socketHandler *WebSocketServer, httpHandler *HttpServer) {
 
-	socketHandler.Ready()
-	httpHandler.Ready()
+	if socketHandler != nil {
+		socketHandler.Ready()
+	}
+
+	if httpHandler != nil {
+		httpHandler.Ready()
+	}
 
 	var handler = &Handler{
 		socketHandler: socketHandler,

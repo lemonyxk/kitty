@@ -111,8 +111,8 @@ type WebSocketServer struct {
 	fd          uint32
 	count       uint32
 	connections sync.Map
-	group       *WebSocketServerGroup
-	route       *WebSocketServerRoute
+	group       *webSocketServerGroup
+	route       *webSocketServerRoute
 }
 
 func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {

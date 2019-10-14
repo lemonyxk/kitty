@@ -1,3 +1,13 @@
+/**
+* @program: lemo
+*
+* @description:
+*
+* @author: lemo
+*
+* @create: 2019-10-14 18:46
+**/
+
 package lemo
 
 import (
@@ -17,43 +27,34 @@ type HttpServerAfter func(t *Stream) func() *Error
 
 type ErrorFunction func(func() *Error)
 
-type HttpServer struct {
-	IgnoreCase bool
-	Router     *tire.Tire
-	OnError    ErrorFunction
-
-	group *HttpServerGroup
-	route *HttpServerRoute
-}
-
-type HttpServerGroup struct {
+type httpServerGroup struct {
 	path   string
 	before []HttpServerBefore
 	after  []HttpServerAfter
 	http   *HttpServer
 }
 
-func (group *HttpServerGroup) Route(path string) *HttpServerGroup {
+func (group *httpServerGroup) Route(path string) *httpServerGroup {
 	group.path = path
 	return group
 }
 
-func (group *HttpServerGroup) Before(before []HttpServerBefore) *HttpServerGroup {
+func (group *httpServerGroup) Before(before []HttpServerBefore) *httpServerGroup {
 	group.before = before
 	return group
 }
 
-func (group *HttpServerGroup) After(after []HttpServerAfter) *HttpServerGroup {
+func (group *httpServerGroup) After(after []HttpServerAfter) *httpServerGroup {
 	group.after = after
 	return group
 }
 
-func (group *HttpServerGroup) Handler(fn HttpServerGroupFunction) {
+func (group *httpServerGroup) Handler(fn HttpServerGroupFunction) {
 	fn(group.http)
 	group.http.group = nil
 }
 
-type HttpServerRoute struct {
+type httpServerRoute struct {
 	path        string
 	method      string
 	before      []HttpServerBefore
@@ -65,43 +66,43 @@ type HttpServerRoute struct {
 	forceAfter  bool
 }
 
-func (route *HttpServerRoute) Route(method string, path string) *HttpServerRoute {
+func (route *httpServerRoute) Route(method string, path string) *httpServerRoute {
 	route.path = path
 	route.method = method
 	return route
 }
 
-func (route *HttpServerRoute) Before(before []HttpServerBefore) *HttpServerRoute {
+func (route *httpServerRoute) Before(before []HttpServerBefore) *httpServerRoute {
 	route.before = before
 	return route
 }
 
-func (route *HttpServerRoute) PassBefore() *HttpServerRoute {
+func (route *httpServerRoute) PassBefore() *httpServerRoute {
 	route.passBefore = true
 	return route
 }
 
-func (route *HttpServerRoute) ForceBefore() *HttpServerRoute {
+func (route *httpServerRoute) ForceBefore() *httpServerRoute {
 	route.forceBefore = true
 	return route
 }
 
-func (route *HttpServerRoute) After(after []HttpServerAfter) *HttpServerRoute {
+func (route *httpServerRoute) After(after []HttpServerAfter) *httpServerRoute {
 	route.after = after
 	return route
 }
 
-func (route *HttpServerRoute) PassAfter() *HttpServerRoute {
+func (route *httpServerRoute) PassAfter() *httpServerRoute {
 	route.passAfter = true
 	return route
 }
 
-func (route *HttpServerRoute) ForceAfter() *HttpServerRoute {
+func (route *httpServerRoute) ForceAfter() *httpServerRoute {
 	route.forceAfter = true
 	return route
 }
 
-func (route *HttpServerRoute) Handler(fn HttpServerFunction) {
+func (route *httpServerRoute) Handler(fn HttpServerFunction) {
 
 	var h = route.http
 	var group = h.group
@@ -109,16 +110,16 @@ func (route *HttpServerRoute) Handler(fn HttpServerFunction) {
 	var method = strings.ToUpper(route.method)
 
 	if group == nil {
-		group = new(HttpServerGroup)
+		group = new(httpServerGroup)
 	}
 
-	var path = h.FormatPath(group.path + route.path)
+	var path = h.formatPath(group.path + route.path)
 
 	if h.Router == nil {
 		h.Router = new(tire.Tire)
 	}
 
-	var hba = &HttpServerNode{}
+	var hba = &httpServerNode{}
 
 	hba.HttpServerFunction = fn
 
@@ -147,9 +148,9 @@ func (route *HttpServerRoute) Handler(fn HttpServerFunction) {
 	route.http.route = nil
 }
 
-func (h *HttpServer) Group(path string) *HttpServerGroup {
+func (h *HttpServer) Group(path string) *httpServerGroup {
 
-	var group = new(HttpServerGroup)
+	var group = new(httpServerGroup)
 
 	group.Route(path)
 
@@ -160,9 +161,9 @@ func (h *HttpServer) Group(path string) *HttpServerGroup {
 	return group
 }
 
-func (h *HttpServer) Route(method string, path string) *HttpServerRoute {
+func (h *HttpServer) Route(method string, path string) *httpServerRoute {
 
-	var route = new(HttpServerRoute)
+	var route = new(httpServerRoute)
 
 	route.Route(method, path)
 
@@ -177,7 +178,7 @@ func (h *HttpServer) getRoute(method string, path string) *tire.Tire {
 
 	method = strings.ToUpper(method)
 
-	path = h.FormatPath(path)
+	path = h.formatPath(path)
 
 	var pathB = []byte(path)
 
@@ -191,7 +192,7 @@ func (h *HttpServer) getRoute(method string, path string) *tire.Tire {
 		return nil
 	}
 
-	var nodeData = t.Data.(*HttpServerNode)
+	var nodeData = t.Data.(*httpServerNode)
 
 	if nodeData.Method != method {
 		return nil
@@ -212,7 +213,7 @@ func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var nodeData = node.Data.(*HttpServerNode)
+	var nodeData = node.Data.(*httpServerNode)
 
 	// Get the middleware
 	var params = new(Params)
@@ -253,7 +254,7 @@ func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *HttpServer) FormatPath(path string) string {
+func (h *HttpServer) formatPath(path string) string {
 	if h.IgnoreCase {
 		path = strings.ToLower(path)
 	}
@@ -283,11 +284,8 @@ func (h *HttpServer) Patch(path string, fn HttpServerFunction) {
 func (h *HttpServer) Option(path string, fn HttpServerFunction) {
 	h.Route("OPTION", path).Handler(fn)
 }
-func (h *HttpServer) Ready() {
 
-}
-
-type HttpServerNode struct {
+type httpServerNode struct {
 	Path               []byte
 	Route              []byte
 	Method             string

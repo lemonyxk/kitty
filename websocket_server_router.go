@@ -14,34 +14,34 @@ type WebSocketServerBefore func(conn *WebSocket, receive *Receive) (Context, fun
 
 type WebSocketServerAfter func(conn *WebSocket, receive *Receive) func() *Error
 
-type WebSocketServerGroup struct {
+type webSocketServerGroup struct {
 	path   string
 	before []WebSocketServerBefore
 	after  []WebSocketServerAfter
 	socket *WebSocketServer
 }
 
-func (group *WebSocketServerGroup) Route(path string) *WebSocketServerGroup {
+func (group *webSocketServerGroup) Route(path string) *webSocketServerGroup {
 	group.path = path
 	return group
 }
 
-func (group *WebSocketServerGroup) Before(before []WebSocketServerBefore) *WebSocketServerGroup {
+func (group *webSocketServerGroup) Before(before []WebSocketServerBefore) *webSocketServerGroup {
 	group.before = before
 	return group
 }
 
-func (group *WebSocketServerGroup) After(after []WebSocketServerAfter) *WebSocketServerGroup {
+func (group *webSocketServerGroup) After(after []WebSocketServerAfter) *webSocketServerGroup {
 	group.after = after
 	return group
 }
 
-func (group *WebSocketServerGroup) Handler(fn WebSocketServerGroupFunction) {
+func (group *webSocketServerGroup) Handler(fn WebSocketServerGroupFunction) {
 	fn(group.socket)
 	group.socket.group = nil
 }
 
-type WebSocketServerRoute struct {
+type webSocketServerRoute struct {
 	path        string
 	before      []WebSocketServerBefore
 	after       []WebSocketServerAfter
@@ -52,51 +52,51 @@ type WebSocketServerRoute struct {
 	forceAfter  bool
 }
 
-func (route *WebSocketServerRoute) Route(path string) *WebSocketServerRoute {
+func (route *webSocketServerRoute) Route(path string) *webSocketServerRoute {
 	route.path = path
 	return route
 }
 
-func (route *WebSocketServerRoute) Before(before []WebSocketServerBefore) *WebSocketServerRoute {
+func (route *webSocketServerRoute) Before(before []WebSocketServerBefore) *webSocketServerRoute {
 	route.before = before
 	return route
 }
 
-func (route *WebSocketServerRoute) PassBefore() *WebSocketServerRoute {
+func (route *webSocketServerRoute) PassBefore() *webSocketServerRoute {
 	route.passBefore = true
 	return route
 }
 
-func (route *WebSocketServerRoute) ForceBefore() *WebSocketServerRoute {
+func (route *webSocketServerRoute) ForceBefore() *webSocketServerRoute {
 	route.forceBefore = true
 	return route
 }
 
-func (route *WebSocketServerRoute) After(after []WebSocketServerAfter) *WebSocketServerRoute {
+func (route *webSocketServerRoute) After(after []WebSocketServerAfter) *webSocketServerRoute {
 	route.after = after
 	return route
 }
 
-func (route *WebSocketServerRoute) PassAfter() *WebSocketServerRoute {
+func (route *webSocketServerRoute) PassAfter() *webSocketServerRoute {
 	route.passAfter = true
 	return route
 }
 
-func (route *WebSocketServerRoute) ForceAfter() *WebSocketServerRoute {
+func (route *webSocketServerRoute) ForceAfter() *webSocketServerRoute {
 	route.forceAfter = true
 	return route
 }
 
-func (route *WebSocketServerRoute) Handler(fn WebSocketServerFunction) {
+func (route *webSocketServerRoute) Handler(fn WebSocketServerFunction) {
 
 	var socket = route.socket
 	var group = socket.group
 
 	if group == nil {
-		group = new(WebSocketServerGroup)
+		group = new(webSocketServerGroup)
 	}
 
-	var path = socket.FormatPath(group.path + route.path)
+	var path = socket.formatPath(group.path + route.path)
 
 	if socket.Router == nil {
 		socket.Router = new(tire.Tire)
@@ -129,9 +129,9 @@ func (route *WebSocketServerRoute) Handler(fn WebSocketServerFunction) {
 	route.socket.route = nil
 }
 
-func (socket *WebSocketServer) Group(path string) *WebSocketServerGroup {
+func (socket *WebSocketServer) Group(path string) *webSocketServerGroup {
 
-	var group = new(WebSocketServerGroup)
+	var group = new(webSocketServerGroup)
 
 	group.Route(path)
 
@@ -142,9 +142,9 @@ func (socket *WebSocketServer) Group(path string) *WebSocketServerGroup {
 	return group
 }
 
-func (socket *WebSocketServer) Route(path string) *WebSocketServerRoute {
+func (socket *WebSocketServer) Route(path string) *webSocketServerRoute {
 
-	var route = new(WebSocketServerRoute)
+	var route = new(webSocketServerRoute)
 
 	route.Route(path)
 
@@ -157,7 +157,7 @@ func (socket *WebSocketServer) Route(path string) *WebSocketServerRoute {
 
 func (socket *WebSocketServer) getRoute(path string) *tire.Tire {
 
-	path = socket.FormatPath(path)
+	path = socket.formatPath(path)
 
 	var pathB = []byte(path)
 
@@ -227,7 +227,7 @@ func (socket *WebSocketServer) router(conn *WebSocket, msg *ReceivePackage) {
 
 }
 
-func (socket *WebSocketServer) FormatPath(path string) string {
+func (socket *WebSocketServer) formatPath(path string) string {
 	if socket.IgnoreCase {
 		path = strings.ToLower(path)
 	}

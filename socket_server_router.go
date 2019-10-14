@@ -24,34 +24,34 @@ type SocketServerBefore func(conn *Socket, receive *Receive) (Context, func() *E
 
 type SocketServerAfter func(conn *Socket, receive *Receive) func() *Error
 
-type SocketServerGroup struct {
+type socketServerGroup struct {
 	path   string
 	before []SocketServerBefore
 	after  []SocketServerAfter
 	socket *SocketServer
 }
 
-func (group *SocketServerGroup) Route(path string) *SocketServerGroup {
+func (group *socketServerGroup) Route(path string) *socketServerGroup {
 	group.path = path
 	return group
 }
 
-func (group *SocketServerGroup) Before(before []SocketServerBefore) *SocketServerGroup {
+func (group *socketServerGroup) Before(before []SocketServerBefore) *socketServerGroup {
 	group.before = before
 	return group
 }
 
-func (group *SocketServerGroup) After(after []SocketServerAfter) *SocketServerGroup {
+func (group *socketServerGroup) After(after []SocketServerAfter) *socketServerGroup {
 	group.after = after
 	return group
 }
 
-func (group *SocketServerGroup) Handler(fn SocketServerGroupFunction) {
+func (group *socketServerGroup) Handler(fn SocketServerGroupFunction) {
 	fn(group.socket)
 	group.socket.group = nil
 }
 
-type SocketServerRoute struct {
+type socketServerRoute struct {
 	path        string
 	before      []SocketServerBefore
 	after       []SocketServerAfter
@@ -62,51 +62,51 @@ type SocketServerRoute struct {
 	forceAfter  bool
 }
 
-func (route *SocketServerRoute) Route(path string) *SocketServerRoute {
+func (route *socketServerRoute) Route(path string) *socketServerRoute {
 	route.path = path
 	return route
 }
 
-func (route *SocketServerRoute) Before(before []SocketServerBefore) *SocketServerRoute {
+func (route *socketServerRoute) Before(before []SocketServerBefore) *socketServerRoute {
 	route.before = before
 	return route
 }
 
-func (route *SocketServerRoute) PassBefore() *SocketServerRoute {
+func (route *socketServerRoute) PassBefore() *socketServerRoute {
 	route.passBefore = true
 	return route
 }
 
-func (route *SocketServerRoute) ForceBefore() *SocketServerRoute {
+func (route *socketServerRoute) ForceBefore() *socketServerRoute {
 	route.forceBefore = true
 	return route
 }
 
-func (route *SocketServerRoute) After(after []SocketServerAfter) *SocketServerRoute {
+func (route *socketServerRoute) After(after []SocketServerAfter) *socketServerRoute {
 	route.after = after
 	return route
 }
 
-func (route *SocketServerRoute) PassAfter() *SocketServerRoute {
+func (route *socketServerRoute) PassAfter() *socketServerRoute {
 	route.passAfter = true
 	return route
 }
 
-func (route *SocketServerRoute) ForceAfter() *SocketServerRoute {
+func (route *socketServerRoute) ForceAfter() *socketServerRoute {
 	route.forceAfter = true
 	return route
 }
 
-func (route *SocketServerRoute) Handler(fn SocketServerFunction) {
+func (route *socketServerRoute) Handler(fn SocketServerFunction) {
 
 	var socket = route.socket
 	var group = socket.group
 
 	if group == nil {
-		group = new(SocketServerGroup)
+		group = new(socketServerGroup)
 	}
 
-	var path = socket.FormatPath(group.path + route.path)
+	var path = socket.formatPath(group.path + route.path)
 
 	if socket.Router == nil {
 		socket.Router = new(tire.Tire)
@@ -139,9 +139,9 @@ func (route *SocketServerRoute) Handler(fn SocketServerFunction) {
 	route.socket.route = nil
 }
 
-func (socket *SocketServer) Group(path string) *SocketServerGroup {
+func (socket *SocketServer) Group(path string) *socketServerGroup {
 
-	var group = new(SocketServerGroup)
+	var group = new(socketServerGroup)
 
 	group.Route(path)
 
@@ -152,9 +152,9 @@ func (socket *SocketServer) Group(path string) *SocketServerGroup {
 	return group
 }
 
-func (socket *SocketServer) Route(path string) *SocketServerRoute {
+func (socket *SocketServer) Route(path string) *socketServerRoute {
 
-	var route = new(SocketServerRoute)
+	var route = new(socketServerRoute)
 
 	route.Route(path)
 
@@ -167,7 +167,7 @@ func (socket *SocketServer) Route(path string) *SocketServerRoute {
 
 func (socket *SocketServer) getRoute(path string) *tire.Tire {
 
-	path = socket.FormatPath(path)
+	path = socket.formatPath(path)
 
 	var pathB = []byte(path)
 
@@ -237,7 +237,7 @@ func (socket *SocketServer) router(conn *Socket, msg *ReceivePackage) {
 
 }
 
-func (socket *SocketServer) FormatPath(path string) string {
+func (socket *SocketServer) formatPath(path string) string {
 	if socket.IgnoreCase {
 		path = strings.ToLower(path)
 	}

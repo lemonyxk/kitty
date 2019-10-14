@@ -51,8 +51,8 @@ type WebSocketClient struct {
 
 	IgnoreCase bool
 
-	group *WebSocketClientGroup
-	route *WebSocketClientRoute
+	group *webSocketClientGroup
+	route *webSocketClientRoute
 }
 
 // Json 发送JSON字符

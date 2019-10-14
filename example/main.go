@@ -3,10 +3,10 @@ package main
 import (
 	"io/ioutil"
 	"log"
-	"net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -23,11 +23,11 @@ func main() {
 
 	go SocketServer()
 
-	// go Server()
+	go WebSocketServer()
 	//
-	// time.Sleep(time.Second)
+	time.Sleep(time.Second)
 	//
-	// go Client()
+	go WebSocketClient()
 
 	// 创建信号
 	signalChan := make(chan os.Signal, 1)
@@ -85,8 +85,7 @@ func WebSocketServer() {
 	// 	},
 	// }
 
-	socketHandler.SetRouter("/:hello", func(conn *lemo.WebSocket, receive *lemo.Receive) func() *lemo.Error {
-
+	socketHandler.Route("/:hello").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) func() *lemo.Error {
 		var awesome = &awesomepackage.AwesomeMessage{}
 		err := proto.Unmarshal(receive.Message.Message, awesome)
 
@@ -134,41 +133,38 @@ func WebSocketServer() {
 		log.Println(1)
 	}
 
-	var httpHandler = &lemo.Http{}
+	var httpHandler = &lemo.HttpServer{}
 
-	var before = []lemo.HttpBefore{
+	var before = []lemo.HttpServerBefore{
 		func(t *lemo.Stream) (lemo.Context, func() *lemo.Error) {
 			// _ = t.End("before")
 			return nil, nil
 		},
 	}
 
-	var after = []lemo.HttpAfter{
+	var after = []lemo.HttpServerAfter{
 		func(t *lemo.Stream) func() *lemo.Error {
 			// _ = t.End("after")
 			return nil
 		},
 	}
 
-	httpHandler.Get("/debug/pprof/", pprof.Index)
-	httpHandler.Get("/debug/pprof/:tip", pprof.Index)
-	httpHandler.Get("/debug/pprof/cmdline", pprof.Cmdline)
-	httpHandler.Get("/debug/pprof/profile", pprof.Profile)
-	httpHandler.Get("/debug/pprof/symbol", pprof.Symbol)
-	httpHandler.Get("/debug/pprof/trace", pprof.Trace)
+	// httpHandler.Get("/debug/pprof/", pprof.Index)
+	// httpHandler.Get("/debug/pprof/:tip", pprof.Index)
+	// httpHandler.Get("/debug/pprof/cmdline", pprof.Cmdline)
+	// httpHandler.Get("/debug/pprof/profile", pprof.Profile)
+	// httpHandler.Get("/debug/pprof/symbol", pprof.Symbol)
+	// httpHandler.Get("/debug/pprof/trace", pprof.Trace)
 
-	httpHandler.Group("/:hello", func() {
-		httpHandler.Get("/:12", before, after, func(t *lemo.Stream) func() *lemo.Error {
-
+	httpHandler.Group("/:hello").Handler(func(this *lemo.HttpServer) {
+		this.Route("GET", "/:12").Before(before).After(after).Handler(func(t *lemo.Stream) func() *lemo.Error {
 			var params = t.Params.ByName("hello")
 
 			err := t.Json(lemo.M{"hello": params})
 
 			return lemo.NewError(err)
 		})
-
-		httpHandler.Post("/xixi", before, after, func(t *lemo.Stream) func() *lemo.Error {
-
+		this.Route("GET", "/xixi").Before(before).After(after).Handler(func(t *lemo.Stream) func() *lemo.Error {
 			t.ParseFiles()
 
 			for _, value := range t.Files.All() {
@@ -199,11 +195,10 @@ func WebSocketServer() {
 	server.Start(socketHandler, httpHandler)
 }
 
-func WebScoketClient() {
-	var client = &lemo.WebSocketClient{Host: "127.0.0.1", Port: 12345, Path: "/", AutoHeartBeat: false, HeartBeatTimeout: 5, HeartBeatInterval: 3}
+func WebSocketClient() {
+	var client = &lemo.WebSocketClient{Host: "127.0.0.1", Port: 12345, Path: "/", AutoHeartBeat: true, HeartBeatTimeout: 5, HeartBeatInterval: 3}
 
-	client.SetRouter("/haha", func(c *lemo.WebSocketClient, receive *lemo.Receive) func() *lemo.Error {
-
+	client.Route("/haha").Handler(func(c *lemo.WebSocketClient, receive *lemo.Receive) func() *lemo.Error {
 		logger.Log(receive.Message.Event, receive.Message.MessageType, receive.Message.ProtoType == lemo.Json, string(receive.Message.Message))
 
 		return nil

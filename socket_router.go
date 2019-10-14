@@ -16,62 +16,42 @@ import (
 	"github.com/Lemo-yxk/tire"
 )
 
-type SocketServerGroupFunction func(socket *SocketServer)
+type SocketServerGroupFunction func(this *SocketServer)
 
-type SocketServerFunction func(conn *Socket, msg *Receive) func() *Error
+type SocketServerFunction func(conn *Socket, receive *Receive) func() *Error
 
-type SocketServerBefore func(conn *Socket, msg *Receive) (Context, func() *Error)
+type SocketServerBefore func(conn *Socket, receive *Receive) (Context, func() *Error)
 
-type SocketServerAfter func(conn *Socket, msg *Receive) func() *Error
+type SocketServerAfter func(conn *Socket, receive *Receive) func() *Error
 
-func (socket *SocketServer) FormatPath(path string) string {
-	if socket.IgnoreCase {
-		path = strings.ToLower(path)
-	}
-	return path
-}
-
-type Group struct {
+type SocketServerGroup struct {
 	path   string
 	before []SocketServerBefore
 	after  []SocketServerAfter
 	socket *SocketServer
 }
 
-func (group *Group) Route(path string) *Group {
+func (group *SocketServerGroup) Route(path string) *SocketServerGroup {
 	group.path = path
 	return group
 }
 
-func (group *Group) Before(before []SocketServerBefore) *Group {
+func (group *SocketServerGroup) Before(before []SocketServerBefore) *SocketServerGroup {
 	group.before = before
 	return group
 }
 
-func (group *Group) After(after []SocketServerAfter) *Group {
+func (group *SocketServerGroup) After(after []SocketServerAfter) *SocketServerGroup {
 	group.after = after
 	return group
 }
 
-func (socket *SocketServer) Group(path string) *Group {
-
-	var group = new(Group)
-
-	group.Route(path)
-
-	group.socket = socket
-
-	socket.group = group
-
-	return group
-}
-
-func (group *Group) Handler(fn SocketServerGroupFunction) {
+func (group *SocketServerGroup) Handler(fn SocketServerGroupFunction) {
 	fn(group.socket)
 	group.socket.group = nil
 }
 
-type Route struct {
+type SocketServerRoute struct {
 	path        string
 	before      []SocketServerBefore
 	after       []SocketServerAfter
@@ -82,61 +62,48 @@ type Route struct {
 	forceAfter  bool
 }
 
-func (route *Route) Route(path string) *Route {
+func (route *SocketServerRoute) Route(path string) *SocketServerRoute {
 	route.path = path
 	return route
 }
 
-func (route *Route) Before(before []SocketServerBefore) *Route {
+func (route *SocketServerRoute) Before(before []SocketServerBefore) *SocketServerRoute {
 	route.before = before
 	return route
 }
 
-func (route *Route) PassBefore() *Route {
+func (route *SocketServerRoute) PassBefore() *SocketServerRoute {
 	route.passBefore = true
 	return route
 }
 
-func (route *Route) ForceBefore() *Route {
+func (route *SocketServerRoute) ForceBefore() *SocketServerRoute {
 	route.forceBefore = true
 	return route
 }
 
-func (route *Route) After(after []SocketServerAfter) *Route {
+func (route *SocketServerRoute) After(after []SocketServerAfter) *SocketServerRoute {
 	route.after = after
 	return route
 }
 
-func (route *Route) PassAfter() *Route {
+func (route *SocketServerRoute) PassAfter() *SocketServerRoute {
 	route.passAfter = true
 	return route
 }
 
-func (route *Route) ForceAfter() *Route {
+func (route *SocketServerRoute) ForceAfter() *SocketServerRoute {
 	route.forceAfter = true
 	return route
 }
 
-func (socket *SocketServer) Route(path string) *Route {
-
-	var route = new(Route)
-
-	route.Route(path)
-
-	route.socket = socket
-
-	socket.route = route
-
-	return route
-}
-
-func (route *Route) Handler(fn SocketServerFunction) {
+func (route *SocketServerRoute) Handler(fn SocketServerFunction) {
 
 	var socket = route.socket
 	var group = socket.group
 
 	if group == nil {
-		group = new(Group)
+		group = new(SocketServerGroup)
 	}
 
 	var path = socket.FormatPath(group.path + route.path)
@@ -145,7 +112,7 @@ func (route *Route) Handler(fn SocketServerFunction) {
 		socket.Router = new(tire.Tire)
 	}
 
-	var sba = &SBA{}
+	var sba = &SocketServerNode{}
 
 	sba.SocketServerFunction = fn
 
@@ -172,6 +139,32 @@ func (route *Route) Handler(fn SocketServerFunction) {
 	route.socket.route = nil
 }
 
+func (socket *SocketServer) Group(path string) *SocketServerGroup {
+
+	var group = new(SocketServerGroup)
+
+	group.Route(path)
+
+	group.socket = socket
+
+	socket.group = group
+
+	return group
+}
+
+func (socket *SocketServer) Route(path string) *SocketServerRoute {
+
+	var route = new(SocketServerRoute)
+
+	route.Route(path)
+
+	route.socket = socket
+
+	socket.route = route
+
+	return route
+}
+
 func (socket *SocketServer) getRoute(path string) *tire.Tire {
 
 	path = socket.FormatPath(path)
@@ -188,9 +181,9 @@ func (socket *SocketServer) getRoute(path string) *tire.Tire {
 		return nil
 	}
 
-	var sba = t.Data.(*SBA)
+	var nodeData = t.Data.(*SocketServerNode)
 
-	sba.Path = pathB
+	nodeData.Path = pathB
 
 	return t
 }
@@ -202,18 +195,18 @@ func (socket *SocketServer) router(conn *Socket, msg *ReceivePackage) {
 		return
 	}
 
-	var sba = node.Data.(*SBA)
+	var nodeData = node.Data.(*SocketServerNode)
 
 	var params = new(Params)
 	params.Keys = node.Keys
-	params.Values = node.ParseParams(sba.Path)
+	params.Values = node.ParseParams(nodeData.Path)
 
 	var receive = &Receive{}
 	receive.Message = msg
 	receive.Context = nil
 	receive.Params = params
 
-	for _, before := range sba.Before {
+	for _, before := range nodeData.Before {
 		context, err := before(conn, receive)
 		if err != nil {
 			if socket.OnError != nil {
@@ -224,7 +217,7 @@ func (socket *SocketServer) router(conn *Socket, msg *ReceivePackage) {
 		receive.Context = context
 	}
 
-	err := sba.SocketServerFunction(conn, receive)
+	err := nodeData.SocketServerFunction(conn, receive)
 	if err != nil {
 		if socket.OnError != nil {
 			socket.OnError(err)
@@ -232,7 +225,7 @@ func (socket *SocketServer) router(conn *Socket, msg *ReceivePackage) {
 		return
 	}
 
-	for _, after := range sba.After {
+	for _, after := range nodeData.After {
 		err := after(conn, receive)
 		if err != nil {
 			if socket.OnError != nil {
@@ -244,7 +237,14 @@ func (socket *SocketServer) router(conn *Socket, msg *ReceivePackage) {
 
 }
 
-type SBA struct {
+func (socket *SocketServer) FormatPath(path string) string {
+	if socket.IgnoreCase {
+		path = strings.ToLower(path)
+	}
+	return path
+}
+
+type SocketServerNode struct {
 	Path                 []byte
 	Route                []byte
 	SocketServerFunction SocketServerFunction

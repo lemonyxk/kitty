@@ -65,8 +65,8 @@ type SocketServer struct {
 	fd          uint32
 	count       uint32
 	connections sync.Map
-	group       *Group
-	route       *Route
+	group       *SocketServerGroup
+	route       *SocketServerRoute
 }
 
 func (socket *SocketServer) Ready() {

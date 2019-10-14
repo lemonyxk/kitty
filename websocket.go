@@ -69,13 +69,10 @@ type WebSocket struct {
 
 // WebSocketServer conn
 type WebSocketServer struct {
-	fd          uint32
-	count       uint32
-	connections sync.Map
-	OnClose     func(fd uint32)
-	OnMessage   func(conn *WebSocket, messageType int, msg []byte)
-	OnOpen      func(conn *WebSocket)
-	OnError     func(err func() *Error)
+	OnClose   func(fd uint32)
+	OnMessage func(conn *WebSocket, messageType int, msg []byte)
+	OnOpen    func(conn *WebSocket)
+	OnError   func(err func() *Error)
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -110,6 +107,12 @@ type WebSocketServer struct {
 	PingHandler func(connection *WebSocket) func(appData string) error
 
 	PongHandler func(connection *WebSocket) func(appData string) error
+
+	fd          uint32
+	count       uint32
+	connections sync.Map
+	group       *WebSocketServerGroup
+	route       *WebSocketServerRoute
 }
 
 func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {

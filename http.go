@@ -7,179 +7,175 @@ import (
 	"github.com/Lemo-yxk/tire"
 )
 
-type HttpGroupFunction func()
+type HttpServerGroupFunction func(this *HttpServer)
 
-type StreamFunction func(t *Stream) func() *Error
+type HttpServerFunction func(t *Stream) func() *Error
 
-type HttpFunction func(w http.ResponseWriter, r *http.Request)
+type HttpServerBefore func(t *Stream) (Context, func() *Error)
 
-type HttpBefore func(t *Stream) (Context, func() *Error)
-
-type HttpAfter func(t *Stream) func() *Error
+type HttpServerAfter func(t *Stream) func() *Error
 
 type ErrorFunction func(func() *Error)
 
-type Http struct {
+type HttpServer struct {
 	IgnoreCase bool
 	Router     *tire.Tire
 	OnError    ErrorFunction
+
+	group *HttpServerGroup
+	route *HttpServerRoute
 }
 
-type HBA struct {
-	Path           []byte
-	Route          []byte
-	Method         string
-	StreamFunction StreamFunction
-	HttpFunction   HttpFunction
-	Before         []HttpBefore
-	After          []HttpAfter
+type HttpServerGroup struct {
+	path   string
+	before []HttpServerBefore
+	after  []HttpServerAfter
+	http   *HttpServer
 }
 
-var globalHttpPath string
-var globalHttpBefore []HttpBefore
-var globalHttpAfter []HttpAfter
-
-const (
-	PassBefore uint8 = 1 << iota
-	PassAfter
-	ForceBefore
-	ForceAfter
-)
-
-func (h *Http) Ready() {
-
+func (group *HttpServerGroup) Route(path string) *HttpServerGroup {
+	group.path = path
+	return group
 }
 
-func (h *Http) Group(path string, v ...interface{}) {
+func (group *HttpServerGroup) Before(before []HttpServerBefore) *HttpServerGroup {
+	group.before = before
+	return group
+}
 
-	if v == nil {
-		panic("Group function length is 0")
+func (group *HttpServerGroup) After(after []HttpServerAfter) *HttpServerGroup {
+	group.after = after
+	return group
+}
+
+func (group *HttpServerGroup) Handler(fn HttpServerGroupFunction) {
+	fn(group.http)
+	group.http.group = nil
+}
+
+type HttpServerRoute struct {
+	path        string
+	method      string
+	before      []HttpServerBefore
+	after       []HttpServerAfter
+	http        *HttpServer
+	passBefore  bool
+	forceBefore bool
+	passAfter   bool
+	forceAfter  bool
+}
+
+func (route *HttpServerRoute) Route(method string, path string) *HttpServerRoute {
+	route.path = path
+	route.method = method
+	return route
+}
+
+func (route *HttpServerRoute) Before(before []HttpServerBefore) *HttpServerRoute {
+	route.before = before
+	return route
+}
+
+func (route *HttpServerRoute) PassBefore() *HttpServerRoute {
+	route.passBefore = true
+	return route
+}
+
+func (route *HttpServerRoute) ForceBefore() *HttpServerRoute {
+	route.forceBefore = true
+	return route
+}
+
+func (route *HttpServerRoute) After(after []HttpServerAfter) *HttpServerRoute {
+	route.after = after
+	return route
+}
+
+func (route *HttpServerRoute) PassAfter() *HttpServerRoute {
+	route.passAfter = true
+	return route
+}
+
+func (route *HttpServerRoute) ForceAfter() *HttpServerRoute {
+	route.forceAfter = true
+	return route
+}
+
+func (route *HttpServerRoute) Handler(fn HttpServerFunction) {
+
+	var h = route.http
+	var group = h.group
+
+	var method = strings.ToUpper(route.method)
+
+	if group == nil {
+		group = new(HttpServerGroup)
 	}
 
-	var g HttpGroupFunction
-
-	for _, fn := range v {
-		switch fn.(type) {
-		case func():
-			g = fn.(func())
-		case []HttpBefore:
-			globalHttpBefore = fn.([]HttpBefore)
-		case []HttpAfter:
-			globalHttpAfter = fn.([]HttpAfter)
-		}
-	}
-
-	if g == nil {
-		panic("Group function is nil")
-	}
-
-	globalHttpPath = path
-	g()
-	globalHttpPath = ""
-	globalHttpBefore = nil
-	globalHttpAfter = nil
-}
-
-func (h *Http) SetRoute(method string, path string, v ...interface{}) {
-
-	var m = strings.ToUpper(method)
-
-	path = h.FormatPath(globalHttpPath + path)
+	var path = h.FormatPath(group.path + route.path)
 
 	if h.Router == nil {
 		h.Router = new(tire.Tire)
 	}
 
-	var streamFunction StreamFunction
-	var httpFunction HttpFunction
-	var before []HttpBefore
-	var after []HttpAfter
+	var hba = &HttpServerNode{}
 
-	var passBefore = false
-	var passAfter = false
-	var forceBefore = false
-	var forceAfter = false
+	hba.HttpServerFunction = fn
 
-	for _, mark := range v {
-		switch mark.(type) {
-		case uint8:
-			if mark.(uint8) == PassBefore {
-				passBefore = true
-			}
-			if mark.(uint8) == PassAfter {
-				passAfter = true
-			}
-			if mark.(uint8) == ForceBefore {
-				forceBefore = true
-			}
-			if mark.(uint8) == ForceAfter {
-				forceAfter = true
-			}
-		}
-	}
-
-	for _, fn := range v {
-		switch fn.(type) {
-		case func(w http.ResponseWriter, r *http.Request):
-			httpFunction = fn.(func(w http.ResponseWriter, r *http.Request))
-		case func(t *Stream) func() *Error:
-			streamFunction = fn.(func(t *Stream) func() *Error)
-		case []HttpBefore:
-			before = fn.([]HttpBefore)
-		case []HttpAfter:
-			after = fn.([]HttpAfter)
-		}
-	}
-
-	if streamFunction == nil && httpFunction == nil {
-		println(m, path, "Stream function and Http function are both nil")
-		return
-	}
-
-	if streamFunction != nil && httpFunction != nil {
-		println(m, path, "Stream function and Http function are both exists")
-		return
-	}
-
-	var hba = &HBA{}
-
-	hba.StreamFunction = streamFunction
-	hba.HttpFunction = httpFunction
-
-	hba.Before = append(globalHttpBefore, before...)
-	if passBefore {
+	hba.Before = append(group.before, route.before...)
+	if route.passBefore {
 		hba.Before = nil
 	}
-	if forceBefore {
-		hba.Before = before
+	if route.forceBefore {
+		hba.Before = route.before
 	}
 
-	hba.After = append(globalHttpAfter, after...)
-	if passAfter {
+	hba.After = append(group.after, route.after...)
+	if route.passAfter {
 		hba.After = nil
 	}
-	if forceAfter {
-		hba.After = after
+	if route.forceAfter {
+		hba.After = route.after
 	}
 
-	hba.Method = m
+	hba.Method = method
+
 	hba.Route = []byte(path)
 
 	h.Router.Insert(path, hba)
+
+	route.http.route = nil
 }
 
-func (h *Http) FormatPath(path string) string {
+func (h *HttpServer) Group(path string) *HttpServerGroup {
 
-	if h.IgnoreCase {
-		path = strings.ToLower(path)
-	}
+	var group = new(HttpServerGroup)
 
-	return path
+	group.Route(path)
+
+	group.http = h
+
+	h.group = group
+
+	return group
 }
 
-func (h *Http) GetRoute(method string, path string) *tire.Tire {
+func (h *HttpServer) Route(method string, path string) *HttpServerRoute {
 
-	var m = strings.ToUpper(method)
+	var route = new(HttpServerRoute)
+
+	route.Route(method, path)
+
+	route.http = h
+
+	h.route = route
+
+	return route
+}
+
+func (h *HttpServer) getRoute(method string, path string) *tire.Tire {
+
+	method = strings.ToUpper(method)
 
 	path = h.FormatPath(path)
 
@@ -195,38 +191,37 @@ func (h *Http) GetRoute(method string, path string) *tire.Tire {
 		return nil
 	}
 
-	var hba = t.Data.(*HBA)
+	var nodeData = t.Data.(*HttpServerNode)
 
-	if hba.Method != m {
+	if nodeData.Method != method {
 		return nil
 	}
 
-	hba.Path = pathB
+	nodeData.Path = pathB
 
 	return t
-
 }
 
-func (h *Http) handle(w http.ResponseWriter, r *http.Request) {
+func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 
 	// Get the router
-	node := h.GetRoute(r.Method, r.URL.Path)
+	node := h.getRoute(r.Method, r.URL.Path)
 	if node == nil {
 		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write(nil)
 		return
 	}
 
-	var hba = node.Data.(*HBA)
+	var nodeData = node.Data.(*HttpServerNode)
 
 	// Get the middleware
 	var params = new(Params)
 	params.Keys = node.Keys
-	params.Values = node.ParseParams(hba.Path)
+	params.Values = node.ParseParams(nodeData.Path)
 
 	var tool = Stream{w, r, nil, params, nil, nil, nil}
 
-	for _, before := range hba.Before {
+	for _, before := range nodeData.Before {
 		context, err := before(&tool)
 		if err != nil {
 			if h.OnError != nil {
@@ -237,19 +232,17 @@ func (h *Http) handle(w http.ResponseWriter, r *http.Request) {
 		tool.Context = context
 	}
 
-	if hba.StreamFunction != nil {
-		err := hba.StreamFunction(&tool)
+	if nodeData.HttpServerFunction != nil {
+		err := nodeData.HttpServerFunction(&tool)
 		if err != nil {
 			if h.OnError != nil {
 				h.OnError(err)
 			}
 			return
 		}
-	} else {
-		hba.HttpFunction(tool.Response, tool.Request)
 	}
 
-	for _, after := range hba.After {
+	for _, after := range nodeData.After {
 		err := after(&tool)
 		if err != nil {
 			if h.OnError != nil {
@@ -260,26 +253,45 @@ func (h *Http) handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Http) Get(path string, v ...interface{}) {
-	h.SetRoute("GET", path, v...)
+func (h *HttpServer) FormatPath(path string) string {
+	if h.IgnoreCase {
+		path = strings.ToLower(path)
+	}
+	return path
 }
 
-func (h *Http) Post(path string, v ...interface{}) {
-	h.SetRoute("POST", path, v...)
+func (h *HttpServer) Get(path string, fn HttpServerFunction) {
+	h.Route("GET", path).Handler(fn)
 }
 
-func (h *Http) Delete(path string, v ...interface{}) {
-	h.SetRoute("DELETE", path, v...)
+func (h *HttpServer) Post(path string, fn HttpServerFunction) {
+	h.Route("POST", path).Handler(fn)
 }
 
-func (h *Http) Put(path string, v ...interface{}) {
-	h.SetRoute("PUT", path, v...)
+func (h *HttpServer) Delete(path string, fn HttpServerFunction) {
+	h.Route("DELETE", path).Handler(fn)
 }
 
-func (h *Http) Patch(path string, v ...interface{}) {
-	h.SetRoute("PATCH", path, v...)
+func (h *HttpServer) Put(path string, fn HttpServerFunction) {
+	h.Route("PUT", path).Handler(fn)
 }
 
-func (h *Http) Option(path string, v ...interface{}) {
-	h.SetRoute("OPTION", path, v...)
+func (h *HttpServer) Patch(path string, fn HttpServerFunction) {
+	h.Route("PATCH", path).Handler(fn)
+}
+
+func (h *HttpServer) Option(path string, fn HttpServerFunction) {
+	h.Route("OPTION", path).Handler(fn)
+}
+func (h *HttpServer) Ready() {
+
+}
+
+type HttpServerNode struct {
+	Path               []byte
+	Route              []byte
+	Method             string
+	HttpServerFunction HttpServerFunction
+	Before             []HttpServerBefore
+	After              []HttpServerAfter
 }

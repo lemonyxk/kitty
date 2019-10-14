@@ -50,6 +50,9 @@ type WebSocketClient struct {
 	Context interface{}
 
 	IgnoreCase bool
+
+	group *WebSocketClientGroup
+	route *WebSocketClientRoute
 }
 
 // Json 发送JSON字符

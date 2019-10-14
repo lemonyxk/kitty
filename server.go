@@ -21,7 +21,7 @@ type Server struct {
 
 type Handler struct {
 	socketHandler *WebSocketServer
-	httpHandler   *Http
+	httpHandler   *HttpServer
 }
 
 type Context interface{}
@@ -34,19 +34,19 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Http Not exists
+	// HttpServer Not exists
 	if handler.httpHandler == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write(nil)
 		return
 	}
 
-	handler.httpHandler.handle(w, r)
+	handler.httpHandler.router(w, r)
 	return
 }
 
 // Start 启动 WebSocketServer
-func (s *Server) Start(socketHandler *WebSocketServer, httpHandler *Http) {
+func (s *Server) Start(socketHandler *WebSocketServer, httpHandler *HttpServer) {
 
 	socketHandler.Ready()
 	httpHandler.Ready()

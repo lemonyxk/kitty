@@ -265,23 +265,23 @@ func (h *HttpServer) Get(path string) *httpServerRoute {
 	return h.Route("GET", path)
 }
 
-func (h *HttpServer) Post(path string, fn HttpServerFunction) *httpServerRoute {
+func (h *HttpServer) Post(path string) *httpServerRoute {
 	return h.Route("POST", path)
 }
 
-func (h *HttpServer) Delete(path string, fn HttpServerFunction) *httpServerRoute {
+func (h *HttpServer) Delete(path string) *httpServerRoute {
 	return h.Route("DELETE", path)
 }
 
-func (h *HttpServer) Put(path string, fn HttpServerFunction) *httpServerRoute {
+func (h *HttpServer) Put(path string) *httpServerRoute {
 	return h.Route("PUT", path)
 }
 
-func (h *HttpServer) Patch(path string, fn HttpServerFunction) *httpServerRoute {
+func (h *HttpServer) Patch(path string) *httpServerRoute {
 	return h.Route("PATCH", path)
 }
 
-func (h *HttpServer) Option(path string, fn HttpServerFunction) *httpServerRoute {
+func (h *HttpServer) Option(path string) *httpServerRoute {
 	return h.Route("OPTION", path)
 }
 

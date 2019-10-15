@@ -2,7 +2,6 @@ package lemo
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -491,7 +490,7 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 	for {
 
 		// read message
-		frameType, message, err := conn.ReadMessage()
+		_, message, err := conn.ReadMessage()
 		// close
 		if err != nil {
 			break
@@ -506,7 +505,7 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 		// 	return
 		// }
 
-		err = socket.decodeMessage(connection, frameType, message)
+		err = socket.decodeMessage(connection, message)
 		if err != nil {
 			socket.connError <- NewError(err)
 			break
@@ -519,7 +518,7 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (socket *WebSocketServer) decodeMessage(connection *WebSocket, frameType int, message []byte) error {
+func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []byte) error {
 
 	// unpack
 	version, messageType, protoType, route, body := UnPack(message)
@@ -530,11 +529,6 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, frameType in
 			go socket.OnMessage(connection, messageType, message)
 		}
 		return nil
-	}
-
-	// check message type
-	if frameType != messageType {
-		return errors.New("frame type not match message type")
 	}
 
 	// Ping
@@ -554,6 +548,11 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, frameType in
 		}
 		return nil
 	}
+
+	// // check message type
+	// if frameType != messageType {
+	// 	return errors.New("frame type not match message type")
+	// }
 
 	// on router
 	if socket.Router != nil {

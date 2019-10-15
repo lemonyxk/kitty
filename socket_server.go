@@ -11,7 +11,6 @@
 package lemo
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -337,7 +336,7 @@ func (socket *SocketServer) handler(conn net.Conn) {
 			}
 
 			// a complete message
-			err := socket.decodeMessage(connection, 2, message[0:singleMessageLen])
+			err := socket.decodeMessage(connection, message[0:singleMessageLen])
 			if err != nil {
 				socket.connError <- NewError(err)
 				goto OUT
@@ -357,7 +356,7 @@ OUT:
 	socket.connClose <- connection
 }
 
-func (socket *SocketServer) decodeMessage(connection *Socket, frameType int, message []byte) error {
+func (socket *SocketServer) decodeMessage(connection *Socket, message []byte) error {
 	// unpack
 	version, messageType, protoType, route, body := UnPack(message)
 
@@ -367,11 +366,6 @@ func (socket *SocketServer) decodeMessage(connection *Socket, frameType int, mes
 			go socket.OnMessage(connection, messageType, message)
 		}
 		return nil
-	}
-
-	// check message type
-	if frameType != messageType {
-		return errors.New("frame type not match message type")
 	}
 
 	// Ping
@@ -391,6 +385,11 @@ func (socket *SocketServer) decodeMessage(connection *Socket, frameType int, mes
 		}
 		return nil
 	}
+
+	// // check message type
+	// if frameType != messageType {
+	// 	return errors.New("frame type not match message type")
+	// }
 
 	// on router
 	if socket.Router != nil {

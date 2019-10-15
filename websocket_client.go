@@ -254,7 +254,7 @@ func (client *WebSocketClient) Connect() {
 		for {
 
 			// read message
-			frameType, message, err := client.Conn.ReadMessage()
+			_, message, err := client.Conn.ReadMessage()
 			if err != nil {
 				closeChan <- false
 				return
@@ -269,12 +269,6 @@ func (client *WebSocketClient) Connect() {
 					go client.OnMessage(client, messageType, message)
 				}
 				continue
-			}
-
-			// check message type
-			if frameType != messageType {
-				closeChan <- false
-				return
 			}
 
 			// Ping
@@ -296,6 +290,12 @@ func (client *WebSocketClient) Connect() {
 				}
 				continue
 			}
+
+			// // check message type
+			// if frameType != messageType {
+			// 	closeChan <- false
+			// 	return
+			// }
 
 			// on router
 			if client.Router != nil {

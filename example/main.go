@@ -3,8 +3,10 @@ package main
 import (
 	"io/ioutil"
 	"log"
+	"net/http/pprof"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -12,7 +14,7 @@ import (
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/logger"
-	awesomepackage "github.com/Lemo-yxk/lemo/protobuf-origin"
+	"github.com/Lemo-yxk/lemo/protobuf-origin"
 )
 
 func init() {
@@ -23,11 +25,15 @@ func main() {
 
 	go SocketServer()
 
-	go WebSocketServer()
-	//
 	time.Sleep(time.Second)
-	//
-	go WebSocketClient()
+
+	go SocketClient()
+
+	// go WebSocketServer()
+	// //
+	// time.Sleep(time.Second)
+	// //
+	// go WebSocketClient()
 
 	// 创建信号
 	signalChan := make(chan os.Signal, 1)
@@ -38,9 +44,48 @@ func main() {
 
 }
 
+func SocketClient() {
+
+	var i int32 = 0
+
+	var socketClient = lemo.SocketClient{Host: "127.0.0.1", Port: 5000, AutoHeartBeat: true, HeartBeatInterval: 3, HeartBeatTimeout: 5}
+
+	socketClient.OnOpen = func(c *lemo.SocketClient) {
+		logger.Log("client open")
+	}
+
+	socketClient.Group("/hello").Handler(func(this *lemo.SocketClient) {
+		this.Route("/world").Handler(func(c *lemo.SocketClient, receive *lemo.Receive) func() *lemo.Error {
+			logger.Log(string(receive.Message.Message), atomic.AddInt32(&i, 1))
+			_ = c.JsonEmit(lemo.JsonPackage{Event: "/hello/kid", Message: lemo.M{"who": "me"}})
+			return nil
+		})
+	})
+
+	socketClient.OnClose = func(c *lemo.SocketClient) {
+		logger.Log("client close")
+	}
+
+	socketClient.OnError = func(err func() *lemo.Error) {
+		logger.Log(err())
+	}
+
+	socketClient.Connect()
+}
+
 func SocketServer() {
 
+	var j int32 = 0
+
 	var server = lemo.SocketServer{Host: "0.0.0.0", Port: 5000, HeartBeatTimeout: 5, HeartBeatInterval: 3}
+
+	server.OnOpen = func(conn *lemo.Socket) {
+		for i := 0; i < 10000; i++ {
+			go func() {
+				_ = conn.JsonEmit(conn.Fd, lemo.JsonPackage{Event: "/hello/world", Message: lemo.M{"name": "1", "addr": 2}})
+			}()
+		}
+	}
 
 	server.OnMessage = func(conn *lemo.Socket, messageType int, msg []byte) {
 		log.Println(string(msg))
@@ -53,7 +98,7 @@ func SocketServer() {
 		})
 
 		socket.Route("/kid").Handler(func(conn *lemo.Socket, msg *lemo.Receive) func() *lemo.Error {
-			log.Println(string(msg.Message.Event), string(msg.Message.Message))
+			log.Println(string(msg.Message.Event), string(msg.Message.Message), atomic.AddInt32(&j, 1))
 			return nil
 		})
 	})
@@ -149,7 +194,10 @@ func WebSocketServer() {
 		},
 	}
 
-	// httpHandler.Get("/debug/pprof/", pprof.Index)
+	httpHandler.Get("/debug/pprof/").Handler(func(t *lemo.Stream) func() *lemo.Error {
+		pprof.Index(t.Response, t.Request)
+		return nil
+	})
 	// httpHandler.Get("/debug/pprof/:tip", pprof.Index)
 	// httpHandler.Get("/debug/pprof/cmdline", pprof.Cmdline)
 	// httpHandler.Get("/debug/pprof/profile", pprof.Profile)
@@ -200,17 +248,13 @@ func WebSocketClient() {
 
 	client.Route("/haha").Handler(func(c *lemo.WebSocketClient, receive *lemo.Receive) func() *lemo.Error {
 		logger.Log(receive.Message.Event, receive.Message.MessageType, receive.Message.ProtoType == lemo.Json, string(receive.Message.Message))
-
 		return nil
 	})
 
 	client.OnOpen = func(c *lemo.WebSocketClient) {
 		logger.Log("open")
-
 		var data = &awesomepackage.AwesomeMessage{AwesomeField: "尼玛的", AwesomeKey: "他妈的"}
-
 		logger.Log(c.ProtoBufEmit(lemo.ProtoBufPackage{Event: "/xixi", Message: data}))
-
 	}
 
 	client.OnMessage = func(c *lemo.WebSocketClient, messageType int, msg []byte) {

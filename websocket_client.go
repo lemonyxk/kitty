@@ -45,11 +45,13 @@ type WebSocketClient struct {
 
 	mux sync.RWMutex
 
-	TsProto int
-
 	Context interface{}
 
 	IgnoreCase bool
+
+	PingHandler func(c *WebSocketClient) func(appData string) error
+
+	PongHandler func(c *WebSocketClient) func(appData string) error
 
 	group *webSocketClientGroup
 	route *webSocketClientRoute
@@ -63,7 +65,7 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return client.Push(TextMessage, messageJson)
+	return client.Push(TextData, messageJson)
 }
 
 func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
@@ -73,7 +75,7 @@ func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return client.Push(BinaryMessage, messageProtoBuf)
+	return client.Push(BinData, messageProtoBuf)
 
 }
 
@@ -91,7 +93,7 @@ func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return client.Push(TextMessage, Pack([]byte(msg.Event), data, Json, TextMessage))
+	return client.Push(TextData, Pack([]byte(msg.Event), data, TextData, Json))
 
 }
 
@@ -102,7 +104,7 @@ func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return client.Push(BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, BinaryMessage))
+	return client.Push(BinData, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
 
 }
 
@@ -198,7 +200,23 @@ func (client *WebSocketClient) Connect() {
 	// heartbeat function
 	if client.HeartBeat == nil {
 		client.HeartBeat = func(client *WebSocketClient) error {
-			return client.Push(websocket.PingMessage, nil)
+			return client.Push(BinData, Pack(nil, nil, PingData, BinData))
+		}
+	}
+
+	if client.PingHandler == nil {
+		client.PingHandler = func(connection *WebSocketClient) func(appData string) error {
+			return func(appData string) error {
+				return nil
+			}
+		}
+	}
+
+	if client.PongHandler == nil {
+		client.PongHandler = func(connection *WebSocketClient) func(appData string) error {
+			return func(appData string) error {
+				return nil
+			}
 		}
 	}
 
@@ -211,18 +229,15 @@ func (client *WebSocketClient) Connect() {
 	// 连接服务器
 	handler, response, err := dialer.Dial(fmt.Sprintf("%s://%s:%d%s", client.Protocol, client.Host, client.Port, client.Path), nil)
 	if err != nil {
-		panic(err)
+		go client.OnError(NewError(err))
+		return
 	}
 
 	// 设置PING处理函数
-	handler.SetPingHandler(func(appData string) error {
-		return nil
-	})
+	handler.SetPingHandler(client.PingHandler(client))
 
 	// 设置PONG处理函数
-	handler.SetPongHandler(func(appData string) error {
-		return nil
-	})
+	handler.SetPongHandler(client.PongHandler(client))
 
 	client.Response = response
 
@@ -272,8 +287,8 @@ func (client *WebSocketClient) Connect() {
 			}
 
 			// Ping
-			if messageType == PingMessage {
-				err := client.Conn.PingHandler()("")
+			if messageType == PingData {
+				err := client.PingHandler(client)("")
 				if err != nil {
 					closeChan <- false
 					return
@@ -282,8 +297,8 @@ func (client *WebSocketClient) Connect() {
 			}
 
 			// Pong
-			if messageType == PongMessage {
-				err := client.Conn.PongHandler()("")
+			if messageType == PongData {
+				err := client.PongHandler(client)("")
 				if err != nil {
 					closeChan <- false
 					return

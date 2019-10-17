@@ -23,17 +23,19 @@ const (
 	// Version
 	Version byte = 'V'
 
-	Text     int = 1
-	Json     int = 2
-	ProtoBuf int = 3
-
+	// message type
 	TextData int = 1
 	BinData  int = 2
 	PingData int = 9
 	PongData int = 10
+
+	// proto type
+	Text     int = 1
+	Json     int = 2
+	ProtoBuf int = 3
 )
 
-func Pack(route []byte, body []byte, protoType int, messageType int) []byte {
+func Pack(route []byte, body []byte, messageType int, protoType int) []byte {
 
 	switch messageType {
 	case TextData:

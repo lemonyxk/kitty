@@ -45,18 +45,6 @@ type PushPackage struct {
 
 type M map[string]interface{}
 
-// PingMessage PING
-const PingMessage int = websocket.PingMessage
-
-// PongMessage PONG
-const PongMessage int = websocket.PongMessage
-
-// TextMessage 文本
-const TextMessage int = websocket.TextMessage
-
-// BinaryMessage 二进制
-const BinaryMessage int = websocket.BinaryMessage
-
 // WebSocket WebSocket
 type WebSocket struct {
 	Fd       uint32
@@ -122,7 +110,7 @@ func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
 	return p1 == p2
 }
 
-func (conn *WebSocket) IP() (string, string, error) {
+func (conn *WebSocket) ClientIP() (string, string, error) {
 
 	if ip := conn.Request.Header.Get(XRealIP); ip != "" {
 		return net.SplitHostPort(ip)
@@ -199,7 +187,7 @@ func (socket *WebSocketServer) Json(fd uint32, msg interface{}) error {
 		return fmt.Errorf("message error: %v", err)
 	}
 
-	return socket.Push(fd, TextMessage, messageJson)
+	return socket.Push(fd, TextData, messageJson)
 }
 
 func (socket *WebSocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
@@ -209,7 +197,7 @@ func (socket *WebSocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return socket.Push(fd, BinaryMessage, messageProtoBuf)
+	return socket.Push(fd, BinData, messageProtoBuf)
 }
 
 func (socket *WebSocketServer) JsonEmitAll(msg JsonPackage) {
@@ -233,7 +221,7 @@ func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) erro
 		return fmt.Errorf("protobuf error: %v", err)
 	}
 
-	return socket.Push(fd, BinaryMessage, Pack([]byte(msg.Event), messageProtoBuf, ProtoBuf, BinaryMessage))
+	return socket.Push(fd, BinData, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
 
 }
 
@@ -251,7 +239,7 @@ func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return socket.Push(fd, TextMessage, Pack([]byte(msg.Event), data, Json, TextMessage))
+	return socket.Push(fd, TextData, Pack([]byte(msg.Event), data, TextData, Json))
 
 }
 
@@ -385,7 +373,7 @@ func (socket *WebSocketServer) Ready() {
 		socket.PingHandler = func(connection *WebSocket) func(appData string) error {
 			return func(appData string) error {
 				// unnecessary
-				// err := socket.Push(connection.Fd, PongMessage, nil)
+				// err := socket.Push(connection.Fd, BinData, Pack(nil, nil, PongData, BinData))
 				return connection.Conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 			}
 		}
@@ -532,7 +520,7 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 	}
 
 	// Ping
-	if messageType == PingMessage {
+	if messageType == PingData {
 		err := socket.PingHandler(connection)("")
 		if err != nil {
 			return err
@@ -541,7 +529,7 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 	}
 
 	// Pong
-	if messageType == PongMessage {
+	if messageType == PongData {
 		err := socket.PongHandler(connection)("")
 		if err != nil {
 			return err

@@ -11,18 +11,68 @@
 package lemo
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/Lemo-yxk/tire"
+	"github.com/golang/protobuf/proto"
 )
 
 type Socket struct {
 	Fd     uint32
 	Conn   net.Conn
 	socket *SocketServer
+}
+
+func (conn *Socket) ClientIP() (string, string, error) {
+	return net.SplitHostPort(conn.Conn.RemoteAddr().String())
+}
+
+func (conn *Socket) Push(fd uint32, msg []byte) error {
+	return conn.socket.Push(fd, msg)
+}
+
+func (conn *Socket) Json(fd uint32, msg interface{}) error {
+	return conn.socket.Json(fd, msg)
+}
+
+func (conn *Socket) ProtoBuf(fd uint32, msg proto.Message) error {
+	return conn.socket.ProtoBuf(fd, msg)
+}
+
+func (conn *Socket) JsonEmit(fd uint32, msg JsonPackage) error {
+	return conn.socket.JsonEmit(fd, msg)
+}
+
+func (conn *Socket) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
+	return conn.socket.ProtoBufEmit(fd, msg)
+}
+
+func (conn *Socket) JsonEmitAll(msg JsonPackage) {
+	conn.socket.JsonEmitAll(msg)
+}
+
+func (conn *Socket) ProtoBufEmitAll(msg ProtoBufPackage) {
+	conn.socket.ProtoBufEmitAll(msg)
+}
+
+func (conn *Socket) GetConnections() chan *Socket {
+	return conn.socket.GetConnections()
+}
+
+func (conn *Socket) GetSocket() *SocketServer {
+	return conn.socket
+}
+
+func (conn *Socket) GetConnectionsCount() uint32 {
+	return conn.socket.GetConnectionsCount()
+}
+
+func (conn *Socket) GetConnection(fd uint32) (*Socket, bool) {
+	return conn.socket.GetConnection(fd)
 }
 
 type SocketServer struct {
@@ -37,6 +87,7 @@ type SocketServer struct {
 	HeartBeatInterval int
 	ReadBufferSize    int
 	WaitQueueSize     int
+	HandshakeTimeout  int
 
 	Router *tire.Tire
 
@@ -68,7 +119,86 @@ type SocketServer struct {
 	route       *socketServerRoute
 }
 
+// Push 发送消息
+func (socket *SocketServer) Push(fd uint32, msg []byte) error {
+
+	socket.connPush <- &PushPackage{
+		FD:      fd,
+		Message: msg,
+	}
+
+	return <-socket.connBack
+}
+
+// Push Json 发送消息
+func (socket *SocketServer) Json(fd uint32, msg interface{}) error {
+
+	messageJson, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("message error: %v", err)
+	}
+
+	return socket.Push(fd, messageJson)
+}
+
+func (socket *SocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
+
+	messageProtoBuf, err := proto.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("protobuf error: %v", err)
+	}
+
+	return socket.Push(fd, messageProtoBuf)
+}
+
+func (socket *SocketServer) JsonEmitAll(msg JsonPackage) {
+	socket.connections.Range(func(key, value interface{}) bool {
+		_ = socket.JsonEmit(key.(uint32), msg)
+		return true
+	})
+}
+
+func (socket *SocketServer) ProtoBufEmitAll(msg ProtoBufPackage) {
+	socket.connections.Range(func(key, value interface{}) bool {
+		_ = socket.ProtoBufEmit(key.(uint32), msg)
+		return true
+	})
+}
+
+func (socket *SocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
+
+	messageProtoBuf, err := proto.Marshal(msg.Message)
+	if err != nil {
+		return fmt.Errorf("protobuf error: %v", err)
+	}
+
+	return socket.Push(fd, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
+
+}
+
+func (socket *SocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
+
+	var data []byte
+
+	if mb, ok := msg.Message.([]byte); ok {
+		data = mb
+	} else {
+		messageJson, err := json.Marshal(msg.Message)
+		if err != nil {
+			return fmt.Errorf("protobuf error: %v", err)
+		}
+		data = messageJson
+	}
+
+	return socket.Push(fd, Pack([]byte(msg.Event), data, TextData, Json))
+
+}
+
 func (socket *SocketServer) Ready() {
+
+	if socket.HandshakeTimeout == 0 {
+		socket.HandshakeTimeout = 2
+	}
 
 	if socket.HeartBeatTimeout == 0 {
 		socket.HeartBeatTimeout = 30
@@ -100,7 +230,7 @@ func (socket *SocketServer) Ready() {
 
 	if socket.OnError == nil {
 		socket.OnError = func(err func() *Error) {
-			fmt.Println(err())
+			println(err().Error)
 		}
 	}
 
@@ -157,7 +287,8 @@ func (socket *SocketServer) Ready() {
 				if !ok {
 					socket.connBack <- fmt.Errorf("client %d is close", push.FD)
 				} else {
-					socket.connBack <- conn.(*WebSocket).Conn.WriteMessage(push.MessageType, push.Message)
+					_, err := conn.(*Socket).Conn.Write(push.Message)
+					socket.connBack <- err
 				}
 			case err := <-socket.connError:
 				go socket.OnError(err)
@@ -369,7 +500,7 @@ func (socket *SocketServer) decodeMessage(connection *Socket, message []byte) er
 	}
 
 	// Ping
-	if messageType == PingMessage {
+	if messageType == PingData {
 		err := socket.PingHandler(connection)("")
 		if err != nil {
 			return err
@@ -378,7 +509,7 @@ func (socket *SocketServer) decodeMessage(connection *Socket, message []byte) er
 	}
 
 	// Pong
-	if messageType == PongMessage {
+	if messageType == PongData {
 		err := socket.PongHandler(connection)("")
 		if err != nil {
 			return err

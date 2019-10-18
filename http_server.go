@@ -67,7 +67,10 @@ func (h *HttpServer) staticHandler(filePath string) ([]byte, string, func() *Err
 	}
 
 	if info.IsDir() {
-		return nil, "", NewError("staticPath is not a file")
+		absFilePath = filepath.Join(absFilePath, "index.html")
+		if _, err := os.Stat(absFilePath); err != nil {
+			return nil, "", NewError("staticPath is not a file")
+		}
 	}
 
 	// has found

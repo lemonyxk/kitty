@@ -257,15 +257,6 @@ func (client *SocketClient) Connect() {
 				goto OUT
 			}
 
-			// do not let it dead
-			// but i want too
-			// 超时时间
-			// err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
-			// if err != nil {
-			// 	socket.connError <- err
-			// 	goto OUT
-			// }
-
 			message = append(message, buffer[0:n]...)
 
 			// read continue

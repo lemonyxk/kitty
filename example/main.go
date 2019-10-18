@@ -8,7 +8,6 @@ import (
 	"os/signal"
 	"sync/atomic"
 	"syscall"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 
@@ -23,11 +22,13 @@ func init() {
 
 func main() {
 
-	go SocketServer()
+	go lemo.Udp()
 
-	time.Sleep(time.Second)
+	// go SocketServer()
 
-	go SocketClient()
+	// time.Sleep(time.Second)
+
+	// go SocketClient()
 
 	// go WebSocketServer()
 	// //

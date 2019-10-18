@@ -25,7 +25,7 @@ type HttpServerBefore func(t *Stream) (Context, func() *Error)
 
 type HttpServerAfter func(t *Stream) func() *Error
 
-type ErrorFunction func(func() *Error)
+type ErrorFunction func(err func() *Error)
 
 type httpServerGroup struct {
 	path   string
@@ -204,6 +204,13 @@ func (h *HttpServer) getRoute(method string, path string) *tire.Tire {
 }
 
 func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
+
+	// static file
+	if h.staticPath != "" {
+		if h.staticHandler(r.URL.Path) == nil {
+			return
+		}
+	}
 
 	// Get the router
 	node := h.getRoute(r.Method, r.URL.Path)

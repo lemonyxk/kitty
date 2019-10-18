@@ -10,6 +10,21 @@
 
 package lemo
 
+import (
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+func ListenSignal(fn func(sig os.Signal)) {
+	// 创建信号
+	signalChan := make(chan os.Signal, 1)
+	// 通知
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
+	// 阻塞
+	fn(<-signalChan)
+}
+
 func ParseMessage(bts []byte) (string, []byte) {
 
 	var s, e int

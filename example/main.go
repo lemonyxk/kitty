@@ -29,12 +29,7 @@ func HttpServer() {
 
 	httpServer.Group("/hello").Handler(func(this *lemo.HttpServer) {
 		this.Get("/world").Handler(func(t *lemo.Stream) func() *lemo.Error {
-
-			t.AutoParse()
-
-			logger.Log(t.Query)
-
-			return nil
+			return lemo.NewError(t.End("hello world!"))
 		})
 	})
 

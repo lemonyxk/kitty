@@ -213,6 +213,9 @@ func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", contentType)
 				_, _ = w.Write(bts)
 			} else {
+				if h.OnError != nil {
+					h.OnError(err)
+				}
 				w.WriteHeader(http.StatusForbidden)
 			}
 			return

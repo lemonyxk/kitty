@@ -1,7 +1,6 @@
 package lemo
 
 import (
-	"errors"
 	"io/ioutil"
 	"mime"
 	"os"
@@ -54,21 +53,21 @@ func (h *HttpServer) SetStaticPath(prefixPath string, staticPath string) {
 	h.staticPath = absStaticPath
 }
 
-func (h *HttpServer) staticHandler(filePath string) ([]byte, string, error) {
+func (h *HttpServer) staticHandler(filePath string) ([]byte, string, func() *Error) {
 
 	if !strings.HasPrefix(filePath, h.prefixPath) {
-		return nil, "", errors.New("not match")
+		return nil, "", NewError("not match")
 	}
 
 	var absFilePath = h.staticPath + filePath[len(h.prefixPath):]
 
 	var info, err = os.Stat(absFilePath)
 	if err != nil {
-		return nil, "", err
+		return nil, "", NewError(err)
 	}
 
 	if info.IsDir() {
-		return nil, "", errors.New("staticPath is not a file")
+		return nil, "", NewError("staticPath is not a file")
 	}
 
 	// has found
@@ -76,12 +75,12 @@ func (h *HttpServer) staticHandler(filePath string) ([]byte, string, error) {
 
 	f, err := os.OpenFile(absFilePath, os.O_RDONLY, 0666)
 	if err != nil {
-		return nil, contentType, err
+		return nil, contentType, NewError(err)
 	}
 
 	bts, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, contentType, err
+		return nil, contentType, NewError(err)
 	}
 
 	return bts, contentType, nil

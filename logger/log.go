@@ -44,7 +44,7 @@ func init() {
 
 	logger = new(Logger)
 
-	logger.SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
+	SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
 		var date = time.Now().Format("2006-01-02 15:04:05")
 
 		var buf bytes.Buffer
@@ -59,25 +59,27 @@ func init() {
 		color.Blue.Println(fmt.Sprintf("%s %s:%d %s", date, file, line, buf.String()))
 	})
 
-	logger.SetErrorHook(func(err *lemo.Error) {
+	SetErrorHook(func(err *lemo.Error) {
 		var date = err.Time.Format("2006-01-02 15:04:05")
 		color.Red.Println(date, fmt.Sprintf("%s:%d", err.File, err.Line), err.Error)
 	})
 
-	logger.SetWriteHook(func(t time.Time, file string, line int, v ...interface{}) {
+	SetWriteHook(func(t time.Time, file string, line int, v ...interface{}) {
 
 	})
 }
 
-func (logger *Logger) SetDebugHook(fn func(t time.Time, file string, line int, v ...interface{})) {
+func SetDebugHook(fn func(t time.Time, file string, line int, v ...interface{})) {
 	logger.debugHook = fn
 }
 
-func (logger *Logger) SetErrorHook(fn func(err *lemo.Error)) {
+func SetErrorHook(fn func(err *lemo.Error)) {
 	logger.errorHook = fn
 }
 
-func (logger *Logger) SetWriteHook(fn func(t time.Time, file string, line int, v ...interface{})) {}
+func SetWriteHook(fn func(t time.Time, file string, line int, v ...interface{})) {
+	logger.writeHook = fn
+}
 
 func Log(v ...interface{}) {
 

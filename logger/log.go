@@ -22,45 +22,62 @@ type statementServerMessage struct {
 }
 
 var debug = true
-var log = false
+var write = false
 
 func SetDebug(flag bool) {
 	debug = flag
 }
 
-func SetLog(flag bool) {
-	log = flag
+func SetWrite(flag bool) {
+	write = flag
 }
 
-type Logger struct{}
+type Logger struct {
+	debugHook func(t time.Time, file string, line int, v ...interface{})
+	writeHook func(t time.Time, file string, line int, v ...interface{})
+	errorHook func(err *lemo.Error)
+}
 
 var logger *Logger
 
 func init() {
+
 	logger = new(Logger)
-}
 
-func (logger *Logger) debugHook(t time.Time, file string, line int, v ...interface{}) {
-	var date = time.Now().Format("2006-01-02 15:04:05")
+	logger.SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
+		var date = time.Now().Format("2006-01-02 15:04:05")
 
-	var buf bytes.Buffer
+		var buf bytes.Buffer
 
-	for index, value := range v {
-		buf.WriteString(fmt.Sprint(value))
-		if index != len(v)-1 {
-			buf.WriteString(" ")
+		for index, value := range v {
+			buf.WriteString(fmt.Sprint(value))
+			if index != len(v)-1 {
+				buf.WriteString(" ")
+			}
 		}
-	}
 
-	color.Blue.Println(fmt.Sprintf("%s %s:%d %s", date, file, line, buf.String()))
+		color.Blue.Println(fmt.Sprintf("%s %s:%d %s", date, file, line, buf.String()))
+	})
+
+	logger.SetErrorHook(func(err *lemo.Error) {
+		var date = err.Time.Format("2006-01-02 15:04:05")
+		color.Red.Println(date, fmt.Sprintf("%s:%d", err.File, err.Line), err.Error)
+	})
+
+	logger.SetWriteHook(func(t time.Time, file string, line int, v ...interface{}) {
+
+	})
 }
 
-func (logger *Logger) errorHook(err *lemo.Error) {
-	var date = err.Time.Format("2006-01-02 15:04:05")
-	color.Red.Println(date, fmt.Sprintf("%s:%d", err.File, err.Line), err.Error)
+func (logger *Logger) SetDebugHook(fn func(t time.Time, file string, line int, v ...interface{})) {
+	logger.debugHook = fn
 }
 
-func (logger *Logger) logHook(t time.Time, file string, line int, v ...interface{}) {}
+func (logger *Logger) SetErrorHook(fn func(err *lemo.Error)) {
+	logger.errorHook = fn
+}
+
+func (logger *Logger) SetWriteHook(fn func(t time.Time, file string, line int, v ...interface{})) {}
 
 func Log(v ...interface{}) {
 
@@ -75,8 +92,8 @@ func Log(v ...interface{}) {
 		logger.debugHook(t, file, line, v...)
 	}
 
-	if log {
-		logger.logHook(t, file, line, v...)
+	if write {
+		logger.writeHook(t, file, line, v...)
 	}
 }
 
@@ -90,8 +107,8 @@ func Err(err interface{}) {
 			logger.errorHook(res)
 		}
 
-		if log {
-			logger.logHook(res.Time, res.File, res.Line, res.Error)
+		if write {
+			logger.writeHook(res.Time, res.File, res.Line, res.Error)
 		}
 
 	case *lemo.Error:
@@ -102,8 +119,8 @@ func Err(err interface{}) {
 			logger.errorHook(res)
 		}
 
-		if log {
-			logger.logHook(res.Time, res.File, res.Line, res.Error)
+		if write {
+			logger.writeHook(res.Time, res.File, res.Line, res.Error)
 		}
 	default:
 
@@ -118,8 +135,8 @@ func Err(err interface{}) {
 			logger.errorHook(&lemo.Error{Time: t, File: file, Line: line, Error: fmt.Errorf("%v", err)})
 		}
 
-		if log {
-			logger.logHook(t, file, line, err)
+		if write {
+			logger.writeHook(t, file, line, err)
 		}
 
 	}

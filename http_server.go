@@ -15,14 +15,19 @@ type HttpServer struct {
 	Router     *tire.Tire
 	OnError    ErrorFunction
 
-	group      *httpServerGroup
-	route      *httpServerRoute
-	prefixPath string
-	staticPath string
+	group        *httpServerGroup
+	route        *httpServerRoute
+	prefixPath   string
+	staticPath   string
+	defaultIndex string
 }
 
 func (h *HttpServer) Ready() {
+	h.SetDefaultIndex("index.html")
+}
 
+func (h *HttpServer) SetDefaultIndex(index string) {
+	h.defaultIndex = index
 }
 
 func (h *HttpServer) SetStaticPath(prefixPath string, staticPath string) {
@@ -67,7 +72,7 @@ func (h *HttpServer) staticHandler(filePath string) ([]byte, string, func() *Err
 	}
 
 	if info.IsDir() {
-		absFilePath = filepath.Join(absFilePath, "index.html")
+		absFilePath = filepath.Join(absFilePath, h.defaultIndex)
 		if _, err := os.Stat(absFilePath); err != nil {
 			return nil, "", NewError("staticPath is not a file")
 		}

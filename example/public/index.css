@@ -1,0 +1,25 @@
+html {
+    box-sizing: border-box;
+}
+
+* {
+    box-sizing: inherit;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.content {
+    width: 80%;
+}
+
+.content > img {
+    width: 100%;
+}

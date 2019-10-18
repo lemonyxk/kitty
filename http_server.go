@@ -1,10 +1,12 @@
 package lemo
 
 import (
-	"log"
+	"errors"
+	"io/ioutil"
+	"mime"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/Lemo-yxk/tire"
 )
@@ -52,9 +54,36 @@ func (h *HttpServer) SetStaticPath(prefixPath string, staticPath string) {
 	h.staticPath = absStaticPath
 }
 
-func (h *HttpServer) staticHandler(filePath string) error {
+func (h *HttpServer) staticHandler(filePath string) ([]byte, string, error) {
 
-	log.Println(exec.LookPath(os.Args[0]))
-	return nil
+	if !strings.HasPrefix(filePath, h.prefixPath) {
+		return nil, "", errors.New("not match")
+	}
+
+	var absFilePath = h.staticPath + filePath[len(h.prefixPath):]
+
+	var info, err = os.Stat(absFilePath)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if info.IsDir() {
+		return nil, "", errors.New("staticPath is not a file")
+	}
+
+	// has found
+	var contentType = mime.TypeByExtension(filepath.Ext(absFilePath))
+
+	f, err := os.OpenFile(absFilePath, os.O_RDONLY, 0666)
+	if err != nil {
+		return nil, contentType, err
+	}
+
+	bts, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, contentType, err
+	}
+
+	return bts, contentType, nil
 
 }

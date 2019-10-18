@@ -206,8 +206,15 @@ func (h *HttpServer) getRoute(method string, path string) *tire.Tire {
 func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 
 	// static file
-	if h.staticPath != "" {
-		if h.staticHandler(r.URL.Path) == nil {
+	if h.staticPath != "" && r.Method == http.MethodGet {
+		bts, contentType, err := h.staticHandler(r.URL.Path)
+		if contentType != "" {
+			if err == nil {
+				w.Header().Set("Content-Type", contentType)
+				_, _ = w.Write(bts)
+			} else {
+				w.WriteHeader(http.StatusForbidden)
+			}
 			return
 		}
 	}
@@ -216,7 +223,6 @@ func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 	node := h.getRoute(r.Method, r.URL.Path)
 	if node == nil {
 		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write(nil)
 		return
 	}
 

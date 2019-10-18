@@ -37,7 +37,6 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// HttpServer Not exists
 	if handler.httpHandler == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write(nil)
 		return
 	}
 

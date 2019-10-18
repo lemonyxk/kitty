@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/logger"
@@ -39,12 +38,7 @@ func HttpServer() {
 		})
 	})
 
-	var rootPath, err = filepath.Abs(".")
-	if err != nil {
-		panic(err)
-	}
-
-	httpServer.SetStaticPath("/dir", rootPath+"/public")
+	httpServer.SetStaticPath("/dir", "./example/public")
 
 	server.Start(nil, &httpServer)
 

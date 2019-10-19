@@ -508,7 +508,7 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 		// do not let it dead
 		// for web
 		if len(message) == 0 {
-			_ = socket.PingHandler(connection)("")
+			_ = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 		}
 
 		err = socket.decodeMessage(connection, message, messageFrame)

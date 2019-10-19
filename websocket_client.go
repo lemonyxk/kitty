@@ -68,6 +68,16 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 	return client.Push(TextData, messageJson)
 }
 
+func (client *WebSocketClient) JsonFormat(msg JsonPackage) error {
+
+	messageJson, err := json.Marshal(M{"data": msg.Message, "event": msg.Event})
+	if err != nil {
+		return fmt.Errorf("message error: %v", err)
+	}
+
+	return client.Push(TextData, messageJson)
+}
+
 func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
 
 	messageProtoBuf, err := proto.Marshal(msg)
@@ -269,7 +279,7 @@ func (client *WebSocketClient) Connect() {
 		for {
 
 			// read message
-			_, message, err := client.Conn.ReadMessage()
+			messageFrame, message, err := client.Conn.ReadMessage()
 			if err != nil {
 				closeChan <- false
 				return
@@ -280,9 +290,21 @@ func (client *WebSocketClient) Connect() {
 
 			// check version
 			if version != Version {
-				if client.OnMessage != nil {
-					go client.OnMessage(client, messageType, message)
+
+				route, body := ParseMessage(message)
+
+				if route != nil {
+					if client.Router != nil {
+						var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: route, Message: body, ProtoType: Json}
+						go client.router(client, receivePackage)
+						continue
+					}
 				}
+
+				if client.OnMessage != nil {
+					go client.OnMessage(client, messageFrame, message)
+				}
+
 				continue
 			}
 
@@ -319,6 +341,11 @@ func (client *WebSocketClient) Connect() {
 				continue
 			}
 
+			// any way run check on message
+			if client.OnMessage != nil {
+				go client.OnMessage(client, messageFrame, message)
+				continue
+			}
 		}
 	}()
 

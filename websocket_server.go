@@ -535,9 +535,11 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 		route, body := ParseMessage(message)
 
 		if route != nil {
-			var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: route, Message: body, ProtoType: Json}
-			go socket.router(connection, receivePackage)
-			return nil
+			if socket.Router != nil {
+				var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: route, Message: body, ProtoType: Json}
+				go socket.router(connection, receivePackage)
+				return nil
+			}
 		}
 
 		if socket.OnMessage != nil {

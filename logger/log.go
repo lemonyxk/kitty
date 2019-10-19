@@ -64,9 +64,7 @@ func init() {
 		color.Red.Println(date, fmt.Sprintf("%s:%d", err.File, err.Line), err.Error)
 	})
 
-	SetWriteHook(func(t time.Time, file string, line int, v ...interface{}) {
-
-	})
+	SetWriteHook(nil)
 }
 
 func SetDebugHook(fn func(t time.Time, file string, line int, v ...interface{})) {

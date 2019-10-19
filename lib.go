@@ -25,7 +25,7 @@ func ListenSignal(fn func(sig os.Signal)) {
 	fn(<-signalChan)
 }
 
-func ParseMessage(bts []byte) (string, []byte) {
+func ParseMessage(bts []byte) ([]byte, []byte) {
 
 	var s, e int
 
@@ -44,10 +44,10 @@ func ParseMessage(bts []byte) (string, []byte) {
 		}
 
 		if e == 0 {
-			return string(bts[s+2 : l-2]), nil
+			return bts[s+2 : l-2], nil
 		}
 
-		return string(bts[s+2 : e-1]), bts[e+9 : l-2]
+		return bts[s+2 : e-1], bts[e+9 : l-2]
 
 	} else {
 
@@ -64,13 +64,13 @@ func ParseMessage(bts []byte) (string, []byte) {
 		}
 
 		if s == 0 {
-			return "", nil
+			return nil, nil
 		}
 
 		if e == 0 {
-			return string(bts[s+2 : l-2]), nil
+			return bts[s+2 : l-2], nil
 		}
 
-		return string(bts[s+2 : l-2]), bts[9 : e-1]
+		return bts[s+2 : l-2], bts[9 : e-1]
 	}
 }

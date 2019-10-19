@@ -131,6 +131,10 @@ func (conn *WebSocket) Json(fd uint32, msg interface{}) error {
 	return conn.socket.Json(fd, msg)
 }
 
+func (conn *WebSocket) JsonFormat(fd uint32, msg JsonPackage) error {
+	return conn.socket.JsonFormat(fd, msg)
+}
+
 func (conn *WebSocket) ProtoBuf(fd uint32, msg proto.Message) error {
 	return conn.socket.ProtoBuf(fd, msg)
 }
@@ -179,6 +183,16 @@ func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) erro
 	return <-socket.connBack
 }
 
+func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) error {
+
+	messageJsonFormat, err := json.Marshal(M{"data": msg.Message, "event": msg.Event})
+	if err != nil {
+		return fmt.Errorf("message error: %v", err)
+	}
+
+	return socket.Push(fd, TextData, messageJsonFormat)
+}
+
 // Push Json 发送消息
 func (socket *WebSocketServer) Json(fd uint32, msg interface{}) error {
 
@@ -198,6 +212,13 @@ func (socket *WebSocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
 	}
 
 	return socket.Push(fd, BinData, messageProtoBuf)
+}
+
+func (socket *WebSocketServer) JsonFormatAll(msg JsonPackage) {
+	socket.connections.Range(func(key, value interface{}) bool {
+		_ = socket.JsonFormat(key.(uint32), msg)
+		return true
+	})
 }
 
 func (socket *WebSocketServer) JsonEmitAll(msg JsonPackage) {
@@ -478,22 +499,19 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 	for {
 
 		// read message
-		_, message, err := conn.ReadMessage()
+		messageFrame, message, err := conn.ReadMessage()
 		// close
 		if err != nil {
 			break
 		}
 
 		// do not let it dead
-		// but i want
-		// 超时时间
-		// err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
-		// if err != nil {
-		// 	socket.connError <- err
-		// 	return
-		// }
+		// for web
+		if len(message) == 0 {
+			_ = socket.PingHandler(connection)("")
+		}
 
-		err = socket.decodeMessage(connection, message)
+		err = socket.decodeMessage(connection, message, messageFrame)
 		if err != nil {
 			socket.connError <- NewError(err)
 			break
@@ -506,16 +524,26 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []byte) error {
+func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []byte, messageFrame int) error {
 
 	// unpack
 	version, messageType, protoType, route, body := UnPack(message)
 
 	// check version
 	if version != Version {
-		if socket.OnMessage != nil {
-			go socket.OnMessage(connection, messageType, message)
+
+		route, body := ParseMessage(message)
+
+		if route != nil {
+			var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: route, Message: body, ProtoType: Json}
+			go socket.router(connection, receivePackage)
+			return nil
 		}
+
+		if socket.OnMessage != nil {
+			go socket.OnMessage(connection, messageFrame, message)
+		}
+
 		return nil
 	}
 
@@ -551,7 +579,8 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 
 	// any way run check on message
 	if socket.OnMessage != nil {
-		go socket.OnMessage(connection, messageType, message)
+		go socket.OnMessage(connection, messageFrame, message)
 	}
+
 	return nil
 }

@@ -22,7 +22,7 @@ var res, _ = json.Marshal(data)
 func BenchmarkParseMessage(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		s, bytes := ParseMessage(res)
-		if s != "hello" {
+		if string(s) != "hello" {
 			b.Error("error")
 		}
 

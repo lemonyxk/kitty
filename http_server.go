@@ -1,8 +1,10 @@
 package lemo
 
 import (
+	"errors"
 	"io/ioutil"
 	"mime"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -58,23 +60,23 @@ func (h *HttpServer) SetStaticPath(prefixPath string, staticPath string) {
 	h.staticPath = absStaticPath
 }
 
-func (h *HttpServer) staticHandler(filePath string) ([]byte, string, func() *Error) {
+func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
-	if !strings.HasPrefix(filePath, h.prefixPath) {
-		return nil, "", NewError("not match")
+	if !strings.HasPrefix(r.URL.Path, h.prefixPath) {
+		return errors.New("not match")
 	}
 
-	var absFilePath = h.staticPath + filePath[len(h.prefixPath):]
+	var absFilePath = h.staticPath + r.URL.Path[len(h.prefixPath):]
 
 	var info, err = os.Stat(absFilePath)
 	if err != nil {
-		return nil, "", NewError(err)
+		return err
 	}
 
 	if info.IsDir() {
 		absFilePath = filepath.Join(absFilePath, h.defaultIndex)
 		if _, err := os.Stat(absFilePath); err != nil {
-			return nil, "", NewError("staticPath is not a file")
+			return errors.New("staticPath is not a file")
 		}
 	}
 
@@ -83,14 +85,32 @@ func (h *HttpServer) staticHandler(filePath string) ([]byte, string, func() *Err
 
 	f, err := os.OpenFile(absFilePath, os.O_RDONLY, 0666)
 	if err != nil {
-		return nil, contentType, NewError(err)
+		if h.OnError != nil {
+			h.OnError(NewError(err))
+		}
+		w.WriteHeader(http.StatusForbidden)
+		return nil
 	}
 
 	bts, err := ioutil.ReadAll(f)
 	if err != nil {
-		return nil, contentType, NewError(err)
+		if h.OnError != nil {
+			h.OnError(NewError(err))
+		}
+		w.WriteHeader(http.StatusForbidden)
+		return nil
 	}
 
-	return bts, contentType, nil
+	w.Header().Set("Content-Type", contentType)
+	_, err = w.Write(bts)
+	if err != nil {
+		if h.OnError != nil {
+			h.OnError(NewError(err))
+		}
+		w.WriteHeader(http.StatusForbidden)
+		return nil
+	}
+
+	return nil
 
 }

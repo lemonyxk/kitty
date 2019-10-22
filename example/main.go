@@ -6,6 +6,7 @@ import (
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/logger"
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 func main() {
@@ -18,7 +19,7 @@ func main() {
 
 	HttpServer()
 
-	lemo.ListenSignal(func(sig os.Signal) {
+	utils.ListenSignal(func(sig os.Signal) {
 		logger.Console(sig)
 	})
 

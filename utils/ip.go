@@ -1,4 +1,4 @@
-package lemo
+package utils
 
 import (
 	"encoding/binary"
@@ -36,8 +36,8 @@ func GetLocalhostIp() string {
 	return defaultIP
 }
 
-func Ip2long(ipstr string) uint32 {
-	ip := net.ParseIP(ipstr)
+func Ip2long(ipStr string) uint32 {
+	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		return 0
 	}

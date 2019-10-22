@@ -2,12 +2,19 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/logger"
 )
 
 func main() {
+
+	logger.SetFlag(logger.DEBUG | logger.CUSTOMIZE)
+
+	logger.SetCustomizeHook(func(t time.Time, file string, line int, v ...interface{}) {
+		println("my logger")
+	})
 
 	HttpServer()
 

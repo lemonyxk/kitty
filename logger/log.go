@@ -89,6 +89,10 @@ func init() {
 	SetLogHook(nil)
 }
 
+func Println(v ...interface{}) {
+	fmt.Println(v...)
+}
+
 func SetDebugHook(fn func(t time.Time, file string, line int, v ...interface{})) {
 	logger.debugHook = fn
 }

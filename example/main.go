@@ -12,8 +12,8 @@ func main() {
 
 	logger.SetFlag(logger.DEBUG | logger.LOG)
 
-	logger.SetLogHook(func(t time.Time, file string, line int, v ...interface{}) {
-		println("my logger")
+	logger.SetLogHook(func(status string, t time.Time, file string, line int, v ...interface{}) {
+		println(status)
 	})
 
 	HttpServer()

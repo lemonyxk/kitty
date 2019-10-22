@@ -55,7 +55,7 @@ func SetFlag(flag int) {
 type Logger struct {
 	debugHook func(t time.Time, file string, line int, v ...interface{})
 	errorHook func(err *lemo.Error)
-	logHook   func(t time.Time, file string, line int, v ...interface{})
+	logHook   func(status string, t time.Time, file string, line int, v ...interface{})
 }
 
 var logger *Logger
@@ -97,7 +97,7 @@ func SetErrorHook(fn func(err *lemo.Error)) {
 	logger.errorHook = fn
 }
 
-func SetLogHook(fn func(t time.Time, file string, line int, v ...interface{})) {
+func SetLogHook(fn func(status string, t time.Time, file string, line int, v ...interface{})) {
 	logger.logHook = fn
 }
 
@@ -115,11 +115,11 @@ func Console(v ...interface{}) {
 	}
 
 	if log {
-		logger.logHook(t, file, line, v...)
+		logger.logHook("CONSOLE", t, file, line, v...)
 	}
 }
 
-func Err(err interface{}) {
+func Error(err interface{}) {
 
 	switch err.(type) {
 	case func() *lemo.Error:
@@ -130,7 +130,7 @@ func Err(err interface{}) {
 		}
 
 		if log {
-			logger.logHook(res.Time, res.File, res.Line, res.Error)
+			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Error)
 		}
 
 	case *lemo.Error:
@@ -142,7 +142,7 @@ func Err(err interface{}) {
 		}
 
 		if log {
-			logger.logHook(res.Time, res.File, res.Line, res.Error)
+			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Error)
 		}
 	default:
 
@@ -158,7 +158,7 @@ func Err(err interface{}) {
 		}
 
 		if log {
-			logger.logHook(t, file, line, err)
+			logger.logHook("ERROR", t, file, line, err)
 		}
 
 	}

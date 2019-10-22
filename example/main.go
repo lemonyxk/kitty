@@ -10,16 +10,16 @@ import (
 
 func main() {
 
-	logger.SetFlag(logger.DEBUG | logger.CUSTOMIZE)
+	logger.SetFlag(logger.DEBUG | logger.LOG)
 
-	logger.SetCustomizeHook(func(t time.Time, file string, line int, v ...interface{}) {
+	logger.SetLogHook(func(t time.Time, file string, line int, v ...interface{}) {
 		println("my logger")
 	})
 
 	HttpServer()
 
 	lemo.ListenSignal(func(sig os.Signal) {
-		logger.Log(sig)
+		logger.Console(sig)
 	})
 
 }
@@ -31,12 +31,12 @@ func HttpServer() {
 	var httpServer = lemo.HttpServer{}
 
 	httpServer.OnError = func(err func() *lemo.Error) {
-		logger.Log(err())
+		logger.Console(err())
 	}
 
 	httpServer.Group("/hello").Handler(func(this *lemo.HttpServer) {
 		this.Get("/world").Handler(func(t *lemo.Stream) func() *lemo.Error {
-			logger.Log("ha")
+			logger.Console("ha")
 			return lemo.NewError(t.End("hello world!"))
 		})
 	})

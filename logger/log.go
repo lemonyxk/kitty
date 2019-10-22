@@ -22,32 +22,40 @@ type statementServerMessage struct {
 }
 
 const DEBUG int = 1
-const CUSTOMIZE int = 2
+const LOG int = 2
 
 var debug = false
-var customize = false
+var log = false
+
+func SetDebug(v bool) {
+	debug = v
+}
+
+func SetLog(v bool) {
+	log = v
+}
 
 func SetFlag(flag int) {
 	switch flag {
 	case 3:
 		debug = true
-		customize = true
+		log = true
 	case 2:
-		customize = true
+		log = true
 	case 1:
 		debug = true
 	case 0:
 		debug = false
-		customize = false
+		log = false
 	default:
 		return
 	}
 }
 
 type Logger struct {
-	debugHook     func(t time.Time, file string, line int, v ...interface{})
-	errorHook     func(err *lemo.Error)
-	customizeHook func(t time.Time, file string, line int, v ...interface{})
+	debugHook func(t time.Time, file string, line int, v ...interface{})
+	errorHook func(err *lemo.Error)
+	logHook   func(t time.Time, file string, line int, v ...interface{})
 }
 
 var logger *Logger
@@ -78,7 +86,7 @@ func init() {
 		color.Red.Println(date, fmt.Sprintf("%s:%d", err.File, err.Line), err.Error)
 	})
 
-	SetCustomizeHook(nil)
+	SetLogHook(nil)
 }
 
 func SetDebugHook(fn func(t time.Time, file string, line int, v ...interface{})) {
@@ -89,11 +97,11 @@ func SetErrorHook(fn func(err *lemo.Error)) {
 	logger.errorHook = fn
 }
 
-func SetCustomizeHook(fn func(t time.Time, file string, line int, v ...interface{})) {
-	logger.customizeHook = fn
+func SetLogHook(fn func(t time.Time, file string, line int, v ...interface{})) {
+	logger.logHook = fn
 }
 
-func Log(v ...interface{}) {
+func Console(v ...interface{}) {
 
 	_, file, line, ok := runtime.Caller(1)
 	if !ok {
@@ -106,8 +114,8 @@ func Log(v ...interface{}) {
 		logger.debugHook(t, file, line, v...)
 	}
 
-	if customize {
-		logger.customizeHook(t, file, line, v...)
+	if log {
+		logger.logHook(t, file, line, v...)
 	}
 }
 
@@ -121,8 +129,8 @@ func Err(err interface{}) {
 			logger.errorHook(res)
 		}
 
-		if customize {
-			logger.customizeHook(res.Time, res.File, res.Line, res.Error)
+		if log {
+			logger.logHook(res.Time, res.File, res.Line, res.Error)
 		}
 
 	case *lemo.Error:
@@ -133,8 +141,8 @@ func Err(err interface{}) {
 			logger.errorHook(res)
 		}
 
-		if customize {
-			logger.customizeHook(res.Time, res.File, res.Line, res.Error)
+		if log {
+			logger.logHook(res.Time, res.File, res.Line, res.Error)
 		}
 	default:
 
@@ -149,8 +157,8 @@ func Err(err interface{}) {
 			logger.errorHook(&lemo.Error{Time: t, File: file, Line: line, Error: fmt.Errorf("%v", err)})
 		}
 
-		if customize {
-			logger.customizeHook(t, file, line, err)
+		if log {
+			logger.logHook(t, file, line, err)
 		}
 
 	}

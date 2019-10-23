@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strconv"
 	"time"
 )
 
@@ -25,7 +26,7 @@ type Error struct {
 }
 
 func (err *Error) String() string {
-	return fmt.Sprintf("%s %s:%d %s", err.Time, err.File, err.Line, err.Error)
+	return err.Time.String() + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Error.Error()
 }
 
 func NewError(err interface{}) func() *Error {
@@ -54,7 +55,7 @@ func NewErrorFromDeep(err interface{}, deep int) func() *Error {
 		}
 	default:
 		return func() *Error {
-			return &Error{time.Now(), file, line, fmt.Errorf("%s", err)}
+			return &Error{time.Now(), file, line, fmt.Errorf("%v", err)}
 		}
 	}
 

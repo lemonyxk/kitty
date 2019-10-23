@@ -2,9 +2,10 @@ package lemo
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -187,7 +188,7 @@ func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) error {
 
 	messageJsonFormat, err := json.Marshal(M{"data": msg.Message, "event": msg.Event})
 	if err != nil {
-		return fmt.Errorf("message error: %v", err)
+		return errors.New("message error: " + err.Error())
 	}
 
 	return socket.Push(fd, TextData, messageJsonFormat)
@@ -198,7 +199,7 @@ func (socket *WebSocketServer) Json(fd uint32, msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("message error: %v", err)
+		return errors.New("message error: " + err.Error())
 	}
 
 	return socket.Push(fd, TextData, messageJson)
@@ -208,7 +209,7 @@ func (socket *WebSocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
 
 	messageProtoBuf, err := proto.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("protobuf error: %v", err)
+		return errors.New("protobuf error: " + err.Error())
 	}
 
 	return socket.Push(fd, BinData, messageProtoBuf)
@@ -239,7 +240,7 @@ func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) erro
 
 	messageProtoBuf, err := proto.Marshal(msg.Message)
 	if err != nil {
-		return fmt.Errorf("protobuf error: %v", err)
+		return errors.New("protobuf error: " + err.Error())
 	}
 
 	return socket.Push(fd, BinData, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
@@ -255,7 +256,7 @@ func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 	} else {
 		messageJson, err := json.Marshal(msg.Message)
 		if err != nil {
-			return fmt.Errorf("protobuf error: %v", err)
+			return errors.New("protobuf error: " + err.Error())
 		}
 		data = messageJson
 	}
@@ -448,7 +449,7 @@ func (socket *WebSocketServer) Ready() {
 			case push := <-socket.connPush:
 				var conn, ok = socket.connections.Load(push.FD)
 				if !ok {
-					socket.connBack <- fmt.Errorf("client %d is close", push.FD)
+					socket.connBack <- errors.New("client " + strconv.Itoa(int(push.FD)) + " is close")
 				} else {
 					socket.connBack <- conn.(*WebSocket).Conn.WriteMessage(push.MessageType, push.Message)
 				}

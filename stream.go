@@ -407,7 +407,7 @@ func (q *Query) String() string {
 		case float64:
 			buff.WriteString(strconv.FormatFloat(value.(float64), 'f', -1, 64))
 		default:
-			buff.WriteString(fmt.Sprintf("%s", value))
+			buff.WriteString(fmt.Sprintf("%v", value))
 		}
 
 		buff.WriteString(" ")

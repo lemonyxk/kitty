@@ -2,8 +2,9 @@ package lemo
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -62,7 +63,7 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("message error: %v", err)
+		return errors.New("message err: " + err.Error())
 	}
 
 	return client.Push(TextData, messageJson)
@@ -72,7 +73,7 @@ func (client *WebSocketClient) JsonFormat(msg JsonPackage) error {
 
 	messageJson, err := json.Marshal(M{"data": msg.Message, "event": msg.Event})
 	if err != nil {
-		return fmt.Errorf("message error: %v", err)
+		return errors.New("message err: " + err.Error())
 	}
 
 	return client.Push(TextData, messageJson)
@@ -82,7 +83,7 @@ func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
 
 	messageProtoBuf, err := proto.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("protobuf error: %v", err)
+		return errors.New("protobuf err: " + err.Error())
 	}
 
 	return client.Push(BinData, messageProtoBuf)
@@ -98,7 +99,7 @@ func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 	} else {
 		messageJson, err := json.Marshal(msg.Message)
 		if err != nil {
-			return fmt.Errorf("protobuf error: %v", err)
+			return errors.New("protobuf err: " + err.Error())
 		}
 		data = messageJson
 	}
@@ -111,7 +112,7 @@ func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 
 	messageProtoBuf, err := proto.Marshal(msg.Message)
 	if err != nil {
-		return fmt.Errorf("protobuf error: %v", err)
+		return errors.New("protobuf err: " + err.Error())
 	}
 
 	return client.Push(BinData, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
@@ -122,7 +123,7 @@ func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 func (client *WebSocketClient) Push(messageType int, message []byte) error {
 
 	if client.Status == false {
-		return fmt.Errorf("client is close")
+		return errors.New("client is close")
 	}
 
 	client.mux.Lock()
@@ -237,7 +238,7 @@ func (client *WebSocketClient) Connect() {
 	}
 
 	// 连接服务器
-	handler, response, err := dialer.Dial(fmt.Sprintf("%s://%s:%d%s", client.Protocol, client.Host, client.Port, client.Path), nil)
+	handler, response, err := dialer.Dial(client.Protocol+"://"+client.Host+":"+strconv.Itoa(client.Port)+client.Path, nil)
 	if err != nil {
 		go client.OnError(NewError(err))
 		return

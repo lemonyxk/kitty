@@ -12,8 +12,9 @@ package lemo
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -63,7 +64,7 @@ func (client *SocketClient) Json(msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("message error: %v", err)
+		return errors.New("message err: " + err.Error())
 	}
 
 	return client.Push(messageJson)
@@ -73,7 +74,7 @@ func (client *SocketClient) ProtoBuf(msg proto.Message) error {
 
 	messageProtoBuf, err := proto.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("protobuf error: %v", err)
+		return errors.New("protobuf err: " + err.Error())
 	}
 
 	return client.Push(messageProtoBuf)
@@ -89,7 +90,7 @@ func (client *SocketClient) JsonEmit(msg JsonPackage) error {
 	} else {
 		messageJson, err := json.Marshal(msg.Message)
 		if err != nil {
-			return fmt.Errorf("protobuf error: %v", err)
+			return errors.New("protobuf err: " + err.Error())
 		}
 		data = messageJson
 	}
@@ -102,7 +103,7 @@ func (client *SocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 
 	messageProtoBuf, err := proto.Marshal(msg.Message)
 	if err != nil {
-		return fmt.Errorf("protobuf error: %v", err)
+		return errors.New("protobuf err: " + err.Error())
 	}
 
 	return client.Push(Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
@@ -113,7 +114,7 @@ func (client *SocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 func (client *SocketClient) Push(message []byte) error {
 
 	if client.Status == false {
-		return fmt.Errorf("client is close")
+		return errors.New("client is close")
 	}
 
 	client.mux.Lock()
@@ -210,7 +211,7 @@ func (client *SocketClient) Connect() {
 	}
 
 	// 连接服务器
-	handler, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", client.Host, client.Port), time.Duration(client.HandshakeTimeout)*time.Second)
+	handler, err := net.DialTimeout("tcp", client.Host+":"+strconv.Itoa(client.Port), time.Duration(client.HandshakeTimeout)*time.Second)
 	if err != nil {
 		go client.OnError(NewError(err))
 		return

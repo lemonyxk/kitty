@@ -1,25 +1,15 @@
 package logger
 
 import (
-	"bytes"
 	"fmt"
 	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/gookit/color"
 
 	"github.com/Lemo-yxk/lemo"
 )
-
-type statementServerMessage struct {
-	Type string `json:"type"`
-	From string `json:"from"`
-	Host string `json:"host"`
-	File string `json:"file"`
-	Line int    `json:"line"`
-	Msg  string `json:"msg"`
-	Time string `json:"time"`
-}
 
 const DEBUG int = 1
 const LOG int = 2
@@ -64,33 +54,25 @@ func init() {
 
 	logger = new(Logger)
 
-	SetFlag(1)
+	SetDebug(true)
+	SetLog(false)
 
 	SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
 		var date = time.Now().Format("2006-01-02 15:04:05")
-
-		var buf bytes.Buffer
-
-		for index, value := range v {
-			buf.WriteString(fmt.Sprint(value))
-			if index != len(v)-1 {
-				buf.WriteString(" ")
-			}
-		}
-
-		color.Blue.Println(fmt.Sprintf("%s %s:%d %s", date, file, line, buf.String()))
+		color.Blue.Print(date + " " + file + ":" + strconv.Itoa(line) + " ")
+		color.Blue.Println(v...)
 	})
 
 	SetErrorHook(func(err *lemo.Error) {
 		var date = err.Time.Format("2006-01-02 15:04:05")
-		color.Red.Println(date, fmt.Sprintf("%s:%d", err.File, err.Line), err.Error)
+		color.Red.Println(date + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Error.Error())
 	})
 
 	SetLogHook(nil)
 }
 
 func Println(v ...interface{}) {
-	fmt.Println(v...)
+	color.Println(v...)
 }
 
 func SetDebugHook(fn func(t time.Time, file string, line int, v ...interface{})) {

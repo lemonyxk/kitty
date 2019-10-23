@@ -1,8 +1,8 @@
 package lemo
 
 import (
-	"fmt"
 	"net/http"
+	"strconv"
 )
 
 // Server 服务结构
@@ -68,8 +68,8 @@ func (s *Server) Run(handler http.Handler) {
 
 	switch s.Protocol {
 	case "TLS":
-		panic(http.ListenAndServeTLS(fmt.Sprintf("%s:%d", s.Host, s.Port), s.CertFile, s.KeyFile, handler))
+		panic(http.ListenAndServeTLS(s.Host+":"+strconv.Itoa(s.Port), s.CertFile, s.KeyFile, handler))
 	case "":
-		panic(http.ListenAndServe(fmt.Sprintf("%s:%d", s.Host, s.Port), handler))
+		panic(http.ListenAndServe(s.Host+":"+strconv.Itoa(s.Port), handler))
 	}
 }

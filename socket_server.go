@@ -12,8 +12,9 @@ package lemo
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
@@ -77,7 +78,7 @@ func (conn *Socket) GetConnection(fd uint32) (*Socket, bool) {
 
 type SocketServer struct {
 	Host      string
-	Port      uint16
+	Port      int
 	OnClose   func(fd uint32)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
@@ -135,7 +136,7 @@ func (socket *SocketServer) Json(fd uint32, msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("message error: %v", err)
+		return errors.New("message err: " + err.Error())
 	}
 
 	return socket.Push(fd, messageJson)
@@ -145,7 +146,7 @@ func (socket *SocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
 
 	messageProtoBuf, err := proto.Marshal(msg)
 	if err != nil {
-		return fmt.Errorf("protobuf error: %v", err)
+		return errors.New("protobuf err: " + err.Error())
 	}
 
 	return socket.Push(fd, messageProtoBuf)
@@ -169,7 +170,7 @@ func (socket *SocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
 
 	messageProtoBuf, err := proto.Marshal(msg.Message)
 	if err != nil {
-		return fmt.Errorf("protobuf error: %v", err)
+		return errors.New("protobuf err: " + err.Error())
 	}
 
 	return socket.Push(fd, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
@@ -185,7 +186,7 @@ func (socket *SocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 	} else {
 		messageJson, err := json.Marshal(msg.Message)
 		if err != nil {
-			return fmt.Errorf("protobuf error: %v", err)
+			return errors.New("protobuf err: " + err.Error())
 		}
 		data = messageJson
 	}
@@ -285,7 +286,7 @@ func (socket *SocketServer) Ready() {
 			case push := <-socket.connPush:
 				var conn, ok = socket.connections.Load(push.FD)
 				if !ok {
-					socket.connBack <- fmt.Errorf("client %d is close", push.FD)
+					socket.connBack <- errors.New("client " + strconv.Itoa(int(push.FD)) + " is close")
 				} else {
 					_, err := conn.(*Socket).Conn.Write(push.Message)
 					socket.connBack <- err
@@ -376,7 +377,7 @@ func (socket *SocketServer) Start() {
 
 	socket.Ready()
 
-	netListen, err := net.Listen("tcp", fmt.Sprintf("%s:%d", socket.Host, socket.Port))
+	netListen, err := net.Listen("tcp", socket.Host+":"+strconv.Itoa(socket.Port))
 	if err != nil {
 		panic(err)
 	}

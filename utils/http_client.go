@@ -39,7 +39,7 @@ var handler = &http.Client{
 	Timeout: 5 * time.Second,
 }
 
-func do(method string, url string, headerKey []string, headerValue []string, body lemo.M, cookies []*http.Cookie) ([]byte, error) {
+func do(method string, url string, headerKey []string, headerValue []string, body interface{}, cookies []*http.Cookie) ([]byte, error) {
 
 	var request *http.Request
 	var response *http.Response
@@ -54,7 +54,11 @@ func do(method string, url string, headerKey []string, headerValue []string, bod
 			return nil, err
 		}
 
-		for key, value := range body {
+		if _, ok := body.(map[string]interface{}); !ok {
+			return nil, errors.New("get method body must be map[string]interface")
+		}
+
+		for key, value := range body.(map[string]interface{}) {
 			switch value.(type) {
 			case string:
 				params.Set(key, value.(string))
@@ -92,8 +96,12 @@ func do(method string, url string, headerKey []string, headerValue []string, bod
 		switch contentType {
 		case "application/x-www-form-urlencoded":
 
+			if _, ok := body.(map[string]interface{}); !ok {
+				return nil, errors.New("application/x-www-form-urlencoded body must be map[string]interface")
+			}
+
 			var str = ""
-			for key, value := range body {
+			for key, value := range body.(map[string]interface{}) {
 				switch value.(type) {
 				case string:
 					str += key + "=" + value.(string) + "&"
@@ -162,7 +170,7 @@ type httpClient struct {
 	headerKey   []string
 	headerValue []string
 	cookies     []*http.Cookie
-	body        lemo.M
+	body        interface{}
 }
 
 func Post(url string) *httpClient {
@@ -216,7 +224,7 @@ func (h *httpClient) AddCookie(cookie *http.Cookie) *httpClient {
 	return h
 }
 
-func (h *httpClient) Body(body lemo.M) *httpClient {
+func (h *httpClient) Body(body interface{}) *httpClient {
 	h.SetHeader("Content-Type", "application/json")
 	h.body = body
 	return h

@@ -28,15 +28,14 @@ import (
 var handler = &http.Client{
 	Transport: &http.Transport{
 		DialContext: (&net.Dialer{
-			Timeout:   2 * time.Second,
-			Deadline:  time.Now().Add(3 * time.Second),
-			KeepAlive: 15 * time.Second,
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		TLSHandshakeTimeout:   2 * time.Second,
-		ResponseHeaderTimeout: 2 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
+		ExpectContinueTimeout: 2 * time.Second,
 	},
-	Timeout: 5 * time.Second,
+	Timeout: 15 * time.Second,
 }
 
 func do(method string, url string, headerKey []string, headerValue []string, body interface{}, cookies []*http.Cookie) ([]byte, error) {

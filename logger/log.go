@@ -68,7 +68,7 @@ func init() {
 		color.Red.Println(date + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Error.Error())
 	})
 
-	SetLogHook(nil)
+	SetLogHook(func(status string, t time.Time, file string, line int, v ...interface{}) {})
 }
 
 func Println(v ...interface{}) {

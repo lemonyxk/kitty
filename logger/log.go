@@ -68,7 +68,7 @@ func init() {
 		color.Red.Println(date + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Error.Error())
 	})
 
-	SetLogHook(func(status string, t time.Time, file string, line int, v ...interface{}) {})
+	SetLogHook(nil)
 }
 
 func Println(v ...interface{}) {
@@ -100,7 +100,7 @@ func Console(v ...interface{}) {
 		logger.debugHook(t, file, line, v...)
 	}
 
-	if log {
+	if log && logger.logHook != nil {
 		logger.logHook("CONSOLE", t, file, line, v...)
 	}
 }
@@ -115,7 +115,7 @@ func Error(err interface{}) {
 			logger.errorHook(res)
 		}
 
-		if log {
+		if log && logger.logHook != nil {
 			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Error)
 		}
 
@@ -127,7 +127,7 @@ func Error(err interface{}) {
 			logger.errorHook(res)
 		}
 
-		if log {
+		if log && logger.logHook != nil {
 			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Error)
 		}
 	default:
@@ -143,7 +143,7 @@ func Error(err interface{}) {
 			logger.errorHook(&lemo.Error{Time: t, File: file, Line: line, Error: fmt.Errorf("%v", err)})
 		}
 
-		if log {
+		if log && logger.logHook != nil {
 			logger.logHook("ERROR", t, file, line, err)
 		}
 

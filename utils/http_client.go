@@ -21,24 +21,24 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/Lemo-yxk/lemo"
 )
 
-var handler = &http.Client{
-	Transport: &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 15 * time.Second,
-		ExpectContinueTimeout: 2 * time.Second,
-	},
+var dial = net.Dialer{
+	Timeout:   30 * time.Second,
+	KeepAlive: 30 * time.Second,
+}
+
+var transport = http.Transport{
+	TLSHandshakeTimeout:   10 * time.Second,
+	ResponseHeaderTimeout: 15 * time.Second,
+	ExpectContinueTimeout: 2 * time.Second,
+}
+
+var client = http.Client{
 	Timeout: 15 * time.Second,
 }
 
-func do(method string, url string, headerKey []string, headerValue []string, body interface{}, cookies []*http.Cookie) ([]byte, error) {
+func do(client *http.Client, method string, url string, headerKey []string, headerValue []string, body interface{}, cookies []*http.Cookie) ([]byte, error) {
 
 	var request *http.Request
 	var response *http.Response
@@ -148,7 +148,7 @@ func do(method string, url string, headerKey []string, headerValue []string, bod
 		request.AddCookie(value)
 	}
 
-	response, err = handler.Do(request)
+	response, err = client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -170,20 +170,65 @@ type httpClient struct {
 	headerValue []string
 	cookies     []*http.Cookie
 	body        interface{}
+	client      *http.Client
+	transport   *http.Transport
+	dial        *net.Dialer
+}
+
+func NewHttpClient() *httpClient {
+	return &httpClient{
+		client:    &http.Client{},
+		transport: &http.Transport{},
+		dial:      &net.Dialer{},
+	}
 }
 
 func Post(url string) *httpClient {
 	return &httpClient{
-		method: http.MethodPost,
-		url:    url,
+		method:    http.MethodPost,
+		url:       url,
+		client:    &client,
+		transport: &transport,
+		dial:      &dial,
 	}
 }
 
 func Get(url string) *httpClient {
 	return &httpClient{
-		method: http.MethodGet,
-		url:    url,
+		method:    http.MethodGet,
+		url:       url,
+		client:    &client,
+		transport: &transport,
+		dial:      &dial,
 	}
+}
+
+func (h *httpClient) Post(url string) *httpClient {
+	h.method = http.MethodPost
+	h.url = url
+	return h
+}
+
+func (h *httpClient) Get(url string) *httpClient {
+	h.method = http.MethodGet
+	h.url = url
+	return h
+}
+
+func (h *httpClient) Timeout(timeout time.Duration) *httpClient {
+	h.client.Timeout = timeout
+	return h
+}
+
+func (h *httpClient) Proxy(url string) *httpClient {
+	var fixUrl, _ = url2.Parse(url)
+	h.transport.Proxy = http.ProxyURL(fixUrl)
+	return h
+}
+
+func (h *httpClient) KeepAlive(timeout time.Duration) *httpClient {
+	h.dial.KeepAlive = timeout
+	return h
 }
 
 func (h *httpClient) SetHeaders(headers map[string]string) *httpClient {
@@ -229,12 +274,14 @@ func (h *httpClient) Body(body interface{}) *httpClient {
 	return h
 }
 
-func (h *httpClient) Form(body lemo.M) *httpClient {
+func (h *httpClient) Form(body map[string]interface{}) *httpClient {
 	h.SetHeader("Content-Type", "application/x-www-form-urlencoded")
 	h.body = body
 	return h
 }
 
 func (h *httpClient) Send() ([]byte, error) {
-	return do(h.method, h.url, h.headerKey, h.headerValue, h.body, h.cookies)
+	h.transport.DialContext = h.dial.DialContext
+	h.client.Transport = h.transport
+	return do(h.client, h.method, h.url, h.headerKey, h.headerValue, h.body, h.cookies)
 }

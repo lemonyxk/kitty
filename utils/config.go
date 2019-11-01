@@ -54,9 +54,10 @@ func (c *Config) File() string {
 	return c.file
 }
 
-func StringArray(arrayResult []gjson.Result) {
+func (c *Config) StringArray(arrayResult []gjson.Result) []string {
 	var result []string
 	for _, value := range arrayResult {
 		result = append(result, value.String())
 	}
+	return result
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/Lemo-yxk/tire"
 )
 
-type WebSocketServerGroupFunction func(socket *WebSocketServer)
+type WebSocketServerGroupFunction func(this *WebSocketServer)
 
 type WebSocketServerFunction func(conn *WebSocket, receive *Receive) func() *Error
 

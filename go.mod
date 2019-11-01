@@ -7,4 +7,5 @@ require (
 	github.com/golang/protobuf v1.3.2
 	github.com/gookit/color v1.2.0
 	github.com/gorilla/websocket v1.4.1
+	github.com/tidwall/gjson v1.3.2
 )

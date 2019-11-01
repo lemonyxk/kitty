@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"strconv"
 	"time"
@@ -73,6 +74,11 @@ func init() {
 
 func Println(v ...interface{}) {
 	color.Println(v...)
+}
+
+func Exit(v ...interface{}) {
+	Console(v...)
+	os.Exit(0)
 }
 
 func SetDebugHook(fn func(t time.Time, file string, line int, v ...interface{})) {

@@ -71,7 +71,7 @@ type WebSocketServer struct {
 	CheckOrigin       func(r *http.Request) bool
 	Path              string
 
-	Router *tire.Tire
+	tire *tire.Tire
 
 	IgnoreCase bool
 
@@ -536,7 +536,7 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 		route, body := ParseMessage(message)
 
 		if route != nil {
-			if socket.Router != nil {
+			if socket.tire != nil {
 				var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: route, Message: body, ProtoType: Json}
 				go socket.router(connection, receivePackage)
 				return nil
@@ -574,7 +574,7 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 	// }
 
 	// on router
-	if socket.Router != nil {
+	if socket.tire != nil {
 		var receivePackage = &ReceivePackage{MessageType: messageType, Event: route, Message: body, ProtoType: protoType}
 		go socket.router(connection, receivePackage)
 		return nil

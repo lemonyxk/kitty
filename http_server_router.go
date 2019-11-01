@@ -115,8 +115,8 @@ func (route *httpServerRoute) Handler(fn HttpServerFunction) {
 
 	var path = h.formatPath(group.path + route.path)
 
-	if h.Router == nil {
-		h.Router = new(tire.Tire)
+	if h.tire == nil {
+		h.tire = new(tire.Tire)
 	}
 
 	var hba = &httpServerNode{}
@@ -143,7 +143,7 @@ func (route *httpServerRoute) Handler(fn HttpServerFunction) {
 
 	hba.Route = []byte(path)
 
-	h.Router.Insert(path, hba)
+	h.tire.Insert(path, hba)
 
 	route.http.route = nil
 }
@@ -182,11 +182,11 @@ func (h *HttpServer) getRoute(method string, path string) *tire.Tire {
 
 	var pathB = []byte(path)
 
-	if h.Router == nil {
+	if h.tire == nil {
 		return nil
 	}
 
-	var t = h.Router.GetValue(pathB)
+	var t = h.tire.GetValue(pathB)
 
 	if t == nil {
 		return nil

@@ -19,7 +19,9 @@ func main() {
 
 	var httpClient = utils.NewHttpClient()
 
-	res, err := httpClient.Post("http://161.117.178.174:12350/Proxy/User/login").Form(lemo.M{"account_name": 571413495, "password": 123456.0111}).Send()
+	var url = "http://127.0.0.1/Proxy/User/login"
+
+	res, err := httpClient.Post(url).Form(lemo.M{"account_name": 571413495, "password": 123456.0111}).Send()
 	if err != nil {
 		panic(err)
 	}

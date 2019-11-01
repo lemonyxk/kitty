@@ -42,7 +42,7 @@ type WebSocketClient struct {
 	OnError   func(err func() *Error)
 	Status    bool
 
-	Router *tire.Tire
+	tire *tire.Tire
 
 	mux sync.RWMutex
 
@@ -295,7 +295,7 @@ func (client *WebSocketClient) Connect() {
 				route, body := ParseMessage(message)
 
 				if route != nil {
-					if client.Router != nil {
+					if client.tire != nil {
 						var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: route, Message: body, ProtoType: Json}
 						go client.router(client, receivePackage)
 						continue
@@ -336,7 +336,7 @@ func (client *WebSocketClient) Connect() {
 			// }
 
 			// on router
-			if client.Router != nil {
+			if client.tire != nil {
 				var receivePackage = &ReceivePackage{MessageType: messageType, Event: route, Message: body, ProtoType: protoType}
 				go client.router(client, receivePackage)
 				continue

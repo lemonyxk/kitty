@@ -43,7 +43,7 @@ type SocketClient struct {
 	OnError   func(err func() *Error)
 	Status    bool
 
-	Router *tire.Tire
+	tire *tire.Tire
 
 	mux sync.RWMutex
 
@@ -360,7 +360,7 @@ func (client *SocketClient) decodeMessage(connection *SocketClient, message []by
 	// }
 
 	// on router
-	if client.Router != nil {
+	if client.tire != nil {
 		var receivePackage = &ReceivePackage{MessageType: messageType, Event: route, Message: body, ProtoType: protoType}
 		go client.router(connection, receivePackage)
 		return nil

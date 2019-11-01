@@ -98,8 +98,8 @@ func (route *webSocketServerRoute) Handler(fn WebSocketServerFunction) {
 
 	var path = socket.formatPath(group.path + route.path)
 
-	if socket.Router == nil {
-		socket.Router = new(tire.Tire)
+	if socket.tire == nil {
+		socket.tire = new(tire.Tire)
 	}
 
 	var wba = &WBA{}
@@ -124,7 +124,7 @@ func (route *webSocketServerRoute) Handler(fn WebSocketServerFunction) {
 
 	wba.Route = []byte(path)
 
-	socket.Router.Insert(path, wba)
+	socket.tire.Insert(path, wba)
 
 	route.socket.route = nil
 }
@@ -161,11 +161,11 @@ func (socket *WebSocketServer) getRoute(path string) *tire.Tire {
 
 	var pathB = []byte(path)
 
-	if socket.Router == nil {
+	if socket.tire == nil {
 		return nil
 	}
 
-	var t = socket.Router.GetValue(pathB)
+	var t = socket.tire.GetValue(pathB)
 
 	if t == nil {
 		return nil

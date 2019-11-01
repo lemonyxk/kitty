@@ -90,7 +90,7 @@ type SocketServer struct {
 	WaitQueueSize     int
 	HandshakeTimeout  int
 
-	Router *tire.Tire
+	tire *tire.Tire
 
 	IgnoreCase bool
 
@@ -515,7 +515,7 @@ func (socket *SocketServer) decodeMessage(connection *Socket, message []byte) er
 	// }
 
 	// on router
-	if socket.Router != nil {
+	if socket.tire != nil {
 		var receivePackage = &ReceivePackage{MessageType: messageType, Event: route, Message: body, ProtoType: protoType}
 		go socket.router(connection, receivePackage)
 		return nil

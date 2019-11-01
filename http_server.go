@@ -14,9 +14,9 @@ import (
 
 type HttpServer struct {
 	IgnoreCase bool
-	Router     *tire.Tire
 	OnError    ErrorFunction
 
+	tire         *tire.Tire
 	group        *httpServerGroup
 	route        *httpServerRoute
 	prefixPath   string

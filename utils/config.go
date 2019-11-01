@@ -53,3 +53,10 @@ func (c *Config) Dir() string {
 func (c *Config) File() string {
 	return c.file
 }
+
+func StringArray(arrayResult []gjson.Result) {
+	var result []string
+	for _, value := range arrayResult {
+		result = append(result, value.String())
+	}
+}

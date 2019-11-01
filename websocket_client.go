@@ -296,7 +296,7 @@ func (client *WebSocketClient) Connect() {
 
 				if route != nil {
 					if client.tire != nil {
-						var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: route, Message: body, ProtoType: Json}
+						var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: Json}
 						go client.router(client, receivePackage)
 						continue
 					}
@@ -337,7 +337,7 @@ func (client *WebSocketClient) Connect() {
 
 			// on router
 			if client.tire != nil {
-				var receivePackage = &ReceivePackage{MessageType: messageType, Event: route, Message: body, ProtoType: protoType}
+				var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
 				go client.router(client, receivePackage)
 				continue
 			}

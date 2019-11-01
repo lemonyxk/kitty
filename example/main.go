@@ -55,6 +55,18 @@ func HttpServer() {
 
 	httpServer.SetStaticPath("/dir", "./example/public")
 
+	// var websocketServer = lemo.WebSocketServer{IgnoreCase: true, Path: "/"}
+	//
+	// websocketServer.Group("/hello").Handler(func(this *lemo.WebSocketServer) {
+	// 	this.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) func() *lemo.Error {
+	// 		conn.JsonFormat(conn.Fd,lemo.JsonPackage{
+	// 			Event:   re,
+	// 			Message: nil,
+	// 		})
+	// 		return nil
+	// 	})
+	// })
+
 	server.Start(nil, &httpServer)
 
 }

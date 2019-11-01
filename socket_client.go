@@ -361,7 +361,7 @@ func (client *SocketClient) decodeMessage(connection *SocketClient, message []by
 
 	// on router
 	if client.tire != nil {
-		var receivePackage = &ReceivePackage{MessageType: messageType, Event: route, Message: body, ProtoType: protoType}
+		var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
 		go client.router(connection, receivePackage)
 		return nil
 	}

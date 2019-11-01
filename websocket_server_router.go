@@ -180,7 +180,7 @@ func (socket *WebSocketServer) getRoute(path string) *tire.Tire {
 
 func (socket *WebSocketServer) router(conn *WebSocket, msg *ReceivePackage) {
 
-	node := socket.getRoute(string(msg.Event))
+	var node = socket.getRoute(msg.Event)
 	if node == nil {
 		return
 	}

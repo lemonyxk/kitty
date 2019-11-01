@@ -190,7 +190,7 @@ func (socket *SocketServer) getRoute(path string) *tire.Tire {
 
 func (socket *SocketServer) router(conn *Socket, msg *ReceivePackage) {
 
-	node := socket.getRoute(string(msg.Event))
+	var node = socket.getRoute(msg.Event)
 	if node == nil {
 		return
 	}

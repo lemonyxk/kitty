@@ -23,7 +23,7 @@ type Receive struct {
 
 type ReceivePackage struct {
 	MessageType int
-	Event       []byte
+	Event       string
 	Message     []byte
 	ProtoType   int
 }
@@ -537,7 +537,7 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 
 		if route != nil {
 			if socket.tire != nil {
-				var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: route, Message: body, ProtoType: Json}
+				var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: Json}
 				go socket.router(connection, receivePackage)
 				return nil
 			}
@@ -575,7 +575,7 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 
 	// on router
 	if socket.tire != nil {
-		var receivePackage = &ReceivePackage{MessageType: messageType, Event: route, Message: body, ProtoType: protoType}
+		var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
 		go socket.router(connection, receivePackage)
 		return nil
 	}

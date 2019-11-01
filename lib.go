@@ -16,6 +16,10 @@ func ParseMessage(bts []byte) ([]byte, []byte) {
 
 	var l = len(bts)
 
+	if l < 9 {
+		return nil, nil
+	}
+
 	// 正序
 	if bts[8] == 58 {
 

@@ -56,19 +56,19 @@ func (pool *lastPool) Put(v interface{}) {
 	}
 
 	pool.mux.Lock()
-	defer pool.mux.Unlock()
 
 	// if put too fast and get slowly that you will lose some put things
 	// pool do not need worry
 	if len(pool.storage) < pool.config.Max {
 		pool.storage = append(pool.storage, v)
 	}
+
+	pool.mux.Unlock()
 }
 
 func (pool *lastPool) Get() interface{} {
 
 	pool.mux.Lock()
-	defer pool.mux.Unlock()
 
 	if len(pool.storage) > 0 {
 		var r = pool.storage[0]
@@ -76,13 +76,15 @@ func (pool *lastPool) Get() interface{} {
 		return r
 	}
 
+	pool.mux.Unlock()
+
 	return pool.config.New()
 
 }
 
 func (pool *lastPool) Status() LastPoolStatus {
 	pool.mux.Lock()
-	defer pool.mux.Unlock()
 	pool.status.Len = len(pool.storage)
+	pool.mux.Unlock()
 	return pool.status
 }

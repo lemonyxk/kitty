@@ -127,9 +127,9 @@ func (client *WebSocketClient) Push(messageType int, message []byte) error {
 	}
 
 	client.mux.Lock()
-	defer client.mux.Unlock()
-
-	return client.Conn.WriteMessage(messageType, message)
+	err := client.Conn.WriteMessage(messageType, message)
+	client.mux.Unlock()
+	return err
 }
 
 func (client *WebSocketClient) Close() error {

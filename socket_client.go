@@ -118,9 +118,9 @@ func (client *SocketClient) Push(message []byte) error {
 	}
 
 	client.mux.Lock()
-	defer client.mux.Unlock()
-
 	_, err := client.Conn.Write(message)
+	client.mux.Unlock()
+
 	return err
 }
 

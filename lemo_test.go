@@ -11,23 +11,20 @@
 package lemo
 
 import (
-	"encoding/json"
 	"testing"
+
+	"github.com/Lemo-yxk/lemo/queue"
 )
 
-var data = M{"data": "word", "event": "hello"}
-
-var res, _ = json.Marshal(data)
+var q = queue.NewBlockQueue(queue.BlockQueueConfig{
+	New: func() interface{} {
+		return 1
+	},
+})
 
 func BenchmarkParseMessage(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		s, bytes := ParseMessage(res)
-		if string(s) != "hello" {
-			b.Error("error")
-		}
-
-		if string(bytes) != "word" {
-			b.Error("word", string(bytes))
-		}
+		// q.Put(1)
+		q.Get()
 	}
 }

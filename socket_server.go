@@ -382,7 +382,7 @@ func (socket *SocketServer) Start() {
 		panic(err)
 	}
 
-	defer func() { _ = netListen.Close() }()
+	// defer func() { _ = netListen.Close() }()
 
 	for {
 		conn, err := netListen.Accept()

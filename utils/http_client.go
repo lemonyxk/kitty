@@ -153,13 +153,12 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 		return nil, err
 	}
 
-	defer func() { _ = response.Body.Close() }()
-
 	dataBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
+		_ = response.Body.Close()
 		return nil, err
 	}
-
+	_ = response.Body.Close()
 	return dataBytes, nil
 }
 

@@ -24,7 +24,7 @@ var q = queue.NewBlockQueue(queue.BlockQueueConfig{
 
 func BenchmarkParseMessage(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		// q.Put(1)
+		q.Put(1)
 		q.Get()
 	}
 }

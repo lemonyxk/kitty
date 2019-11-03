@@ -73,11 +73,11 @@ func (pool *lastPool) Get() interface{} {
 	if len(pool.storage) > 0 {
 		var r = pool.storage[0]
 		pool.storage = pool.storage[1:]
+		pool.mux.Unlock()
 		return r
 	}
 
 	pool.mux.Unlock()
-
 	return pool.config.New()
 
 }

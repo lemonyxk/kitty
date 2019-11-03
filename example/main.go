@@ -2,30 +2,20 @@ package main
 
 import (
 	"log"
-	"os"
-	"time"
 
 	"github.com/Lemo-yxk/lemo/container"
-	"github.com/Lemo-yxk/lemo/logger"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 func main() {
 
-	var q = container.NewBlockQueue()
-
-	go func() {
-		for {
-			logger.Console(q.Get())
-		}
-	}()
-
-	for {
-		time.Sleep(time.Second)
-		q.Put(time.Now())
-	}
-
-	utils.ListenSignal(func(sig os.Signal) {
-		log.Println(sig)
+	var q = container.NewLastPool(container.LastPoolConfig{
+		Max: 0,
+		Min: 0,
+		New: func() interface{} {
+			return 1
+		},
 	})
+
+	q.Put(1)
+	log.Println(q.Get())
 }

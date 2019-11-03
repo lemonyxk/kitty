@@ -1,12 +1,8 @@
-package queue
+package container
 
 import (
 	"sync"
 )
-
-type BlockQueueConfig struct {
-	New func() interface{}
-}
 
 type BlockQueueStatus struct {
 	Wait int
@@ -16,16 +12,14 @@ type BlockQueueStatus struct {
 type blockQueue struct {
 	cond    *sync.Cond
 	storage []interface{}
-	config  BlockQueueConfig
 	status  BlockQueueStatus
 }
 
-func NewBlockQueue(config BlockQueueConfig) *blockQueue {
+func NewBlockQueue() *blockQueue {
 	var queue = &blockQueue{}
 	queue.cond = sync.NewCond(new(sync.RWMutex))
-	queue.config = config
 	queue.status = BlockQueueStatus{Wait: 0, Len: 0}
-	queue.storage = make([]interface{}, 1024)
+	queue.storage = make([]interface{}, 0)
 	return queue
 }
 

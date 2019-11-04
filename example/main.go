@@ -2,8 +2,10 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/Lemo-yxk/lemo/container"
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 func main() {
@@ -18,4 +20,9 @@ func main() {
 
 	q.Put(1)
 	log.Println(q.Get())
+
+	log.Println(utils.OrderID())
+	time.Sleep(time.Millisecond * 10)
+	log.Println(utils.OrderID())
+
 }

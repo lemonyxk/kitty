@@ -1,28 +1,20 @@
 package main
 
 import (
-	"log"
-	"time"
-
-	"github.com/Lemo-yxk/lemo/container"
+	"github.com/Lemo-yxk/lemo/logger"
 	"github.com/Lemo-yxk/lemo/utils"
 )
 
+type User struct {
+	Name string `json:"name"`
+	Addr string `json:"addr"`
+	Age  int    `json:"age"`
+}
+
 func main() {
 
-	var q = container.NewLastPool(container.LastPoolConfig{
-		Max: 0,
-		Min: 0,
-		New: func() interface{} {
-			return 1
-		},
-	})
+	var user User
 
-	q.Put(1)
-	log.Println(q.Get())
-
-	log.Println(utils.OrderID())
-	time.Sleep(time.Millisecond * 10)
-	log.Println(utils.OrderID())
+	logger.Println(utils.StructToMap(user))
 
 }

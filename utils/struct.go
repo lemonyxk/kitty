@@ -5,25 +5,15 @@
 *
 * @author: lemo
 *
-* @create: 2019-10-05 14:19
+* @create: 2019-11-05 11:42
 **/
 
-package lemo
+package utils
 
 import (
-	"reflect"
-	"testing"
-
 	"github.com/mitchellh/mapstructure"
+	"reflect"
 )
-
-type User struct {
-	Name string `json:"name" mapstructure:"name"`
-	Addr string `json:"addr" mapstructure:"addr"`
-	Age  int    `json:"age" mapstructure:"age"`
-}
-
-var user User
 
 func StructToMap(input interface{}) map[string]interface{} {
 	var output = make(map[string]interface{})
@@ -47,14 +37,6 @@ func StructToMap(input interface{}) map[string]interface{} {
 	return output
 }
 
-var m = map[string]interface{}{
-	"name": "xixi",
-	"addr": "haha",
-	"age":  11,
-}
-
-func BenchmarkParseMessage(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_ = mapstructure.WeakDecode(m, &user)
-	}
+func MapToStruct(input interface{}, output interface{}) {
+	_ = mapstructure.WeakDecode(input, output)
 }

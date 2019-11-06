@@ -1,27 +1,26 @@
 package main
 
 import (
-	"crypto/md5"
-	"fmt"
-
 	"github.com/Lemo-yxk/lemo/logger"
 	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type User struct {
-	Name string `json:"name"`
+	Name string `json:"name" mapstructure:"name"`
 	Addr string `json:"addr"`
 	Age  int    `json:"age"`
 }
 
 func main() {
 
-	var user User
+	var m = map[string]interface{}{
+		"name": "haha",
+	}
 
-	logger.Println(utils.StructToMap(user))
+	var user = &User{}
 
-	logger.Println(utils.Md5([]byte("1")))
+	utils.MapToStruct(m, user)
 
-	fmt.Printf("%x", md5.Sum([]byte("1")))
+	logger.Println(user)
 
 }

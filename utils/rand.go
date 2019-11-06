@@ -26,7 +26,7 @@ func RandomInt(start int, end int) int {
 	}
 	var number = new(big.Int).SetInt64(int64(end - start))
 	var randomNumber, _ = rand.Int(rand.Reader, number)
-	return int(randomNumber.Int64())
+	return int(randomNumber.Int64()) + start
 }
 
 func UUID() string {

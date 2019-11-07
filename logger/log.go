@@ -76,8 +76,8 @@ func Println(v ...interface{}) {
 	color.Println(v...)
 }
 
-func Exit(v ...interface{}) {
-	Console(v...)
+func Exit(v interface{}) {
+	Error(v)
 	os.Exit(0)
 }
 

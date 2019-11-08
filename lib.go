@@ -36,7 +36,7 @@ func ParseMessage(bts []byte) ([]byte, []byte) {
 			return bts[s+2 : l-2], nil
 		}
 
-		return bts[s+2 : e-1], bts[e+9 : l-2]
+		return bts[s+2 : e-1], bts[e+8 : l-1]
 
 	} else {
 
@@ -60,6 +60,6 @@ func ParseMessage(bts []byte) ([]byte, []byte) {
 			return bts[s+2 : l-2], nil
 		}
 
-		return bts[s+2 : l-2], bts[9 : e-1]
+		return bts[s+2 : l-2], bts[8:e]
 	}
 }

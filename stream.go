@@ -371,7 +371,7 @@ func (q *Query) IsIntEmpty(key string) bool {
 }
 
 func (q *Query) IsFloatEmpty(key string) bool {
-	return q.Get(key).Float64() == 0.0
+	return q.Get(key).Float64() == 0
 }
 
 func (q *Query) Get(key string) *Value {

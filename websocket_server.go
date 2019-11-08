@@ -507,7 +507,7 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// do not let it dead
-		// for web
+		// for web ping
 		if len(message) == 0 {
 			_ = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 		}
@@ -530,59 +530,33 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 	// unpack
 	version, messageType, protoType, route, body := UnPack(message)
 
+	if socket.OnMessage != nil {
+		go socket.OnMessage(connection, messageFrame, message)
+	}
+
 	// check version
 	if version != Version {
-
 		route, body := ParseMessage(message)
-
-		if route != nil {
-			if socket.tire != nil {
-				var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: Json}
-				go socket.router(connection, receivePackage)
-				return nil
-			}
+		if route != nil && socket.tire != nil {
+			go socket.router(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: Json})
 		}
-
-		if socket.OnMessage != nil {
-			go socket.OnMessage(connection, messageFrame, message)
-		}
-
 		return nil
 	}
 
 	// Ping
 	if messageType == PingData {
-		err := socket.PingHandler(connection)("")
-		if err != nil {
-			return err
-		}
-		return nil
+		return socket.PingHandler(connection)("")
 	}
 
 	// Pong
 	if messageType == PongData {
-		err := socket.PongHandler(connection)("")
-		if err != nil {
-			return err
-		}
-		return nil
+		return socket.PongHandler(connection)("")
 	}
-
-	// // check message type
-	// if frameType != messageType {
-	// 	return errors.New("frame type not match message type")
-	// }
 
 	// on router
 	if socket.tire != nil {
-		var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
-		go socket.router(connection, receivePackage)
+		go socket.router(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 		return nil
-	}
-
-	// any way run check on message
-	if socket.OnMessage != nil {
-		go socket.OnMessage(connection, messageFrame, message)
 	}
 
 	return nil

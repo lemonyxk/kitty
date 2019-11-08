@@ -289,23 +289,16 @@ func (client *WebSocketClient) Connect() {
 			// unpack
 			version, messageType, protoType, route, body := UnPack(message)
 
+			if client.OnMessage != nil {
+				go client.OnMessage(client, messageFrame, message)
+			}
+
 			// check version
 			if version != Version {
-
 				route, body := ParseMessage(message)
-
-				if route != nil {
-					if client.tire != nil {
-						var receivePackage = &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: Json}
-						go client.router(client, receivePackage)
-						continue
-					}
+				if route != nil && client.tire != nil {
+					go client.router(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: Json})
 				}
-
-				if client.OnMessage != nil {
-					go client.OnMessage(client, messageFrame, message)
-				}
-
 				continue
 			}
 
@@ -329,24 +322,12 @@ func (client *WebSocketClient) Connect() {
 				continue
 			}
 
-			// // check message type
-			// if frameType != messageType {
-			// 	closeChan <- false
-			// 	return
-			// }
-
 			// on router
 			if client.tire != nil {
-				var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
-				go client.router(client, receivePackage)
+				go client.router(client, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 				continue
 			}
 
-			// any way run check on message
-			if client.OnMessage != nil {
-				go client.OnMessage(client, messageFrame, message)
-				continue
-			}
 		}
 	}()
 

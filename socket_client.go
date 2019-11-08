@@ -328,47 +328,30 @@ func (client *SocketClient) decodeMessage(connection *SocketClient, message []by
 	// unpack
 	version, messageType, protoType, route, body := UnPack(message)
 
+	if client.OnMessage != nil {
+		go client.OnMessage(connection, messageType, message)
+	}
+
 	// check version
 	if version != Version {
-		if client.OnMessage != nil {
-			go client.OnMessage(connection, messageType, message)
-		}
 		return nil
 	}
 
 	// Ping
 	if messageType == PingData {
-		err := client.PingHandler(connection)("")
-		if err != nil {
-			return err
-		}
-		return nil
+		return client.PingHandler(connection)("")
 	}
 
 	// Pong
 	if messageType == PongData {
-		err := client.PongHandler(connection)("")
-		if err != nil {
-			return err
-		}
-		return nil
+		return client.PongHandler(connection)("")
 	}
-
-	// // check message type
-	// if frameType != messageType {
-	// 	return errors.New("frame type not match message type")
-	// }
 
 	// on router
 	if client.tire != nil {
-		var receivePackage = &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType}
-		go client.router(connection, receivePackage)
+		go client.router(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 		return nil
 	}
 
-	// any way run check on message
-	if client.OnMessage != nil {
-		go client.OnMessage(connection, messageType, message)
-	}
 	return nil
 }

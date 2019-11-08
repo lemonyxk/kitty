@@ -36,12 +36,12 @@ func (group *socketClientGroup) Route(path string) *socketClientGroup {
 	return group
 }
 
-func (group *socketClientGroup) Before(before []socketClientBefore) *socketClientGroup {
+func (group *socketClientGroup) Before(before ...socketClientBefore) *socketClientGroup {
 	group.before = before
 	return group
 }
 
-func (group *socketClientGroup) After(after []socketClientAfter) *socketClientGroup {
+func (group *socketClientGroup) After(after ...socketClientAfter) *socketClientGroup {
 	group.after = after
 	return group
 }
@@ -67,7 +67,7 @@ func (route *socketClientRoute) Route(path string) *socketClientRoute {
 	return route
 }
 
-func (route *socketClientRoute) Before(before []socketClientBefore) *socketClientRoute {
+func (route *socketClientRoute) Before(before ...socketClientBefore) *socketClientRoute {
 	route.before = before
 	return route
 }
@@ -82,7 +82,7 @@ func (route *socketClientRoute) ForceBefore() *socketClientRoute {
 	return route
 }
 
-func (route *socketClientRoute) After(after []socketClientAfter) *socketClientRoute {
+func (route *socketClientRoute) After(after ...socketClientAfter) *socketClientRoute {
 	route.after = after
 	return route
 }

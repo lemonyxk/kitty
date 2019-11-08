@@ -26,12 +26,12 @@ func (group *webSocketServerGroup) Route(path string) *webSocketServerGroup {
 	return group
 }
 
-func (group *webSocketServerGroup) Before(before []WebSocketServerBefore) *webSocketServerGroup {
+func (group *webSocketServerGroup) Before(before ...WebSocketServerBefore) *webSocketServerGroup {
 	group.before = before
 	return group
 }
 
-func (group *webSocketServerGroup) After(after []WebSocketServerAfter) *webSocketServerGroup {
+func (group *webSocketServerGroup) After(after ...WebSocketServerAfter) *webSocketServerGroup {
 	group.after = after
 	return group
 }
@@ -57,7 +57,7 @@ func (route *webSocketServerRoute) Route(path string) *webSocketServerRoute {
 	return route
 }
 
-func (route *webSocketServerRoute) Before(before []WebSocketServerBefore) *webSocketServerRoute {
+func (route *webSocketServerRoute) Before(before ...WebSocketServerBefore) *webSocketServerRoute {
 	route.before = before
 	return route
 }
@@ -72,7 +72,7 @@ func (route *webSocketServerRoute) ForceBefore() *webSocketServerRoute {
 	return route
 }
 
-func (route *webSocketServerRoute) After(after []WebSocketServerAfter) *webSocketServerRoute {
+func (route *webSocketServerRoute) After(after ...WebSocketServerAfter) *webSocketServerRoute {
 	route.after = after
 	return route
 }

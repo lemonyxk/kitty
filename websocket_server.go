@@ -48,7 +48,7 @@ type M map[string]interface{}
 
 // WebSocket WebSocket
 type WebSocket struct {
-	Fd       uint32
+	FD       uint32
 	Conn     *websocket.Conn
 	socket   *WebSocketServer
 	Response http.ResponseWriter
@@ -305,12 +305,12 @@ func (socket *WebSocketServer) addConnect(conn *WebSocket) {
 	}
 
 	// 赋值
-	conn.Fd = socket.fd
+	conn.FD = socket.fd
 
 }
 
 func (socket *WebSocketServer) delConnect(conn *WebSocket) {
-	socket.connections.Delete(conn.Fd)
+	socket.connections.Delete(conn.FD)
 }
 
 func (socket *WebSocketServer) GetConnections() chan *WebSocket {
@@ -375,7 +375,7 @@ func (socket *WebSocketServer) Ready() {
 
 	if socket.OnOpen == nil {
 		socket.OnOpen = func(conn *WebSocket) {
-			println(conn.Fd, "is open")
+			println(conn.FD, "is open")
 		}
 	}
 
@@ -395,7 +395,7 @@ func (socket *WebSocketServer) Ready() {
 		socket.PingHandler = func(connection *WebSocket) func(appData string) error {
 			return func(appData string) error {
 				// unnecessary
-				// err := socket.Push(connection.Fd, BinData, Pack(nil, nil, PongData, BinData))
+				// err := socket.Push(connection.FD, BinData, Pack(nil, nil, PongData, BinData))
 				return connection.Conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 			}
 		}
@@ -440,7 +440,7 @@ func (socket *WebSocketServer) Ready() {
 				// 触发OPEN事件
 				go socket.OnOpen(conn)
 			case conn := <-socket.connClose:
-				var fd = conn.Fd
+				var fd = conn.FD
 				_ = conn.Conn.Close()
 				socket.delConnect(conn)
 				socket.count--
@@ -480,7 +480,7 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	connection := &WebSocket{
-		Fd:       0,
+		FD:       0,
 		Conn:     conn,
 		socket:   socket,
 		Response: w,

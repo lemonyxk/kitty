@@ -23,7 +23,7 @@ import (
 )
 
 type Socket struct {
-	Fd     uint32
+	FD     uint32
 	Conn   net.Conn
 	socket *SocketServer
 }
@@ -219,7 +219,7 @@ func (socket *SocketServer) Ready() {
 
 	if socket.OnOpen == nil {
 		socket.OnOpen = func(conn *Socket) {
-			println(conn.Fd, "is open")
+			println(conn.FD, "is open")
 		}
 	}
 
@@ -239,7 +239,7 @@ func (socket *SocketServer) Ready() {
 		socket.PingHandler = func(connection *Socket) func(appData string) error {
 			return func(appData string) error {
 				// unnecessary
-				// err := socket.Push(connection.Fd, PongMessage, nil)
+				// err := socket.Push(connection.FD, PongMessage, nil)
 				return connection.Conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 			}
 		}
@@ -277,7 +277,7 @@ func (socket *SocketServer) Ready() {
 				// 触发OPEN事件
 				go socket.OnOpen(conn)
 			case conn := <-socket.connClose:
-				var fd = conn.Fd
+				var fd = conn.FD
 				_ = conn.Conn.Close()
 				socket.delConnect(conn)
 				socket.count--
@@ -338,12 +338,12 @@ func (socket *SocketServer) addConnect(conn *Socket) {
 	}
 
 	// 赋值
-	conn.Fd = socket.fd
+	conn.FD = socket.fd
 
 }
 
 func (socket *SocketServer) delConnect(conn *Socket) {
-	socket.connections.Delete(conn.Fd)
+	socket.connections.Delete(conn.FD)
 }
 
 func (socket *SocketServer) GetConnections() chan *Socket {
@@ -405,7 +405,7 @@ func (socket *SocketServer) handler(conn net.Conn) {
 	}
 
 	var connection = &Socket{
-		Fd:     0,
+		FD:     0,
 		Conn:   conn,
 		socket: socket,
 	}

@@ -27,7 +27,7 @@ func (q *queue) Pop() (interface{}, bool) {
 		return nil, false
 	}
 	var v = q.list[0]
-	q.list = q.list[:len(q.list)-1]
+	q.list = q.list[1:]
 	return v, true
 }
 

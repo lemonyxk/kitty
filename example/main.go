@@ -1,26 +1,24 @@
 package main
 
 import (
+	"github.com/Lemo-yxk/lemo/container/head"
 	"github.com/Lemo-yxk/lemo/logger"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
-type User struct {
-	Name string `json:"name" mapstructure:"name"`
-	Addr string `json:"addr"`
-	Age  int    `json:"age"`
+type People struct {
+	value int
+}
+
+func (p *People) Value() int {
+	return p.value
 }
 
 func main() {
 
-	var m = map[string]interface{}{
-		"name": "haha",
-	}
+	var minHead = head.NewMinHead(&People{0}, &People{1}, &People{2})
 
-	var user = &User{}
-
-	utils.MapToStruct(m, user)
-
-	logger.Println(user)
+	logger.Println(minHead.Pop())
+	logger.Println(minHead.Pop())
+	logger.Println(minHead.Pop())
 
 }

@@ -1,4 +1,4 @@
-package container
+package pool
 
 import (
 	"runtime"
@@ -9,19 +9,6 @@ type LastPoolConfig struct {
 	Max int
 	Min int
 	New func() interface{}
-}
-
-type LastPoolStatus struct {
-	Max int
-	Min int
-	Len int
-}
-
-type lastPool struct {
-	mux     sync.Mutex
-	storage []interface{}
-	config  LastPoolConfig
-	status  LastPoolStatus
 }
 
 func NewLastPool(config LastPoolConfig) *lastPool {
@@ -40,13 +27,26 @@ func NewLastPool(config LastPoolConfig) *lastPool {
 
 	var pool = &lastPool{}
 	pool.config = config
-	pool.status = LastPoolStatus{Max: config.Max, Min: config.Min, Len: 0}
+	pool.status = lastPoolStatus{max: config.Max, min: config.Min, len: 0}
 
 	if len(pool.storage) < pool.config.Min {
 		pool.storage = append(pool.storage, config.New())
 	}
 
 	return pool
+}
+
+type lastPoolStatus struct {
+	max int
+	min int
+	len int
+}
+
+type lastPool struct {
+	mux     sync.RWMutex
+	storage []interface{}
+	config  LastPoolConfig
+	status  lastPoolStatus
 }
 
 func (pool *lastPool) Put(v interface{}) {
@@ -61,6 +61,7 @@ func (pool *lastPool) Put(v interface{}) {
 	// pool do not need worry
 	if len(pool.storage) < pool.config.Max {
 		pool.storage = append(pool.storage, v)
+		pool.status.len++
 	}
 
 	pool.mux.Unlock()
@@ -73,6 +74,7 @@ func (pool *lastPool) Get() interface{} {
 	if len(pool.storage) > 0 {
 		var r = pool.storage[0]
 		pool.storage = pool.storage[1:]
+		pool.status.len--
 		pool.mux.Unlock()
 		return r
 	}
@@ -82,9 +84,6 @@ func (pool *lastPool) Get() interface{} {
 
 }
 
-func (pool *lastPool) Status() LastPoolStatus {
-	pool.mux.Lock()
-	pool.status.Len = len(pool.storage)
-	pool.mux.Unlock()
+func (pool *lastPool) Status() lastPoolStatus {
 	return pool.status
 }

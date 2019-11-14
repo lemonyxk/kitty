@@ -11,50 +11,23 @@
 package lemo
 
 import (
-	"reflect"
+	head2 "github.com/Lemo-yxk/lemo/container/head"
 	"testing"
-
-	"github.com/mitchellh/mapstructure"
 )
 
-type User struct {
-	Name string `json:"name" mapstructure:"name"`
-	Addr string `json:"addr" mapstructure:"addr"`
-	Age  int    `json:"age" mapstructure:"age"`
+type People struct {
+	value int
 }
 
-var user User
-
-func StructToMap(input interface{}) map[string]interface{} {
-	var output = make(map[string]interface{})
-
-	var kf = reflect.TypeOf(input)
-
-	if kf.Kind() == reflect.Ptr {
-		return nil
-	}
-
-	if kf.Kind() != reflect.Struct {
-		return nil
-	}
-
-	var vf = reflect.ValueOf(input)
-
-	for i := 0; i < kf.NumField(); i++ {
-		output[kf.Field(i).Tag.Get("json")] = vf.Field(i).Interface()
-	}
-
-	return output
+func (p *People) Value() int {
+	return p.value
 }
 
-var m = map[string]interface{}{
-	"name": "xixi",
-	"addr": "haha",
-	"age":  11,
-}
+var head = head2.NewMinHead(&People{0}, &People{1}, &People{2})
 
 func BenchmarkParseMessage(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = mapstructure.WeakDecode(m, &user)
+		//head.Push(1)
+		head.Pop()
 	}
 }

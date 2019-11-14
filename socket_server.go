@@ -136,7 +136,7 @@ func (socket *SocketServer) Json(fd uint32, msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
-		return errors.New("message err: " + err.Error())
+		return err
 	}
 
 	return socket.Push(fd, messageJson)
@@ -146,7 +146,7 @@ func (socket *SocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
 
 	messageProtoBuf, err := proto.Marshal(msg)
 	if err != nil {
-		return errors.New("protobuf err: " + err.Error())
+		return err
 	}
 
 	return socket.Push(fd, messageProtoBuf)
@@ -170,7 +170,7 @@ func (socket *SocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
 
 	messageProtoBuf, err := proto.Marshal(msg.Message)
 	if err != nil {
-		return errors.New("protobuf err: " + err.Error())
+		return err
 	}
 
 	return socket.Push(fd, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
@@ -186,7 +186,7 @@ func (socket *SocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 	} else {
 		messageJson, err := json.Marshal(msg.Message)
 		if err != nil {
-			return errors.New("protobuf err: " + err.Error())
+			return err
 		}
 		data = messageJson
 	}

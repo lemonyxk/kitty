@@ -63,7 +63,7 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
-		return errors.New("message err: " + err.Error())
+		return err
 	}
 
 	return client.Push(TextData, messageJson)
@@ -73,7 +73,7 @@ func (client *WebSocketClient) JsonFormat(msg JsonPackage) error {
 
 	messageJson, err := json.Marshal(M{"data": msg.Message, "event": msg.Event})
 	if err != nil {
-		return errors.New("message err: " + err.Error())
+		return err
 	}
 
 	return client.Push(TextData, messageJson)
@@ -83,7 +83,7 @@ func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
 
 	messageProtoBuf, err := proto.Marshal(msg)
 	if err != nil {
-		return errors.New("protobuf err: " + err.Error())
+		return err
 	}
 
 	return client.Push(BinData, messageProtoBuf)
@@ -99,7 +99,7 @@ func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 	} else {
 		messageJson, err := json.Marshal(msg.Message)
 		if err != nil {
-			return errors.New("protobuf err: " + err.Error())
+			return err
 		}
 		data = messageJson
 	}
@@ -112,7 +112,7 @@ func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 
 	messageProtoBuf, err := proto.Marshal(msg.Message)
 	if err != nil {
-		return errors.New("protobuf err: " + err.Error())
+		return err
 	}
 
 	return client.Push(BinData, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))

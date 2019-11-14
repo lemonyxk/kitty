@@ -64,7 +64,7 @@ func (client *SocketClient) Json(msg interface{}) error {
 
 	messageJson, err := json.Marshal(msg)
 	if err != nil {
-		return errors.New("message err: " + err.Error())
+		return err
 	}
 
 	return client.Push(messageJson)
@@ -74,7 +74,7 @@ func (client *SocketClient) ProtoBuf(msg proto.Message) error {
 
 	messageProtoBuf, err := proto.Marshal(msg)
 	if err != nil {
-		return errors.New("protobuf err: " + err.Error())
+		return err
 	}
 
 	return client.Push(messageProtoBuf)
@@ -90,7 +90,7 @@ func (client *SocketClient) JsonEmit(msg JsonPackage) error {
 	} else {
 		messageJson, err := json.Marshal(msg.Message)
 		if err != nil {
-			return errors.New("protobuf err: " + err.Error())
+			return err
 		}
 		data = messageJson
 	}
@@ -103,7 +103,7 @@ func (client *SocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 
 	messageProtoBuf, err := proto.Marshal(msg.Message)
 	if err != nil {
-		return errors.New("protobuf err: " + err.Error())
+		return err
 	}
 
 	return client.Push(Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))

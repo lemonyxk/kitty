@@ -25,8 +25,8 @@ func ParseMessage(bts []byte) ([]byte, []byte) {
 
 		s = 8
 
-		for i, b := range bts {
-			if b == 44 {
+		for i := 0; i < len(bts); i++ {
+			if bts[i] == 44 {
 				e = i
 				break
 			}

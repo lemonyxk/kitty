@@ -229,8 +229,8 @@ func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 
 	var tool = Stream{w, r, nil, params, nil, nil, nil}
 
-	for _, before := range nodeData.Before {
-		context, err := before(&tool)
+	for i := 0; i < len(nodeData.Before); i++ {
+		context, err := nodeData.Before[i](&tool)
 		if err != nil {
 			if h.OnError != nil {
 				h.OnError(err)
@@ -250,8 +250,8 @@ func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	for _, after := range nodeData.After {
-		err := after(&tool)
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](&tool)
 		if err != nil {
 			if h.OnError != nil {
 				h.OnError(err)

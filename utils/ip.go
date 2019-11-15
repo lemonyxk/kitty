@@ -21,10 +21,9 @@ func GetLocalhostIp() string {
 		return defaultIP
 	}
 
-	for _, address := range addresses {
-
+	for i := 0; i < len(addresses); i++ {
 		// 检查ip地址判断是否回环地址
-		if ipNet, ok := address.(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
+		if ipNet, ok := addresses[i].(*net.IPNet); ok && !ipNet.IP.IsLoopback() {
 			if ipNet.IP.To4() != nil {
 				defaultIP = ipNet.IP.String()
 				return defaultIP
@@ -73,8 +72,8 @@ var localNetworks = []string{
 
 func IsLocalNet(ip net.IP) bool {
 
-	for _, network := range localNetworks {
-		if strings.Contains(network, ip.String()) {
+	for i := 0; i < len(localNetworks); i++ {
+		if strings.Contains(localNetworks[i], ip.String()) {
 			return true
 		}
 	}

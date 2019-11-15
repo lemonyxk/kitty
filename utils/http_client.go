@@ -81,9 +81,9 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 
 		var contentType = ""
 
-		for key, value := range headerKey {
-			if value == "Content-Type" {
-				contentType = headerValue[key]
+		for i := 0; i < len(headerKey); i++ {
+			if headerKey[i] == "Content-Type" {
+				contentType = headerValue[i]
 				break
 			}
 		}
@@ -140,12 +140,12 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 		return nil, errors.New("invalid request")
 	}
 
-	for key, value := range headerKey {
-		request.Header.Add(value, headerValue[key])
+	for i := 0; i < len(headerKey); i++ {
+		request.Header.Add(headerKey[i], headerValue[i])
 	}
 
-	for _, value := range cookies {
-		request.AddCookie(value)
+	for i := 0; i < len(cookies); i++ {
+		request.AddCookie(cookies[i])
 	}
 
 	response, err = client.Do(request)
@@ -245,9 +245,9 @@ func (h *httpClient) AddHeader(key string, value string) *httpClient {
 }
 
 func (h *httpClient) SetHeader(key string, value string) *httpClient {
-	for k, v := range h.headerKey {
-		if v == key {
-			h.headerValue[k] = value
+	for i := 0; i < len(h.headerKey); i++ {
+		if h.headerKey[i] == key {
+			h.headerValue[i] = value
 			return h
 		}
 	}

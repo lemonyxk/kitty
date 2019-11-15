@@ -62,8 +62,8 @@ func (c *Config) File() string {
 
 func (c *Config) StringArray(arrayResult []gjson.Result) []string {
 	var result []string
-	for _, value := range arrayResult {
-		result = append(result, value.String())
+	for i := 0; i < len(arrayResult); i++ {
+		result = append(result, arrayResult[i].String())
 	}
 	return result
 }

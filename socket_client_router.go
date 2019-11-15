@@ -206,8 +206,8 @@ func (client *SocketClient) router(conn *SocketClient, msg *ReceivePackage) {
 	receive.Context = nil
 	receive.Params = params
 
-	for _, before := range nodeData.Before {
-		context, err := before(conn, receive)
+	for i := 0; i < len(nodeData.Before); i++ {
+		context, err := nodeData.Before[i](conn, receive)
 		if err != nil {
 			if client.OnError != nil {
 				client.OnError(err)
@@ -225,8 +225,8 @@ func (client *SocketClient) router(conn *SocketClient, msg *ReceivePackage) {
 		return
 	}
 
-	for _, after := range nodeData.After {
-		err := after(conn, receive)
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](conn, receive)
 		if err != nil {
 			if client.OnError != nil {
 				client.OnError(err)

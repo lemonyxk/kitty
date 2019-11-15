@@ -185,19 +185,19 @@ func (socket *WebSocketServer) router(conn *WebSocket, msg *ReceivePackage) {
 		return
 	}
 
-	var wba = node.Data.(*WBA)
+	var nodeData = node.Data.(*WBA)
 
 	var params = new(Params)
 	params.Keys = node.Keys
-	params.Values = node.ParseParams(wba.Path)
+	params.Values = node.ParseParams(nodeData.Path)
 
 	var receive = &Receive{}
 	receive.Message = msg
 	receive.Context = nil
 	receive.Params = params
 
-	for _, before := range wba.Before {
-		context, err := before(conn, receive)
+	for i := 0; i < len(nodeData.Before); i++ {
+		context, err := nodeData.Before[i](conn, receive)
 		if err != nil {
 			if socket.OnError != nil {
 				socket.OnError(err)
@@ -207,7 +207,7 @@ func (socket *WebSocketServer) router(conn *WebSocket, msg *ReceivePackage) {
 		receive.Context = context
 	}
 
-	err := wba.WebSocketServerFunction(conn, receive)
+	err := nodeData.WebSocketServerFunction(conn, receive)
 	if err != nil {
 		if socket.OnError != nil {
 			socket.OnError(err)
@@ -215,8 +215,8 @@ func (socket *WebSocketServer) router(conn *WebSocket, msg *ReceivePackage) {
 		return
 	}
 
-	for _, after := range wba.After {
-		err := after(conn, receive)
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](conn, receive)
 		if err != nil {
 			if socket.OnError != nil {
 				socket.OnError(err)

@@ -38,7 +38,7 @@ type Params struct {
 }
 
 func (ps *Params) ByName(name string) string {
-	for i := range ps.Keys {
+	for i := 0; i < len(ps.Keys); i++ {
 		if ps.Keys[i] == name {
 			return ps.Values[i]
 		}

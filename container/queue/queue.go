@@ -31,6 +31,13 @@ func (q *queue) Pop() (interface{}, bool) {
 	return v, true
 }
 
+func (q *queue) Top() (interface{}, bool) {
+	if len(q.list) == 0 {
+		return nil, false
+	}
+	return q.list[0], true
+}
+
 func (q *queue) Size() int {
 	return len(q.list)
 }

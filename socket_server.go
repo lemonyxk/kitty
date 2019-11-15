@@ -11,8 +11,8 @@
 package lemo
 
 import (
-	"encoding/json"
 	"errors"
+	"github.com/json-iterator/go"
 	"net"
 	"strconv"
 	"sync"
@@ -134,7 +134,7 @@ func (socket *SocketServer) Push(fd uint32, msg []byte) error {
 // Push Json 发送消息
 func (socket *SocketServer) Json(fd uint32, msg interface{}) error {
 
-	messageJson, err := json.Marshal(msg)
+	messageJson, err := jsoniter.Marshal(msg)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func (socket *SocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 	if mb, ok := msg.Message.([]byte); ok {
 		data = mb
 	} else {
-		messageJson, err := json.Marshal(msg.Message)
+		messageJson, err := jsoniter.Marshal(msg.Message)
 		if err != nil {
 			return err
 		}

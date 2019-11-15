@@ -2,8 +2,8 @@ package lemo
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
+	"github.com/json-iterator/go"
 	"io/ioutil"
 	"mime/multipart"
 	"net"
@@ -121,7 +121,7 @@ func (stream *Stream) Json(data interface{}) error {
 
 	stream.SetHeader("Content-Type", "application/json")
 
-	return json.NewEncoder(stream.Response).Encode(data)
+	return jsoniter.NewEncoder(stream.Response).Encode(data)
 }
 
 func (stream *Stream) End(data interface{}) error {
@@ -168,7 +168,7 @@ func (stream *Stream) ParseJson() *Query {
 
 	var data = make(map[string]interface{})
 
-	err = json.Unmarshal(jsonBody, &data)
+	err = jsoniter.Unmarshal(jsonBody, &data)
 	if err != nil {
 		return nil
 	}

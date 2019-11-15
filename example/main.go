@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/Lemo-yxk/lemo/container/head"
-	"github.com/Lemo-yxk/lemo/logger"
+	jsoniter "github.com/json-iterator/go"
+	"log"
 )
 
 type People struct {
@@ -15,10 +15,7 @@ func (p *People) Value() int {
 
 func main() {
 
-	var minHead = head.NewMinHead(&People{0}, &People{1}, &People{2})
-
-	logger.Println(minHead.Pop())
-	logger.Println(minHead.Pop())
-	logger.Println(minHead.Pop())
+	val := []byte(`{"ID":1,"Name":"Reds","Colors":["Crimson","Red","Ruby","Maroon"]}`)
+	log.Println(jsoniter.Get(val, "Colors", "*").ToString())
 
 }

@@ -31,6 +31,13 @@ func (s *stack) Pop() (interface{}, bool) {
 	return v, true
 }
 
+func (s *stack) Top() (interface{}, bool) {
+	if len(s.list) == 0 {
+		return nil, false
+	}
+	return s.list[len(s.list)-1], true
+}
+
 func (s *stack) Size() int {
 	return len(s.list)
 }

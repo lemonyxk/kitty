@@ -1,8 +1,8 @@
 package lemo
 
 import (
-	"encoding/json"
 	"errors"
+	"github.com/json-iterator/go"
 	"net/http"
 	"strconv"
 	"sync"
@@ -61,7 +61,7 @@ type WebSocketClient struct {
 // Json 发送JSON字符
 func (client *WebSocketClient) Json(msg interface{}) error {
 
-	messageJson, err := json.Marshal(msg)
+	messageJson, err := jsoniter.Marshal(msg)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 
 func (client *WebSocketClient) JsonFormat(msg JsonPackage) error {
 
-	messageJson, err := json.Marshal(M{"data": msg.Message, "event": msg.Event})
+	messageJson, err := jsoniter.Marshal(M{"data": msg.Message, "event": msg.Event})
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 	if mb, ok := msg.Message.([]byte); ok {
 		data = mb
 	} else {
-		messageJson, err := json.Marshal(msg.Message)
+		messageJson, err := jsoniter.Marshal(msg.Message)
 		if err != nil {
 			return err
 		}

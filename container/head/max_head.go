@@ -60,10 +60,8 @@ func (h *maxHead) down(parentIndex int) {
 	var temp = h.data[parentIndex]
 	// 子节点 默认为左节点
 	var childIndex = parentIndex*2 + 1
-	for {
-		if childIndex >= h.len {
-			break
-		}
+
+	for childIndex < h.len {
 
 		// 如果有右节点 则 一定有左节点
 		// 有右节点 且 右节点大于左节点 则 定位至右节点
@@ -97,10 +95,7 @@ func (h *maxHead) up(index int) {
 
 	var temp = h.data[childIndex]
 
-	for {
-		if childIndex <= 0 {
-			break
-		}
+	for childIndex > 0 {
 
 		if temp.Value() <= h.data[parentIndex].Value() {
 			break

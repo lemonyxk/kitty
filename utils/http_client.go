@@ -12,8 +12,8 @@ package utils
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
+	"github.com/json-iterator/go"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -120,7 +120,7 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 
 		case "application/json":
 
-			jsonBody, err := json.Marshal(body)
+			jsonBody, err := jsoniter.Marshal(body)
 			if err != nil {
 				return nil, err
 			}

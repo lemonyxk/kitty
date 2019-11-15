@@ -11,11 +11,11 @@
 package utils
 
 import (
-	"encoding/json"
+	"github.com/json-iterator/go"
 )
 
 func JsonEncode(v interface{}) []byte {
-	res, err := json.Marshal(v)
+	res, err := jsoniter.Marshal(v)
 	if err != nil {
 		return nil
 	}
@@ -23,5 +23,5 @@ func JsonEncode(v interface{}) []byte {
 }
 
 func JsonDecode(data []byte, output interface{}) {
-	_ = json.Unmarshal(data, output)
+	_ = jsoniter.Unmarshal(data, output)
 }

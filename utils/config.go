@@ -10,6 +10,7 @@ import (
 )
 
 type Config struct {
+	bytes  []byte
 	result gjson.Result
 	dir    string
 	file   string
@@ -29,6 +30,7 @@ func (c *Config) SetConfigFile(configFile string) func() *lemo.Error {
 	c.dir = filepath.Dir(absPath)
 	c.file = absPath
 	c.result = gjson.ParseBytes(bytes)
+	c.bytes = bytes
 
 	return nil
 }
@@ -36,6 +38,10 @@ func (c *Config) SetConfigFile(configFile string) func() *lemo.Error {
 // GetByID 获取
 func (c *Config) Result() gjson.Result {
 	return c.result
+}
+
+func (c *Config) Bytes() []byte {
+	return c.bytes
 }
 
 func (c *Config) Path(path string) gjson.Result {

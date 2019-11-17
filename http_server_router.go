@@ -40,12 +40,12 @@ func (group *httpServerGroup) Route(path string) *httpServerGroup {
 }
 
 func (group *httpServerGroup) Before(before ...HttpServerBefore) *httpServerGroup {
-	group.before = before
+	group.before = append(group.before, before...)
 	return group
 }
 
 func (group *httpServerGroup) After(after ...HttpServerAfter) *httpServerGroup {
-	group.after = after
+	group.after = append(group.after, after...)
 	return group
 }
 
@@ -73,7 +73,7 @@ func (route *httpServerRoute) Route(method string, path string) *httpServerRoute
 }
 
 func (route *httpServerRoute) Before(before ...HttpServerBefore) *httpServerRoute {
-	route.before = before
+	route.before = append(route.before, before...)
 	return route
 }
 
@@ -88,7 +88,7 @@ func (route *httpServerRoute) ForceBefore() *httpServerRoute {
 }
 
 func (route *httpServerRoute) After(after ...HttpServerAfter) *httpServerRoute {
-	route.after = after
+	route.after = append(route.after, after...)
 	return route
 }
 

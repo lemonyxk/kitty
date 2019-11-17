@@ -1,21 +1,15 @@
 package main
 
-import (
-	jsoniter "github.com/json-iterator/go"
-	"log"
-)
-
-type People struct {
-	value int
-}
-
-func (p *People) Value() int {
-	return p.value
-}
+import "log"
 
 func main() {
 
-	val := []byte(`{"ID":1,"Name":"Reds","Colors":["Crimson","Red","Ruby","Maroon"]}`)
-	log.Println(jsoniter.Get(val, "Colors", "*").ToString())
+	test()
+}
 
+func test(a ...int) {
+	var b = make([]int, 0)
+	log.Println(b == nil)
+	b = append(b, a...)
+	log.Println(b == nil)
 }

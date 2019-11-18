@@ -27,6 +27,17 @@ type HttpServerAfter func(t *Stream) func() *Error
 
 type ErrorFunction func(err func() *Error)
 
+var httpServerGlobalBefore []HttpServerBefore
+var httpServerGlobalAfter []HttpServerAfter
+
+func SetHttpGlobalBefore(before ...HttpServerBefore) {
+	httpServerGlobalBefore = append(httpServerGlobalBefore, before...)
+}
+
+func SetHttpGlobalAfter(after ...HttpServerAfter) {
+	httpServerGlobalAfter = append(httpServerGlobalAfter, after...)
+}
+
 type httpServerGroup struct {
 	path   string
 	before []HttpServerBefore
@@ -138,6 +149,9 @@ func (route *httpServerRoute) Handler(fn HttpServerFunction) {
 	if route.forceAfter {
 		hba.After = route.after
 	}
+
+	hba.Before = append(hba.Before, httpServerGlobalBefore...)
+	hba.After = append(hba.After, httpServerGlobalAfter...)
 
 	hba.Method = method
 

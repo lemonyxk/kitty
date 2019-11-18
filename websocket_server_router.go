@@ -14,6 +14,17 @@ type WebSocketServerBefore func(conn *WebSocket, receive *Receive) (Context, fun
 
 type WebSocketServerAfter func(conn *WebSocket, receive *Receive) func() *Error
 
+var webSocketServerGlobalBefore []WebSocketServerBefore
+var webSocketServerGlobalAfter []WebSocketServerAfter
+
+func SetWebSocketServerBefore(before ...WebSocketServerBefore) {
+	webSocketServerGlobalBefore = append(webSocketServerGlobalBefore, before...)
+}
+
+func SetWebSocketServerAfter(after ...WebSocketServerAfter) {
+	webSocketServerGlobalAfter = append(webSocketServerGlobalAfter, after...)
+}
+
 type webSocketServerGroup struct {
 	path   string
 	before []WebSocketServerBefore
@@ -121,6 +132,9 @@ func (route *webSocketServerRoute) Handler(fn WebSocketServerFunction) {
 	if route.forceAfter {
 		wba.After = route.after
 	}
+
+	wba.Before = append(wba.Before, webSocketServerGlobalBefore...)
+	wba.After = append(wba.After, webSocketServerGlobalAfter...)
 
 	wba.Route = []byte(path)
 

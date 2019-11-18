@@ -16,18 +16,29 @@ import (
 	"github.com/Lemo-yxk/tire"
 )
 
-type socketClientGroupFunction func(this *SocketClient)
+type SocketClientGroupFunction func(this *SocketClient)
 
-type socketClientFunction func(c *SocketClient, receive *Receive) func() *Error
+type SocketClientFunction func(c *SocketClient, receive *Receive) func() *Error
 
-type socketClientBefore func(c *SocketClient, receive *Receive) (Context, func() *Error)
+type SocketClientBefore func(c *SocketClient, receive *Receive) (Context, func() *Error)
 
-type socketClientAfter func(c *SocketClient, receive *Receive) func() *Error
+type SocketClientAfter func(c *SocketClient, receive *Receive) func() *Error
+
+var socketClientGlobalBefore []SocketClientBefore
+var socketClientGlobalAfter []SocketClientAfter
+
+func SetSocketClientBefore(before ...SocketClientBefore) {
+	socketClientGlobalBefore = append(socketClientGlobalBefore, before...)
+}
+
+func SetSocketClientAfter(after ...SocketClientAfter) {
+	socketClientGlobalAfter = append(socketClientGlobalAfter, after...)
+}
 
 type socketClientGroup struct {
 	path   string
-	before []socketClientBefore
-	after  []socketClientAfter
+	before []SocketClientBefore
+	after  []SocketClientAfter
 	socket *SocketClient
 }
 
@@ -36,25 +47,25 @@ func (group *socketClientGroup) Route(path string) *socketClientGroup {
 	return group
 }
 
-func (group *socketClientGroup) Before(before ...socketClientBefore) *socketClientGroup {
+func (group *socketClientGroup) Before(before ...SocketClientBefore) *socketClientGroup {
 	group.before = append(group.before, before...)
 	return group
 }
 
-func (group *socketClientGroup) After(after ...socketClientAfter) *socketClientGroup {
+func (group *socketClientGroup) After(after ...SocketClientAfter) *socketClientGroup {
 	group.after = append(group.after, after...)
 	return group
 }
 
-func (group *socketClientGroup) Handler(fn socketClientGroupFunction) {
+func (group *socketClientGroup) Handler(fn SocketClientGroupFunction) {
 	fn(group.socket)
 	group.socket.group = nil
 }
 
 type socketClientRoute struct {
 	path        string
-	before      []socketClientBefore
-	after       []socketClientAfter
+	before      []SocketClientBefore
+	after       []SocketClientAfter
 	socket      *SocketClient
 	passBefore  bool
 	forceBefore bool
@@ -67,7 +78,7 @@ func (route *socketClientRoute) Route(path string) *socketClientRoute {
 	return route
 }
 
-func (route *socketClientRoute) Before(before ...socketClientBefore) *socketClientRoute {
+func (route *socketClientRoute) Before(before ...SocketClientBefore) *socketClientRoute {
 	route.before = append(route.before, before...)
 	return route
 }
@@ -82,7 +93,7 @@ func (route *socketClientRoute) ForceBefore() *socketClientRoute {
 	return route
 }
 
-func (route *socketClientRoute) After(after ...socketClientAfter) *socketClientRoute {
+func (route *socketClientRoute) After(after ...SocketClientAfter) *socketClientRoute {
 	route.after = append(route.after, after...)
 	return route
 }
@@ -97,7 +108,7 @@ func (route *socketClientRoute) ForceAfter() *socketClientRoute {
 	return route
 }
 
-func (route *socketClientRoute) Handler(fn socketClientFunction) {
+func (route *socketClientRoute) Handler(fn SocketClientFunction) {
 
 	var socket = route.socket
 	var group = socket.group
@@ -131,6 +142,9 @@ func (route *socketClientRoute) Handler(fn socketClientFunction) {
 	if route.forceAfter {
 		cba.After = route.after
 	}
+
+	cba.Before = append(cba.Before, socketClientGlobalBefore...)
+	cba.After = append(cba.After, socketClientGlobalAfter...)
 
 	cba.Route = []byte(path)
 
@@ -247,7 +261,7 @@ func (client *SocketClient) formatPath(path string) string {
 type SocketClientNode struct {
 	Path                 []byte
 	Route                []byte
-	SocketClientFunction socketClientFunction
-	Before               []socketClientBefore
-	After                []socketClientAfter
+	SocketClientFunction SocketClientFunction
+	Before               []SocketClientBefore
+	After                []SocketClientAfter
 }

@@ -66,7 +66,7 @@ func init() {
 
 	SetErrorHook(func(err *lemo.Error) {
 		var date = err.Time.Format("2006-01-02 15:04:05")
-		color.Red.Println(date + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Error.Error())
+		color.Red.Println(date + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Message)
 	})
 
 	SetLogHook(nil)
@@ -122,7 +122,7 @@ func Error(err interface{}) {
 		}
 
 		if log && logger.logHook != nil {
-			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Error)
+			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Message)
 		}
 
 	case *lemo.Error:
@@ -134,7 +134,7 @@ func Error(err interface{}) {
 		}
 
 		if log && logger.logHook != nil {
-			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Error)
+			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Message)
 		}
 	default:
 
@@ -146,7 +146,7 @@ func Error(err interface{}) {
 		var t = time.Now()
 
 		if debug {
-			logger.errorHook(&lemo.Error{Time: t, File: file, Line: line, Error: fmt.Errorf("%v", err)})
+			logger.errorHook(&lemo.Error{Time: t, File: file, Line: line, Message: fmt.Sprintf("%s", err)})
 		}
 
 		if log && logger.logHook != nil {

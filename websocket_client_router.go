@@ -14,6 +14,17 @@ type WebSocketClientBefore func(c *WebSocketClient, receive *Receive) (Context, 
 
 type WebSocketClientAfter func(c *WebSocketClient, receive *Receive) func() *Error
 
+var webSocketClientGlobalBefore []WebSocketClientBefore
+var webSocketClientGlobalAfter []WebSocketClientAfter
+
+func SetWebSocketClientBefore(before ...WebSocketClientBefore) {
+	webSocketClientGlobalBefore = append(webSocketClientGlobalBefore, before...)
+}
+
+func SetWebSocketClientAfter(after ...WebSocketClientAfter) {
+	webSocketClientGlobalAfter = append(webSocketClientGlobalAfter, after...)
+}
+
 type webSocketClientGroup struct {
 	path   string
 	before []WebSocketClientBefore
@@ -102,29 +113,32 @@ func (route *webSocketClientRoute) Handler(fn WebSocketClientFunction) {
 		socket.tire = new(tire.Tire)
 	}
 
-	var cba = &WebSocketClientNode{}
+	var wba = &WebSocketClientNode{}
 
-	cba.WebSocketClientFunction = fn
+	wba.WebSocketClientFunction = fn
 
-	cba.Before = append(group.before, route.before...)
+	wba.Before = append(group.before, route.before...)
 	if route.passBefore {
-		cba.Before = nil
+		wba.Before = nil
 	}
 	if route.forceBefore {
-		cba.Before = route.before
+		wba.Before = route.before
 	}
 
-	cba.After = append(group.after, route.after...)
+	wba.After = append(group.after, route.after...)
 	if route.passAfter {
-		cba.After = nil
+		wba.After = nil
 	}
 	if route.forceAfter {
-		cba.After = route.after
+		wba.After = route.after
 	}
 
-	cba.Route = []byte(path)
+	wba.Before = append(wba.Before, webSocketClientGlobalBefore...)
+	wba.After = append(wba.After, webSocketClientGlobalAfter...)
 
-	socket.tire.Insert(path, cba)
+	wba.Route = []byte(path)
+
+	socket.tire.Insert(path, wba)
 
 	route.socket.route = nil
 }

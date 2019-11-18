@@ -24,6 +24,17 @@ type SocketServerBefore func(conn *Socket, receive *Receive) (Context, func() *E
 
 type SocketServerAfter func(conn *Socket, receive *Receive) func() *Error
 
+var socketServerGlobalBefore []SocketServerBefore
+var socketServerGlobalAfter []SocketServerAfter
+
+func SetSocketServerBefore(before ...SocketServerBefore) {
+	socketServerGlobalBefore = append(socketServerGlobalBefore, before...)
+}
+
+func SetSocketServerAfter(after ...SocketServerAfter) {
+	socketServerGlobalAfter = append(socketServerGlobalAfter, after...)
+}
+
 type socketServerGroup struct {
 	path   string
 	before []SocketServerBefore
@@ -131,6 +142,9 @@ func (route *socketServerRoute) Handler(fn SocketServerFunction) {
 	if route.forceAfter {
 		sba.After = route.after
 	}
+
+	sba.Before = append(sba.Before, socketServerGlobalBefore...)
+	sba.After = append(sba.After, socketServerGlobalAfter...)
 
 	sba.Route = []byte(path)
 

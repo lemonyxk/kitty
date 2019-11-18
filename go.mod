@@ -9,5 +9,4 @@ require (
 	github.com/gorilla/websocket v1.4.1
 	github.com/json-iterator/go v1.1.8
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/tidwall/gjson v1.3.2
 )

@@ -231,7 +231,7 @@ func (socket *SocketServer) Ready() {
 
 	if socket.OnError == nil {
 		socket.OnError = func(err func() *Error) {
-			println(err().Error)
+			println(err().Message)
 		}
 	}
 

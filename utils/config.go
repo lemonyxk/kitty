@@ -1,19 +1,18 @@
 package utils
 
 import (
+	"github.com/json-iterator/go"
 	"io/ioutil"
 	"path/filepath"
-
-	"github.com/tidwall/gjson"
 
 	"github.com/Lemo-yxk/lemo"
 )
 
 type Config struct {
-	bytes  []byte
-	result gjson.Result
-	dir    string
-	file   string
+	bytes []byte
+	dir   string
+	file  string
+	any   jsoniter.Any
 }
 
 func (c *Config) SetConfigFile(configFile string) func() *lemo.Error {
@@ -29,27 +28,27 @@ func (c *Config) SetConfigFile(configFile string) func() *lemo.Error {
 
 	c.dir = filepath.Dir(absPath)
 	c.file = absPath
-	c.result = gjson.ParseBytes(bytes)
 	c.bytes = bytes
+	c.any = jsoniter.Get(c.bytes)
 
 	return nil
 }
 
 // GetByID 获取
-func (c *Config) Result() gjson.Result {
-	return c.result
+func (c *Config) Any() jsoniter.Any {
+	return c.any
 }
 
 func (c *Config) Bytes() []byte {
 	return c.bytes
 }
 
-func (c *Config) Path(path string) gjson.Result {
-	return c.result.Get(path)
+func (c *Config) Path(path string) jsoniter.Any {
+	return c.any.Get(path)
 }
 
 func (c *Config) JsonString() string {
-	return c.result.Raw
+	return c.any.ToString()
 }
 
 func (c *Config) Dir() string {
@@ -60,10 +59,11 @@ func (c *Config) File() string {
 	return c.file
 }
 
-func (c *Config) StringArray(arrayResult []gjson.Result) []string {
+func (c *Config) ArrayString(path string) []string {
 	var result []string
-	for i := 0; i < len(arrayResult); i++ {
-		result = append(result, arrayResult[i].String())
+	var val = c.any.Get(path)
+	for i := 0; i < val.Size(); i++ {
+		result = append(result, val.ToString())
 	}
 	return result
 }

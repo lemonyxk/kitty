@@ -1,15 +1,28 @@
 package main
 
-import "log"
+import (
+	"fmt"
+	"github.com/Lemo-yxk/lemo"
+)
 
 func main() {
 
-	test()
+	fmt.Println(test())
+
+	var server = lemo.Server{Host: "0.0.0.0", Port: 8666}
+
+	var httpServer = lemo.HttpServer{}
+
+	httpServer.Group("/hello").Handler(func(this *lemo.HttpServer) {
+		this.Get("/world").Handler(func(t *lemo.Stream) func() *lemo.Error {
+			return lemo.NewError(t.Json("hello"))
+		})
+	})
+
+	server.Start(nil, &httpServer)
+
 }
 
-func test(a ...int) {
-	var b = make([]int, 0)
-	log.Println(b == nil)
-	b = append(b, a...)
-	log.Println(b == nil)
+func test() error {
+	return lemo.NewError("hello")()
 }

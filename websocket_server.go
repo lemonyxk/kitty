@@ -2,13 +2,14 @@ package lemo
 
 import (
 	"errors"
-	"github.com/json-iterator/go"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/json-iterator/go"
 
 	"github.com/Lemo-yxk/tire"
 	"github.com/golang/protobuf/proto"
@@ -170,6 +171,10 @@ func (conn *WebSocket) GetConnectionsCount() uint32 {
 
 func (conn *WebSocket) GetConnection(fd uint32) (*WebSocket, bool) {
 	return conn.socket.GetConnection(fd)
+}
+
+func (conn *WebSocket) Close() error {
+	return conn.Conn.Close()
 }
 
 // Push 发送消息
@@ -338,6 +343,14 @@ func (socket *WebSocketServer) GetConnection(fd uint32) (*WebSocket, bool) {
 
 func (socket *WebSocketServer) GetConnectionsCount() uint32 {
 	return socket.count
+}
+
+func (socket *WebSocketServer) Close(fd uint32) error {
+	conn, ok := socket.GetConnection(fd)
+	if !ok {
+		return errors.New("fd not found")
+	}
+	return conn.Close()
 }
 
 func (socket *WebSocketServer) Ready() {

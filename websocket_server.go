@@ -114,21 +114,19 @@ func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
 
 func (conn *WebSocket) ClientIP() string {
 
-	remoteAddr := conn.Request.RemoteAddr
+	if ip := strings.Split(conn.Request.Header.Get(XForwardedFor), ",")[0]; ip != "" {
+		return ip
+	}
 
 	if ip := conn.Request.Header.Get(XRealIP); ip != "" {
-		remoteAddr = ip
-	} else if ip = conn.Request.Header.Get(XForwardedFor); ip != "" {
-		remoteAddr = ip
-	} else {
-		remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
+		return ip
 	}
 
-	if remoteAddr == "::1" {
-		remoteAddr = "127.0.0.1"
+	if ip, _, err := net.SplitHostPort(conn.Request.RemoteAddr); err == nil {
+		return ip
 	}
 
-	return remoteAddr
+	return ""
 }
 
 func (conn *WebSocket) Push(fd uint32, messageType int, msg []byte) error {

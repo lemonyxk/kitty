@@ -30,11 +30,12 @@ type Socket struct {
 }
 
 func (conn *Socket) ClientIP() string {
-	var remoteAddr, _, _ = net.SplitHostPort(conn.Conn.RemoteAddr().String())
-	if remoteAddr == "::1" {
-		remoteAddr = "127.0.0.1"
+
+	if ip, _, err := net.SplitHostPort(conn.Conn.RemoteAddr().String()); err == nil {
+		return ip
 	}
-	return remoteAddr
+
+	return ""
 }
 
 func (conn *Socket) Push(fd uint32, msg []byte) error {

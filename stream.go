@@ -3,7 +3,6 @@ package lemo
 import (
 	"bytes"
 	"fmt"
-	"github.com/json-iterator/go"
 	"io/ioutil"
 	"mime/multipart"
 	"net"
@@ -11,6 +10,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/json-iterator/go"
 )
 
 type Query struct {
@@ -142,21 +143,19 @@ func (stream *Stream) End(data interface{}) error {
 
 func (stream *Stream) ClientIP() string {
 
-	remoteAddr := stream.Request.RemoteAddr
+	if ip := strings.Split(stream.Request.Header.Get(XForwardedFor), ",")[0]; ip != "" {
+		return ip
+	}
 
 	if ip := stream.Request.Header.Get(XRealIP); ip != "" {
-		remoteAddr = ip
-	} else if ip = stream.Request.Header.Get(XForwardedFor); ip != "" {
-		remoteAddr = ip
-	} else {
-		remoteAddr, _, _ = net.SplitHostPort(remoteAddr)
+		return ip
 	}
 
-	if remoteAddr == "::1" {
-		remoteAddr = "127.0.0.1"
+	if ip, _, err := net.SplitHostPort(stream.Request.RemoteAddr); err == nil {
+		return ip
 	}
 
-	return remoteAddr
+	return ""
 }
 
 func (stream *Stream) ParseJson() *Query {

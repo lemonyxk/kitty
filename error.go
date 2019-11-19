@@ -36,6 +36,10 @@ func NewError(err interface{}) func() *Error {
 	return NewErrorFromDeep(err, 2)
 }
 
+func NewErrorString(v ...interface{}) func() *Error {
+	return NewErrorFromDeep(fmt.Sprintln(v...), 2)
+}
+
 func NewErrorFromDeep(err interface{}, deep int) func() *Error {
 
 	if err == nil {

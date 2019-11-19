@@ -112,6 +112,15 @@ func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
 	return p1 == p2
 }
 
+func (conn *WebSocket) Host() string {
+
+	if host := conn.Request.Header.Get(Host); host != "" {
+		return host
+	}
+
+	return conn.Request.Host
+}
+
 func (conn *WebSocket) ClientIP() string {
 
 	if ip := strings.Split(conn.Request.Header.Get(XForwardedFor), ",")[0]; ip != "" {

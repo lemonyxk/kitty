@@ -141,6 +141,15 @@ func (stream *Stream) End(data interface{}) error {
 	return err
 }
 
+func (stream *Stream) Host() string {
+
+	if host := stream.Request.Header.Get(Host); host != "" {
+		return host
+	}
+
+	return stream.Request.Host
+}
+
 func (stream *Stream) ClientIP() string {
 
 	if ip := strings.Split(stream.Request.Header.Get(XForwardedFor), ",")[0]; ip != "" {

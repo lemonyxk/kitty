@@ -43,8 +43,8 @@ func (c *Config) Bytes() []byte {
 	return c.bytes
 }
 
-func (c *Config) Path(path string) jsoniter.Any {
-	return c.any.Get(path)
+func (c *Config) Path(path ...interface{}) jsoniter.Any {
+	return c.any.Get(path...)
 }
 
 func (c *Config) JsonString() string {
@@ -59,11 +59,11 @@ func (c *Config) File() string {
 	return c.file
 }
 
-func (c *Config) ArrayString(path string) []string {
+func (c *Config) ArrayString(path ...interface{}) []string {
 	var result []string
-	var val = c.any.Get(path)
+	var val = c.any.Get(path...)
 	for i := 0; i < val.Size(); i++ {
-		result = append(result, val.ToString())
+		result = append(result, val.Get(i).ToString())
 	}
 	return result
 }

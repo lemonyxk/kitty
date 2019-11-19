@@ -14,12 +14,6 @@ import (
 	"github.com/json-iterator/go"
 )
 
-type J struct {
-	Status string      `json:"status"`
-	Code   int         `json:"code"`
-	Msg    interface{} `json:"msg"`
-}
-
 type Query struct {
 	params map[string]interface{}
 }

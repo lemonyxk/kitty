@@ -2,11 +2,12 @@ package lemo
 
 import (
 	"errors"
-	"github.com/json-iterator/go"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/json-iterator/go"
 
 	"github.com/Lemo-yxk/tire"
 	"github.com/golang/protobuf/proto"
@@ -71,7 +72,7 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 
 func (client *WebSocketClient) JsonFormat(msg JsonPackage) error {
 
-	messageJson, err := jsoniter.Marshal(M{"data": msg.Message, "event": msg.Event})
+	messageJson, err := jsoniter.Marshal(F{msg.Event, msg.Message})
 	if err != nil {
 		return err
 	}

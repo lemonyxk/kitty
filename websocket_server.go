@@ -16,37 +16,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Receive struct {
-	Context Context
-	Params  *Params
-	Message *ReceivePackage
-}
-
-type ReceivePackage struct {
-	MessageType int
-	Event       string
-	Message     []byte
-	ProtoType   int
-}
-
-type JsonPackage struct {
-	Event   string
-	Message interface{}
-}
-
-type ProtoBufPackage struct {
-	Event   string
-	Message proto.Message
-}
-
-type PushPackage struct {
-	MessageType int
-	FD          uint32
-	Message     []byte
-}
-
-type M map[string]interface{}
-
 // WebSocket WebSocket
 type WebSocket struct {
 	FD       uint32
@@ -204,7 +173,7 @@ func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) erro
 
 func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) error {
 
-	messageJsonFormat, err := jsoniter.Marshal(M{"data": msg.Message, "event": msg.Event})
+	messageJsonFormat, err := jsoniter.Marshal(F{msg.Event, msg.Message})
 	if err != nil {
 		return err
 	}

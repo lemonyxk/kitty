@@ -14,6 +14,12 @@ import (
 	"github.com/json-iterator/go"
 )
 
+type J struct {
+	Status string      `json:"status"`
+	Code   int         `json:"code"`
+	Msg    interface{} `json:"msg"`
+}
+
 type Query struct {
 	params map[string]interface{}
 }
@@ -115,7 +121,7 @@ func (stream *Stream) SetHeader(header string, content string) {
 }
 
 func (stream *Stream) JsonFormat(status string, code int, msg interface{}) error {
-	return stream.Json(M{"status": status, "code": code, "msg": msg})
+	return stream.Json(J{status, code, msg})
 }
 
 func (stream *Stream) Json(data interface{}) error {

@@ -73,8 +73,13 @@ type WebSocketServer struct {
 	route       *webSocketServerRoute
 }
 
-func (socket *WebSocketServer) GetAllRouters() []*tire.Tire {
-	return socket.tire.GetAllValue()
+func (socket *WebSocketServer) GetAllRouters() []*WebSocketServerNode {
+	var res []*WebSocketServerNode
+	var tires = socket.tire.GetAllValue()
+	for i := 0; i < len(socket.tire.GetAllValue()); i++ {
+		res = append(res, tires[i].Data.(*WebSocketServerNode))
+	}
+	return res
 }
 
 func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {

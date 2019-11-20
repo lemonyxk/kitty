@@ -59,8 +59,13 @@ type WebSocketClient struct {
 	route *webSocketClientRoute
 }
 
-func (client *WebSocketClient) GetAllRouters() []*tire.Tire {
-	return client.tire.GetAllValue()
+func (client *WebSocketClient) GetAllRouters() []*WebSocketClientNode {
+	var res []*WebSocketClientNode
+	var tires = client.tire.GetAllValue()
+	for i := 0; i < len(client.tire.GetAllValue()); i++ {
+		res = append(res, tires[i].Data.(*WebSocketClientNode))
+	}
+	return res
 }
 
 // Json 发送JSON字符

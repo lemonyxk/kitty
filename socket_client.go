@@ -59,8 +59,13 @@ type SocketClient struct {
 	route *socketClientRoute
 }
 
-func (client *SocketClient) GetAllRouters() []*tire.Tire {
-	return client.tire.GetAllValue()
+func (client *SocketClient) GetAllRouters() []*SocketClientNode {
+	var res []*SocketClientNode
+	var tires = client.tire.GetAllValue()
+	for i := 0; i < len(client.tire.GetAllValue()); i++ {
+		res = append(res, tires[i].Data.(*SocketClientNode))
+	}
+	return res
 }
 
 // Json 发送JSON字符

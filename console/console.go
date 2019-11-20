@@ -1,15 +1,14 @@
-package log
+package console
 
 import (
 	"fmt"
+	"github.com/Lemo-yxk/lemo/exception"
 	"os"
 	"runtime"
 	"strconv"
 	"time"
 
 	"github.com/gookit/color"
-
-	"github.com/Lemo-yxk/lemo"
 )
 
 const DEBUG int = 1
@@ -45,7 +44,7 @@ func SetFlag(flag int) {
 
 type Logger struct {
 	debugHook func(t time.Time, file string, line int, v ...interface{})
-	errorHook func(err *lemo.Error)
+	errorHook func(err *exception.Error)
 	logHook   func(status string, t time.Time, file string, line int, v ...interface{})
 }
 
@@ -64,16 +63,12 @@ func init() {
 		color.Blue.Println(v...)
 	})
 
-	SetErrorHook(func(err *lemo.Error) {
+	SetErrorHook(func(err *exception.Error) {
 		var date = err.Time.Format("2006-01-02 15:04:05")
 		color.Red.Println(date + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Message)
 	})
 
 	SetLogHook(nil)
-}
-
-func Println(v ...interface{}) {
-	color.Println(v...)
 }
 
 func Exit(v interface{}) {
@@ -85,7 +80,7 @@ func SetDebugHook(fn func(t time.Time, file string, line int, v ...interface{}))
 	logger.debugHook = fn
 }
 
-func SetErrorHook(fn func(err *lemo.Error)) {
+func SetErrorHook(fn func(err *exception.Error)) {
 	logger.errorHook = fn
 }
 
@@ -93,7 +88,11 @@ func SetLogHook(fn func(status string, t time.Time, file string, line int, v ...
 	logger.logHook = fn
 }
 
-func Console(v ...interface{}) {
+func Println(v ...interface{}) {
+	color.Println(v...)
+}
+
+func Log(v ...interface{}) {
 
 	_, file, line, ok := runtime.Caller(1)
 	if !ok {
@@ -114,8 +113,8 @@ func Console(v ...interface{}) {
 func Error(err interface{}) {
 
 	switch err.(type) {
-	case func() *lemo.Error:
-		var res = err.(func() *lemo.Error)()
+	case func() *exception.Error:
+		var res = err.(func() *exception.Error)()
 
 		if debug {
 			logger.errorHook(res)
@@ -125,9 +124,9 @@ func Error(err interface{}) {
 			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Message)
 		}
 
-	case *lemo.Error:
+	case *exception.Error:
 
-		var res = err.(*lemo.Error)
+		var res = err.(*exception.Error)
 
 		if debug {
 			logger.errorHook(res)
@@ -146,7 +145,7 @@ func Error(err interface{}) {
 		var t = time.Now()
 
 		if debug {
-			logger.errorHook(&lemo.Error{Time: t, File: file, Line: line, Message: fmt.Sprintf("%s", err)})
+			logger.errorHook(&exception.Error{Time: t, File: file, Line: line, Message: fmt.Sprintf("%s", err)})
 		}
 
 		if log && logger.logHook != nil {

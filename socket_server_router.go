@@ -11,6 +11,7 @@
 package lemo
 
 import (
+	"github.com/Lemo-yxk/lemo/exception"
 	"runtime"
 	"strconv"
 	"strings"
@@ -20,11 +21,11 @@ import (
 
 type SocketServerGroupFunction func(this *SocketServer)
 
-type SocketServerFunction func(conn *Socket, receive *Receive) func() *Error
+type SocketServerFunction func(conn *Socket, receive *Receive) func() *exception.Error
 
-type SocketServerBefore func(conn *Socket, receive *Receive) (Context, func() *Error)
+type SocketServerBefore func(conn *Socket, receive *Receive) (Context, func() *exception.Error)
 
-type SocketServerAfter func(conn *Socket, receive *Receive) func() *Error
+type SocketServerAfter func(conn *Socket, receive *Receive) func() *exception.Error
 
 var socketServerGlobalBefore []SocketServerBefore
 var socketServerGlobalAfter []SocketServerAfter

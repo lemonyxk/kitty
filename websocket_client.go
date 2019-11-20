@@ -2,6 +2,8 @@ package lemo
 
 import (
 	"errors"
+	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/protocol"
 	"net/http"
 	"strconv"
 	"sync"
@@ -40,7 +42,7 @@ type WebSocketClient struct {
 	OnOpen    func(c *WebSocketClient)
 	OnClose   func(c *WebSocketClient)
 	OnMessage func(c *WebSocketClient, messageType int, msg []byte)
-	OnError   func(err func() *Error)
+	OnError   func(err func() *exception.Error)
 	Status    bool
 
 	tire *tire.Tire
@@ -76,7 +78,7 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 		return err
 	}
 
-	return client.Push(TextData, messageJson)
+	return client.Push(protocol.TextData, messageJson)
 }
 
 func (client *WebSocketClient) JsonFormat(msg JsonPackage) error {
@@ -86,7 +88,7 @@ func (client *WebSocketClient) JsonFormat(msg JsonPackage) error {
 		return err
 	}
 
-	return client.Push(TextData, messageJson)
+	return client.Push(protocol.TextData, messageJson)
 }
 
 func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
@@ -96,7 +98,7 @@ func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
 		return err
 	}
 
-	return client.Push(BinData, messageProtoBuf)
+	return client.Push(protocol.BinData, messageProtoBuf)
 
 }
 
@@ -114,7 +116,7 @@ func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return client.Push(TextData, Pack([]byte(msg.Event), data, TextData, Json))
+	return client.Push(protocol.TextData, protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
 
 }
 
@@ -125,7 +127,7 @@ func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 		return err
 	}
 
-	return client.Push(BinData, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
+	return client.Push(protocol.BinData, protocol.Pack([]byte(msg.Event), messageProtoBuf, protocol.BinData, protocol.ProtoBuf))
 
 }
 
@@ -221,7 +223,7 @@ func (client *WebSocketClient) Connect() {
 	// heartbeat function
 	if client.HeartBeat == nil {
 		client.HeartBeat = func(client *WebSocketClient) error {
-			return client.Push(BinData, Pack(nil, nil, PingData, BinData))
+			return client.Push(protocol.BinData, protocol.Pack(nil, nil, protocol.PingData, protocol.BinData))
 		}
 	}
 
@@ -250,7 +252,7 @@ func (client *WebSocketClient) Connect() {
 	// 连接服务器
 	handler, response, err := dialer.Dial(client.Protocol+"://"+client.Host+":"+strconv.Itoa(client.Port)+client.Path, nil)
 	if err != nil {
-		go client.OnError(NewError(err))
+		go client.OnError(exception.New(err))
 		return
 	}
 
@@ -297,23 +299,23 @@ func (client *WebSocketClient) Connect() {
 			}
 
 			// unpack
-			version, messageType, protoType, route, body := UnPack(message)
+			version, messageType, protoType, route, body := protocol.UnPack(message)
 
 			if client.OnMessage != nil {
 				go client.OnMessage(client, messageFrame, message)
 			}
 
 			// check version
-			if version != Version {
-				route, body := ParseMessage(message)
+			if version != protocol.Version {
+				route, body := protocol.ParseMessage(message)
 				if route != nil && client.tire != nil {
-					go client.router(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: Json})
+					go client.router(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
 				}
 				continue
 			}
 
 			// Ping
-			if messageType == PingData {
+			if messageType == protocol.PingData {
 				err := client.PingHandler(client)("")
 				if err != nil {
 					closeChan <- false
@@ -323,7 +325,7 @@ func (client *WebSocketClient) Connect() {
 			}
 
 			// Pong
-			if messageType == PongData {
+			if messageType == protocol.PongData {
 				err := client.PongHandler(client)("")
 				if err != nil {
 					closeChan <- false

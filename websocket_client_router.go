@@ -1,6 +1,7 @@
 package lemo
 
 import (
+	"github.com/Lemo-yxk/lemo/exception"
 	"runtime"
 	"strconv"
 	"strings"
@@ -10,11 +11,11 @@ import (
 
 type WebSocketClientGroupFunction func(this *WebSocketClient)
 
-type WebSocketClientFunction func(c *WebSocketClient, receive *Receive) func() *Error
+type WebSocketClientFunction func(c *WebSocketClient, receive *Receive) func() *exception.Error
 
-type WebSocketClientBefore func(c *WebSocketClient, receive *Receive) (Context, func() *Error)
+type WebSocketClientBefore func(c *WebSocketClient, receive *Receive) (Context, func() *exception.Error)
 
-type WebSocketClientAfter func(c *WebSocketClient, receive *Receive) func() *Error
+type WebSocketClientAfter func(c *WebSocketClient, receive *Receive) func() *exception.Error
 
 var webSocketClientGlobalBefore []WebSocketClientBefore
 var webSocketClientGlobalAfter []WebSocketClientAfter

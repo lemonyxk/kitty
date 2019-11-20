@@ -1,11 +1,10 @@
 package utils
 
 import (
+	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/json-iterator/go"
 	"io/ioutil"
 	"path/filepath"
-
-	"github.com/Lemo-yxk/lemo"
 )
 
 type Config struct {
@@ -15,15 +14,15 @@ type Config struct {
 	any   jsoniter.Any
 }
 
-func (c *Config) SetConfigFile(configFile string) func() *lemo.Error {
+func (c *Config) SetConfigFile(configFile string) func() *exception.Error {
 
 	absPath, err := filepath.Abs(configFile)
 	if err != nil {
-		return lemo.NewError(err)
+		return exception.New(err)
 	}
 	bytes, err := ioutil.ReadFile(absPath)
 	if err != nil {
-		return lemo.NewError(err)
+		return exception.New(err)
 	}
 
 	c.dir = filepath.Dir(absPath)

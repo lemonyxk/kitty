@@ -2,6 +2,7 @@ package lemo
 
 import (
 	"errors"
+	"github.com/Lemo-yxk/lemo/exception"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -95,7 +96,7 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 	f, err := os.OpenFile(absFilePath, os.O_RDONLY, 0666)
 	if err != nil {
 		if h.OnError != nil {
-			h.OnError(NewError(err))
+			h.OnError(exception.New(err))
 		}
 		w.WriteHeader(http.StatusForbidden)
 		return nil
@@ -104,7 +105,7 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 	bts, err := ioutil.ReadAll(f)
 	if err != nil {
 		if h.OnError != nil {
-			h.OnError(NewError(err))
+			h.OnError(exception.New(err))
 		}
 		w.WriteHeader(http.StatusForbidden)
 		return nil
@@ -114,7 +115,7 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 	_, err = w.Write(bts)
 	if err != nil {
 		if h.OnError != nil {
-			h.OnError(NewError(err))
+			h.OnError(exception.New(err))
 		}
 		w.WriteHeader(http.StatusForbidden)
 		return nil

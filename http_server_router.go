@@ -11,6 +11,7 @@
 package lemo
 
 import (
+	"github.com/Lemo-yxk/lemo/exception"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -21,13 +22,13 @@ import (
 
 type HttpServerGroupFunction func(this *HttpServer)
 
-type HttpServerFunction func(t *Stream) func() *Error
+type HttpServerFunction func(t *Stream) func() *exception.Error
 
-type HttpServerBefore func(t *Stream) (Context, func() *Error)
+type HttpServerBefore func(t *Stream) (Context, func() *exception.Error)
 
-type HttpServerAfter func(t *Stream) func() *Error
+type HttpServerAfter func(t *Stream) func() *exception.Error
 
-type ErrorFunction func(err func() *Error)
+type ErrorFunction func(err func() *exception.Error)
 
 var httpServerGlobalBefore []HttpServerBefore
 var httpServerGlobalAfter []HttpServerAfter

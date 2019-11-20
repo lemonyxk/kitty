@@ -12,6 +12,8 @@ package lemo
 
 import (
 	"errors"
+	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/protocol"
 	"net"
 	"strconv"
 	"sync"
@@ -92,7 +94,7 @@ type SocketServer struct {
 	OnClose   func(fd uint32)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
-	OnError   func(err func() *Error)
+	OnError   func(err func() *exception.Error)
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -121,7 +123,7 @@ type SocketServer struct {
 	connBack chan error
 
 	// 错误
-	connError chan func() *Error
+	connError chan func() *exception.Error
 
 	fd          uint32
 	count       uint32
@@ -192,7 +194,7 @@ func (socket *SocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
 		return err
 	}
 
-	return socket.Push(fd, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
+	return socket.Push(fd, protocol.Pack([]byte(msg.Event), messageProtoBuf, protocol.BinData, protocol.ProtoBuf))
 
 }
 
@@ -210,7 +212,7 @@ func (socket *SocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return socket.Push(fd, Pack([]byte(msg.Event), data, TextData, Json))
+	return socket.Push(fd, protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
 
 }
 
@@ -249,7 +251,7 @@ func (socket *SocketServer) Ready() {
 	}
 
 	if socket.OnError == nil {
-		socket.OnError = func(err func() *Error) {
+		socket.OnError = func(err func() *exception.Error) {
 			println(err().Message)
 		}
 	}
@@ -285,7 +287,7 @@ func (socket *SocketServer) Ready() {
 	socket.connBack = make(chan error, socket.WaitQueueSize)
 
 	// 错误
-	socket.connError = make(chan func() *Error, socket.WaitQueueSize)
+	socket.connError = make(chan func() *exception.Error, socket.WaitQueueSize)
 
 	go func() {
 		for {
@@ -414,7 +416,7 @@ func (socket *SocketServer) Start() {
 	for {
 		conn, err := netListen.Accept()
 		if err != nil {
-			socket.connError <- NewError(err)
+			socket.connError <- exception.New(err)
 			continue
 		}
 
@@ -427,7 +429,7 @@ func (socket *SocketServer) handler(conn net.Conn) {
 	// 超时时间
 	err := conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 	if err != nil {
-		socket.connError <- NewError(err)
+		socket.connError <- exception.New(err)
 		return
 	}
 
@@ -472,12 +474,12 @@ func (socket *SocketServer) handler(conn net.Conn) {
 			if singleMessageLen == 0 {
 
 				// proto error
-				if !IsHeaderInvalid(message) {
-					socket.connError <- NewError("invalid header")
+				if !protocol.IsHeaderInvalid(message) {
+					socket.connError <- exception.New("invalid header")
 					goto OUT
 				}
 
-				singleMessageLen = GetLen(message)
+				singleMessageLen = protocol.GetLen(message)
 			}
 
 			// jump out and read continue
@@ -488,7 +490,7 @@ func (socket *SocketServer) handler(conn net.Conn) {
 			// a complete message
 			err := socket.decodeMessage(connection, message[0:singleMessageLen])
 			if err != nil {
-				socket.connError <- NewError(err)
+				socket.connError <- exception.New(err)
 				goto OUT
 			}
 
@@ -508,24 +510,24 @@ OUT:
 
 func (socket *SocketServer) decodeMessage(connection *Socket, message []byte) error {
 	// unpack
-	version, messageType, protoType, route, body := UnPack(message)
+	version, messageType, protoType, route, body := protocol.UnPack(message)
 
 	if socket.OnMessage != nil {
 		go socket.OnMessage(connection, messageType, message)
 	}
 
 	// check version
-	if version != Version {
+	if version != protocol.Version {
 		return nil
 	}
 
 	// Ping
-	if messageType == PingData {
+	if messageType == protocol.PingData {
 		return socket.PingHandler(connection)("")
 	}
 
 	// Pong
-	if messageType == PongData {
+	if messageType == protocol.PongData {
 		return socket.PongHandler(connection)("")
 	}
 

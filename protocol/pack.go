@@ -8,7 +8,7 @@
 * @create: 2019-10-09 16:02
 **/
 
-package lemo
+package protocol
 
 // 0 version
 // 1 message type

@@ -12,6 +12,8 @@ package lemo
 
 import (
 	"errors"
+	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/protocol"
 	"github.com/json-iterator/go"
 	"net"
 	"strconv"
@@ -40,7 +42,7 @@ type SocketClient struct {
 	OnOpen    func(c *SocketClient)
 	OnClose   func(c *SocketClient)
 	OnMessage func(c *SocketClient, messageType int, msg []byte)
-	OnError   func(err func() *Error)
+	OnError   func(err func() *exception.Error)
 	Status    bool
 
 	tire *tire.Tire
@@ -104,7 +106,7 @@ func (client *SocketClient) JsonEmit(msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return client.Push(Pack([]byte(msg.Event), data, TextData, Json))
+	return client.Push(protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
 
 }
 
@@ -115,7 +117,7 @@ func (client *SocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
 		return err
 	}
 
-	return client.Push(Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
+	return client.Push(protocol.Pack([]byte(msg.Event), messageProtoBuf, protocol.BinData, protocol.ProtoBuf))
 
 }
 
@@ -199,7 +201,7 @@ func (client *SocketClient) Connect() {
 	// heartbeat function
 	if client.HeartBeat == nil {
 		client.HeartBeat = func(client *SocketClient) error {
-			return client.Push(Pack(nil, nil, PingData, BinData))
+			return client.Push(protocol.Pack(nil, nil, protocol.PingData, protocol.BinData))
 		}
 	}
 
@@ -222,7 +224,7 @@ func (client *SocketClient) Connect() {
 	// 连接服务器
 	handler, err := net.DialTimeout("tcp", client.Host+":"+strconv.Itoa(client.Port), time.Duration(client.HandshakeTimeout)*time.Second)
 	if err != nil {
-		go client.OnError(NewError(err))
+		go client.OnError(exception.New(err))
 		return
 	}
 
@@ -285,12 +287,12 @@ func (client *SocketClient) Connect() {
 				if singleMessageLen == 0 {
 
 					// proto error
-					if !IsHeaderInvalid(message) {
-						go client.OnError(NewError("invalid header"))
+					if !protocol.IsHeaderInvalid(message) {
+						go client.OnError(exception.New("invalid header"))
 						goto OUT
 					}
 
-					singleMessageLen = GetLen(message)
+					singleMessageLen = protocol.GetLen(message)
 				}
 
 				// jump out and read continue
@@ -301,7 +303,7 @@ func (client *SocketClient) Connect() {
 				// a complete message
 				err := client.decodeMessage(client, message[0:singleMessageLen])
 				if err != nil {
-					go client.OnError(NewError(err))
+					go client.OnError(exception.New(err))
 					goto OUT
 				}
 
@@ -335,24 +337,24 @@ func (client *SocketClient) Connect() {
 
 func (client *SocketClient) decodeMessage(connection *SocketClient, message []byte) error {
 	// unpack
-	version, messageType, protoType, route, body := UnPack(message)
+	version, messageType, protoType, route, body := protocol.UnPack(message)
 
 	if client.OnMessage != nil {
 		go client.OnMessage(connection, messageType, message)
 	}
 
 	// check version
-	if version != Version {
+	if version != protocol.Version {
 		return nil
 	}
 
 	// Ping
-	if messageType == PingData {
+	if messageType == protocol.PingData {
 		return client.PingHandler(connection)("")
 	}
 
 	// Pong
-	if messageType == PongData {
+	if messageType == protocol.PongData {
 		return client.PongHandler(connection)("")
 	}
 

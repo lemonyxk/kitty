@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/Lemo-yxk/lemo"
+	"github.com/Lemo-yxk/lemo/exception"
 )
 
 func main() {
@@ -15,8 +15,8 @@ func main() {
 	var httpServer = lemo.HttpServer{}
 
 	httpServer.Group("/hello").Handler(func(this *lemo.HttpServer) {
-		this.Get("/world").Handler(func(t *lemo.Stream) func() *lemo.Error {
-			return lemo.NewError(t.Json("hello"))
+		this.Get("/world").Handler(func(t *lemo.Stream) func() *exception.Error {
+			return exception.New(t.Json("hello"))
 		})
 	})
 
@@ -29,5 +29,5 @@ func main() {
 }
 
 func test() error {
-	return lemo.NewError("hello")()
+	return exception.New("hello")()
 }

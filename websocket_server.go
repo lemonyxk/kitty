@@ -2,6 +2,8 @@ package lemo
 
 import (
 	"errors"
+	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/protocol"
 	"net"
 	"net/http"
 	"strconv"
@@ -30,7 +32,7 @@ type WebSocketServer struct {
 	OnClose   func(fd uint32)
 	OnMessage func(conn *WebSocket, messageType int, msg []byte)
 	OnOpen    func(conn *WebSocket)
-	OnError   func(err func() *Error)
+	OnError   func(err func() *exception.Error)
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -58,7 +60,7 @@ type WebSocketServer struct {
 	connBack chan error
 
 	// 错误
-	connError chan func() *Error
+	connError chan func() *exception.Error
 
 	upgrade websocket.Upgrader
 
@@ -187,7 +189,7 @@ func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) error {
 		return err
 	}
 
-	return socket.Push(fd, TextData, messageJsonFormat)
+	return socket.Push(fd, protocol.TextData, messageJsonFormat)
 }
 
 // Push Json 发送消息
@@ -198,7 +200,7 @@ func (socket *WebSocketServer) Json(fd uint32, msg interface{}) error {
 		return err
 	}
 
-	return socket.Push(fd, TextData, messageJson)
+	return socket.Push(fd, protocol.TextData, messageJson)
 }
 
 func (socket *WebSocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
@@ -208,7 +210,7 @@ func (socket *WebSocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
 		return err
 	}
 
-	return socket.Push(fd, BinData, messageProtoBuf)
+	return socket.Push(fd, protocol.BinData, messageProtoBuf)
 }
 
 func (socket *WebSocketServer) JsonFormatAll(msg JsonPackage) {
@@ -239,7 +241,7 @@ func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) erro
 		return err
 	}
 
-	return socket.Push(fd, BinData, Pack([]byte(msg.Event), messageProtoBuf, BinData, ProtoBuf))
+	return socket.Push(fd, protocol.BinData, protocol.Pack([]byte(msg.Event), messageProtoBuf, protocol.BinData, protocol.ProtoBuf))
 
 }
 
@@ -257,7 +259,7 @@ func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
 		data = messageJson
 	}
 
-	return socket.Push(fd, TextData, Pack([]byte(msg.Event), data, TextData, Json))
+	return socket.Push(fd, protocol.TextData, protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
 
 }
 
@@ -390,7 +392,7 @@ func (socket *WebSocketServer) Ready() {
 	}
 
 	if socket.OnError == nil {
-		socket.OnError = func(err func() *Error) {
+		socket.OnError = func(err func() *exception.Error) {
 			println(err())
 		}
 	}
@@ -433,7 +435,7 @@ func (socket *WebSocketServer) Ready() {
 	socket.connBack = make(chan error, socket.WaitQueueSize)
 
 	// 错误
-	socket.connError = make(chan func() *Error, socket.WaitQueueSize)
+	socket.connError = make(chan func() *exception.Error, socket.WaitQueueSize)
 
 	go func() {
 		for {
@@ -472,14 +474,14 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 
 	// 错误处理
 	if err != nil {
-		socket.connError <- NewError(err)
+		socket.connError <- exception.New(err)
 		return
 	}
 
 	// 超时时间
 	err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 	if err != nil {
-		socket.connError <- NewError(err)
+		socket.connError <- exception.New(err)
 		return
 	}
 
@@ -518,7 +520,7 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 
 		err = socket.decodeMessage(connection, message, messageFrame)
 		if err != nil {
-			socket.connError <- NewError(err)
+			socket.connError <- exception.New(err)
 			break
 		}
 
@@ -532,28 +534,28 @@ func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
 func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []byte, messageFrame int) error {
 
 	// unpack
-	version, messageType, protoType, route, body := UnPack(message)
+	version, messageType, protoType, route, body := protocol.UnPack(message)
 
 	if socket.OnMessage != nil {
 		go socket.OnMessage(connection, messageFrame, message)
 	}
 
 	// check version
-	if version != Version {
-		route, body := ParseMessage(message)
+	if version != protocol.Version {
+		route, body := protocol.ParseMessage(message)
 		if route != nil && socket.tire != nil {
-			go socket.router(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: Json})
+			go socket.router(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
 		}
 		return nil
 	}
 
 	// Ping
-	if messageType == PingData {
+	if messageType == protocol.PingData {
 		return socket.PingHandler(connection)("")
 	}
 
 	// Pong
-	if messageType == PongData {
+	if messageType == protocol.PongData {
 		return socket.PongHandler(connection)("")
 	}
 

@@ -8,12 +8,14 @@
 * @create: 2019-09-25 20:37
 **/
 
-package lemo
+package exception
 
 import (
 	"fmt"
 	"runtime"
+	"runtime/debug"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -32,15 +34,29 @@ func (err *Error) String() string {
 	return err.Time.Format("2006-01-02 15:04:05") + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Message
 }
 
-func NewError(err interface{}) func() *Error {
-	return NewErrorFromDeep(err, 2)
+func Panic(err interface{}) {
+	panic(string(debug.Stack()))
 }
 
-func NewErrorString(v ...interface{}) func() *Error {
-	return NewErrorFromDeep(fmt.Sprintln(v...), 2)
+func New(err ...interface{}) func() *Error {
+	if len(err) == 0 {
+		return nil
+	}
+
+	if len(err) == 1 {
+		return newErrorFromDeep(err, 2)
+	}
+
+	if len(err) > 1 {
+		if format, ok := err[0].(string); ok && len(format) > 1 && strings.Index(format, "%") != -1 {
+			return newErrorFromDeep(fmt.Errorf(format, err[1:]...), 2)
+		}
+	}
+
+	return newErrorFromDeep(fmt.Sprintln(err...), 2)
 }
 
-func NewErrorFromDeep(err interface{}, deep int) func() *Error {
+func newErrorFromDeep(err interface{}, deep int) func() *Error {
 
 	if err == nil {
 		return nil

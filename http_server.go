@@ -24,6 +24,15 @@ type HttpServer struct {
 	defaultIndex string
 }
 
+func (h *HttpServer) GetAllRouters() []string {
+	var res []string
+	var tires = h.tire.GetAllValue()
+	for i := 0; i < len(tires); i++ {
+		res = append(res, string(tires[i].Path))
+	}
+	return res
+}
+
 func (h *HttpServer) Ready() {
 	h.SetDefaultIndex("index.html")
 }

@@ -65,7 +65,6 @@ func (s *Server) Start(socketHandler *WebSocketServer, httpHandler *HttpServer) 
 
 // Start 启动
 func (s *Server) Run(handler http.Handler) {
-
 	switch s.Protocol {
 	case "TLS":
 		panic(http.ListenAndServeTLS(s.Host+":"+strconv.Itoa(s.Port), s.CertFile, s.KeyFile, handler))

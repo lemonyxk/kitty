@@ -130,13 +130,8 @@ type SocketServer struct {
 	route       *socketServerRoute
 }
 
-func (socket *SocketServer) GetAllRouters() []string {
-	var res []string
-	var tires = socket.tire.GetAllValue()
-	for i := 0; i < len(tires); i++ {
-		res = append(res, string(tires[i].Path))
-	}
-	return res
+func (socket *SocketServer) GetAllRouters() []*tire.Tire {
+	return socket.tire.GetAllValue()
 }
 
 // Push 发送消息

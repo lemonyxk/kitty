@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/Lemo-yxk/lemo"
 )
 
@@ -18,6 +19,10 @@ func main() {
 			return lemo.NewError(t.Json("hello"))
 		})
 	})
+
+	for key, value := range httpServer.GetAllRouters() {
+		fmt.Println(key, value.Info, string(value.Route))
+	}
 
 	server.Start(nil, &httpServer)
 

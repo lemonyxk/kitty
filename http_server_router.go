@@ -12,6 +12,8 @@ package lemo
 
 import (
 	"net/http"
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/Lemo-yxk/tire"
@@ -115,6 +117,8 @@ func (route *httpServerRoute) ForceAfter() *httpServerRoute {
 
 func (route *httpServerRoute) Handler(fn HttpServerFunction) {
 
+	_, file, line, _ := runtime.Caller(1)
+
 	var h = route.http
 	var group = h.group
 
@@ -131,6 +135,8 @@ func (route *httpServerRoute) Handler(fn HttpServerFunction) {
 	}
 
 	var hba = &httpServerNode{}
+
+	hba.Info = file + ":" + strconv.Itoa(line)
 
 	hba.HttpServerFunction = fn
 
@@ -188,7 +194,11 @@ func (h *HttpServer) Route(method string, path string) *httpServerRoute {
 	return route
 }
 
-func (h *HttpServer) getRoute(method string, path string) *tire.Tire {
+func (h *HttpServer) getRoute(method string, path string) (*tire.Tire, []byte) {
+
+	if h.tire == nil {
+		return nil, nil
+	}
 
 	method = strings.ToUpper(method)
 
@@ -196,25 +206,17 @@ func (h *HttpServer) getRoute(method string, path string) *tire.Tire {
 
 	var pathB = []byte(path)
 
-	if h.tire == nil {
-		return nil
-	}
-
 	var t = h.tire.GetValue(pathB)
 
 	if t == nil {
-		return nil
+		return nil, nil
 	}
 
-	var nodeData = t.Data.(*httpServerNode)
-
-	if nodeData.Method != method {
-		return nil
+	if t.Data.(*httpServerNode).Method != method {
+		return nil, nil
 	}
 
-	nodeData.Path = pathB
-
-	return t
+	return t, pathB
 }
 
 func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
@@ -228,7 +230,7 @@ func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the router
-	node := h.getRoute(r.Method, r.URL.Path)
+	node, formatPath := h.getRoute(r.Method, r.URL.Path)
 	if node == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -239,7 +241,7 @@ func (h *HttpServer) router(w http.ResponseWriter, r *http.Request) {
 	// Get the middleware
 	var params = new(Params)
 	params.Keys = node.Keys
-	params.Values = node.ParseParams(nodeData.Path)
+	params.Values = node.ParseParams(formatPath)
 
 	var tool = Stream{w, r, nil, params, nil, nil, nil}
 
@@ -307,7 +309,7 @@ func (h *HttpServer) Option(path string) *httpServerRoute {
 }
 
 type httpServerNode struct {
-	Path               []byte
+	Info               string
 	Route              []byte
 	Method             string
 	HttpServerFunction HttpServerFunction

@@ -24,11 +24,11 @@ type HttpServer struct {
 	defaultIndex string
 }
 
-func (h *HttpServer) GetAllRouters() []string {
-	var res []string
+func (h *HttpServer) GetAllRouters() []*httpServerNode {
+	var res []*httpServerNode
 	var tires = h.tire.GetAllValue()
-	for i := 0; i < len(tires); i++ {
-		res = append(res, string(tires[i].Path))
+	for i := 0; i < len(h.tire.GetAllValue()); i++ {
+		res = append(res, tires[i].Data.(*httpServerNode))
 	}
 	return res
 }

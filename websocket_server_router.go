@@ -1,6 +1,8 @@
 package lemo
 
 import (
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/Lemo-yxk/tire"
@@ -100,6 +102,8 @@ func (route *webSocketServerRoute) ForceAfter() *webSocketServerRoute {
 
 func (route *webSocketServerRoute) Handler(fn WebSocketServerFunction) {
 
+	_, file, line, _ := runtime.Caller(1)
+
 	var socket = route.socket
 	var group = socket.group
 
@@ -113,7 +117,9 @@ func (route *webSocketServerRoute) Handler(fn WebSocketServerFunction) {
 		socket.tire = new(tire.Tire)
 	}
 
-	var wba = &WBA{}
+	var wba = &WebSocketServerNode{}
+
+	wba.Info = file + ":" + strconv.Itoa(line)
 
 	wba.WebSocketServerFunction = fn
 
@@ -169,41 +175,37 @@ func (socket *WebSocketServer) Route(path string) *webSocketServerRoute {
 	return route
 }
 
-func (socket *WebSocketServer) getRoute(path string) *tire.Tire {
+func (socket *WebSocketServer) getRoute(path string) (*tire.Tire, []byte) {
+
+	if socket.tire == nil {
+		return nil, nil
+	}
 
 	path = socket.formatPath(path)
 
 	var pathB = []byte(path)
 
-	if socket.tire == nil {
-		return nil
-	}
-
 	var t = socket.tire.GetValue(pathB)
 
 	if t == nil {
-		return nil
+		return nil, nil
 	}
 
-	var wba = t.Data.(*WBA)
-
-	wba.Path = pathB
-
-	return t
+	return t, pathB
 }
 
 func (socket *WebSocketServer) router(conn *WebSocket, msg *ReceivePackage) {
 
-	var node = socket.getRoute(msg.Event)
+	var node, formatPath = socket.getRoute(msg.Event)
 	if node == nil {
 		return
 	}
 
-	var nodeData = node.Data.(*WBA)
+	var nodeData = node.Data.(*WebSocketServerNode)
 
 	var params = new(Params)
 	params.Keys = node.Keys
-	params.Values = node.ParseParams(nodeData.Path)
+	params.Values = node.ParseParams(formatPath)
 
 	var receive = &Receive{}
 	receive.Message = msg
@@ -248,8 +250,8 @@ func (socket *WebSocketServer) formatPath(path string) string {
 	return path
 }
 
-type WBA struct {
-	Path                    []byte
+type WebSocketServerNode struct {
+	Info                    string
 	Route                   []byte
 	WebSocketServerFunction WebSocketServerFunction
 	Before                  []WebSocketServerBefore

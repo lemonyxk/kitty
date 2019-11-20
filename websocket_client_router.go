@@ -1,6 +1,8 @@
 package lemo
 
 import (
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/Lemo-yxk/tire"
@@ -100,6 +102,8 @@ func (route *webSocketClientRoute) ForceAfter() *webSocketClientRoute {
 
 func (route *webSocketClientRoute) Handler(fn WebSocketClientFunction) {
 
+	_, file, line, _ := runtime.Caller(1)
+
 	var socket = route.socket
 	var group = socket.group
 
@@ -114,6 +118,8 @@ func (route *webSocketClientRoute) Handler(fn WebSocketClientFunction) {
 	}
 
 	var wba = &WebSocketClientNode{}
+
+	wba.Info = file + ":" + strconv.Itoa(line)
 
 	wba.WebSocketClientFunction = fn
 
@@ -169,32 +175,28 @@ func (client *WebSocketClient) Route(path string) *webSocketClientRoute {
 	return route
 }
 
-func (client *WebSocketClient) getRoute(path string) *tire.Tire {
+func (client *WebSocketClient) getRoute(path string) (*tire.Tire, []byte) {
+
+	if client.tire == nil {
+		return nil, nil
+	}
 
 	path = client.formatPath(path)
 
 	var pathB = []byte(path)
 
-	if client.tire == nil {
-		return nil
-	}
-
 	var t = client.tire.GetValue(pathB)
 
 	if t == nil {
-		return nil
+		return nil, nil
 	}
 
-	var nodeData = t.Data.(*WebSocketClientNode)
-
-	nodeData.Path = pathB
-
-	return t
+	return t, pathB
 }
 
 func (client *WebSocketClient) router(conn *WebSocketClient, msg *ReceivePackage) {
 
-	var node = client.getRoute(msg.Event)
+	var node, formatPath = client.getRoute(msg.Event)
 	if node == nil {
 		return
 	}
@@ -203,7 +205,7 @@ func (client *WebSocketClient) router(conn *WebSocketClient, msg *ReceivePackage
 
 	var params = new(Params)
 	params.Keys = node.Keys
-	params.Values = node.ParseParams(nodeData.Path)
+	params.Values = node.ParseParams(formatPath)
 
 	var receive = &Receive{}
 	receive.Message = msg
@@ -249,7 +251,7 @@ func (client *WebSocketClient) formatPath(path string) string {
 }
 
 type WebSocketClientNode struct {
-	Path                    []byte
+	Info                    string
 	Route                   []byte
 	WebSocketClientFunction WebSocketClientFunction
 	Before                  []WebSocketClientBefore

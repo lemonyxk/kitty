@@ -11,6 +11,8 @@
 package lemo
 
 import (
+	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/Lemo-yxk/tire"
@@ -110,6 +112,8 @@ func (route *socketClientRoute) ForceAfter() *socketClientRoute {
 
 func (route *socketClientRoute) Handler(fn SocketClientFunction) {
 
+	_, file, line, _ := runtime.Caller(1)
+
 	var socket = route.socket
 	var group = socket.group
 
@@ -124,6 +128,8 @@ func (route *socketClientRoute) Handler(fn SocketClientFunction) {
 	}
 
 	var cba = &SocketClientNode{}
+
+	cba.Info = file + ":" + strconv.Itoa(line)
 
 	cba.SocketClientFunction = fn
 
@@ -179,32 +185,28 @@ func (client *SocketClient) Route(path string) *socketClientRoute {
 	return route
 }
 
-func (client *SocketClient) getRoute(path string) *tire.Tire {
+func (client *SocketClient) getRoute(path string) (*tire.Tire, []byte) {
+
+	if client.tire == nil {
+		return nil, nil
+	}
 
 	path = client.formatPath(path)
 
 	var pathB = []byte(path)
 
-	if client.tire == nil {
-		return nil
-	}
-
 	var t = client.tire.GetValue(pathB)
 
 	if t == nil {
-		return nil
+		return nil, nil
 	}
 
-	var nodeData = t.Data.(*SocketClientNode)
-
-	nodeData.Path = pathB
-
-	return t
+	return t, pathB
 }
 
 func (client *SocketClient) router(conn *SocketClient, msg *ReceivePackage) {
 
-	var node = client.getRoute(msg.Event)
+	var node, formatPath = client.getRoute(msg.Event)
 	if node == nil {
 		return
 	}
@@ -213,7 +215,7 @@ func (client *SocketClient) router(conn *SocketClient, msg *ReceivePackage) {
 
 	var params = new(Params)
 	params.Keys = node.Keys
-	params.Values = node.ParseParams(nodeData.Path)
+	params.Values = node.ParseParams(formatPath)
 
 	var receive = &Receive{}
 	receive.Message = msg
@@ -259,7 +261,7 @@ func (client *SocketClient) formatPath(path string) string {
 }
 
 type SocketClientNode struct {
-	Path                 []byte
+	Info                 string
 	Route                []byte
 	SocketClientFunction SocketClientFunction
 	Before               []SocketClientBefore

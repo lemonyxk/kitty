@@ -13,14 +13,14 @@ package utils
 import (
 	"bytes"
 	"errors"
-	"github.com/json-iterator/go"
 	"io/ioutil"
 	"net"
 	"net/http"
 	url2 "net/url"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/json-iterator/go"
 )
 
 var dial = net.Dialer{
@@ -99,21 +99,21 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 				return nil, errors.New("application/x-www-form-urlencoded body must be map[string]interface")
 			}
 
-			var str = ""
+			var buff bytes.Buffer
 			for key, value := range body.(map[string]interface{}) {
 				switch value.(type) {
 				case string:
-					str += key + "=" + value.(string) + "&"
+					buff.WriteString(key + "=" + value.(string) + "&")
 				case int:
-					str += key + "=" + strconv.Itoa(value.(int)) + "&"
+					buff.WriteString(key + "=" + strconv.Itoa(value.(int)) + "&")
 				case float64:
-					str += key + "=" + strconv.FormatFloat(value.(float64), 'f', -1, 64) + "&"
+					buff.WriteString(key + "=" + strconv.FormatFloat(value.(float64), 'f', -1, 64) + "&")
 				default:
 					return nil, errors.New("invalid params")
 				}
 			}
-
-			request, err = http.NewRequest(method, url, strings.NewReader(str[:len(str)-1]))
+			var b = buff.Bytes()
+			request, err = http.NewRequest(method, url, bytes.NewReader(b[:len(b)-1]))
 			if err != nil {
 				return nil, err
 			}

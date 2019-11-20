@@ -177,3 +177,57 @@ func packBin(route []byte, body []byte, protoType int) []byte {
 
 	return data
 }
+
+func ParseMessage(bts []byte) ([]byte, []byte) {
+
+	var s, e int
+
+	var l = len(bts)
+
+	if l < 9 {
+		return nil, nil
+	}
+
+	// 正序
+	if bts[8] == 58 {
+
+		s = 8
+
+		for i := 0; i < len(bts); i++ {
+			if bts[i] == 44 {
+				e = i
+				break
+			}
+		}
+
+		if e == 0 {
+			return bts[s+2 : l-2], nil
+		}
+
+		return bts[s+2 : e-1], bts[e+8 : l-1]
+
+	} else {
+
+		for i := l - 1; i >= 0; i-- {
+
+			if bts[i] == 58 {
+				s = i
+			}
+
+			if bts[i] == 44 {
+				e = i
+				break
+			}
+		}
+
+		if s == 0 {
+			return nil, nil
+		}
+
+		if e == 0 {
+			return bts[s+2 : l-2], nil
+		}
+
+		return bts[s+2 : l-2], bts[8:e]
+	}
+}

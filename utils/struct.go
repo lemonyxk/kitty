@@ -11,8 +11,9 @@
 package utils
 
 import (
-	"github.com/mitchellh/mapstructure"
 	"reflect"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 func StructToMap(input interface{}) map[string]interface{} {
@@ -37,6 +38,6 @@ func StructToMap(input interface{}) map[string]interface{} {
 	return output
 }
 
-func MapToStruct(input interface{}, output interface{}) {
-	_ = mapstructure.WeakDecode(input, output)
+func MapToStruct(input interface{}, output interface{}) error {
+	return mapstructure.WeakDecode(input, output)
 }

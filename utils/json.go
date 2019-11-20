@@ -22,6 +22,6 @@ func JsonEncode(v interface{}) []byte {
 	return res
 }
 
-func JsonDecode(data []byte, output interface{}) {
-	_ = jsoniter.Unmarshal(data, output)
+func JsonDecode(data []byte, output interface{}) error {
+	return jsoniter.Unmarshal(data, output)
 }

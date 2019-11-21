@@ -2,11 +2,12 @@ package console
 
 import (
 	"fmt"
-	"github.com/Lemo-yxk/lemo/exception"
 	"os"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/Lemo-yxk/lemo/exception"
 
 	"github.com/gookit/color"
 )
@@ -58,14 +59,11 @@ func init() {
 	SetLog(false)
 
 	SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
-		var date = time.Now().Format("2006-01-02 15:04:05")
-		color.Blue.Print(date + " " + file + ":" + strconv.Itoa(line) + " ")
-		color.Blue.Println(v...)
+		color.Blue.Println(append([]interface{}{time.Now().Format("2006-01-02 15:04:05") + " " + file + ":" + strconv.Itoa(line) + " "}, v...))
 	})
 
 	SetErrorHook(func(err *exception.Error) {
-		var date = err.Time.Format("2006-01-02 15:04:05")
-		color.Red.Println(date + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Message)
+		color.Red.Println(err.Time.Format("2006-01-02 15:04:05") + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Message)
 	})
 
 	SetLogHook(nil)

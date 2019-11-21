@@ -59,7 +59,7 @@ func init() {
 	SetLog(false)
 
 	SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
-		color.Blue.Println(append([]interface{}{time.Now().Format("2006-01-02 15:04:05") + " " + file + ":" + strconv.Itoa(line) + " "}, v...))
+		color.Blue.Println(append([]interface{}{time.Now().Format("2006-01-02 15:04:05") + " " + file + ":" + strconv.Itoa(line) + " "}, v...)...)
 	})
 
 	SetErrorHook(func(err *exception.Error) {

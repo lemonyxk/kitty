@@ -44,7 +44,7 @@ func New(err ...interface{}) func() *Error {
 	}
 
 	if len(err) == 1 {
-		return newErrorFromDeep(err, 2)
+		return newErrorFromDeep(err[0], 2)
 	}
 
 	if len(err) > 1 {

@@ -34,21 +34,21 @@ type Array struct {
 	data []jsoniter.Any
 }
 
-func JsonPath(data []byte, path ...interface{}) Result {
-	return Result{data: jsoniter.Get(data, path...)}
+func JsonPath(data []byte, path ...interface{}) *Result {
+	return &Result{data: jsoniter.Get(data, path...)}
 }
 
 func (r *Result) String() string {
 	return r.data.ToString()
 }
 
-func (r *Result) Array() Array {
+func (r *Result) Array() *Array {
 	var result []jsoniter.Any
 	var val = r.data
 	for i := 0; i < val.Size(); i++ {
 		result = append(result, val.Get(i))
 	}
-	return Array{data: result}
+	return &Array{data: result}
 }
 
 func (a *Array) String() []string {

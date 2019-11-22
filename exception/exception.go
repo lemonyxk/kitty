@@ -49,10 +49,19 @@ func New(err ...interface{}) func() *Error {
 		return nil
 	}
 
-	if len(err) == 1 {
-		if err[0] == nil {
-			return nil
+	var invalid = true
+	for i := 0; i < len(err); i++ {
+		if err[i] != nil {
+			invalid = false
+			break
 		}
+	}
+
+	if invalid {
+		return nil
+	}
+
+	if len(err) == 1 {
 		return newErrorFromDeep(err[0], 2)
 	}
 

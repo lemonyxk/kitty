@@ -19,17 +19,22 @@ import (
 func StructToMap(input interface{}) map[string]interface{} {
 	var output = make(map[string]interface{})
 
+	if input == nil {
+		return output
+	}
+
 	var kf = reflect.TypeOf(input)
 
+	var vf = reflect.ValueOf(input)
+
 	if kf.Kind() == reflect.Ptr {
-		return nil
+		kf = kf.Elem()
+		vf = vf.Elem()
 	}
 
 	if kf.Kind() != reflect.Struct {
 		return nil
 	}
-
-	var vf = reflect.ValueOf(input)
 
 	for i := 0; i < kf.NumField(); i++ {
 		output[kf.Field(i).Tag.Get("json")] = vf.Field(i).Interface()

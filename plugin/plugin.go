@@ -45,9 +45,9 @@ func (p *Plugin) Lookup(symName string) *Script {
 	return &Script{f: f}
 }
 
-func (s *Script) Run() func() *exception.Error {
+func (s *Script) Run() (interface{}, func() *exception.Error) {
 	if s.f == nil {
-		return nil
+		return nil, exception.New("not that func")
 	}
-	return s.f.(func(v ...interface{}) func() *exception.Error)()
+	return s.f.(func(v ...interface{}) (interface{}, func() *exception.Error))()
 }

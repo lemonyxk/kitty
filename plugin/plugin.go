@@ -34,12 +34,12 @@ func Open(file string) *Plugin {
 
 func (p *Plugin) Lookup(symName string) *Script {
 	if p.p == nil {
-		return nil
+		return &Script{}
 	}
 
 	f, err := p.p.Lookup(symName)
 	if err != nil {
-		return nil
+		return &Script{}
 	}
 
 	return &Script{f: f}
@@ -47,7 +47,12 @@ func (p *Plugin) Lookup(symName string) *Script {
 
 func (s *Script) Run(v ...interface{}) (interface{}, func() *exception.Error) {
 	if s.f == nil {
-		return nil, exception.New("not that func")
+		return nil, exception.New("lookup error, please check the func name")
 	}
-	return s.f.(func(v ...interface{}) (interface{}, func() *exception.Error))(v...)
+
+	if f, ok := s.f.(func(v ...interface{}) (interface{}, func() *exception.Error)); ok {
+		return f(v...)
+	}
+
+	return nil, exception.New("assert error, please check the func type")
 }

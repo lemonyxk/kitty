@@ -114,6 +114,10 @@ func Error(err interface{}) {
 	case func() *exception.Error:
 		var res = err.(func() *exception.Error)()
 
+		if res == nil {
+			return
+		}
+
 		if debug {
 			logger.errorHook(res)
 		}
@@ -125,6 +129,10 @@ func Error(err interface{}) {
 	case *exception.Error:
 
 		var res = err.(*exception.Error)
+
+		if res == nil {
+			return
+		}
 
 		if debug {
 			logger.errorHook(res)

@@ -26,6 +26,12 @@ type Error struct {
 	Message string
 }
 
+var Empty = func() func() *Error {
+	return func() *Error {
+		return nil
+	}
+}
+
 func (err *Error) Error() string {
 	return err.String()
 }

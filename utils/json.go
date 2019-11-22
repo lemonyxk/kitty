@@ -25,3 +25,52 @@ func JsonEncode(v interface{}) []byte {
 func JsonDecode(data []byte, output interface{}) error {
 	return jsoniter.Unmarshal(data, output)
 }
+
+type Result struct {
+	data jsoniter.Any
+}
+
+type Array struct {
+	data []jsoniter.Any
+}
+
+func JsonPath(data []byte, path ...interface{}) Result {
+	return Result{data: jsoniter.Get(data, path...)}
+}
+
+func (r *Result) String() string {
+	return r.data.ToString()
+}
+
+func (r *Result) Array() Array {
+	var result []jsoniter.Any
+	var val = r.data
+	for i := 0; i < val.Size(); i++ {
+		result = append(result, val.Get(i))
+	}
+	return Array{data: result}
+}
+
+func (a *Array) String() []string {
+	var result []string
+	for i := 0; i < len(a.data); i++ {
+		result = append(result, a.data[i].ToString())
+	}
+	return result
+}
+
+func (a *Array) Int() []int {
+	var result []int
+	for i := 0; i < len(a.data); i++ {
+		result = append(result, a.data[i].ToInt())
+	}
+	return result
+}
+
+func (a *Array) Float64() []float64 {
+	var result []float64
+	for i := 0; i < len(a.data); i++ {
+		result = append(result, a.data[i].ToFloat64())
+	}
+	return result
+}

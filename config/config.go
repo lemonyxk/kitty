@@ -1,10 +1,12 @@
-package utils
+package config
 
 import (
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/json-iterator/go"
 	"io/ioutil"
 	"path/filepath"
+
+	"github.com/json-iterator/go"
+
+	"github.com/Lemo-yxk/lemo/exception"
 )
 
 type Config struct {

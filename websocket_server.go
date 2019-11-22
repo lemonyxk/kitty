@@ -184,7 +184,7 @@ func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) erro
 
 func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) error {
 
-	messageJsonFormat, err := jsoniter.Marshal(F{msg.Event, msg.Message})
+	messageJsonFormat, err := jsoniter.Marshal(SocketJsonResponse{msg.Event, msg.Message})
 	if err != nil {
 		return err
 	}

@@ -83,7 +83,7 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 
 func (client *WebSocketClient) JsonFormat(msg JsonPackage) error {
 
-	messageJson, err := jsoniter.Marshal(F{msg.Event, msg.Message})
+	messageJson, err := jsoniter.Marshal(SocketJsonResponse{msg.Event, msg.Message})
 	if err != nil {
 		return err
 	}

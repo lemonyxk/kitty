@@ -117,7 +117,7 @@ func (stream *Stream) SetHeader(header string, content string) {
 }
 
 func (stream *Stream) JsonFormat(status string, code int, msg interface{}) func() *exception.Error {
-	return exception.New(stream.Json(J{status, code, msg}))
+	return exception.New(stream.Json(HttpJsonResponse{status, code, msg}))
 }
 
 func (stream *Stream) Json(data interface{}) error {

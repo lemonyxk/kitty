@@ -71,7 +71,7 @@ func New(err ...interface{}) func() *Error {
 		}
 	}
 
-	return newErrorFromDeep(fmt.Sprintln(err...), 2)
+	return newErrorFromDeep(fmt.Sprint(err...), 2)
 }
 
 func newErrorFromDeep(err interface{}, deep int) func() *Error {

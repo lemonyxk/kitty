@@ -50,6 +50,9 @@ func New(err ...interface{}) func() *Error {
 	}
 
 	if len(err) == 1 {
+		if err[0] == nil {
+			return nil
+		}
 		return newErrorFromDeep(err[0], 2)
 	}
 

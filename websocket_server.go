@@ -2,8 +2,6 @@ package lemo
 
 import (
 	"errors"
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/protocol"
 	"net"
 	"net/http"
 	"strconv"
@@ -11,9 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/protocol"
+
 	"github.com/json-iterator/go"
 
-	"github.com/Lemo-yxk/tire"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
@@ -43,9 +43,9 @@ type WebSocketServer struct {
 	CheckOrigin       func(r *http.Request) bool
 	Path              string
 
-	tire *tire.Tire
+	PingHandler func(connection *WebSocket) func(appData string) error
 
-	IgnoreCase bool
+	PongHandler func(connection *WebSocket) func(appData string) error
 
 	// 连接
 	connOpen chan *WebSocket
@@ -64,31 +64,13 @@ type WebSocketServer struct {
 
 	upgrade websocket.Upgrader
 
-	PingHandler func(connection *WebSocket) func(appData string) error
-
-	PongHandler func(connection *WebSocket) func(appData string) error
-
 	fd          uint32
 	count       uint32
 	connections sync.Map
-	group       *webSocketServerGroup
-	route       *webSocketServerRoute
-}
-
-func (socket *WebSocketServer) GetAllRouters() []*WebSocketServerNode {
-	var res []*WebSocketServerNode
-	var tires = socket.tire.GetAllValue()
-	for i := 0; i < len(socket.tire.GetAllValue()); i++ {
-		res = append(res, tires[i].Data.(*WebSocketServerNode))
-	}
-	return res
+	router      *WebSocketServerRouter
 }
 
 func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
-	if socket.IgnoreCase {
-		p1 = strings.ToLower(p1)
-		p2 = strings.ToLower(p2)
-	}
 	return p1 == p2
 }
 
@@ -415,6 +397,10 @@ func (socket *WebSocketServer) Ready() {
 		}
 	}
 
+	if socket.Path == "" {
+		socket.Path = "/"
+	}
+
 	socket.upgrade = websocket.Upgrader{
 		HandshakeTimeout: time.Duration(socket.HandshakeTimeout) * time.Second,
 		ReadBufferSize:   socket.ReadBufferSize,
@@ -467,7 +453,7 @@ func (socket *WebSocketServer) Ready() {
 
 }
 
-func (socket *WebSocketServer) handler(w http.ResponseWriter, r *http.Request) {
+func (socket *WebSocketServer) process(w http.ResponseWriter, r *http.Request) {
 
 	// 升级协议
 	conn, err := socket.upgrade.Upgrade(w, r, nil)
@@ -543,8 +529,8 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 	// check version
 	if version != protocol.Version {
 		route, body := protocol.ParseMessage(message)
-		if route != nil && socket.tire != nil {
-			go socket.router(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
+		if route != nil {
+			go socket.handler(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
 		}
 		return nil
 	}
@@ -560,10 +546,64 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 	}
 
 	// on router
-	if socket.tire != nil {
-		go socket.router(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+	if socket.router != nil {
+		go socket.handler(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 		return nil
 	}
 
 	return nil
+}
+
+func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
+
+	var node, formatPath = socket.router.getRoute(msg.Event)
+	if node == nil {
+		return
+	}
+
+	var nodeData = node.Data.(*WebSocketServerNode)
+
+	var params = new(Params)
+	params.Keys = node.Keys
+	params.Values = node.ParseParams(formatPath)
+
+	var receive = &Receive{}
+	receive.Message = msg
+	receive.Context = nil
+	receive.Params = params
+
+	for i := 0; i < len(nodeData.Before); i++ {
+		context, err := nodeData.Before[i](conn, receive)
+		if err != nil {
+			if socket.OnError != nil {
+				socket.OnError(err)
+			}
+			return
+		}
+		receive.Context = context
+	}
+
+	err := nodeData.WebSocketServerFunction(conn, receive)
+	if err != nil {
+		if socket.OnError != nil {
+			socket.OnError(err)
+		}
+		return
+	}
+
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](conn, receive)
+		if err != nil {
+			if socket.OnError != nil {
+				socket.OnError(err)
+			}
+			return
+		}
+	}
+
+}
+
+func (socket *WebSocketServer) Router(router *WebSocketServerRouter) *WebSocketServer {
+	socket.router = router
+	return socket
 }

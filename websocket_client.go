@@ -2,16 +2,16 @@ package lemo
 
 import (
 	"errors"
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/protocol"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/protocol"
+
 	"github.com/json-iterator/go"
 
-	"github.com/Lemo-yxk/tire"
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
@@ -45,29 +45,15 @@ type WebSocketClient struct {
 	OnError   func(err func() *exception.Error)
 	Status    bool
 
-	tire *tire.Tire
-
-	mux sync.RWMutex
-
 	Context interface{}
-
-	IgnoreCase bool
 
 	PingHandler func(c *WebSocketClient) func(appData string) error
 
 	PongHandler func(c *WebSocketClient) func(appData string) error
 
-	group *webSocketClientGroup
-	route *webSocketClientRoute
-}
+	mux sync.RWMutex
 
-func (client *WebSocketClient) GetAllRouters() []*WebSocketClientNode {
-	var res []*WebSocketClientNode
-	var tires = client.tire.GetAllValue()
-	for i := 0; i < len(client.tire.GetAllValue()); i++ {
-		res = append(res, tires[i].Data.(*WebSocketClientNode))
-	}
-	return res
+	router *WebSocketClientRouter
 }
 
 // Json 发送JSON字符
@@ -308,8 +294,8 @@ func (client *WebSocketClient) Connect() {
 			// check version
 			if version != protocol.Version {
 				route, body := protocol.ParseMessage(message)
-				if route != nil && client.tire != nil {
-					go client.router(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
+				if route != nil {
+					go client.handler(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
 				}
 				continue
 			}
@@ -335,8 +321,8 @@ func (client *WebSocketClient) Connect() {
 			}
 
 			// on router
-			if client.tire != nil {
-				go client.router(client, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+			if client.router != nil {
+				go client.handler(client, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 				continue
 			}
 
@@ -355,4 +341,58 @@ func (client *WebSocketClient) Connect() {
 	go client.OnClose(client)
 	// 触发重连设置
 	client.reconnecting()
+}
+
+func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackage) {
+
+	var node, formatPath = client.router.getRoute(msg.Event)
+	if node == nil {
+		return
+	}
+
+	var nodeData = node.Data.(*WebSocketClientNode)
+
+	var params = new(Params)
+	params.Keys = node.Keys
+	params.Values = node.ParseParams(formatPath)
+
+	var receive = &Receive{}
+	receive.Message = msg
+	receive.Context = nil
+	receive.Params = params
+
+	for i := 0; i < len(nodeData.Before); i++ {
+		context, err := nodeData.Before[i](conn, receive)
+		if err != nil {
+			if client.OnError != nil {
+				client.OnError(err)
+			}
+			return
+		}
+		receive.Context = context
+	}
+
+	err := nodeData.WebSocketClientFunction(conn, receive)
+	if err != nil {
+		if client.OnError != nil {
+			client.OnError(err)
+		}
+		return
+	}
+
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](conn, receive)
+		if err != nil {
+			if client.OnError != nil {
+				client.OnError(err)
+			}
+			return
+		}
+	}
+
+}
+
+func (client *WebSocketClient) Router(router *WebSocketClientRouter) *WebSocketClient {
+	client.router = router
+	return client
 }

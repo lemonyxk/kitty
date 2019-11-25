@@ -16,6 +16,8 @@ import (
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
+type Func func(v ...interface{}) (interface{}, func() *exception.Error)
+
 type Plugin struct {
 	p *plugin.Plugin
 }

@@ -12,15 +12,16 @@ package lemo
 
 import (
 	"errors"
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/protocol"
-	"github.com/json-iterator/go"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/Lemo-yxk/tire"
+	"github.com/json-iterator/go"
+
+	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/protocol"
+
 	"github.com/golang/protobuf/proto"
 )
 
@@ -45,29 +46,15 @@ type SocketClient struct {
 	OnError   func(err func() *exception.Error)
 	Status    bool
 
-	tire *tire.Tire
-
-	mux sync.RWMutex
-
 	Context interface{}
-
-	IgnoreCase bool
 
 	PingHandler func(c *SocketClient) func(appData string) error
 
 	PongHandler func(c *SocketClient) func(appData string) error
 
-	group *socketClientGroup
-	route *socketClientRoute
-}
+	router *SocketClientRouter
 
-func (client *SocketClient) GetAllRouters() []*SocketClientNode {
-	var res []*SocketClientNode
-	var tires = client.tire.GetAllValue()
-	for i := 0; i < len(client.tire.GetAllValue()); i++ {
-		res = append(res, tires[i].Data.(*SocketClientNode))
-	}
-	return res
+	mux sync.RWMutex
 }
 
 // Json 发送JSON字符
@@ -359,10 +346,64 @@ func (client *SocketClient) decodeMessage(connection *SocketClient, message []by
 	}
 
 	// on router
-	if client.tire != nil {
-		go client.router(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+	if client.router != nil {
+		go client.handler(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 		return nil
 	}
 
 	return nil
+}
+
+func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
+
+	var node, formatPath = client.router.getRoute(msg.Event)
+	if node == nil {
+		return
+	}
+
+	var nodeData = node.Data.(*SocketClientNode)
+
+	var params = new(Params)
+	params.Keys = node.Keys
+	params.Values = node.ParseParams(formatPath)
+
+	var receive = &Receive{}
+	receive.Message = msg
+	receive.Context = nil
+	receive.Params = params
+
+	for i := 0; i < len(nodeData.Before); i++ {
+		context, err := nodeData.Before[i](conn, receive)
+		if err != nil {
+			if client.OnError != nil {
+				client.OnError(err)
+			}
+			return
+		}
+		receive.Context = context
+	}
+
+	err := nodeData.SocketClientFunction(conn, receive)
+	if err != nil {
+		if client.OnError != nil {
+			client.OnError(err)
+		}
+		return
+	}
+
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](conn, receive)
+		if err != nil {
+			if client.OnError != nil {
+				client.OnError(err)
+			}
+			return
+		}
+	}
+
+}
+
+func (client *SocketClient) Router(router *SocketClientRouter) *SocketClient {
+	client.router = router
+	return client
 }

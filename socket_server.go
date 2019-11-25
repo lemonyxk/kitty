@@ -12,16 +12,16 @@ package lemo
 
 import (
 	"errors"
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/protocol"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/protocol"
+
 	"github.com/json-iterator/go"
 
-	"github.com/Lemo-yxk/tire"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -102,10 +102,6 @@ type SocketServer struct {
 	WaitQueueSize     int
 	HandshakeTimeout  int
 
-	tire *tire.Tire
-
-	IgnoreCase bool
-
 	PingHandler func(connection *Socket) func(appData string) error
 
 	PongHandler func(connection *Socket) func(appData string) error
@@ -128,17 +124,7 @@ type SocketServer struct {
 	fd          uint32
 	count       uint32
 	connections sync.Map
-	group       *socketServerGroup
-	route       *socketServerRoute
-}
-
-func (socket *SocketServer) GetAllRouters() []*SocketServerNode {
-	var res []*SocketServerNode
-	var tires = socket.tire.GetAllValue()
-	for i := 0; i < len(socket.tire.GetAllValue()); i++ {
-		res = append(res, tires[i].Data.(*SocketServerNode))
-	}
-	return res
+	router      *SocketServerRouter
 }
 
 // Push 发送消息
@@ -420,11 +406,11 @@ func (socket *SocketServer) Start() {
 			continue
 		}
 
-		go socket.handler(conn)
+		go socket.process(conn)
 	}
 }
 
-func (socket *SocketServer) handler(conn net.Conn) {
+func (socket *SocketServer) process(conn net.Conn) {
 
 	// 超时时间
 	err := conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
@@ -532,10 +518,64 @@ func (socket *SocketServer) decodeMessage(connection *Socket, message []byte) er
 	}
 
 	// on router
-	if socket.tire != nil {
-		go socket.router(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+	if socket.router != nil {
+		go socket.handler(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 		return nil
 	}
 
 	return nil
+}
+
+func (socket *SocketServer) handler(conn *Socket, msg *ReceivePackage) {
+
+	var node, formatPath = socket.router.getRoute(msg.Event)
+	if node == nil {
+		return
+	}
+
+	var nodeData = node.Data.(*SocketServerNode)
+
+	var params = new(Params)
+	params.Keys = node.Keys
+	params.Values = node.ParseParams(formatPath)
+
+	var receive = &Receive{}
+	receive.Message = msg
+	receive.Context = nil
+	receive.Params = params
+
+	for i := 0; i < len(nodeData.Before); i++ {
+		context, err := nodeData.Before[i](conn, receive)
+		if err != nil {
+			if socket.OnError != nil {
+				socket.OnError(err)
+			}
+			return
+		}
+		receive.Context = context
+	}
+
+	err := nodeData.SocketServerFunction(conn, receive)
+	if err != nil {
+		if socket.OnError != nil {
+			socket.OnError(err)
+		}
+		return
+	}
+
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](conn, receive)
+		if err != nil {
+			if socket.OnError != nil {
+				socket.OnError(err)
+			}
+			return
+		}
+	}
+
+}
+
+func (socket *SocketServer) Router(router *SocketServerRouter) *SocketServer {
+	socket.router = router
+	return socket
 }

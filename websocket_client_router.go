@@ -1,15 +1,16 @@
 package lemo
 
 import (
-	"github.com/Lemo-yxk/lemo/exception"
 	"runtime"
 	"strconv"
 	"strings"
 
+	"github.com/Lemo-yxk/lemo/exception"
+
 	"github.com/Lemo-yxk/tire"
 )
 
-type WebSocketClientGroupFunction func(this *WebSocketClient)
+type WebSocketClientGroupFunction func(route *WebSocketClientRoute)
 
 type WebSocketClientFunction func(c *WebSocketClient, receive *Receive) func() *exception.Error
 
@@ -28,34 +29,38 @@ func SetWebSocketClientAfter(after ...WebSocketClientAfter) {
 	webSocketClientGlobalAfter = append(webSocketClientGlobalAfter, after...)
 }
 
-type webSocketClientGroup struct {
+type WebSocketClientGroup struct {
 	path   string
 	before []WebSocketClientBefore
 	after  []WebSocketClientAfter
-	socket *WebSocketClient
+	router *WebSocketClientRouter
 }
 
-func (group *webSocketClientGroup) Route(path string) *webSocketClientGroup {
+func (group *WebSocketClientGroup) Route(path string) *WebSocketClientGroup {
 	group.path = path
 	return group
 }
 
-func (group *webSocketClientGroup) Before(before ...WebSocketClientBefore) *webSocketClientGroup {
+func (group *WebSocketClientGroup) Before(before ...WebSocketClientBefore) *WebSocketClientGroup {
 	group.before = append(group.before, before...)
 	return group
 }
 
-func (group *webSocketClientGroup) After(after ...WebSocketClientAfter) *webSocketClientGroup {
+func (group *WebSocketClientGroup) After(after ...WebSocketClientAfter) *WebSocketClientGroup {
 	group.after = append(group.after, after...)
 	return group
 }
 
-func (group *webSocketClientGroup) Handler(fn WebSocketClientGroupFunction) {
-	fn(group.socket)
-	group.socket.group = nil
+func (group *WebSocketClientGroup) Handler(fn WebSocketClientGroupFunction) {
+	if group.path == "" {
+		panic("group path can not empty")
+	}
+	var route = new(WebSocketClientRoute)
+	route.group = group
+	fn(route)
 }
 
-type webSocketClientRoute struct {
+type WebSocketClientRoute struct {
 	path        string
 	before      []WebSocketClientBefore
 	after       []WebSocketClientAfter
@@ -64,58 +69,63 @@ type webSocketClientRoute struct {
 	forceBefore bool
 	passAfter   bool
 	forceAfter  bool
+	group       *WebSocketClientGroup
 }
 
-func (route *webSocketClientRoute) Route(path string) *webSocketClientRoute {
+func (route *WebSocketClientRoute) Route(path string) *WebSocketClientRoute {
 	route.path = path
 	return route
 }
 
-func (route *webSocketClientRoute) Before(before ...WebSocketClientBefore) *webSocketClientRoute {
+func (route *WebSocketClientRoute) Before(before ...WebSocketClientBefore) *WebSocketClientRoute {
 	route.before = append(route.before, before...)
 	return route
 }
 
-func (route *webSocketClientRoute) PassBefore() *webSocketClientRoute {
+func (route *WebSocketClientRoute) PassBefore() *WebSocketClientRoute {
 	route.passBefore = true
 	return route
 }
 
-func (route *webSocketClientRoute) ForceBefore() *webSocketClientRoute {
+func (route *WebSocketClientRoute) ForceBefore() *WebSocketClientRoute {
 	route.forceBefore = true
 	return route
 }
 
-func (route *webSocketClientRoute) After(after ...WebSocketClientAfter) *webSocketClientRoute {
+func (route *WebSocketClientRoute) After(after ...WebSocketClientAfter) *WebSocketClientRoute {
 	route.after = append(route.after, after...)
 	return route
 }
 
-func (route *webSocketClientRoute) PassAfter() *webSocketClientRoute {
+func (route *WebSocketClientRoute) PassAfter() *WebSocketClientRoute {
 	route.passAfter = true
 	return route
 }
 
-func (route *webSocketClientRoute) ForceAfter() *webSocketClientRoute {
+func (route *WebSocketClientRoute) ForceAfter() *WebSocketClientRoute {
 	route.forceAfter = true
 	return route
 }
 
-func (route *webSocketClientRoute) Handler(fn WebSocketClientFunction) {
+func (route *WebSocketClientRoute) Handler(fn WebSocketClientFunction) {
+
+	if route.path == "" {
+		panic("route path can not empty")
+	}
 
 	_, file, line, _ := runtime.Caller(1)
 
-	var socket = route.socket
-	var group = socket.group
+	var router = route.group.router
+	var group = route.group
 
 	if group == nil {
-		group = new(webSocketClientGroup)
+		group = new(WebSocketClientGroup)
 	}
 
-	var path = socket.formatPath(group.path + route.path)
+	var path = router.formatPath(group.path + route.path)
 
-	if socket.tire == nil {
-		socket.tire = new(tire.Tire)
+	if router.tire == nil {
+		router.tire = new(tire.Tire)
 	}
 
 	var wba = &WebSocketClientNode{}
@@ -145,48 +155,46 @@ func (route *webSocketClientRoute) Handler(fn WebSocketClientFunction) {
 
 	wba.Route = []byte(path)
 
-	socket.tire.Insert(path, wba)
+	router.tire.Insert(path, wba)
 
-	route.socket.route = nil
 }
 
-func (client *WebSocketClient) Group(path string) *webSocketClientGroup {
+type WebSocketClientRouter struct {
+	tire       *tire.Tire
+	IgnoreCase bool
+}
 
-	var group = new(webSocketClientGroup)
+func (router *WebSocketClientRouter) GetAllRouters() []*WebSocketClientNode {
+	var res []*WebSocketClientNode
+	var tires = router.tire.GetAllValue()
+	for i := 0; i < len(router.tire.GetAllValue()); i++ {
+		res = append(res, tires[i].Data.(*WebSocketClientNode))
+	}
+	return res
+}
+
+func (router *WebSocketClientRouter) Group(path string) *WebSocketClientGroup {
+
+	var group = new(WebSocketClientGroup)
 
 	group.Route(path)
 
-	group.socket = client
-
-	client.group = group
+	group.router = router
 
 	return group
 }
 
-func (client *WebSocketClient) Route(path string) *webSocketClientRoute {
+func (router *WebSocketClientRouter) getRoute(path string) (*tire.Tire, []byte) {
 
-	var route = new(webSocketClientRoute)
-
-	route.Route(path)
-
-	route.socket = client
-
-	client.route = route
-
-	return route
-}
-
-func (client *WebSocketClient) getRoute(path string) (*tire.Tire, []byte) {
-
-	if client.tire == nil {
+	if router.tire == nil {
 		return nil, nil
 	}
 
-	path = client.formatPath(path)
+	path = router.formatPath(path)
 
 	var pathB = []byte(path)
 
-	var t = client.tire.GetValue(pathB)
+	var t = router.tire.GetValue(pathB)
 
 	if t == nil {
 		return nil, nil
@@ -195,57 +203,8 @@ func (client *WebSocketClient) getRoute(path string) (*tire.Tire, []byte) {
 	return t, pathB
 }
 
-func (client *WebSocketClient) router(conn *WebSocketClient, msg *ReceivePackage) {
-
-	var node, formatPath = client.getRoute(msg.Event)
-	if node == nil {
-		return
-	}
-
-	var nodeData = node.Data.(*WebSocketClientNode)
-
-	var params = new(Params)
-	params.Keys = node.Keys
-	params.Values = node.ParseParams(formatPath)
-
-	var receive = &Receive{}
-	receive.Message = msg
-	receive.Context = nil
-	receive.Params = params
-
-	for i := 0; i < len(nodeData.Before); i++ {
-		context, err := nodeData.Before[i](conn, receive)
-		if err != nil {
-			if client.OnError != nil {
-				client.OnError(err)
-			}
-			return
-		}
-		receive.Context = context
-	}
-
-	err := nodeData.WebSocketClientFunction(conn, receive)
-	if err != nil {
-		if client.OnError != nil {
-			client.OnError(err)
-		}
-		return
-	}
-
-	for i := 0; i < len(nodeData.After); i++ {
-		err := nodeData.After[i](conn, receive)
-		if err != nil {
-			if client.OnError != nil {
-				client.OnError(err)
-			}
-			return
-		}
-	}
-
-}
-
-func (client *WebSocketClient) formatPath(path string) string {
-	if client.IgnoreCase {
+func (router *WebSocketClientRouter) formatPath(path string) string {
+	if router.IgnoreCase {
 		path = strings.ToLower(path)
 	}
 	return path

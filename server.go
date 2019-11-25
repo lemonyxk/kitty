@@ -30,7 +30,7 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Match the websocket router
 	if handler.socketHandler != nil && handler.socketHandler.CheckPath(r.URL.Path, handler.socketHandler.Path) {
-		handler.socketHandler.handler(w, r)
+		handler.socketHandler.process(w, r)
 		return
 	}
 
@@ -40,7 +40,21 @@ func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	handler.httpHandler.router(w, r)
+	// HttpServer router not exists
+	if handler.httpHandler.router == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// static file
+	if handler.httpHandler.router.staticPath != "" && r.Method == http.MethodGet {
+		err := handler.httpHandler.staticHandler(w, r)
+		if err == nil {
+			return
+		}
+	}
+
+	handler.httpHandler.handler(w, r)
 	return
 }
 
@@ -60,11 +74,11 @@ func (s *Server) Start(socketHandler *WebSocketServer, httpHandler *HttpServer) 
 		httpHandler:   httpHandler,
 	}
 
-	s.Run(handler)
+	s.run(handler)
 }
 
 // Start 启动
-func (s *Server) Run(handler http.Handler) {
+func (s *Server) run(handler http.Handler) {
 	switch s.Protocol {
 	case "TLS":
 		panic(http.ListenAndServeTLS(s.Host+":"+strconv.Itoa(s.Port), s.CertFile, s.KeyFile, handler))

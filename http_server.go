@@ -2,7 +2,6 @@ package lemo
 
 import (
 	"errors"
-	"github.com/Lemo-yxk/lemo/exception"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -10,73 +9,77 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Lemo-yxk/tire"
+	"github.com/Lemo-yxk/lemo/exception"
 )
 
+type ErrorFunction func(err func() *exception.Error)
+
 type HttpServer struct {
-	IgnoreCase bool
-	OnError    ErrorFunction
-
-	tire         *tire.Tire
-	group        *httpServerGroup
-	route        *httpServerRoute
-	prefixPath   string
-	staticPath   string
-	defaultIndex string
-}
-
-func (h *HttpServer) GetAllRouters() []*httpServerNode {
-	var res []*httpServerNode
-	var tires = h.tire.GetAllValue()
-	for i := 0; i < len(h.tire.GetAllValue()); i++ {
-		res = append(res, tires[i].Data.(*httpServerNode))
-	}
-	return res
+	OnError ErrorFunction
+	router  *HttpServerRouter
 }
 
 func (h *HttpServer) Ready() {
-	h.SetDefaultIndex("index.html")
+	h.router.SetDefaultIndex("index.html")
 }
 
-func (h *HttpServer) SetDefaultIndex(index string) {
-	h.defaultIndex = index
-}
+func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 
-func (h *HttpServer) SetStaticPath(prefixPath string, staticPath string) {
-
-	if prefixPath == "" {
-		panic("prefixPath can not be empty")
+	// Get the router
+	node, formatPath := h.router.getRoute(r.Method, r.URL.Path)
+	if node == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
-	if staticPath == "" {
-		panic("staticPath can not be empty")
+	var nodeData = node.Data.(*httpServerNode)
+
+	// Get the middleware
+	var params = new(Params)
+	params.Keys = node.Keys
+	params.Values = node.ParseParams(formatPath)
+
+	var tool = Stream{w, r, nil, params, nil, nil, nil}
+
+	for i := 0; i < len(nodeData.Before); i++ {
+		context, err := nodeData.Before[i](&tool)
+		if err != nil {
+			if h.OnError != nil {
+				h.OnError(err)
+			}
+			return
+		}
+		tool.Context = context
 	}
 
-	absStaticPath, err := filepath.Abs(staticPath)
-	if err != nil {
-		panic(err)
+	if nodeData.HttpServerFunction != nil {
+		err := nodeData.HttpServerFunction(&tool)
+		if err != nil {
+			if h.OnError != nil {
+				h.OnError(err)
+			}
+			return
+		}
 	}
 
-	info, err := os.Stat(absStaticPath)
-	if err != nil {
-		panic(err)
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](&tool)
+		if err != nil {
+			if h.OnError != nil {
+				h.OnError(err)
+			}
+			return
+		}
 	}
-
-	if !info.IsDir() {
-		panic("staticPath is not a dir")
-	}
-
-	h.prefixPath = prefixPath
-	h.staticPath = absStaticPath
 }
 
 func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
-	if !strings.HasPrefix(r.URL.Path, h.prefixPath) {
+	if !strings.HasPrefix(r.URL.Path, h.router.prefixPath) {
 		return errors.New("not match")
 	}
 
-	var absFilePath = h.staticPath + r.URL.Path[len(h.prefixPath):]
+	var absFilePath = h.router.staticPath + r.URL.Path[len(h.router.prefixPath):]
 
 	var info, err = os.Stat(absFilePath)
 	if err != nil {
@@ -84,7 +87,7 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 	}
 
 	if info.IsDir() {
-		absFilePath = filepath.Join(absFilePath, h.defaultIndex)
+		absFilePath = filepath.Join(absFilePath, h.router.defaultIndex)
 		if _, err := os.Stat(absFilePath); err != nil {
 			return errors.New("staticPath is not a file")
 		}
@@ -123,4 +126,9 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 
 	return nil
 
+}
+
+func (h *HttpServer) Router(router *HttpServerRouter) *HttpServer {
+	h.router = router
+	return h
 }

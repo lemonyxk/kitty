@@ -11,15 +11,16 @@
 package lemo
 
 import (
-	"github.com/Lemo-yxk/lemo/exception"
 	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/Lemo-yxk/tire"
+
+	"github.com/Lemo-yxk/lemo/exception"
 )
 
-type SocketClientGroupFunction func(this *SocketClient)
+type SocketClientGroupFunction func(route *SocketClientRoute)
 
 type SocketClientFunction func(c *SocketClient, receive *Receive) func() *exception.Error
 
@@ -38,94 +39,102 @@ func SetSocketClientAfter(after ...SocketClientAfter) {
 	socketClientGlobalAfter = append(socketClientGlobalAfter, after...)
 }
 
-type socketClientGroup struct {
+type SocketClientGroup struct {
 	path   string
 	before []SocketClientBefore
 	after  []SocketClientAfter
-	socket *SocketClient
+	router *SocketClientRouter
 }
 
-func (group *socketClientGroup) Route(path string) *socketClientGroup {
+func (group *SocketClientGroup) Route(path string) *SocketClientGroup {
 	group.path = path
 	return group
 }
 
-func (group *socketClientGroup) Before(before ...SocketClientBefore) *socketClientGroup {
+func (group *SocketClientGroup) Before(before ...SocketClientBefore) *SocketClientGroup {
 	group.before = append(group.before, before...)
 	return group
 }
 
-func (group *socketClientGroup) After(after ...SocketClientAfter) *socketClientGroup {
+func (group *SocketClientGroup) After(after ...SocketClientAfter) *SocketClientGroup {
 	group.after = append(group.after, after...)
 	return group
 }
 
-func (group *socketClientGroup) Handler(fn SocketClientGroupFunction) {
-	fn(group.socket)
-	group.socket.group = nil
+func (group *SocketClientGroup) Handler(fn SocketClientGroupFunction) {
+	if group.path == "" {
+		panic("group path can not empty")
+	}
+	var route = new(SocketClientRoute)
+	route.group = group
+	fn(route)
 }
 
-type socketClientRoute struct {
+type SocketClientRoute struct {
 	path        string
 	before      []SocketClientBefore
 	after       []SocketClientAfter
-	socket      *SocketClient
 	passBefore  bool
 	forceBefore bool
 	passAfter   bool
 	forceAfter  bool
+	group       *SocketClientGroup
 }
 
-func (route *socketClientRoute) Route(path string) *socketClientRoute {
+func (route *SocketClientRoute) Route(path string) *SocketClientRoute {
 	route.path = path
 	return route
 }
 
-func (route *socketClientRoute) Before(before ...SocketClientBefore) *socketClientRoute {
+func (route *SocketClientRoute) Before(before ...SocketClientBefore) *SocketClientRoute {
 	route.before = append(route.before, before...)
 	return route
 }
 
-func (route *socketClientRoute) PassBefore() *socketClientRoute {
+func (route *SocketClientRoute) PassBefore() *SocketClientRoute {
 	route.passBefore = true
 	return route
 }
 
-func (route *socketClientRoute) ForceBefore() *socketClientRoute {
+func (route *SocketClientRoute) ForceBefore() *SocketClientRoute {
 	route.forceBefore = true
 	return route
 }
 
-func (route *socketClientRoute) After(after ...SocketClientAfter) *socketClientRoute {
+func (route *SocketClientRoute) After(after ...SocketClientAfter) *SocketClientRoute {
 	route.after = append(route.after, after...)
 	return route
 }
 
-func (route *socketClientRoute) PassAfter() *socketClientRoute {
+func (route *SocketClientRoute) PassAfter() *SocketClientRoute {
 	route.passAfter = true
 	return route
 }
 
-func (route *socketClientRoute) ForceAfter() *socketClientRoute {
+func (route *SocketClientRoute) ForceAfter() *SocketClientRoute {
 	route.forceAfter = true
 	return route
 }
 
-func (route *socketClientRoute) Handler(fn SocketClientFunction) {
+func (route *SocketClientRoute) Handler(fn SocketClientFunction) {
+
+	if route.path == "" {
+		panic("route path can not empty")
+	}
 
 	_, file, line, _ := runtime.Caller(1)
 
-	var socket = route.socket
-	var group = socket.group
+	var router = route.group.router
+	var group = route.group
 
 	if group == nil {
-		group = new(socketClientGroup)
+		group = new(SocketClientGroup)
 	}
 
-	var path = socket.formatPath(group.path + route.path)
+	var path = router.formatPath(group.path + route.path)
 
-	if socket.tire == nil {
-		socket.tire = new(tire.Tire)
+	if router.tire == nil {
+		router.tire = new(tire.Tire)
 	}
 
 	var cba = &SocketClientNode{}
@@ -155,48 +164,46 @@ func (route *socketClientRoute) Handler(fn SocketClientFunction) {
 
 	cba.Route = []byte(path)
 
-	socket.tire.Insert(path, cba)
+	router.tire.Insert(path, cba)
 
-	route.socket.route = nil
 }
 
-func (client *SocketClient) Group(path string) *socketClientGroup {
+type SocketClientRouter struct {
+	IgnoreCase bool
+	tire       *tire.Tire
+}
 
-	var group = new(socketClientGroup)
+func (router *SocketClientRouter) GetAllRouters() []*SocketClientNode {
+	var res []*SocketClientNode
+	var tires = router.tire.GetAllValue()
+	for i := 0; i < len(router.tire.GetAllValue()); i++ {
+		res = append(res, tires[i].Data.(*SocketClientNode))
+	}
+	return res
+}
+
+func (router *SocketClientRouter) Group(path string) *SocketClientGroup {
+
+	var group = new(SocketClientGroup)
 
 	group.Route(path)
 
-	group.socket = client
-
-	client.group = group
+	group.router = router
 
 	return group
 }
 
-func (client *SocketClient) Route(path string) *socketClientRoute {
+func (router *SocketClientRouter) getRoute(path string) (*tire.Tire, []byte) {
 
-	var route = new(socketClientRoute)
-
-	route.Route(path)
-
-	route.socket = client
-
-	client.route = route
-
-	return route
-}
-
-func (client *SocketClient) getRoute(path string) (*tire.Tire, []byte) {
-
-	if client.tire == nil {
+	if router.tire == nil {
 		return nil, nil
 	}
 
-	path = client.formatPath(path)
+	path = router.formatPath(path)
 
 	var pathB = []byte(path)
 
-	var t = client.tire.GetValue(pathB)
+	var t = router.tire.GetValue(pathB)
 
 	if t == nil {
 		return nil, nil
@@ -205,57 +212,8 @@ func (client *SocketClient) getRoute(path string) (*tire.Tire, []byte) {
 	return t, pathB
 }
 
-func (client *SocketClient) router(conn *SocketClient, msg *ReceivePackage) {
-
-	var node, formatPath = client.getRoute(msg.Event)
-	if node == nil {
-		return
-	}
-
-	var nodeData = node.Data.(*SocketClientNode)
-
-	var params = new(Params)
-	params.Keys = node.Keys
-	params.Values = node.ParseParams(formatPath)
-
-	var receive = &Receive{}
-	receive.Message = msg
-	receive.Context = nil
-	receive.Params = params
-
-	for i := 0; i < len(nodeData.Before); i++ {
-		context, err := nodeData.Before[i](conn, receive)
-		if err != nil {
-			if client.OnError != nil {
-				client.OnError(err)
-			}
-			return
-		}
-		receive.Context = context
-	}
-
-	err := nodeData.SocketClientFunction(conn, receive)
-	if err != nil {
-		if client.OnError != nil {
-			client.OnError(err)
-		}
-		return
-	}
-
-	for i := 0; i < len(nodeData.After); i++ {
-		err := nodeData.After[i](conn, receive)
-		if err != nil {
-			if client.OnError != nil {
-				client.OnError(err)
-			}
-			return
-		}
-	}
-
-}
-
-func (client *SocketClient) formatPath(path string) string {
-	if client.IgnoreCase {
+func (router *SocketClientRouter) formatPath(path string) string {
+	if router.IgnoreCase {
 		path = strings.ToLower(path)
 	}
 	return path

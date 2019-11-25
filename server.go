@@ -1,8 +1,15 @@
 package lemo
 
 import (
+	"context"
+	"net"
 	"net/http"
+	"os"
+	"os/exec"
 	"strconv"
+	"syscall"
+
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 // Server 服务结构
@@ -79,10 +86,73 @@ func (s *Server) Start(socketHandler *WebSocketServer, httpHandler *HttpServer) 
 
 // Start 启动
 func (s *Server) run(handler http.Handler) {
-	switch s.Protocol {
-	case "TLS":
-		panic(http.ListenAndServeTLS(s.Host+":"+strconv.Itoa(s.Port), s.CertFile, s.KeyFile, handler))
-	case "":
-		panic(http.ListenAndServe(s.Host+":"+strconv.Itoa(s.Port), handler))
+
+	var server = http.Server{Addr: s.Host + ":" + strconv.Itoa(s.Port), Handler: handler}
+
+	var err error
+	var netListen net.Listener
+	var isChild = os.Getenv("pid")
+
+	if isChild != "" {
+		f := os.NewFile(3, "")
+		netListen, err = net.FileListener(f)
+	} else {
+		netListen, err = net.Listen("tcp", server.Addr)
 	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		if s.Protocol == "TLS" {
+			err = server.ServeTLS(netListen, s.CertFile, s.KeyFile)
+		} else {
+			err = server.Serve(netListen)
+		}
+		if err != nil {
+			println(err.Error())
+		}
+	}()
+
+	utils.ListenSignal(func(sig os.Signal) {
+		if sig == syscall.SIGUSR2 {
+			s.reload(netListen)
+			err = server.Shutdown(context.Background())
+			if err != nil {
+				println(err.Error())
+			}
+			println("kill pid:", os.Getpid())
+		}
+	})
+}
+
+func (s *Server) reload(netListen net.Listener) {
+
+	tl, ok := netListen.(*net.TCPListener)
+	if !ok {
+		panic("listener is not tcp listener")
+	}
+
+	f, err := tl.File()
+	if err != nil {
+		panic(err)
+	}
+
+	err = os.Setenv("pid", strconv.Itoa(os.Getpid()))
+	if err != nil {
+		panic(err)
+	}
+
+	cmd := exec.Command(os.Args[0], os.Args[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	cmd.ExtraFiles = []*os.File{f}
+	err = cmd.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	println("new pid:", cmd.Process.Pid)
 }

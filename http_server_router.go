@@ -249,6 +249,7 @@ func (router *HttpServerRouter) SetStaticPath(prefixPath string, staticPath stri
 
 	router.prefixPath = prefixPath
 	router.staticPath = absStaticPath
+	router.defaultIndex = "index.html"
 }
 
 func (router *HttpServerRouter) Group(path string) *HttpServerGroup {

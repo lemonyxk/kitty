@@ -20,7 +20,7 @@ type HttpServer struct {
 }
 
 func (h *HttpServer) Ready() {
-	h.router.SetDefaultIndex("index.html")
+
 }
 
 func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {

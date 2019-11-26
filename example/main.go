@@ -30,7 +30,7 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(route *lemo.HttpServerRoute) {
 		route.Get("/world").Handler(func(t *lemo.Stream) func() *exception.Error {
-			return exception.New(t.End(syscall.Kill(os.Getpid(), syscall.SIGUSR2)))
+			return exception.New(t.End(syscall.Kill(os.Getpid(), syscall.SIGINT)))
 		})
 	})
 

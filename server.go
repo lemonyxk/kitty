@@ -7,9 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"syscall"
-
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 // Server 服务结构
@@ -24,6 +21,9 @@ type Server struct {
 	CertFile string
 	// TLS KEY
 	KeyFile string
+
+	server    *http.Server
+	netListen net.Listener
 }
 
 type Handler struct {
@@ -104,32 +104,22 @@ func (s *Server) run(handler http.Handler) {
 		panic(err)
 	}
 
-	go func() {
-		if s.Protocol == "TLS" {
-			err = server.ServeTLS(netListen, s.CertFile, s.KeyFile)
-		} else {
-			err = server.Serve(netListen)
-		}
-		if err != nil {
-			println(err.Error())
-		}
-	}()
+	s.netListen = netListen
+	s.server = &server
 
-	utils.ListenSignal(func(sig os.Signal) {
-		if sig == syscall.SIGUSR2 {
-			s.reload(netListen)
-			err = server.Shutdown(context.Background())
-			if err != nil {
-				println(err.Error())
-			}
-			println("kill pid:", os.Getpid())
-		}
-	})
+	if s.Protocol == "TLS" {
+		err = server.ServeTLS(netListen, s.CertFile, s.KeyFile)
+	} else {
+		err = server.Serve(netListen)
+	}
+	if err != nil {
+		println(err.Error())
+	}
 }
 
-func (s *Server) reload(netListen net.Listener) {
+func (s *Server) reload() {
 
-	tl, ok := netListen.(*net.TCPListener)
+	tl, ok := s.netListen.(*net.TCPListener)
 	if !ok {
 		panic("listener is not tcp listener")
 	}
@@ -155,4 +145,13 @@ func (s *Server) reload(netListen net.Listener) {
 	}
 
 	println("new pid:", cmd.Process.Pid)
+}
+
+func (s *Server) Shutdown() {
+	err := s.server.Shutdown(context.Background())
+	if err != nil {
+		println(err.Error())
+	}
+
+	println("kill pid:", os.Getpid())
 }

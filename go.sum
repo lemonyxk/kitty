@@ -1,5 +1,7 @@
 github.com/Lemo-yxk/tire v0.0.0-20191115063554-b17560c90780 h1:LfTTyGfM0jieNK4axNyBKeq2pBFCUzYFP3Kkzy6NBiI=
 github.com/Lemo-yxk/tire v0.0.0-20191115063554-b17560c90780/go.mod h1:7gK7eQqHZfYtaL7mOy6VwngkpYT7kS3kQz07A/vwC40=
+github.com/Lemo-yxk/tire v0.0.0-20191127071036-d84d2a95b30a h1:hoAXqDDR0bUcmoRS3ImV/98hLWOKpVUYM/NYMHReiKc=
+github.com/Lemo-yxk/tire v0.0.0-20191127071036-d84d2a95b30a/go.mod h1:7gK7eQqHZfYtaL7mOy6VwngkpYT7kS3kQz07A/vwC40=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

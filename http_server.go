@@ -14,7 +14,7 @@ import (
 
 type HttpServer struct {
 	OnError   func(err func() *exception.Error)
-	OnMessage func(w http.ResponseWriter, r *http.Request)
+	OnMessage func(t *Stream)
 	router    *HttpServerRouter
 }
 
@@ -24,12 +24,21 @@ func (h *HttpServer) Ready() {
 
 func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 
-	if h.OnMessage != nil {
-		go h.OnMessage(w, r)
-	}
-
 	// Get the router
 	node, formatPath := h.router.getRoute(r.Method, r.URL.Path)
+
+	var params = new(Params)
+	if node != nil {
+		params.Keys = node.Keys
+		params.Values = node.ParseParams(formatPath)
+	}
+
+	var stream = &Stream{w, r, nil, params, nil, nil, nil}
+
+	if h.OnMessage != nil {
+		go h.OnMessage(stream)
+	}
+
 	if node == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -38,25 +47,19 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 	var nodeData = node.Data.(*httpServerNode)
 
 	// Get the middleware
-	var params = new(Params)
-	params.Keys = node.Keys
-	params.Values = node.ParseParams(formatPath)
-
-	var tool = Stream{w, r, nil, params, nil, nil, nil}
-
 	for i := 0; i < len(nodeData.Before); i++ {
-		context, err := nodeData.Before[i](&tool)
+		context, err := nodeData.Before[i](stream)
 		if err != nil {
 			if h.OnError != nil {
 				h.OnError(err)
 			}
 			return
 		}
-		tool.Context = context
+		stream.Context = context
 	}
 
 	if nodeData.HttpServerFunction != nil {
-		err := nodeData.HttpServerFunction(&tool)
+		err := nodeData.HttpServerFunction(stream)
 		if err != nil {
 			if h.OnError != nil {
 				h.OnError(err)
@@ -66,7 +69,7 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for i := 0; i < len(nodeData.After); i++ {
-		err := nodeData.After[i](&tool)
+		err := nodeData.After[i](stream)
 		if err != nil {
 			if h.OnError != nil {
 				h.OnError(err)

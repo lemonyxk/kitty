@@ -1,9 +1,6 @@
 package main
 
 import (
-	"os"
-	"syscall"
-
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
@@ -30,7 +27,7 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) func() *exception.Error {
-			return exception.New(t.End(syscall.Kill(os.Getpid(), syscall.SIGINT)))
+			return exception.New(t.End("hello world!"))
 		})
 	})
 

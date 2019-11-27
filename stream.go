@@ -354,9 +354,11 @@ func (stream *Stream) Url() *URL {
 		scheme = "https"
 	}
 
+	var host = stream.Host()
+
 	buff.WriteString(scheme)
 	buff.WriteString("://")
-	buff.WriteString(stream.Request.Host)
+	buff.WriteString(host)
 	buff.WriteString(stream.Request.URL.Path)
 	buff.WriteString(stream.Request.URL.RawQuery)
 	if stream.Request.URL.Fragment != "" {
@@ -368,7 +370,7 @@ func (stream *Stream) Url() *URL {
 
 	stream.url.Url = buff.String()
 	stream.url.Scheme = scheme
-	stream.url.Host = stream.Request.Host
+	stream.url.Host = host
 	stream.url.Path = stream.Request.URL.Path
 	stream.url.QueryString = stream.Request.URL.RawQuery
 	stream.url.Fragment = stream.Request.URL.Fragment

@@ -108,7 +108,7 @@ func (conn *WebSocket) JsonFormat(fd uint32, msg JsonPackage) error {
 	return conn.socket.JsonFormat(fd, msg)
 }
 
-func (conn *WebSocket) JsonFormatAll(fd uint32, msg JsonPackage) {
+func (conn *WebSocket) JsonFormatAll(msg JsonPackage) {
 	conn.socket.JsonFormatAll(msg)
 }
 

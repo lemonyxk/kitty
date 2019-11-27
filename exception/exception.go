@@ -44,6 +44,16 @@ func Panic(err interface{}) {
 	panic(string(debug.Stack()))
 }
 
+func Check(err ...interface{}) func() *Error {
+	if len(err) == 0 {
+		return nil
+	}
+	if err[len(err)-1] == nil {
+		return nil
+	}
+	return newErrorFromDeep(err[len(err)-1], 2)
+}
+
 func New(err ...interface{}) func() *Error {
 	if len(err) == 0 {
 		return nil

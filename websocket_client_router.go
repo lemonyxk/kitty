@@ -169,7 +169,7 @@ type WebSocketClientRouter struct {
 func (router *WebSocketClientRouter) GetAllRouters() []*WebSocketClientNode {
 	var res []*WebSocketClientNode
 	var tires = router.tire.GetAllValue()
-	for i := 0; i < len(router.tire.GetAllValue()); i++ {
+	for i := 0; i < len(tires); i++ {
 		res = append(res, tires[i].Data.(*WebSocketClientNode))
 	}
 	return res

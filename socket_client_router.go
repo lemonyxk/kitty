@@ -174,7 +174,7 @@ type SocketClientRouter struct {
 func (router *SocketClientRouter) GetAllRouters() []*SocketClientNode {
 	var res []*SocketClientNode
 	var tires = router.tire.GetAllValue()
-	for i := 0; i < len(router.tire.GetAllValue()); i++ {
+	for i := 0; i < len(tires); i++ {
 		res = append(res, tires[i].Data.(*SocketClientNode))
 	}
 	return res

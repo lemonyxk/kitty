@@ -213,7 +213,7 @@ type HttpServerRouter struct {
 func (router *HttpServerRouter) GetAllRouters() []*httpServerNode {
 	var res []*httpServerNode
 	var tires = router.tire.GetAllValue()
-	for i := 0; i < len(router.tire.GetAllValue()); i++ {
+	for i := 0; i < len(tires); i++ {
 		res = append(res, tires[i].Data.(*httpServerNode))
 	}
 	return res

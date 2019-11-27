@@ -180,7 +180,7 @@ func (router *WebSocketServerRouter) Group(path string) *WebSocketServerGroup {
 func (router *WebSocketServerRouter) GetAllRouters() []*WebSocketServerNode {
 	var res []*WebSocketServerNode
 	var tires = router.tire.GetAllValue()
-	for i := 0; i < len(router.tire.GetAllValue()); i++ {
+	for i := 0; i < len(tires); i++ {
 		res = append(res, tires[i].Data.(*WebSocketServerNode))
 	}
 	return res

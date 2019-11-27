@@ -112,6 +112,15 @@ func (v *Value) String() string {
 	}
 }
 
+func (v *Value) Bool() bool {
+	switch v.v.(type) {
+	case bool:
+		return v.v.(bool)
+	default:
+		return strings.ToUpper(v.String()) == "TRUE"
+	}
+}
+
 func (stream *Stream) SetHeader(header string, content string) {
 	stream.Response.Header().Set(header, content)
 }
@@ -372,16 +381,8 @@ func (q *Query) Has(key string) bool {
 	return ok
 }
 
-func (q *Query) IsStringEmpty(key string) bool {
-	return q.Get(key).String() == ""
-}
-
-func (q *Query) IsIntEmpty(key string) bool {
-	return q.Get(key).Int() == 0
-}
-
-func (q *Query) IsFloatEmpty(key string) bool {
-	return q.Get(key).Float64() == 0
+func (q *Query) IsEmpty(key string) bool {
+	return q.Get(key).v == nil
 }
 
 func (q *Query) Get(key string) *Value {

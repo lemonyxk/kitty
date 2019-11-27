@@ -42,6 +42,18 @@ func (r *Result) String() string {
 	return r.data.ToString()
 }
 
+func (r *Result) Int() int {
+	return r.data.ToInt()
+}
+
+func (r *Result) Float64() float64 {
+	return r.data.ToFloat64()
+}
+
+func (r *Result) Bool() bool {
+	return r.data.ToBool()
+}
+
 func (r *Result) Array() *Array {
 	var result []jsoniter.Any
 	var val = r.data

@@ -104,12 +104,16 @@ func (conn *WebSocket) Push(fd uint32, messageType int, msg []byte) error {
 	return conn.socket.Push(fd, messageType, msg)
 }
 
-func (conn *WebSocket) Json(fd uint32, msg interface{}) error {
-	return conn.socket.Json(fd, msg)
-}
-
 func (conn *WebSocket) JsonFormat(fd uint32, msg JsonPackage) error {
 	return conn.socket.JsonFormat(fd, msg)
+}
+
+func (conn *WebSocket) JsonFormatAll(fd uint32, msg JsonPackage) {
+	conn.socket.JsonFormatAll(msg)
+}
+
+func (conn *WebSocket) Json(fd uint32, msg interface{}) error {
+	return conn.socket.Json(fd, msg)
 }
 
 func (conn *WebSocket) ProtoBuf(fd uint32, msg proto.Message) error {

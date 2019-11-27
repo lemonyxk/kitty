@@ -12,11 +12,10 @@ import (
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
-type ErrorFunction func(err func() *exception.Error)
-
 type HttpServer struct {
-	OnError ErrorFunction
-	router  *HttpServerRouter
+	OnError   func(err func() *exception.Error)
+	OnMessage func(w http.ResponseWriter, r *http.Request)
+	router    *HttpServerRouter
 }
 
 func (h *HttpServer) Ready() {
@@ -24,6 +23,10 @@ func (h *HttpServer) Ready() {
 }
 
 func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
+
+	if h.OnMessage != nil {
+		go h.OnMessage(w, r)
+	}
 
 	// Get the router
 	node, formatPath := h.router.getRoute(r.Method, r.URL.Path)

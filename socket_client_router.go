@@ -20,7 +20,7 @@ import (
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
-type SocketClientGroupFunction func(route *SocketClientRoute)
+type SocketClientGroupFunction func(handler *SocketClientRouteHandler)
 
 type SocketClientFunction func(c *SocketClient, receive *Receive) func() *exception.Error
 
@@ -62,12 +62,15 @@ func (group *SocketClientGroup) After(after ...SocketClientAfter) *SocketClientG
 }
 
 func (group *SocketClientGroup) Handler(fn SocketClientGroupFunction) {
-	if group.path == "" {
-		panic("group path can not empty")
-	}
-	var route = new(SocketClientRoute)
-	route.group = group
-	fn(route)
+	fn(&SocketClientRouteHandler{group: group})
+}
+
+type SocketClientRouteHandler struct {
+	group *SocketClientGroup
+}
+
+func (handler *SocketClientRouteHandler) Route(path string) *SocketClientRoute {
+	return &SocketClientRoute{path: path, group: handler.group}
 }
 
 type SocketClientRoute struct {
@@ -79,11 +82,6 @@ type SocketClientRoute struct {
 	passAfter   bool
 	forceAfter  bool
 	group       *SocketClientGroup
-}
-
-func (route *SocketClientRoute) Route(path string) *SocketClientRoute {
-	route.path = path
-	return route
 }
 
 func (route *SocketClientRoute) Before(before ...SocketClientBefore) *SocketClientRoute {

@@ -20,7 +20,7 @@ import (
 	"github.com/Lemo-yxk/tire"
 )
 
-type SocketServerGroupFunction func(route *SocketServerRoute)
+type SocketServerGroupFunction func(handler *SocketServerRouteHandler)
 
 type SocketServerFunction func(conn *Socket, receive *Receive) func() *exception.Error
 
@@ -65,9 +65,16 @@ func (group *SocketServerGroup) Handler(fn SocketServerGroupFunction) {
 	if group.path == "" {
 		panic("group path can not empty")
 	}
-	var route = new(SocketServerRoute)
-	route.group = group
-	fn(route)
+
+	fn(&SocketServerRouteHandler{group: group})
+}
+
+type SocketServerRouteHandler struct {
+	group *SocketServerGroup
+}
+
+func (handler *SocketServerRouteHandler) Route(path string) *SocketServerRoute {
+	return &SocketServerRoute{path: path, group: handler.group}
 }
 
 type SocketServerRoute struct {
@@ -80,11 +87,6 @@ type SocketServerRoute struct {
 	passAfter   bool
 	forceAfter  bool
 	group       *SocketServerGroup
-}
-
-func (route *SocketServerRoute) Route(path string) *SocketServerRoute {
-	route.path = path
-	return route
 }
 
 func (route *SocketServerRoute) Before(before ...SocketServerBefore) *SocketServerRoute {

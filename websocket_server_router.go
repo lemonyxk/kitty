@@ -10,7 +10,7 @@ import (
 	"github.com/Lemo-yxk/tire"
 )
 
-type WebSocketServerGroupFunction func(route *WebSocketServerRoute)
+type WebSocketServerGroupFunction func(handler *WebSocketServerRouteHandler)
 
 type WebSocketServerFunction func(conn *WebSocket, receive *Receive) func() *exception.Error
 
@@ -55,9 +55,16 @@ func (group *WebSocketServerGroup) Handler(fn WebSocketServerGroupFunction) {
 	if group.path == "" {
 		panic("group path can not empty")
 	}
-	var route = new(WebSocketServerRoute)
-	route.group = group
-	fn(route)
+
+	fn(&WebSocketServerRouteHandler{group: group})
+}
+
+type WebSocketServerRouteHandler struct {
+	group *WebSocketServerGroup
+}
+
+func (handler *WebSocketServerRouteHandler) Route(path string) *WebSocketServerRoute {
+	return &WebSocketServerRoute{path: path, group: handler.group}
 }
 
 type WebSocketServerRoute struct {
@@ -70,11 +77,6 @@ type WebSocketServerRoute struct {
 	passAfter   bool
 	forceAfter  bool
 	group       *WebSocketServerGroup
-}
-
-func (route *WebSocketServerRoute) Route(path string) *WebSocketServerRoute {
-	route.path = path
-	return route
 }
 
 func (route *WebSocketServerRoute) Before(before ...WebSocketServerBefore) *WebSocketServerRoute {

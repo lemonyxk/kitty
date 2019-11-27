@@ -22,7 +22,7 @@ import (
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
-type HttpServerGroupFunction func(route *HttpServerRoute)
+type HttpServerGroupFunction func(handler *HttpServerRouteHandler)
 
 type HttpServerFunction func(t *Stream) func() *exception.Error
 
@@ -69,9 +69,39 @@ func (group *HttpServerGroup) Handler(fn HttpServerGroupFunction) {
 		panic("group path can not empty")
 	}
 
-	var route = new(HttpServerRoute)
-	route.group = group
-	fn(route)
+	fn(&HttpServerRouteHandler{group: group})
+}
+
+type HttpServerRouteHandler struct {
+	group *HttpServerGroup
+}
+
+func (handler *HttpServerRouteHandler) Route(method string, path string) *HttpServerRoute {
+	return &HttpServerRoute{path: path, method: method, group: handler.group}
+}
+
+func (handler *HttpServerRouteHandler) Get(path string) *HttpServerRoute {
+	return handler.Route("GET", path)
+}
+
+func (handler *HttpServerRouteHandler) Post(path string) *HttpServerRoute {
+	return handler.Route("POST", path)
+}
+
+func (handler *HttpServerRouteHandler) Delete(path string) *HttpServerRoute {
+	return handler.Route("DELETE", path)
+}
+
+func (handler *HttpServerRouteHandler) Put(path string) *HttpServerRoute {
+	return handler.Route("PUT", path)
+}
+
+func (handler *HttpServerRouteHandler) Patch(path string) *HttpServerRoute {
+	return handler.Route("PATCH", path)
+}
+
+func (handler *HttpServerRouteHandler) Option(path string) *HttpServerRoute {
+	return handler.Route("OPTION", path)
 }
 
 type HttpServerRoute struct {
@@ -84,36 +114,6 @@ type HttpServerRoute struct {
 	passAfter   bool
 	forceAfter  bool
 	group       *HttpServerGroup
-}
-
-func (route *HttpServerRoute) Route(method string, path string) *HttpServerRoute {
-	route.path = path
-	route.method = method
-	return route
-}
-
-func (route *HttpServerRoute) Get(path string) *HttpServerRoute {
-	return route.Route("GET", path)
-}
-
-func (route *HttpServerRoute) Post(path string) *HttpServerRoute {
-	return route.Route("POST", path)
-}
-
-func (route *HttpServerRoute) Delete(path string) *HttpServerRoute {
-	return route.Route("DELETE", path)
-}
-
-func (route *HttpServerRoute) Put(path string) *HttpServerRoute {
-	return route.Route("PUT", path)
-}
-
-func (route *HttpServerRoute) Patch(path string) *HttpServerRoute {
-	return route.Route("PATCH", path)
-}
-
-func (route *HttpServerRoute) Option(path string) *HttpServerRoute {
-	return route.Route("OPTION", path)
 }
 
 func (route *HttpServerRoute) Before(before ...HttpServerBefore) *HttpServerRoute {

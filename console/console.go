@@ -8,39 +8,36 @@ import (
 	"time"
 
 	"github.com/Lemo-yxk/lemo/exception"
-
-	"github.com/gookit/color"
 )
 
-const DEBUG int = 1
-const LOG int = 2
+type Content []interface{}
 
-var debug = false
-var log = false
+var (
+	debug      = true
+	e          = true
+	log        = false
+	debugColor = FgBlue
+	errorColor = FgRed
+)
 
 func SetDebug(v bool) {
 	debug = v
+}
+
+func SetError(v bool) {
+	e = v
 }
 
 func SetLog(v bool) {
 	log = v
 }
 
-func SetFlag(flag int) {
-	switch flag {
-	case 3:
-		debug = true
-		log = true
-	case 2:
-		log = true
-	case 1:
-		debug = true
-	case 0:
-		debug = false
-		log = false
-	default:
-		return
-	}
+func SetDebugColor(color Color) {
+	debugColor = color
+}
+
+func SetErrorColor(color Color) {
+	errorColor = color
 }
 
 type Logger struct {
@@ -52,18 +49,17 @@ type Logger struct {
 var logger *Logger
 
 func init() {
-
 	logger = new(Logger)
 
 	SetDebug(true)
 	SetLog(false)
 
 	SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
-		color.Blue.Println(append([]interface{}{time.Now().Format("2006-01-02 15:04:05") + " " + file + ":" + strconv.Itoa(line) + " "}, v...)...)
+		debugColor.Println(append(Content{time.Now().Format("2006-01-02 15:04:05") + " " + file + ":" + strconv.Itoa(line) + " "}, v...)...)
 	})
 
 	SetErrorHook(func(err *exception.Error) {
-		color.Red.Println(err.Time.Format("2006-01-02 15:04:05") + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Message)
+		errorColor.Println(err.Time.Format("2006-01-02 15:04:05") + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Message)
 	})
 
 	SetLogHook(nil)
@@ -87,11 +83,10 @@ func SetLogHook(fn func(status string, t time.Time, file string, line int, v ...
 }
 
 func Println(v ...interface{}) {
-	color.Println(v...)
+	fmt.Println(v...)
 }
 
 func Log(v ...interface{}) {
-
 	_, file, line, ok := runtime.Caller(1)
 	if !ok {
 		return
@@ -99,7 +94,7 @@ func Log(v ...interface{}) {
 
 	var t = time.Now()
 
-	if debug {
+	if debug && logger.debugHook != nil {
 		logger.debugHook(t, file, line, v...)
 	}
 
@@ -118,23 +113,21 @@ func Error(err interface{}) {
 			return
 		}
 
-		if debug {
+		if e && logger.errorHook != nil {
 			logger.errorHook(res)
 		}
 
 		if log && logger.logHook != nil {
 			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Message)
 		}
-
 	case *exception.Error:
-
 		var res = err.(*exception.Error)
 
 		if res == nil {
 			return
 		}
 
-		if debug {
+		if e && logger.errorHook != nil {
 			logger.errorHook(res)
 		}
 
@@ -142,7 +135,6 @@ func Error(err interface{}) {
 			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Message)
 		}
 	default:
-
 		_, file, line, ok := runtime.Caller(1)
 		if !ok {
 			return
@@ -150,14 +142,12 @@ func Error(err interface{}) {
 
 		var t = time.Now()
 
-		if debug {
+		if e && logger.errorHook != nil {
 			logger.errorHook(&exception.Error{Time: t, File: file, Line: line, Message: fmt.Sprintf("%s", err)})
 		}
 
 		if log && logger.logHook != nil {
 			logger.logHook("ERROR", t, file, line, err)
 		}
-
 	}
-
 }

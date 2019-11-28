@@ -10,7 +10,11 @@
 
 package console
 
-import "github.com/jedib0t/go-pretty/text"
+import (
+	"fmt"
+
+	"github.com/jedib0t/go-pretty/text"
+)
 
 type Color int
 
@@ -77,5 +81,9 @@ const (
 )
 
 func (c Color) Println(v ...interface{}) {
-	Println(text.Color(c).Sprint(v...))
+	Printf("%s", text.Color(c).Sprint(fmt.Sprintln(v...)))
+}
+
+func (c Color) Printf(format string, v ...interface{}) {
+	Printf("%s", text.Color(c).Sprintf(format, v...))
 }

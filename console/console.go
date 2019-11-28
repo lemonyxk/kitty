@@ -86,6 +86,10 @@ func Println(v ...interface{}) {
 	fmt.Println(v...)
 }
 
+func Printf(format string, v ...interface{}) {
+	fmt.Printf(format, v...)
+}
+
 func Log(v ...interface{}) {
 	_, file, line, ok := runtime.Caller(1)
 	if !ok {

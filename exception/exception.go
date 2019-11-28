@@ -12,11 +12,12 @@ package exception
 
 import (
 	"fmt"
-	"runtime"
 	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Lemo-yxk/lemo/caller"
 )
 
 type Error struct {
@@ -91,10 +92,7 @@ func newErrorFromDeep(err interface{}, deep int) func() *Error {
 		return nil
 	}
 
-	_, file, line, ok := runtime.Caller(deep)
-	if !ok {
-		return nil
-	}
+	file, line := caller.RuntimeCaller(deep)
 
 	switch err.(type) {
 	case error:

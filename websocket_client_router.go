@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/exception"
 
 	"github.com/Lemo-yxk/tire"
@@ -115,7 +116,7 @@ func (route *WebSocketClientRoute) Handler(fn WebSocketClientFunction) {
 		panic("route path can not empty")
 	}
 
-	_, file, line, _ := runtime.Caller(1)
+	file, line := caller.RuntimeCaller(1)
 
 	var router = route.group.router
 	var group = route.group

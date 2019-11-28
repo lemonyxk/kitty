@@ -3,10 +3,10 @@ package console
 import (
 	"fmt"
 	"os"
-	"runtime"
 	"strconv"
 	"time"
 
+	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
@@ -52,6 +52,7 @@ func init() {
 	logger = new(Logger)
 
 	SetDebug(true)
+	SetError(true)
 	SetLog(false)
 
 	SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
@@ -91,10 +92,7 @@ func Printf(format string, v ...interface{}) {
 }
 
 func Log(v ...interface{}) {
-	_, file, line, ok := runtime.Caller(1)
-	if !ok {
-		return
-	}
+	file, line := caller.RuntimeCaller(1)
 
 	var t = time.Now()
 
@@ -139,10 +137,7 @@ func Error(err interface{}) {
 			logger.logHook("ERROR", res.Time, res.File, res.Line, res.Message)
 		}
 	default:
-		_, file, line, ok := runtime.Caller(1)
-		if !ok {
-			return
-		}
+		file, line := caller.RuntimeCaller(1)
 
 		var t = time.Now()
 

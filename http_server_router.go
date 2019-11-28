@@ -13,12 +13,12 @@ package lemo
 import (
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 
 	"github.com/Lemo-yxk/tire"
 
+	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
@@ -152,7 +152,7 @@ func (route *HttpServerRoute) Handler(fn HttpServerFunction) {
 		panic("route path or method can not empty")
 	}
 
-	_, file, line, _ := runtime.Caller(1)
+	file, line := caller.runtimeCaller(1)
 
 	var group = route.group
 

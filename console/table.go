@@ -38,13 +38,13 @@ func (t *table) Footer(v ...interface{}) *table {
 	return t
 }
 
-func (t *table) SortByName(name string, mode int) *table {
-	t.write.SortBy([]tab.SortBy{{Name: name, Mode: tab.SortMode(mode)}})
+func (t *table) SortByName(name string, mode tab.SortMode) *table {
+	t.write.SortBy([]tab.SortBy{{Name: name, Mode: mode}})
 	return t
 }
 
-func (t *table) SortByNumber(number int, mode int) *table {
-	t.write.SortBy([]tab.SortBy{{Number: number, Mode: tab.SortMode(mode)}})
+func (t *table) SortByNumber(number int, mode tab.SortMode) *table {
+	t.write.SortBy([]tab.SortBy{{Number: number, Mode: mode}})
 	return t
 }
 

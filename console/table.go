@@ -12,14 +12,14 @@ package console
 
 import tab "github.com/jedib0t/go-pretty/table"
 
-var Asc = tab.Asc
-var Dec = tab.Dsc
+const Asc = tab.Asc
+const Dec = tab.Dsc
 
 type table struct {
 	write tab.Writer
 }
 
-func New() *table {
+func NewTable() *table {
 	return &table{tab.NewWriter()}
 }
 

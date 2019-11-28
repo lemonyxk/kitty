@@ -152,7 +152,7 @@ func (route *HttpServerRoute) Handler(fn HttpServerFunction) {
 		panic("route path or method can not empty")
 	}
 
-	file, line := caller.runtimeCaller(1)
+	file, line := caller.RuntimeCaller(1)
 
 	var group = route.group
 

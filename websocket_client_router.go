@@ -1,7 +1,6 @@
 package lemo
 
 import (
-	"runtime"
 	"strconv"
 	"strings"
 

@@ -379,7 +379,7 @@ func (socket *WebSocketServer) Ready() {
 
 	if socket.OnError == nil {
 		socket.OnError = func(err func() *exception.Error) {
-			println(err())
+			println(err().String())
 		}
 	}
 

@@ -36,7 +36,7 @@ type Context interface{}
 func (handler *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Match the websocket router
-	if handler.socketHandler != nil && handler.socketHandler.CheckPath(r.URL.Path, handler.socketHandler.Path) {
+	if handler.socketHandler != nil && r.Method == http.MethodGet && handler.socketHandler.CheckPath(r.URL.Path, handler.socketHandler.Path) {
 		handler.socketHandler.process(w, r)
 		return
 	}

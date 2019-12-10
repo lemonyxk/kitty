@@ -28,7 +28,7 @@ func (s str) Join(v []interface{}, sep string) string {
 		case string:
 			buf.WriteString(v[i].(string))
 		default:
-			buf.WriteString(fmt.Sprintf("%s", v[i]))
+			buf.WriteString(fmt.Sprintf("%v", v[i]))
 		}
 		if i != len(v)-1 {
 			buf.WriteString(sep)

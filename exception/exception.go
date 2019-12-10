@@ -105,7 +105,7 @@ func newErrorFromDeep(err interface{}, deep int) func() *Error {
 		}
 	default:
 		return func() *Error {
-			return &Error{time.Now(), file, line, fmt.Sprintf("%s", err)}
+			return &Error{time.Now(), file, line, fmt.Sprintf("%v", err)}
 		}
 	}
 

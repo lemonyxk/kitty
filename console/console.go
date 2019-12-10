@@ -168,7 +168,7 @@ func Error(err interface{}) {
 		var t = time.Now()
 
 		if output && logger.errorHook != nil {
-			logger.errorHook(&exception.Error{Time: t, File: file, Line: line, Message: fmt.Sprintf("%s", err)})
+			logger.errorHook(&exception.Error{Time: t, File: file, Line: line, Message: fmt.Sprintf("%v", err)})
 		}
 
 		if hook && logger.hook != nil {

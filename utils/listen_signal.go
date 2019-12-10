@@ -16,7 +16,11 @@ import (
 	"syscall"
 )
 
-func ListenSignal(fn func(sig os.Signal)) {
+type sig int
+
+const Signal sig = iota
+
+func (s sig) Listen(fn func(sig os.Signal)) {
 	// 创建信号
 	signalChan := make(chan os.Signal, 1)
 	// 通知

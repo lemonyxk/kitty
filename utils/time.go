@@ -14,24 +14,28 @@ import (
 	"time"
 )
 
+type ti int
+
+const Time ti = iota
+
 const format = "2006-01-02 15:04:05"
 
-func FormatNow() string {
+func (_ ti) FormatNow() string {
 	return time.Now().Format(format)
 }
 
-func FormatTime(t time.Time) string {
+func (_ ti) FormatTime(t time.Time) string {
 	return t.Format(format)
 }
 
-func FormatTimestamp(timestamp int) string {
-	return ParseTimestamp(timestamp).Format(format)
+func (t ti) FormatTimestamp(timestamp int) string {
+	return t.ParseTimestamp(timestamp).Format(format)
 }
 
-func ParseTimeString(timestamp string) (time.Time, error) {
+func (_ ti) ParseTimeString(timestamp string) (time.Time, error) {
 	return time.Parse(format, timestamp)
 }
 
-func ParseTimestamp(timestamp int) time.Time {
+func (_ ti) ParseTimestamp(timestamp int) time.Time {
 	return time.Unix(int64(timestamp), 0)
 }

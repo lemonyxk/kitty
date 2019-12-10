@@ -14,7 +14,11 @@ import (
 	"github.com/json-iterator/go"
 )
 
-func JsonEncode(v interface{}) []byte {
+type json int
+
+const Json json = iota
+
+func (j json) JsonEncode(v interface{}) []byte {
 	res, err := jsoniter.Marshal(v)
 	if err != nil {
 		return nil
@@ -22,7 +26,7 @@ func JsonEncode(v interface{}) []byte {
 	return res
 }
 
-func JsonDecode(data []byte, output interface{}) error {
+func (j json) JsonDecode(data []byte, output interface{}) error {
 	return jsoniter.Unmarshal(data, output)
 }
 
@@ -34,7 +38,7 @@ type Array struct {
 	data []jsoniter.Any
 }
 
-func JsonPath(data []byte, path ...interface{}) *Result {
+func (j json) JsonPath(data []byte, path ...interface{}) *Result {
 	return &Result{data: jsoniter.Get(data, path...)}
 }
 

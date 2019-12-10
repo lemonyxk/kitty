@@ -15,7 +15,11 @@ import (
 	"encoding/hex"
 )
 
-func Md5(input []byte) string {
+type crypto int
+
+const Crypto crypto = iota
+
+func (c crypto) Md5(input []byte) string {
 	var byte16 = md5.Sum(input)
 	var bytes = make([]byte, 16)
 	for i := 0; i < 16; i++ {

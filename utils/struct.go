@@ -16,7 +16,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-func StructToMap(input interface{}) map[string]interface{} {
+type data int
+
+const Data data = iota
+
+func (d data) StructToMap(input interface{}) map[string]interface{} {
 	var output = make(map[string]interface{})
 
 	if input == nil {
@@ -43,6 +47,6 @@ func StructToMap(input interface{}) map[string]interface{} {
 	return output
 }
 
-func MapToStruct(input interface{}, output interface{}) error {
+func (d data) MapToStruct(input interface{}, output interface{}) error {
 	return mapstructure.WeakDecode(input, output)
 }

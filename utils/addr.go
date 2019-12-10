@@ -8,7 +8,11 @@ import (
 
 var defaultIP = ""
 
-func GetLocalhostIp() string {
+type addr int
+
+const Addr addr = iota
+
+func (a addr) GetLocalhostIp() string {
 
 	if defaultIP != "" {
 		return defaultIP
@@ -35,7 +39,7 @@ func GetLocalhostIp() string {
 	return defaultIP
 }
 
-func Ip2long(ipStr string) uint32 {
+func (a addr) Ip2long(ipStr string) uint32 {
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
 		return 0
@@ -44,8 +48,8 @@ func Ip2long(ipStr string) uint32 {
 	return binary.BigEndian.Uint32(ip)
 }
 
-func IsLocalIP(ip string) bool {
-	return IsLocalNet(net.ParseIP(ip))
+func (a addr) IsLocalIP(ip string) bool {
+	return a.IsLocalNet(net.ParseIP(ip))
 }
 
 var localNetworks = []string{
@@ -70,7 +74,7 @@ var localNetworks = []string{
 	"192.168.0.0/16",
 }
 
-func IsLocalNet(ip net.IP) bool {
+func (a addr) IsLocalNet(ip net.IP) bool {
 
 	for i := 0; i < len(localNetworks); i++ {
 		if strings.Contains(localNetworks[i], ip.String()) {

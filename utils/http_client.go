@@ -23,6 +23,10 @@ import (
 	"github.com/json-iterator/go"
 )
 
+type hc int
+
+const HttpClient hc = iota
+
 var dial = net.Dialer{
 	Timeout:   30 * time.Second,
 	KeepAlive: 30 * time.Second,
@@ -174,7 +178,7 @@ type httpClient struct {
 	dial        *net.Dialer
 }
 
-func NewHttpClient() *httpClient {
+func (h hc) New() *httpClient {
 	return &httpClient{
 		client:    &http.Client{},
 		transport: &http.Transport{},
@@ -182,7 +186,7 @@ func NewHttpClient() *httpClient {
 	}
 }
 
-func Post(url string) *httpClient {
+func (h hc) Post(url string) *httpClient {
 	return &httpClient{
 		method:    http.MethodPost,
 		url:       url,
@@ -192,7 +196,7 @@ func Post(url string) *httpClient {
 	}
 }
 
-func Get(url string) *httpClient {
+func (h hc) Get(url string) *httpClient {
 	return &httpClient{
 		method:    http.MethodGet,
 		url:       url,

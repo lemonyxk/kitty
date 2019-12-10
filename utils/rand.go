@@ -19,8 +19,12 @@ import (
 	"time"
 )
 
+type rd int
+
+const Rand rd = iota
+
 // [begin,end]
-func RandomInt(start int, end int) int {
+func (r rd) RandomInt(start int, end int) int {
 	if start > end {
 		panic("start can not bigger than end")
 	}
@@ -29,7 +33,7 @@ func RandomInt(start int, end int) int {
 	return int(randomNumber.Int64()) + start
 }
 
-func UUID() string {
+func (r rd) UUID() string {
 	var bytes = make([]byte, 16)
 	if _, err := io.ReadFull(rand.Reader, bytes); err != nil {
 		return ""
@@ -37,7 +41,7 @@ func UUID() string {
 	return hex.EncodeToString(bytes)
 }
 
-func OrderID() string {
+func (r rd) OrderID() string {
 	var t = time.Now()
-	return strconv.FormatInt(t.UnixNano(), 10) + strconv.Itoa(RandomInt(10000, 99999))
+	return strconv.FormatInt(t.UnixNano(), 10) + strconv.Itoa(r.RandomInt(10000, 99999))
 }

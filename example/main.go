@@ -16,7 +16,7 @@ func main() {
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *lemo.WebSocketServerRouteHandler) {
 		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) func() *exception.Error {
-			console.Log("hello world")
+			console.Debug("hello world")
 			return nil
 		})
 	})

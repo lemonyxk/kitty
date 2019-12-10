@@ -9,7 +9,5 @@ require (
 	github.com/gorilla/websocket v1.4.1
 	github.com/jedib0t/go-pretty v4.3.0+incompatible
 	github.com/json-iterator/go v1.1.8
-	github.com/mattn/go-runewidth v0.0.6 // indirect
-	github.com/mitchellh/mapstructure v1.1.2
-	golang.org/x/sys v0.0.0-20191127021746-63cb32ae39b2 // indirect
+	github.com/mattn/go-runewidth v0.0.7 // indirect
 )

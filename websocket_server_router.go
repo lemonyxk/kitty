@@ -115,7 +115,7 @@ func (route *WebSocketServerRoute) Handler(fn WebSocketServerFunction) {
 		panic("route path can not empty")
 	}
 
-	file, line := caller.RuntimeCaller(1)
+	file, line := caller.Caller(1)
 
 	var router = route.group.router
 	var group = route.group

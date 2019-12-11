@@ -10,13 +10,52 @@
 
 package console
 
-import tab "github.com/jedib0t/go-pretty/table"
+import (
+	list2 "github.com/jedib0t/go-pretty/list"
+	tab "github.com/jedib0t/go-pretty/table"
+)
 
 const Asc = tab.Asc
 const Dec = tab.Dsc
 
 type table struct {
 	write tab.Writer
+}
+
+type list struct {
+	write list2.Writer
+}
+
+func NewList() *list {
+	return &list{list2.NewWriter()}
+}
+
+func (l *list) AppendItem(v interface{}) *list {
+	l.write.AppendItem(v)
+	return l
+}
+
+func (l *list) AppendItems(v ...interface{}) *list {
+	l.write.AppendItems(v)
+	return l
+}
+
+func (l *list) Render() string {
+	return l.write.Render()
+}
+
+func (l *list) Indent() *list {
+	l.write.Indent()
+	return l
+}
+
+func (l *list) UnIndent() *list {
+	l.write.UnIndent()
+	return l
+}
+
+func (l *list) Length() int {
+	return l.write.Length()
 }
 
 func NewTable() *table {

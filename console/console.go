@@ -88,7 +88,7 @@ func Printf(format string, v ...interface{}) {
 }
 
 func Warning(v ...interface{}) {
-	file, line := caller.RuntimeCaller(1)
+	file, line := caller.Caller(1)
 
 	var t = time.Now()
 
@@ -102,7 +102,7 @@ func Warning(v ...interface{}) {
 }
 
 func Debug(v ...interface{}) {
-	file, line := caller.RuntimeCaller(1)
+	file, line := caller.Caller(1)
 
 	var t = time.Now()
 
@@ -116,7 +116,7 @@ func Debug(v ...interface{}) {
 }
 
 func Log(v ...interface{}) {
-	file, line := caller.RuntimeCaller(1)
+	file, line := caller.Caller(1)
 
 	var t = time.Now()
 
@@ -133,44 +133,51 @@ func Error(err interface{}) {
 
 	switch err.(type) {
 	case func() *exception.Error:
-		var res = err.(func() *exception.Error)()
+
+		var res = err.(func() *exception.Error)
 
 		if res == nil {
+			printDefault(res)
 			return
 		}
 
-		if output && logger.errorHook != nil {
-			logger.errorHook(res)
-		}
+		var r = res()
 
-		if hook && logger.hook != nil {
-			logger.hook("ERROR", res.Time, res.File, res.Line, res.Message)
-		}
+		printError(r)
 	case *exception.Error:
-		var res = err.(*exception.Error)
+		var r = err.(*exception.Error)
 
-		if res == nil {
+		if r == nil {
+			printDefault(r)
 			return
 		}
 
-		if output && logger.errorHook != nil {
-			logger.errorHook(res)
-		}
-
-		if hook && logger.hook != nil {
-			logger.hook("ERROR", res.Time, res.File, res.Line, res.Message)
-		}
+		printError(r)
 	default:
-		file, line := caller.RuntimeCaller(1)
+		printDefault(err)
+	}
+}
 
-		var t = time.Now()
+func printError(err *exception.Error) {
+	if output && logger.errorHook != nil {
+		logger.errorHook(err)
+	}
 
-		if output && logger.errorHook != nil {
-			logger.errorHook(&exception.Error{Time: t, File: file, Line: line, Message: fmt.Sprintf("%v", err)})
-		}
+	if hook && logger.hook != nil {
+		logger.hook("ERROR", err.Time, err.File, err.Line, err.Message)
+	}
+}
 
-		if hook && logger.hook != nil {
-			logger.hook("ERROR", t, file, line, err)
-		}
+func printDefault(err interface{}) {
+	file, line := caller.Caller(2)
+
+	var t = time.Now()
+
+	if output && logger.errorHook != nil {
+		logger.errorHook(&exception.Error{Time: t, File: file, Line: line, Message: fmt.Sprintf("%v", err)})
+	}
+
+	if hook && logger.hook != nil {
+		logger.hook("ERROR", t, file, line, err)
 	}
 }

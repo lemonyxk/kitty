@@ -2,11 +2,23 @@ package main
 
 import (
 	"github.com/Lemo-yxk/lemo"
+	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
 func main() {
+
+	exception.Try(func() {
+
+		panic(2)
+		exception.Assert(1)
+
+	}).Catch(func(err error, trace *caller.Trace) {
+		console.Log(2)
+		console.Error(err)
+		console.Println(trace)
+	})
 
 	var server = lemo.Server{Host: "0.0.0.0", Port: 8666}
 

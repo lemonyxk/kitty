@@ -36,10 +36,31 @@ func (err *Error) Error() string {
 }
 
 func (err *Error) String() string {
-	return fmt.Sprintf("LOG %s %s:%d %s \n", err.Time.Format("2006-01-02 15:04:05"), err.File, err.Line, err.Message)
+	return fmt.Sprintf("ERR %s %s:%d %s", err.Time.Format("2006-01-02 15:04:05"), err.File, err.Line, err.Message)
 }
 
-func Try(v ...interface{}) {
+type catch struct {
+	Catch func(func(err error, trace *caller.Trace))
+}
+
+func Try(fn func()) (c *catch) {
+	defer func() {
+		if err := recover(); err != nil {
+			var traces = caller.Stack()
+			c = &catch{Catch: func(f func(error, *caller.Trace)) {
+				f(fmt.Errorf("%v", err), traces)
+			}}
+		}
+	}()
+
+	fn()
+
+	return &catch{Catch: func(f func(err error, trace *caller.Trace)) {
+		f(nil, nil)
+	}}
+}
+
+func Assert(v ...interface{}) {
 	if len(v) == 0 {
 		return
 	}
@@ -96,7 +117,7 @@ func newErrorFromDeep(v interface{}, deep int) func() *Error {
 		return nil
 	}
 
-	file, line := caller.RuntimeCaller(deep)
+	file, line := caller.Caller(deep)
 
 	switch v.(type) {
 	case error:

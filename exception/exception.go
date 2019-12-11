@@ -34,7 +34,7 @@ var Empty = func() func() *Error {
 }
 
 func (err *Error) Error() string {
-	return err.String()
+	return err.Message
 }
 
 func (err *Error) String() string {

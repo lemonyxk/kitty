@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/console"
@@ -8,6 +10,10 @@ import (
 )
 
 func main() {
+
+	var e exception.ErrorFunc
+
+	log.Println(e)
 
 	exception.Try(func() {
 

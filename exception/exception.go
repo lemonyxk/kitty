@@ -27,18 +27,12 @@ type Error struct {
 
 type ErrorFunc func() *Error
 
-func (e ErrorFunc) Error() string {
-	if e != nil {
-		return e().Error()
-	}
-	return ""
+func (e *ErrorFunc) Error() string {
+	return (*e)().Error()
 }
 
-func (e ErrorFunc) String() string {
-	if e != nil {
-		return e().String()
-	}
-	return ""
+func (e *ErrorFunc) String() string {
+	return (*e)().String()
 }
 
 type CatchFunc func(err error, trace *caller.Trace) ErrorFunc

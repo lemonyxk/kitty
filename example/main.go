@@ -14,7 +14,7 @@ func main() {
 		panic(2)
 		exception.Assert(1)
 
-	}).Catch(func(err error, trace *caller.Trace) func() *exception.Error {
+	}).Catch(func(err error, trace *caller.Trace) exception.ErrorFunc {
 		console.Log(2)
 		console.Error(err)
 		console.Println(trace)
@@ -28,7 +28,7 @@ func main() {
 	var webSocketServerRouter = &lemo.WebSocketServerRouter{}
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *lemo.WebSocketServerRouteHandler) {
-		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) func() *exception.Error {
+		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) exception.ErrorFunc {
 			console.Debug("hello world")
 			return nil
 		})
@@ -39,7 +39,7 @@ func main() {
 	var httpServerRouter = &lemo.HttpServerRouter{}
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
-		handler.Get("/world").Handler(func(t *lemo.Stream) func() *exception.Error {
+		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
 			return exception.New(t.End("hello world!"))
 		})
 	})

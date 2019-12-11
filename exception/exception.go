@@ -25,9 +25,25 @@ type Error struct {
 	Message string
 }
 
-type CatchFn func(err error, trace *caller.Trace) func() *Error
+type ErrorFunc func() *Error
 
-var Empty = func() func() *Error {
+func (e ErrorFunc) Error() string {
+	if e != nil {
+		return e().Error()
+	}
+	return ""
+}
+
+func (e ErrorFunc) String() string {
+	if e != nil {
+		return e().String()
+	}
+	return ""
+}
+
+type CatchFunc func(err error, trace *caller.Trace) ErrorFunc
+
+var Empty = func() ErrorFunc {
 	return func() *Error {
 		return nil
 	}
@@ -42,14 +58,14 @@ func (err *Error) String() string {
 }
 
 type catch struct {
-	Catch func(CatchFn) func() *Error
+	Catch func(CatchFunc) ErrorFunc
 }
 
 func Try(fn func()) (c *catch) {
 	defer func() {
 		if err := recover(); err != nil {
 			var traces = caller.Stack()
-			c = &catch{Catch: func(f CatchFn) func() *Error {
+			c = &catch{Catch: func(f CatchFunc) ErrorFunc {
 				return f(fmt.Errorf("%v", err), traces)
 			}}
 		}
@@ -57,7 +73,7 @@ func Try(fn func()) (c *catch) {
 
 	fn()
 
-	return &catch{Catch: func(f CatchFn) func() *Error {
+	return &catch{Catch: func(f CatchFunc) ErrorFunc {
 		return f(nil, nil)
 	}}
 }
@@ -72,7 +88,7 @@ func Assert(v ...interface{}) {
 	panic(v[len(v)-1])
 }
 
-func Inspect(v ...interface{}) func() *Error {
+func Inspect(v ...interface{}) ErrorFunc {
 	if len(v) == 0 {
 		return nil
 	}
@@ -82,7 +98,7 @@ func Inspect(v ...interface{}) func() *Error {
 	return newErrorFromDeep(v[len(v)-1], 2)
 }
 
-func New(v ...interface{}) func() *Error {
+func New(v ...interface{}) ErrorFunc {
 	if len(v) == 0 {
 		return nil
 	}
@@ -113,7 +129,7 @@ func New(v ...interface{}) func() *Error {
 	return newErrorFromDeep(str[:len(str)-1], 2)
 }
 
-func newErrorFromDeep(v interface{}, deep int) func() *Error {
+func newErrorFromDeep(v interface{}, deep int) ErrorFunc {
 
 	if v == nil {
 		return nil

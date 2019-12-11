@@ -12,11 +12,11 @@ import (
 
 type WebSocketServerGroupFunction func(handler *WebSocketServerRouteHandler)
 
-type WebSocketServerFunction func(conn *WebSocket, receive *Receive) func() *exception.Error
+type WebSocketServerFunction func(conn *WebSocket, receive *Receive) exception.ErrorFunc
 
-type WebSocketServerBefore func(conn *WebSocket, receive *Receive) (Context, func() *exception.Error)
+type WebSocketServerBefore func(conn *WebSocket, receive *Receive) (Context, exception.ErrorFunc)
 
-type WebSocketServerAfter func(conn *WebSocket, receive *Receive) func() *exception.Error
+type WebSocketServerAfter func(conn *WebSocket, receive *Receive) exception.ErrorFunc
 
 var webSocketServerGlobalBefore []WebSocketServerBefore
 var webSocketServerGlobalAfter []WebSocketServerAfter

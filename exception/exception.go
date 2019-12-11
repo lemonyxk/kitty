@@ -25,6 +25,8 @@ type Error struct {
 	Message string
 }
 
+type CatchFn func(err error, trace *caller.Trace) func() *Error
+
 var Empty = func() func() *Error {
 	return func() *Error {
 		return nil
@@ -40,23 +42,23 @@ func (err *Error) String() string {
 }
 
 type catch struct {
-	Catch func(func(err error, trace *caller.Trace))
+	Catch func(CatchFn) func() *Error
 }
 
 func Try(fn func()) (c *catch) {
 	defer func() {
 		if err := recover(); err != nil {
 			var traces = caller.Stack()
-			c = &catch{Catch: func(f func(error, *caller.Trace)) {
-				f(fmt.Errorf("%v", err), traces)
+			c = &catch{Catch: func(f CatchFn) func() *Error {
+				return f(fmt.Errorf("%v", err), traces)
 			}}
 		}
 	}()
 
 	fn()
 
-	return &catch{Catch: func(f func(err error, trace *caller.Trace)) {
-		f(nil, nil)
+	return &catch{Catch: func(f CatchFn) func() *Error {
+		return f(nil, nil)
 	}}
 }
 

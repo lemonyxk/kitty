@@ -14,10 +14,11 @@ func main() {
 		panic(2)
 		exception.Assert(1)
 
-	}).Catch(func(err error, trace *caller.Trace) {
+	}).Catch(func(err error, trace *caller.Trace) func() *exception.Error {
 		console.Log(2)
 		console.Error(err)
 		console.Println(trace)
+		return exception.New(err)
 	})
 
 	var server = lemo.Server{Host: "0.0.0.0", Port: 8666}

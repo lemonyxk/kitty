@@ -42,7 +42,7 @@ type WebSocketClient struct {
 	OnOpen    func(c *WebSocketClient)
 	OnClose   func(c *WebSocketClient)
 	OnMessage func(c *WebSocketClient, messageType int, msg []byte)
-	OnError   func(err func() *exception.Error)
+	OnError   func(err exception.ErrorFunc)
 	Status    bool
 
 	Context interface{}

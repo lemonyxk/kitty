@@ -22,11 +22,11 @@ import (
 
 type SocketServerGroupFunction func(handler *SocketServerRouteHandler)
 
-type SocketServerFunction func(conn *Socket, receive *Receive) func() *exception.Error
+type SocketServerFunction func(conn *Socket, receive *Receive) exception.ErrorFunc
 
-type SocketServerBefore func(conn *Socket, receive *Receive) (Context, func() *exception.Error)
+type SocketServerBefore func(conn *Socket, receive *Receive) (Context, exception.ErrorFunc)
 
-type SocketServerAfter func(conn *Socket, receive *Receive) func() *exception.Error
+type SocketServerAfter func(conn *Socket, receive *Receive) exception.ErrorFunc
 
 var socketServerGlobalBefore []SocketServerBefore
 var socketServerGlobalAfter []SocketServerAfter

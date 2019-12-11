@@ -32,7 +32,7 @@ type WebSocketServer struct {
 	OnClose   func(fd uint32)
 	OnMessage func(conn *WebSocket, messageType int, msg []byte)
 	OnOpen    func(conn *WebSocket)
-	OnError   func(err func() *exception.Error)
+	OnError   func(err exception.ErrorFunc)
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -60,7 +60,7 @@ type WebSocketServer struct {
 	connBack chan error
 
 	// 错误
-	connError chan func() *exception.Error
+	connError chan exception.ErrorFunc
 
 	upgrade websocket.Upgrader
 
@@ -378,8 +378,8 @@ func (socket *WebSocketServer) Ready() {
 	}
 
 	if socket.OnError == nil {
-		socket.OnError = func(err func() *exception.Error) {
-			println(err().String())
+		socket.OnError = func(err exception.ErrorFunc) {
+			println(err)
 		}
 	}
 
@@ -425,7 +425,7 @@ func (socket *WebSocketServer) Ready() {
 	socket.connBack = make(chan error, socket.WaitQueueSize)
 
 	// 错误
-	socket.connError = make(chan func() *exception.Error, socket.WaitQueueSize)
+	socket.connError = make(chan exception.ErrorFunc, socket.WaitQueueSize)
 
 	go func() {
 		for {

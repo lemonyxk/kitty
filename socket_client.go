@@ -43,7 +43,7 @@ type SocketClient struct {
 	OnOpen    func(c *SocketClient)
 	OnClose   func(c *SocketClient)
 	OnMessage func(c *SocketClient, messageType int, msg []byte)
-	OnError   func(err func() *exception.Error)
+	OnError   func(err exception.ErrorFunc)
 	Status    bool
 
 	Context interface{}

@@ -94,7 +94,7 @@ type SocketServer struct {
 	OnClose   func(fd uint32)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
-	OnError   func(err func() *exception.Error)
+	OnError   func(err exception.ErrorFunc)
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -119,7 +119,7 @@ type SocketServer struct {
 	connBack chan error
 
 	// 错误
-	connError chan func() *exception.Error
+	connError chan exception.ErrorFunc
 
 	fd          uint32
 	count       uint32
@@ -237,8 +237,8 @@ func (socket *SocketServer) Ready() {
 	}
 
 	if socket.OnError == nil {
-		socket.OnError = func(err func() *exception.Error) {
-			println(err().Message)
+		socket.OnError = func(err exception.ErrorFunc) {
+			println(err)
 		}
 	}
 
@@ -273,7 +273,7 @@ func (socket *SocketServer) Ready() {
 	socket.connBack = make(chan error, socket.WaitQueueSize)
 
 	// 错误
-	socket.connError = make(chan func() *exception.Error, socket.WaitQueueSize)
+	socket.connError = make(chan exception.ErrorFunc, socket.WaitQueueSize)
 
 	go func() {
 		for {

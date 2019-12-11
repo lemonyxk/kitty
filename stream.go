@@ -125,7 +125,7 @@ func (stream *Stream) SetHeader(header string, content string) {
 	stream.Response.Header().Set(header, content)
 }
 
-func (stream *Stream) JsonFormat(status string, code int, msg interface{}) func() *exception.Error {
+func (stream *Stream) JsonFormat(status string, code int, msg interface{}) exception.ErrorFunc {
 	return exception.New(stream.Json(HttpJsonResponse{status, code, msg}))
 }
 

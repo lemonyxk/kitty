@@ -11,6 +11,7 @@
 package exception
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -27,12 +28,11 @@ type Error struct {
 
 type ErrorFunc func() *Error
 
-func (e *ErrorFunc) Error() string {
-	return (*e)().Error()
-}
-
-func (e *ErrorFunc) String() string {
-	return (*e)().String()
+func (err ErrorFunc) Error() error {
+	if err == nil {
+		return nil
+	}
+	return errors.New(err().Message)
 }
 
 type CatchFunc func(err error, trace *caller.Trace) ErrorFunc
@@ -133,17 +133,20 @@ func newErrorFromDeep(v interface{}, deep int) ErrorFunc {
 
 	switch v.(type) {
 	case error:
-		return func() *Error {
+		var e ErrorFunc = func() *Error {
 			return &Error{time.Now(), file, line, v.(error).Error()}
 		}
+		return e
 	case string:
-		return func() *Error {
+		var e ErrorFunc = func() *Error {
 			return &Error{time.Now(), file, line, v.(string)}
 		}
+		return e
 	default:
-		return func() *Error {
+		var e ErrorFunc = func() *Error {
 			return &Error{time.Now(), file, line, fmt.Sprintf("%v", v)}
 		}
+		return e
 	}
 
 }

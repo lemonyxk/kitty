@@ -13,7 +13,7 @@ import (
 )
 
 type HttpServer struct {
-	OnError   func(err func() *exception.Error)
+	OnError   func(err exception.ErrorFunc)
 	OnMessage func(t *Stream)
 	router    *HttpServerRouter
 }

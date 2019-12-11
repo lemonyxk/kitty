@@ -36,7 +36,7 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 	var stream = &Stream{w, r, nil, params, nil, nil, nil}
 
 	if h.OnMessage != nil {
-		go h.OnMessage(stream)
+		h.OnMessage(stream)
 	}
 
 	if node == nil {

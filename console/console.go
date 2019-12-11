@@ -3,14 +3,12 @@ package console
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/utils"
 )
-
-type Content []interface{}
 
 var hook = false
 var output = true
@@ -38,19 +36,19 @@ func init() {
 	logger = new(Logger)
 
 	SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
-		FgBlue.Println(append(Content{time.Now().Format("2006-01-02 15:04:05") + " " + file + ":" + strconv.Itoa(line)}, v...)...)
+		FgBlue.Printf("LOG %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
 	})
 
 	SetLogHook(func(t time.Time, file string, line int, v ...interface{}) {
-		Bold.Println(append(Content{time.Now().Format("2006-01-02 15:04:05") + " " + file + ":" + strconv.Itoa(line)}, v...)...)
+		Bold.Printf("LOG %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
 	})
 
 	SetWarningHook(func(t time.Time, file string, line int, v ...interface{}) {
-		FgYellow.Println(append(Content{time.Now().Format("2006-01-02 15:04:05") + " " + file + ":" + strconv.Itoa(line)}, v...)...)
+		FgYellow.Printf("LOG %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
 	})
 
 	SetErrorHook(func(err *exception.Error) {
-		FgRed.Println(err.Time.Format("2006-01-02 15:04:05") + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Message)
+		FgRed.Printf("LOG %s %s:%d %s \n", err.Time.Format("2006-01-02 15:04:05"), err.File, err.Line, err.Message)
 	})
 
 	SetHook(nil)

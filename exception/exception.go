@@ -12,8 +12,6 @@ package exception
 
 import (
 	"fmt"
-	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
@@ -38,31 +36,37 @@ func (err *Error) Error() string {
 }
 
 func (err *Error) String() string {
-	return err.Time.Format("2006-01-02 15:04:05") + " " + err.File + ":" + strconv.Itoa(err.Line) + " " + err.Message
+	return fmt.Sprintf("LOG %s %s:%d %s \n", err.Time.Format("2006-01-02 15:04:05"), err.File, err.Line, err.Message)
 }
 
-func Panic(err interface{}) {
-	panic(string(debug.Stack()))
+func Try(v ...interface{}) {
+	if len(v) == 0 {
+		return
+	}
+	if v[len(v)-1] == nil {
+		return
+	}
+	panic(v[len(v)-1])
 }
 
-func Check(err ...interface{}) func() *Error {
-	if len(err) == 0 {
+func Inspect(v ...interface{}) func() *Error {
+	if len(v) == 0 {
 		return nil
 	}
-	if err[len(err)-1] == nil {
+	if v[len(v)-1] == nil {
 		return nil
 	}
-	return newErrorFromDeep(err[len(err)-1], 2)
+	return newErrorFromDeep(v[len(v)-1], 2)
 }
 
-func New(err ...interface{}) func() *Error {
-	if len(err) == 0 {
+func New(v ...interface{}) func() *Error {
+	if len(v) == 0 {
 		return nil
 	}
 
 	var invalid = true
-	for i := 0; i < len(err); i++ {
-		if err[i] != nil {
+	for i := 0; i < len(v); i++ {
+		if v[i] != nil {
 			invalid = false
 			break
 		}
@@ -72,40 +76,40 @@ func New(err ...interface{}) func() *Error {
 		return nil
 	}
 
-	if len(err) == 1 {
-		return newErrorFromDeep(err[0], 2)
+	if len(v) == 1 {
+		return newErrorFromDeep(v[0], 2)
 	}
 
-	if len(err) > 1 {
-		if format, ok := err[0].(string); ok && len(format) > 1 && strings.Index(format, "%") != -1 {
-			return newErrorFromDeep(fmt.Errorf(format, err[1:]...), 2)
+	if len(v) > 1 {
+		if format, ok := v[0].(string); ok && len(format) > 1 && strings.Index(format, "%") != -1 {
+			return newErrorFromDeep(fmt.Errorf(format, v[1:]...), 2)
 		}
 	}
 
-	var str = fmt.Sprintln(err...)
+	var str = fmt.Sprintln(v...)
 	return newErrorFromDeep(str[:len(str)-1], 2)
 }
 
-func newErrorFromDeep(err interface{}, deep int) func() *Error {
+func newErrorFromDeep(v interface{}, deep int) func() *Error {
 
-	if err == nil {
+	if v == nil {
 		return nil
 	}
 
 	file, line := caller.RuntimeCaller(deep)
 
-	switch err.(type) {
+	switch v.(type) {
 	case error:
 		return func() *Error {
-			return &Error{time.Now(), file, line, err.(error).Error()}
+			return &Error{time.Now(), file, line, v.(error).Error()}
 		}
 	case string:
 		return func() *Error {
-			return &Error{time.Now(), file, line, err.(string)}
+			return &Error{time.Now(), file, line, v.(string)}
 		}
 	default:
 		return func() *Error {
-			return &Error{time.Now(), file, line, fmt.Sprintf("%v", err)}
+			return &Error{time.Now(), file, line, fmt.Sprintf("%v", v)}
 		}
 	}
 

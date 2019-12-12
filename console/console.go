@@ -36,7 +36,7 @@ func init() {
 	logger = new(Logger)
 
 	SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
-		FgBlue.Printf("LOG %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
+		FgBlue.Printf("DEB %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
 	})
 
 	SetLogHook(func(t time.Time, file string, line int, v ...interface{}) {
@@ -44,11 +44,11 @@ func init() {
 	})
 
 	SetWarningHook(func(t time.Time, file string, line int, v ...interface{}) {
-		FgYellow.Printf("LOG %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
+		FgYellow.Printf("WAR %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
 	})
 
 	SetErrorHook(func(err *exception.Error) {
-		FgRed.Printf("LOG %s %s:%d %s \n", err.Time.Format("2006-01-02 15:04:05"), err.File, err.Line, err.Message)
+		FgRed.Printf("ERR %s %s:%d %s \n", err.Time.Format("2006-01-02 15:04:05"), err.File, err.Line, err.Message)
 	})
 
 	SetHook(nil)
@@ -97,7 +97,7 @@ func Warning(v ...interface{}) {
 	}
 
 	if hook && logger.hook != nil {
-		logger.hook("WARNING", t, file, line, v...)
+		logger.hook("WAR", t, file, line, v...)
 	}
 }
 
@@ -111,7 +111,7 @@ func Debug(v ...interface{}) {
 	}
 
 	if hook && logger.hook != nil {
-		logger.hook("DEBUG", t, file, line, v...)
+		logger.hook("DEB", t, file, line, v...)
 	}
 }
 
@@ -164,7 +164,7 @@ func printError(err *exception.Error) {
 	}
 
 	if hook && logger.hook != nil {
-		logger.hook("ERROR", err.Time, err.File, err.Line, err.Message)
+		logger.hook("ERR", err.Time, err.File, err.Line, err.Message)
 	}
 }
 
@@ -178,6 +178,6 @@ func printDefault(err interface{}) {
 	}
 
 	if hook && logger.hook != nil {
-		logger.hook("ERROR", t, file, line, err)
+		logger.hook("ERR", t, file, line, err)
 	}
 }

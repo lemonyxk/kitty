@@ -132,9 +132,9 @@ func Log(v ...interface{}) {
 func Error(err interface{}) {
 
 	switch err.(type) {
-	case func() *exception.Error:
+	case exception.ErrorFunc:
 
-		var res = err.(func() *exception.Error)
+		var res = err.(exception.ErrorFunc)
 
 		if res == nil {
 			printDefault(res)

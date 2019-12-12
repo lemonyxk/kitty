@@ -16,7 +16,7 @@ type Config struct {
 	any   jsoniter.Any
 }
 
-func (c *Config) SetConfigFile(configFile string) func() *exception.Error {
+func (c *Config) SetConfigFile(configFile string) exception.ErrorFunc {
 
 	absPath, err := filepath.Abs(configFile)
 	if err != nil {

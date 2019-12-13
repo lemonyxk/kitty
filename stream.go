@@ -414,7 +414,7 @@ func (stream *Stream) Url() string {
 	var host = stream.Host()
 	buf.WriteString(stream.Scheme() + "://" + host + stream.Request.URL.Path)
 	if stream.Request.URL.RawQuery != "" {
-		buf.WriteString("&" + stream.Request.URL.RawQuery)
+		buf.WriteString("?" + stream.Request.URL.RawQuery)
 	}
 	if stream.Request.URL.Fragment != "" {
 		buf.WriteString("#" + stream.Request.URL.Fragment)

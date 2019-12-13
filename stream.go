@@ -110,6 +110,15 @@ type Json struct {
 	any jsoniter.Any
 }
 
+func (j *Json) Reset(data interface{}) jsoniter.Any {
+	bts, err := jsoniter.Marshal(data)
+	if err != nil {
+		return j.any
+	}
+	j.any = jsoniter.Get(bts)
+	return j.any
+}
+
 // GetByID 获取
 func (j *Json) Iter() jsoniter.Any {
 	return j.any
@@ -426,6 +435,26 @@ func (store *Store) Get(key string) *Value {
 		}
 	}
 	return val
+}
+
+func (store *Store) Add(key string, value interface{}) {
+	store.keys = append(store.keys, key)
+	store.values = append(store.values, value)
+}
+
+func (store *Store) Remove(key string) {
+	var index = -1
+	for i := 0; i < len(store.keys); i++ {
+		if store.keys[i] == key {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		return
+	}
+	store.keys = append(store.keys[0:index], store.keys[index+1:]...)
+	store.values = append(store.values[0:index], store.values[index+1:]...)
 }
 
 func (store *Store) Keys() []string {

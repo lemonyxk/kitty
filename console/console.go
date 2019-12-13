@@ -143,6 +143,11 @@ func Error(err interface{}) {
 
 		var r = res()
 
+		if r == nil {
+			printDefault(r)
+			return
+		}
+
 		printError(r)
 	case *exception.Error:
 		var r = err.(*exception.Error)

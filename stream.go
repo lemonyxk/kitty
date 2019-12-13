@@ -7,7 +7,6 @@ import (
 	"mime/multipart"
 	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
@@ -322,12 +321,12 @@ func (stream *Stream) ParseQuery() *Store {
 
 	var query = new(Store)
 
-	var params = stream.Request.URL.RawQuery
-
-	parse, err := url.ParseQuery(params)
+	err := stream.Request.ParseForm()
 	if err != nil {
 		return query
 	}
+
+	var parse = stream.Request.Form
 
 	for k, v := range parse {
 		query.keys = append(query.keys, k)

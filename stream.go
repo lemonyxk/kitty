@@ -16,10 +16,6 @@ import (
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
-type Query struct {
-	params map[string]interface{}
-}
-
 type Files struct {
 	files map[string][]*multipart.FileHeader
 }
@@ -47,17 +43,6 @@ func (ps *Params) ByName(name string) string {
 		}
 	}
 	return ""
-}
-
-type Stream struct {
-	Response http.ResponseWriter
-	Request  *http.Request
-	Context  interface{}
-	Params   *Params
-	Query    *Query
-	Files    *Files
-
-	url *URL
 }
 
 type Value struct {
@@ -121,34 +106,109 @@ func (v *Value) Bool() bool {
 	}
 }
 
+type Json struct {
+	any jsoniter.Any
+}
+
+// GetByID 获取
+func (j *Json) Iter() jsoniter.Any {
+	return j.any
+}
+
+func (j *Json) Bytes() []byte {
+	return j.Bytes()
+}
+
+func (j *Json) String() string {
+	return j.any.ToString()
+}
+
+func (j *Json) Path(path ...interface{}) jsoniter.Any {
+	return j.any.Get(path...)
+}
+
+func (j *Json) Array(path ...interface{}) Array {
+	var result []jsoniter.Any
+	var val = j.any.Get(path...)
+	for i := 0; i < val.Size(); i++ {
+		result = append(result, val.Get(i))
+	}
+	return result
+}
+
+type Array []jsoniter.Any
+
+func (a Array) String() []string {
+	var result []string
+	for i := 0; i < len(a); i++ {
+		result = append(result, a[i].ToString())
+	}
+	return result
+}
+
+func (a Array) Int() []int {
+	var result []int
+	for i := 0; i < len(a); i++ {
+		result = append(result, a[i].ToInt())
+	}
+	return result
+}
+
+func (a Array) Float64() []float64 {
+	var result []float64
+	for i := 0; i < len(a); i++ {
+		result = append(result, a[i].ToFloat64())
+	}
+	return result
+}
+
+type Stream struct {
+	Response http.ResponseWriter
+	Request  *http.Request
+	Context  interface{}
+	Params   *Params
+	Query    *Store
+	Form     *Store
+	Json     *Json
+	Files    *Files
+}
+
 func (stream *Stream) SetHeader(header string, content string) {
 	stream.Response.Header().Set(header, content)
 }
 
 func (stream *Stream) JsonFormat(status string, code int, msg interface{}) exception.ErrorFunc {
-	return exception.New(stream.Json(HttpJsonResponse{status, code, msg}))
+	return exception.New(stream.EndJson(HttpJsonResponse{status, code, msg}))
 }
 
-func (stream *Stream) Json(data interface{}) error {
-
-	stream.SetHeader("Content-Type", "application/json")
-
-	return jsoniter.NewEncoder(stream.Response).Encode(data)
-}
-
-func (stream *Stream) End(data interface{}) error {
+func (stream *Stream) EndAny(data interface{}) error {
 
 	var err error
 
 	switch data.(type) {
 	case []byte:
-		_, err = stream.Response.Write(data.([]byte))
+		err = stream.EndBytes(data.([]byte))
 	case string:
-		_, err = stream.Response.Write([]byte(data.(string)))
+		err = stream.EndString(data.(string))
 	default:
 		_, err = fmt.Fprint(stream.Response, data)
 	}
 
+	return err
+}
+
+func (stream *Stream) EndJson(data interface{}) error {
+	stream.SetHeader("Content-Type", "application/json")
+	return jsoniter.NewEncoder(stream.Response).Encode(data)
+}
+
+func (stream *Stream) EndString(data string) error {
+	_, err := stream.Response.Write([]byte(data))
+	return err
+}
+
+func (stream *Stream) EndBytes(data []byte) error {
+	_, err := stream.Response.Write(data)
 	return err
 }
 
@@ -178,25 +238,24 @@ func (stream *Stream) ClientIP() string {
 	return ""
 }
 
-func (stream *Stream) ParseJson() *Query {
+func (stream *Stream) ParseJson() *Json {
+
+	if stream.Json != nil {
+		return stream.Json
+	}
+
+	var json = new(Json)
 
 	jsonBody, err := ioutil.ReadAll(stream.Request.Body)
 	if err != nil {
-		return nil
+		return json
 	}
 
-	var data = make(map[string]interface{})
+	json.any = jsoniter.Get(jsonBody)
 
-	err = jsoniter.Unmarshal(jsonBody, &data)
-	if err != nil {
-		return nil
-	}
+	stream.Json = json
 
-	var query = new(Query)
-
-	query.params = data
-
-	return query
+	return stream.Json
 }
 
 func (stream *Stream) ParseFiles() *Files {
@@ -205,14 +264,14 @@ func (stream *Stream) ParseFiles() *Files {
 		return stream.Files
 	}
 
+	var file = new(Files)
+
 	err := stream.Request.ParseMultipartForm(20 * 1024 * 1024)
 	if err != nil {
-		return nil
+		return file
 	}
 
 	var data = stream.Request.MultipartForm.File
-
-	var file = new(Files)
 
 	file.files = data
 
@@ -221,109 +280,49 @@ func (stream *Stream) ParseFiles() *Files {
 	return file
 }
 
-func (stream *Stream) ParseMultipart() *Query {
+func (stream *Stream) ParseMultipart() *Store {
 
-	if stream.Query != nil {
-		return stream.Query
+	if stream.Form != nil {
+		return stream.Form
 	}
+
+	var form = new(Store)
 
 	err := stream.Request.ParseMultipartForm(2 * 1024 * 1024)
 	if err != nil {
-		return nil
+		return form
 	}
 
 	var parse = stream.Request.MultipartForm.Value
 
-	var data = make(map[string]interface{})
-
 	for k, v := range parse {
-		data[k] = v[0]
+		form.keys = append(form.keys, k)
+		form.values = append(form.values, v[0])
 	}
 
-	var query = new(Query)
+	stream.Form = form
 
-	query.params = data
-
-	return query
+	return form
 }
 
-func (stream *Stream) ParseQuery() *Query {
+func (stream *Stream) ParseQuery() *Store {
 
 	if stream.Query != nil {
 		return stream.Query
 	}
+
+	var query = new(Store)
 
 	var params = stream.Request.URL.RawQuery
 
 	parse, err := url.ParseQuery(params)
 	if err != nil {
-		return nil
+		return query
 	}
-
-	var data = make(map[string]interface{})
 
 	for k, v := range parse {
-		data[k] = v[0]
-	}
-
-	var query = new(Query)
-
-	query.params = data
-
-	return query
-}
-
-func (stream *Stream) ParseForm() *Query {
-
-	if stream.Query != nil {
-		return stream.Query
-	}
-
-	err := stream.Request.ParseForm()
-	if err != nil {
-		return nil
-	}
-
-	var parse = stream.Request.PostForm
-
-	var data = make(map[string]interface{})
-
-	for k, v := range parse {
-		data[k] = v[0]
-	}
-
-	var query = new(Query)
-
-	query.params = data
-
-	return query
-}
-
-func (stream *Stream) AutoParse() *Query {
-
-	if stream.Query != nil {
-		return stream.Query
-	}
-
-	var header = stream.Request.Header.Get("Content-Type")
-
-	var query *Query
-
-	if strings.ToUpper(stream.Request.Method) == "GET" {
-		query = stream.ParseQuery()
-	} else {
-		if strings.HasPrefix(header, "multipart/form-data") {
-			query = stream.ParseMultipart()
-		} else if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
-			query = stream.ParseForm()
-		} else if strings.HasPrefix(header, "application/json") {
-			query = stream.ParseJson()
-		}
-	}
-
-	if query == nil {
-		query = new(Query)
-		query.params = make(map[string]interface{})
+		query.keys = append(query.keys, k)
+		query.values = append(query.values, v[0])
 	}
 
 	stream.Query = query
@@ -331,98 +330,128 @@ func (stream *Stream) AutoParse() *Query {
 	return query
 }
 
-type URL struct {
-	Url         string
-	Scheme      string
-	Host        string
-	Path        string
-	QueryString string
-	Fragment    string
-}
+func (stream *Stream) ParseForm() *Store {
 
-func (stream *Stream) Url() *URL {
-
-	if stream.url != nil {
-		return stream.url
+	if stream.Form != nil {
+		return stream.Form
 	}
 
-	var buff bytes.Buffer
+	var form = new(Store)
 
+	err := stream.Request.ParseForm()
+	if err != nil {
+		return form
+	}
+
+	var parse = stream.Request.PostForm
+
+	for k, v := range parse {
+		form.keys = append(form.keys, k)
+		form.values = append(form.values, v[0])
+	}
+
+	stream.Form = form
+
+	return form
+}
+
+func (stream *Stream) AutoParse() {
+
+	var header = stream.Request.Header.Get("Content-Type")
+
+	if strings.ToUpper(stream.Request.Method) == "GET" {
+		stream.ParseQuery()
+		return
+	}
+
+	if strings.HasPrefix(header, "multipart/form-data") {
+		stream.ParseMultipart()
+		stream.ParseFiles()
+		return
+	}
+
+	if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
+		stream.ParseForm()
+		return
+	}
+
+	if strings.HasPrefix(header, "application/json") {
+		stream.ParseJson()
+		return
+	}
+}
+
+func (stream *Stream) Url() string {
+	var buf bytes.Buffer
+	var host = stream.Host()
+	buf.WriteString(stream.Scheme() + "://" + host + stream.Request.URL.Path + stream.Request.URL.RawQuery)
+	if stream.Request.URL.Fragment != "" {
+		buf.WriteString("#" + stream.Request.URL.Fragment)
+	}
+	return buf.String()
+}
+
+func (stream *Stream) Scheme() string {
 	var scheme = "http"
-
 	if stream.Request.TLS != nil {
 		scheme = "https"
 	}
+	return scheme
+}
 
-	var host = stream.Host()
+type Store struct {
+	keys   []string
+	values []interface{}
+}
 
-	buff.WriteString(scheme)
-	buff.WriteString("://")
-	buff.WriteString(host)
-	buff.WriteString(stream.Request.URL.Path)
-	buff.WriteString(stream.Request.URL.RawQuery)
-	if stream.Request.URL.Fragment != "" {
-		buff.WriteString("#")
-		buff.WriteString(stream.Request.URL.Fragment)
+func (store *Store) Has(key string) bool {
+	for i := 0; i < len(store.keys); i++ {
+		if store.keys[i] == key {
+			return true
+		}
 	}
-
-	stream.url = &URL{}
-
-	stream.url.Url = buff.String()
-	stream.url.Scheme = scheme
-	stream.url.Host = host
-	stream.url.Path = stream.Request.URL.Path
-	stream.url.QueryString = stream.Request.URL.RawQuery
-	stream.url.Fragment = stream.Request.URL.Fragment
-
-	return stream.url
+	return false
 }
 
-func (q *Query) Has(key string) bool {
-	_, ok := q.params[key]
-	return ok
+func (store *Store) IsEmpty(key string) bool {
+	return store.Get(key).v == nil
 }
 
-func (q *Query) IsEmpty(key string) bool {
-	return q.Get(key).v == nil
-}
-
-func (q *Query) Get(key string) *Value {
-
+func (store *Store) Get(key string) *Value {
 	var val = &Value{}
-
-	if v, ok := q.params[key]; ok {
-		val.v = v
-		return val
+	for i := 0; i < len(store.keys); i++ {
+		if store.keys[i] == key {
+			val.v = store.values[i]
+			return val
+		}
 	}
-
 	return val
 }
 
-func (q *Query) All() map[string]interface{} {
-	return q.params
+func (store *Store) Keys() []string {
+	return store.keys
 }
 
-func (q *Query) String() string {
+func (store *Store) Values() []interface{} {
+	return store.values
+}
+
+func (store *Store) String() string {
 
 	var buff bytes.Buffer
 
-	for key, value := range q.params {
-
-		buff.WriteString(key)
-		buff.WriteString(":")
-
-		switch value.(type) {
+	for i := 0; i < len(store.keys); i++ {
+		buff.WriteString(store.keys[i] + ":")
+		switch store.values[i].(type) {
 		case int:
-			buff.WriteString(strconv.Itoa(value.(int)))
+			buff.WriteString(strconv.Itoa(store.values[i].(int)))
 		case string:
-			buff.WriteString(value.(string))
+			buff.WriteString(store.values[i].(string))
 		case float64:
-			buff.WriteString(strconv.FormatFloat(value.(float64), 'f', -1, 64))
+			buff.WriteString(strconv.FormatFloat(store.values[i].(float64), 'f', -1, 64))
 		default:
-			buff.WriteString(fmt.Sprintf("%v", value))
+			buff.WriteString(fmt.Sprintf("%v", store.values[i]))
 		}
-
 		buff.WriteString(" ")
 	}
 

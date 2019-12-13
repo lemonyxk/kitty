@@ -39,7 +39,7 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
-			return exception.New(t.End("hello world!"))
+			return exception.New(t.EndString("hello world!"))
 		})
 	})
 

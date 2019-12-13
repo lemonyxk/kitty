@@ -33,7 +33,7 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 		params.Values = node.ParseParams(formatPath)
 	}
 
-	var stream = &Stream{w, r, nil, params, nil, nil, nil}
+	var stream = &Stream{w, r, nil, params, nil, nil, nil, nil}
 
 	if h.OnMessage != nil {
 		h.OnMessage(stream)

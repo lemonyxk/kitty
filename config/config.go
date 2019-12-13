@@ -48,7 +48,7 @@ func (c *Config) Path(path ...interface{}) jsoniter.Any {
 	return c.any.Get(path...)
 }
 
-func (c *Config) JsonString() string {
+func (c *Config) String() string {
 	return c.any.ToString()
 }
 

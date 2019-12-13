@@ -390,6 +390,25 @@ func (stream *Stream) AutoParse() {
 	}
 }
 
+func (stream *Stream) AutoGet(key string) *Value {
+	if stream.Query != nil {
+		var val = stream.Query.Get(key)
+		if val.v != nil {
+			return val
+		}
+	}
+	if stream.Form != nil {
+		var val = stream.Form.Get(key)
+		if val.v != nil {
+			return val
+		}
+	}
+	if stream.Json != nil {
+		return &Value{v: stream.Json.Path(key).GetInterface()}
+	}
+	return &Value{}
+}
+
 func (stream *Stream) Url() string {
 	var buf bytes.Buffer
 	var host = stream.Host()

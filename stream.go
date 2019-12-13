@@ -411,7 +411,10 @@ func (stream *Stream) AutoGet(key string) *Value {
 func (stream *Stream) Url() string {
 	var buf bytes.Buffer
 	var host = stream.Host()
-	buf.WriteString(stream.Scheme() + "://" + host + stream.Request.URL.Path + stream.Request.URL.RawQuery)
+	buf.WriteString(stream.Scheme() + "://" + host + stream.Request.URL.Path)
+	if stream.Request.URL.RawQuery != "" {
+		buf.WriteString("&" + stream.Request.URL.RawQuery)
+	}
 	if stream.Request.URL.Fragment != "" {
 		buf.WriteString("#" + stream.Request.URL.Fragment)
 	}

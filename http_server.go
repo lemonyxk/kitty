@@ -14,7 +14,7 @@ import (
 
 type HttpServer struct {
 	OnError   func(err exception.ErrorFunc)
-	OnMessage func(t *Stream)
+	OnMessage func(stream *Stream)
 	router    *HttpServerRouter
 }
 
@@ -33,7 +33,7 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 		params.Values = node.ParseParams(formatPath)
 	}
 
-	var stream = &Stream{w, r, nil, params, nil, nil, nil, nil}
+	var stream = NewStream(w, r, params)
 
 	if h.OnMessage != nil {
 		h.OnMessage(stream)

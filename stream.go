@@ -174,12 +174,22 @@ func (a Array) Float64() []float64 {
 type Stream struct {
 	Response http.ResponseWriter
 	Request  *http.Request
-	Context  interface{}
 	Params   *Params
+	Context  interface{}
 	Query    *Store
 	Form     *Store
 	Json     *Json
 	Files    *Files
+
+	maxMemory int64
+}
+
+func NewStream(w http.ResponseWriter, r *http.Request, p *Params) *Stream {
+	return &Stream{Response: w, Request: r, Params: p}
+}
+
+func (stream *Stream) SetMaxMemory(maxMemory int64) {
+	stream.maxMemory = maxMemory
 }
 
 func (stream *Stream) SetHeader(header string, content string) {
@@ -275,7 +285,7 @@ func (stream *Stream) ParseFiles() *Files {
 
 	var file = new(Files)
 
-	err := stream.Request.ParseMultipartForm(20 * 1024 * 1024)
+	err := stream.Request.ParseMultipartForm(stream.maxMemory)
 	if err != nil {
 		return file
 	}
@@ -297,7 +307,7 @@ func (stream *Stream) ParseMultipart() *Store {
 
 	var form = new(Store)
 
-	err := stream.Request.ParseMultipartForm(2 * 1024 * 1024)
+	err := stream.Request.ParseMultipartForm(stream.maxMemory)
 	if err != nil {
 		return form
 	}

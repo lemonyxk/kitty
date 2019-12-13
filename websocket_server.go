@@ -20,11 +20,11 @@ import (
 
 // WebSocket WebSocket
 type WebSocket struct {
-	FD       uint32
-	Conn     *websocket.Conn
-	socket   *WebSocketServer
-	Response http.ResponseWriter
-	Request  *http.Request
+	FD              uint32
+	Conn            *websocket.Conn
+	webSocketServer *WebSocketServer
+	Response        http.ResponseWriter
+	Request         *http.Request
 }
 
 // WebSocketServer conn
@@ -101,55 +101,55 @@ func (conn *WebSocket) ClientIP() string {
 }
 
 func (conn *WebSocket) Push(fd uint32, messageType int, msg []byte) error {
-	return conn.socket.Push(fd, messageType, msg)
+	return conn.webSocketServer.Push(fd, messageType, msg)
 }
 
 func (conn *WebSocket) JsonFormat(fd uint32, msg JsonPackage) error {
-	return conn.socket.JsonFormat(fd, msg)
+	return conn.webSocketServer.JsonFormat(fd, msg)
 }
 
 func (conn *WebSocket) JsonFormatAll(msg JsonPackage) {
-	conn.socket.JsonFormatAll(msg)
+	conn.webSocketServer.JsonFormatAll(msg)
 }
 
 func (conn *WebSocket) Json(fd uint32, msg interface{}) error {
-	return conn.socket.Json(fd, msg)
+	return conn.webSocketServer.Json(fd, msg)
 }
 
 func (conn *WebSocket) ProtoBuf(fd uint32, msg proto.Message) error {
-	return conn.socket.ProtoBuf(fd, msg)
+	return conn.webSocketServer.ProtoBuf(fd, msg)
 }
 
 func (conn *WebSocket) JsonEmit(fd uint32, msg JsonPackage) error {
-	return conn.socket.JsonEmit(fd, msg)
+	return conn.webSocketServer.JsonEmit(fd, msg)
 }
 
 func (conn *WebSocket) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
-	return conn.socket.ProtoBufEmit(fd, msg)
+	return conn.webSocketServer.ProtoBufEmit(fd, msg)
 }
 
 func (conn *WebSocket) JsonEmitAll(msg JsonPackage) {
-	conn.socket.JsonEmitAll(msg)
+	conn.webSocketServer.JsonEmitAll(msg)
 }
 
 func (conn *WebSocket) ProtoBufEmitAll(msg ProtoBufPackage) {
-	conn.socket.ProtoBufEmitAll(msg)
+	conn.webSocketServer.ProtoBufEmitAll(msg)
 }
 
 func (conn *WebSocket) GetConnections() chan *WebSocket {
-	return conn.socket.GetConnections()
+	return conn.webSocketServer.GetConnections()
 }
 
 func (conn *WebSocket) GetSocket() *WebSocketServer {
-	return conn.socket
+	return conn.webSocketServer
 }
 
 func (conn *WebSocket) GetConnectionsCount() uint32 {
-	return conn.socket.GetConnectionsCount()
+	return conn.webSocketServer.GetConnectionsCount()
 }
 
 func (conn *WebSocket) GetConnection(fd uint32) (*WebSocket, bool) {
-	return conn.socket.GetConnection(fd)
+	return conn.webSocketServer.GetConnection(fd)
 }
 
 func (conn *WebSocket) Close() error {
@@ -377,7 +377,7 @@ func (socket *WebSocketServer) Ready() {
 		socket.PingHandler = func(connection *WebSocket) func(appData string) error {
 			return func(appData string) error {
 				// unnecessary
-				// err := socket.Push(connection.FD, BinData, Pack(nil, nil, PongData, BinData))
+				// err := socketServer.Push(connection.FD, BinData, Pack(nil, nil, PongData, BinData))
 				return connection.Conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 			}
 		}
@@ -466,11 +466,11 @@ func (socket *WebSocketServer) process(w http.ResponseWriter, r *http.Request) {
 	}
 
 	connection := &WebSocket{
-		FD:       0,
-		Conn:     conn,
-		socket:   socket,
-		Response: w,
-		Request:  r,
+		FD:              0,
+		Conn:            conn,
+		webSocketServer: socket,
+		Response:        w,
+		Request:         r,
 	}
 
 	// 设置PING处理函数

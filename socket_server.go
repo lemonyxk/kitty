@@ -26,9 +26,9 @@ import (
 )
 
 type Socket struct {
-	FD     uint32
-	Conn   net.Conn
-	socket *SocketServer
+	FD           uint32
+	Conn         net.Conn
+	socketServer *SocketServer
 }
 
 func (conn *Socket) ClientIP() string {
@@ -41,47 +41,47 @@ func (conn *Socket) ClientIP() string {
 }
 
 func (conn *Socket) Push(fd uint32, msg []byte) error {
-	return conn.socket.Push(fd, msg)
+	return conn.socketServer.Push(fd, msg)
 }
 
 func (conn *Socket) Json(fd uint32, msg interface{}) error {
-	return conn.socket.Json(fd, msg)
+	return conn.socketServer.Json(fd, msg)
 }
 
 func (conn *Socket) ProtoBuf(fd uint32, msg proto.Message) error {
-	return conn.socket.ProtoBuf(fd, msg)
+	return conn.socketServer.ProtoBuf(fd, msg)
 }
 
 func (conn *Socket) JsonEmit(fd uint32, msg JsonPackage) error {
-	return conn.socket.JsonEmit(fd, msg)
+	return conn.socketServer.JsonEmit(fd, msg)
 }
 
 func (conn *Socket) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
-	return conn.socket.ProtoBufEmit(fd, msg)
+	return conn.socketServer.ProtoBufEmit(fd, msg)
 }
 
 func (conn *Socket) JsonEmitAll(msg JsonPackage) {
-	conn.socket.JsonEmitAll(msg)
+	conn.socketServer.JsonEmitAll(msg)
 }
 
 func (conn *Socket) ProtoBufEmitAll(msg ProtoBufPackage) {
-	conn.socket.ProtoBufEmitAll(msg)
+	conn.socketServer.ProtoBufEmitAll(msg)
 }
 
 func (conn *Socket) GetConnections() chan *Socket {
-	return conn.socket.GetConnections()
+	return conn.socketServer.GetConnections()
 }
 
 func (conn *Socket) GetSocket() *SocketServer {
-	return conn.socket
+	return conn.socketServer
 }
 
 func (conn *Socket) GetConnectionsCount() uint32 {
-	return conn.socket.GetConnectionsCount()
+	return conn.socketServer.GetConnectionsCount()
 }
 
 func (conn *Socket) GetConnection(fd uint32) (*Socket, bool) {
-	return conn.socket.GetConnection(fd)
+	return conn.socketServer.GetConnection(fd)
 }
 
 func (conn *Socket) Close() error {
@@ -236,7 +236,7 @@ func (socket *SocketServer) Ready() {
 		socket.PingHandler = func(connection *Socket) func(appData string) error {
 			return func(appData string) error {
 				// unnecessary
-				// err := socket.Push(connection.FD, PongMessage, nil)
+				// err := socketServer.Push(connection.FD, PongMessage, nil)
 				return connection.Conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 			}
 		}
@@ -410,9 +410,9 @@ func (socket *SocketServer) process(conn net.Conn) {
 	}
 
 	var connection = &Socket{
-		FD:     0,
-		Conn:   conn,
-		socket: socket,
+		FD:           0,
+		Conn:         conn,
+		socketServer: socket,
 	}
 
 	socket.connOpen <- connection

@@ -232,21 +232,11 @@ func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) erro
 }
 
 func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
-
-	var data []byte
-
-	if mb, ok := msg.Message.([]byte); ok {
-		data = mb
-	} else {
-		messageJson, err := jsoniter.Marshal(msg.Message)
-		if err != nil {
-			return err
-		}
-		data = messageJson
+	data, err := jsoniter.Marshal(msg.Message)
+	if err != nil {
+		return err
 	}
-
 	return socket.Push(fd, protocol.TextData, protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
-
 }
 
 func (socket *WebSocketServer) addConnect(conn *WebSocket) {

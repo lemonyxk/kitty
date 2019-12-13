@@ -80,19 +80,10 @@ func (client *SocketClient) ProtoBuf(msg proto.Message) error {
 }
 
 func (client *SocketClient) JsonEmit(msg JsonPackage) error {
-
-	var data []byte
-
-	if mb, ok := msg.Message.([]byte); ok {
-		data = mb
-	} else {
-		messageJson, err := jsoniter.Marshal(msg.Message)
-		if err != nil {
-			return err
-		}
-		data = messageJson
+	data, err := jsoniter.Marshal(msg.Message)
+	if err != nil {
+		return err
 	}
-
 	return client.Push(protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
 
 }

@@ -89,21 +89,11 @@ func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
 }
 
 func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
-
-	var data []byte
-
-	if mb, ok := msg.Message.([]byte); ok {
-		data = mb
-	} else {
-		messageJson, err := jsoniter.Marshal(msg.Message)
-		if err != nil {
-			return err
-		}
-		data = messageJson
+	data, err := jsoniter.Marshal(msg.Message)
+	if err != nil {
+		return err
 	}
-
 	return client.Push(protocol.TextData, protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
-
 }
 
 func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {

@@ -190,7 +190,7 @@ func (stream *Stream) JsonFormat(status string, code int, msg interface{}) excep
 	return exception.New(stream.EndJson(HttpJsonResponse{status, code, msg}))
 }
 
-func (stream *Stream) EndAny(data interface{}) error {
+func (stream *Stream) End(data interface{}) error {
 
 	var err error
 

@@ -185,21 +185,11 @@ func (socket *SocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
 }
 
 func (socket *SocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
-
-	var data []byte
-
-	if mb, ok := msg.Message.([]byte); ok {
-		data = mb
-	} else {
-		messageJson, err := jsoniter.Marshal(msg.Message)
-		if err != nil {
-			return err
-		}
-		data = messageJson
+	data, err := jsoniter.Marshal(msg.Message)
+	if err != nil {
+		return err
 	}
-
 	return socket.Push(fd, protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
-
 }
 
 func (socket *SocketServer) Ready() {

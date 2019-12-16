@@ -15,6 +15,7 @@ import (
 	"encoding/hex"
 	"io"
 	"math/big"
+	ra "math/rand"
 	"strconv"
 	"time"
 )
@@ -23,7 +24,7 @@ type rd int
 
 const Rand rd = iota
 
-// [begin,end]
+// [begin,end)
 func (r rd) RandomInt(start int, end int) int {
 	if start > end {
 		panic("start can not bigger than end")
@@ -31,6 +32,12 @@ func (r rd) RandomInt(start int, end int) int {
 	var number = new(big.Int).SetInt64(int64(end - start))
 	var randomNumber, _ = rand.Int(rand.Reader, number)
 	return int(randomNumber.Int64()) + start
+}
+
+// [begin,end)
+func (r rd) RandomFloat64(start float64, end float64) float64 {
+	ra.Seed(time.Now().UnixNano())
+	return start + end*ra.Float64()
 }
 
 func (r rd) UUID() string {
@@ -43,5 +50,5 @@ func (r rd) UUID() string {
 
 func (r rd) OrderID() string {
 	var t = time.Now()
-	return strconv.FormatInt(t.UnixNano(), 10) + strconv.Itoa(r.RandomInt(10000, 99999))
+	return strconv.FormatInt(t.UnixNano(), 10) + strconv.Itoa(r.RandomInt(10000, 100000))
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 func main() {
@@ -39,7 +40,20 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
-			return exception.New(t.EndString("hello world!"))
+			return exception.New(t.EndString(`
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+		<title>Document</title>
+	</head>
+	<body>
+		<img src="data:image/png;base64,` + string(utils.Captcha.New(240, 80).ToBase64()) + `"/>
+	</body>
+</html>
+`))
 		})
 	})
 

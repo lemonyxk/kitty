@@ -264,29 +264,29 @@ type Image struct {
 
 // randIntn returns a pseudorandom non-negative int in range [0, n).
 func randIntn(n int) int {
-	return Rand.RandomInt(0, n)
+	return Rand.RandomIntn(0, n)
 }
 
 // randInt returns a pseudorandom int in range [from, to].
 func randInt(from, to int) int {
-	return Rand.RandomInt(from, to)
+	return Rand.RandomIntn(from, to)
 }
 
 // randFloat returns a pseudorandom float64 in range [from, to].
 func randFloat(from, to float64) float64 {
-	return Rand.RandomFloat64(from, to)
+	return Rand.RandomFloat64n(from, to)
 }
 
 func randomPalette() color.Palette {
 	p := make([]color.Color, circleCount+1)
 	// Transparent color.
-	p[0] = color.RGBA{0xFF, 0xFF, 0xFF, 0x00}
+	p[0] = color.RGBA{R: 0xFF, G: 0xFF, B: 0xFF}
 	// Primary color.
 	prim := color.RGBA{
-		uint8(randIntn(129)),
-		uint8(randIntn(129)),
-		uint8(randIntn(129)),
-		0xFF,
+		R: uint8(randIntn(129)),
+		G: uint8(randIntn(129)),
+		B: uint8(randIntn(129)),
+		A: 0xFF,
 	}
 	p[1] = prim
 	// Circle colors.
@@ -304,16 +304,16 @@ func (captcha captcha) New(width, height int) *Image {
 	m.Paletted = image.NewPaletted(image.Rect(0, 0, width, height), randomPalette())
 	m.calculateSizes(width, height, len(digits))
 	// Randomly position captcha inside the image.
-	maxx := width - (m.numWidth+m.dotSize)*len(digits) - m.dotSize
-	maxy := height - m.numHeight - m.dotSize*2
+	maxX := width - (m.numWidth+m.dotSize)*len(digits) - m.dotSize
+	maxY := height - m.numHeight - m.dotSize*2
 	var border int
 	if width > height {
 		border = height / 5
 	} else {
 		border = width / 5
 	}
-	x := randInt(border, maxx-border)
-	y := randInt(border, maxy-border)
+	x := randInt(border, maxX-border)
+	y := randInt(border, maxY-border)
 	// Draw digits.
 	for _, n := range digits {
 		m.drawDigit(font[n], x, y)
@@ -349,7 +349,7 @@ func (m *Image) Write(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-func (m *Image) calculateSizes(width, height, ncount int) {
+func (m *Image) calculateSizes(width, height, nCount int) {
 	// Goal: fit all digits inside the image.
 	var border int
 	if width > height {
@@ -363,7 +363,7 @@ func (m *Image) calculateSizes(width, height, ncount int) {
 	// fw takes into account 1-dot spacing between digits.
 	fw := float64(fontWidth + 1)
 	fh := float64(fontHeight)
-	nc := float64(ncount)
+	nc := float64(nCount)
 	// Calculate the width of a single digit taking into account only the
 	// width of the image.
 	nw := w / nc
@@ -419,13 +419,13 @@ func (m *Image) drawCircle(x, y, radius int, colorIdx uint8) {
 	}
 }
 
-func (m *Image) fillWithCircles(n, maxradius int) {
-	maxx := m.Bounds().Max.X
-	maxy := m.Bounds().Max.Y
+func (m *Image) fillWithCircles(n, maxRadius int) {
+	maxX := m.Bounds().Max.X
+	maxY := m.Bounds().Max.Y
 	for i := 0; i < n; i++ {
 		colorIdx := uint8(randInt(1, circleCount-1))
-		r := randInt(1, maxradius)
-		m.drawCircle(randInt(r, maxx-r), randInt(r, maxy-r), r, colorIdx)
+		r := randInt(1, maxRadius)
+		m.drawCircle(randInt(r, maxX-r), randInt(r, maxY-r), r, colorIdx)
 	}
 }
 
@@ -446,36 +446,36 @@ func (m *Image) drawDigit(digit []byte, x, y int) {
 	}
 }
 
-func (m *Image) distort(amplude float64, period float64) {
+func (m *Image) distort(amp float64, period float64) {
 	w := m.Bounds().Max.X
 	h := m.Bounds().Max.Y
 
-	oldm := m.Paletted
-	newm := image.NewPaletted(image.Rect(0, 0, w, h), oldm.Palette)
+	oldM := m.Paletted
+	newM := image.NewPaletted(image.Rect(0, 0, w, h), oldM.Palette)
 
 	dx := 2.0 * math.Pi / period
 	for x := 0; x < w; x++ {
 		for y := 0; y < h; y++ {
-			xo := amplude * math.Sin(float64(y)*dx)
-			yo := amplude * math.Cos(float64(x)*dx)
-			newm.SetColorIndex(x, y, oldm.ColorIndexAt(x+int(xo), y+int(yo)))
+			xo := amp * math.Sin(float64(y)*dx)
+			yo := amp * math.Cos(float64(x)*dx)
+			newM.SetColorIndex(x, y, oldM.ColorIndexAt(x+int(xo), y+int(yo)))
 		}
 	}
-	m.Paletted = newm
+	m.Paletted = newM
 }
 
 func randomBrightness(c color.RGBA, max uint8) color.RGBA {
-	minc := min3(c.R, c.G, c.B)
-	maxc := max3(c.R, c.G, c.B)
-	if maxc > max {
+	minC := min3(c.R, c.G, c.B)
+	maxC := max3(c.R, c.G, c.B)
+	if maxC > max {
 		return c
 	}
-	n := randIntn(int(max-maxc)) - int(minc)
+	n := randIntn(int(max-maxC)) - int(minC)
 	return color.RGBA{
-		uint8(int(c.R) + n),
-		uint8(int(c.G) + n),
-		uint8(int(c.B) + n),
-		c.A,
+		R: uint8(int(c.R) + n),
+		G: uint8(int(c.G) + n),
+		B: uint8(int(c.B) + n),
+		A: c.A,
 	}
 }
 

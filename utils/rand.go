@@ -25,7 +25,7 @@ type rd int
 const Rand rd = iota
 
 // [begin,end)
-func (r rd) RandomInt(start int, end int) int {
+func (r rd) RandomIntn(start int, end int) int {
 	if start > end {
 		panic("start can not bigger than end")
 	}
@@ -35,7 +35,7 @@ func (r rd) RandomInt(start int, end int) int {
 }
 
 // [begin,end)
-func (r rd) RandomFloat64(start float64, end float64) float64 {
+func (r rd) RandomFloat64n(start float64, end float64) float64 {
 	ra.Seed(time.Now().UnixNano())
 	return start + end*ra.Float64()
 }
@@ -50,5 +50,5 @@ func (r rd) UUID() string {
 
 func (r rd) OrderID() string {
 	var t = time.Now()
-	return strconv.FormatInt(t.UnixNano(), 10) + strconv.Itoa(r.RandomInt(10000, 100000))
+	return strconv.FormatInt(t.UnixNano(), 10) + strconv.Itoa(r.RandomIntn(10000, 100000))
 }

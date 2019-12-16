@@ -432,6 +432,29 @@ func (stream *Stream) Url() string {
 	return buf.String()
 }
 
+func (stream *Stream) String() string {
+
+	var header = stream.Request.Header.Get("Content-Type")
+
+	if strings.ToUpper(stream.Request.Method) == "GET" {
+		return stream.Query.String()
+	}
+
+	if strings.HasPrefix(header, "multipart/form-data") {
+		return stream.Form.String()
+	}
+
+	if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
+		return stream.Form.String()
+	}
+
+	if strings.HasPrefix(header, "application/json") {
+		return stream.Json.String()
+	}
+
+	return ""
+}
+
 func (stream *Stream) Scheme() string {
 	var scheme = "http"
 	if stream.Request.TLS != nil {

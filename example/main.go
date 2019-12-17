@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/console"
@@ -9,6 +11,8 @@ import (
 )
 
 func main() {
+
+	console.Log(fmt.Sprintf("%t", "a"))
 
 	exception.Try(func() {
 

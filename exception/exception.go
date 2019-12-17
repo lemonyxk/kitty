@@ -37,6 +37,8 @@ func (err ErrorFunc) Error() error {
 
 type CatchFunc func(err error, trace *caller.Trace) ErrorFunc
 
+type FinallyFunc func()
+
 var Empty = func() ErrorFunc {
 	return func() *Error {
 		return nil
@@ -52,23 +54,34 @@ func (err *Error) String() string {
 }
 
 type catch struct {
-	Catch func(CatchFunc) ErrorFunc
+	Catch func(CatchFunc) *finally
+}
+
+type finally struct {
+	Finally func(FinallyFunc)
 }
 
 func Try(fn func()) (c *catch) {
 	defer func() {
 		if err := recover(); err != nil {
 			var traces = caller.Stack()
-			c = &catch{Catch: func(f CatchFunc) ErrorFunc {
-				return f(fmt.Errorf("%v", err), traces)
+			c = &catch{Catch: func(f CatchFunc) *finally {
+				var ee = fmt.Errorf("%v", err)
+				f(ee, traces)
+				return &finally{Finally: func(ff FinallyFunc) {
+					ff()
+				}}
 			}}
 		}
 	}()
 
 	fn()
 
-	return &catch{Catch: func(f CatchFunc) ErrorFunc {
-		return f(nil, nil)
+	return &catch{Catch: func(f CatchFunc) *finally {
+		f(nil, nil)
+		return &finally{Finally: func(ff FinallyFunc) {
+			ff()
+		}}
 	}}
 }
 

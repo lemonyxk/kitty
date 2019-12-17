@@ -19,6 +19,8 @@ func main() {
 		console.Error(err)
 		console.Println(trace)
 		return exception.New(err)
+	}).Finally(func() {
+		console.Log("final")
 	})
 
 	var server = lemo.Server{Host: "0.0.0.0", Port: 8666}

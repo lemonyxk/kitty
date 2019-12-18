@@ -20,6 +20,8 @@ func main() {
 		console.Error(err)
 		console.Println(trace)
 		return exception.New(err)
+	}).Finally(func(err error) exception.ErrorFunc {
+		return nil
 	})
 
 	var server = lemo.Server{Host: "0.0.0.0", Port: 8666}
@@ -41,25 +43,11 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
-			return exception.New(t.EndString(`
-<!DOCTYPE html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<meta http-equiv="X-UA-Compatible" content="ie=edge" />
-		<title>Document</title>
-	</head>
-	<body>
-		<img src="data:image/png;base64,` + string(utils.Captcha.New(240, 80).ToBase64()) + `"/>
-	</body>
-</html>
-`))
+			return exception.New(t.EndBytes(utils.Captcha.New(240, 80).ToPNG()))
 		})
 	})
 
 	server.Start(webSocketServer.Router(webSocketServerRouter), httpServer.Router(httpServerRouter))
 
 }
-
 ```

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/console"
@@ -11,8 +9,6 @@ import (
 )
 
 func main() {
-
-	console.Log(fmt.Sprintf("%t", "a"))
 
 	exception.Try(func() {
 
@@ -46,22 +42,7 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
-			var captcha = utils.Captcha.New(240, 80)
-			console.Log(captcha.Digits())
-			return exception.New(t.EndString(`
-<!DOCTYPE html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<meta http-equiv="X-UA-Compatible" content="ie=edge" />
-		<title>Document</title>
-	</head>
-	<body>
-		<img src="data:image/png;base64,` + string(captcha.ToBase64()) + `"/>
-	</body>
-</html>
-`))
+			return exception.New(t.EndBytes(utils.Captcha.New(240, 80).ToPNG()))
 		})
 	})
 

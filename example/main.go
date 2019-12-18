@@ -46,6 +46,8 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
+			var captcha = utils.Captcha.New(240, 80)
+			console.Log(captcha.Digits())
 			return exception.New(t.EndString(`
 <!DOCTYPE html>
 <html lang="en">
@@ -56,7 +58,7 @@ func main() {
 		<title>Document</title>
 	</head>
 	<body>
-		<img src="data:image/png;base64,` + string(utils.Captcha.New(240, 80).ToBase64()) + `"/>
+		<img src="data:image/png;base64,` + string(captcha.ToBase64()) + `"/>
 	</body>
 </html>
 `))

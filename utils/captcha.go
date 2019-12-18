@@ -19,6 +19,7 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"strconv"
 	"time"
 )
 
@@ -260,6 +261,7 @@ type Image struct {
 	numWidth  int
 	numHeight int
 	dotSize   int
+	digits    []byte
 }
 
 // randIntn returns a pseudorandom non-negative int in range [0, n).
@@ -301,6 +303,7 @@ func randomPalette() color.Palette {
 func (captcha captcha) New(width, height int) *Image {
 	digits := randomNumber(4)
 	m := new(Image)
+	m.digits = digits
 	m.Paletted = image.NewPaletted(image.Rect(0, 0, width, height), randomPalette())
 	m.calculateSizes(width, height, len(digits))
 	// Randomly position captcha inside the image.
@@ -324,6 +327,14 @@ func (captcha captcha) New(width, height int) *Image {
 	// Fill image with random circles.
 	m.fillWithCircles(circleCount, m.dotSize)
 	return m
+}
+
+func (m *Image) Digits() string {
+	var buf bytes.Buffer
+	for i := 0; i < len(m.digits); i++ {
+		buf.WriteString(strconv.Itoa(int(m.digits[i])))
+	}
+	return buf.String()
 }
 
 // ToPNG encodes an image to PNG and returns

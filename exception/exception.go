@@ -35,9 +35,9 @@ func (err ErrorFunc) Error() error {
 	return errors.New(err().Message)
 }
 
-type CatchFunc func(err error, trace *caller.Trace) ErrorFunc
+type CatchFunc func(ErrorFunc) ErrorFunc
 
-type FinallyFunc func(err error) ErrorFunc
+type FinallyFunc func(ErrorFunc) ErrorFunc
 
 var Empty = func() ErrorFunc {
 	return func() *Error {
@@ -63,15 +63,20 @@ type finally struct {
 }
 
 func Try(fn func()) (c *catch) {
+
 	defer func() {
 		if err := recover(); err != nil {
-			var traces = caller.Stack()
+			var d = 12
+			var e = fmt.Errorf("%v", err)
+			if strings.HasPrefix(e.Error(), "#assert#") {
+				d = 14
+			}
+			var stacks = NewStackWithError(d, err)
 			c = &catch{Catch: func(f CatchFunc) *finally {
-				var ee = fmt.Errorf("%v", err)
-				var ef = f(ee, traces)
+				var ef = f(stacks)
 				return &finally{
 					Finally: func(ff FinallyFunc) ErrorFunc {
-						return ff(ee)
+						return ff(ef)
 					},
 					ErrorFunc: func() ErrorFunc {
 						return ef
@@ -84,13 +89,12 @@ func Try(fn func()) (c *catch) {
 	fn()
 
 	return &catch{Catch: func(f CatchFunc) *finally {
-		var ef = f(nil, nil)
 		return &finally{
 			Finally: func(ff FinallyFunc) ErrorFunc {
 				return ff(nil)
 			},
 			ErrorFunc: func() ErrorFunc {
-				return ef
+				return nil
 			},
 		}
 	}}
@@ -103,7 +107,7 @@ func Assert(v ...interface{}) {
 	if v[len(v)-1] == nil {
 		return
 	}
-	panic(v[len(v)-1])
+	panic(fmt.Errorf("#assert# %v", v[len(v)-1]))
 }
 
 func Inspect(v ...interface{}) ErrorFunc {
@@ -148,13 +152,14 @@ func New(v ...interface{}) ErrorFunc {
 }
 
 func newErrorFromDeep(v interface{}, deep int) ErrorFunc {
-
 	if v == nil {
 		return nil
 	}
-
 	file, line := caller.Caller(deep)
+	return newErrorWithFileAndLine(v, file, line)
+}
 
+func newErrorWithFileAndLine(v interface{}, file string, line int) ErrorFunc {
 	switch v.(type) {
 	case error:
 		var e ErrorFunc = func() *Error {
@@ -172,5 +177,9 @@ func newErrorFromDeep(v interface{}, deep int) ErrorFunc {
 		}
 		return e
 	}
+}
 
+func NewStackWithError(deep int, v interface{}) ErrorFunc {
+	var file, line = caller.Stack(deep)
+	return newErrorWithFileAndLine(v, file, line)
 }

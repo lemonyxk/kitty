@@ -2,8 +2,9 @@
 package main
 
 import (
+	"os"
+
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/utils"
@@ -13,14 +14,40 @@ func main() {
 
 	exception.Try(func() {
 
-		exception.Assert(1)
+		utils.Goroutine.Run(func() {
+			var a []int
+			a[0] = 1
+		})
 
-	}).Catch(func(err error, trace *caller.Trace) exception.ErrorFunc {
-		console.Log(2)
-		console.Error(err)
-		console.Println(trace)
-		return exception.New(err)
-	}).Finally(func(err error) exception.ErrorFunc {
+		utils.Goroutine.Run(func() {
+			var a *lemo.Server
+			a = nil
+			a.Host = "a"
+		})
+
+		utils.Goroutine.Run(func() {
+			var a interface{}
+			a = "1"
+			console.Log(a.(int))
+		})
+
+		var a []int
+		a[0] = 1
+
+		exception.Assert(os.Open(""))
+
+	}).Catch(func(errorFunc exception.ErrorFunc) exception.ErrorFunc {
+
+		utils.Goroutine.Watch(func(errorFunc exception.ErrorFunc) {
+			console.Error(errorFunc)
+		})
+
+		console.Error(errorFunc)
+		return nil
+
+	}).Finally(func(errorFunc exception.ErrorFunc) exception.ErrorFunc {
+
+		console.Error("finally")
 		return nil
 	})
 
@@ -43,7 +70,8 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
-			return exception.New(t.EndBytes(utils.Captcha.New(240, 80).ToPNG()))
+			return exception.New(t.EndString("hello world"))
+			// return exception.New(t.EndBytes(utils.Captcha.New(240, 80).ToPNG()))
 		})
 	})
 

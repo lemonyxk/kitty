@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/protocol"
 
@@ -216,19 +217,19 @@ func (socket *SocketServer) Ready() {
 
 	if socket.OnOpen == nil {
 		socket.OnOpen = func(conn *Socket) {
-			println(conn.FD, "is open")
+			console.Println(conn.FD, "is open")
 		}
 	}
 
 	if socket.OnClose == nil {
 		socket.OnClose = func(fd uint32) {
-			println(fd, "is close")
+			console.Println(fd, "is close")
 		}
 	}
 
 	if socket.OnError == nil {
 		socket.OnError = func(err exception.ErrorFunc) {
-			println(err)
+			console.Error(err)
 		}
 	}
 
@@ -318,7 +319,7 @@ func (socket *SocketServer) addConnect(conn *Socket) {
 			maxFd++
 
 			if maxFd == 0 {
-				println("connections overflow")
+				console.Println("connections overflow")
 				return
 			}
 

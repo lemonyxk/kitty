@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+
+	"github.com/Lemo-yxk/lemo/console"
 )
 
 // Server 服务结构
@@ -113,7 +115,7 @@ func (s *Server) run(handler http.Handler) {
 		err = server.Serve(netListen)
 	}
 	if err != nil {
-		println(err.Error())
+		console.Error(err)
 	}
 }
 
@@ -144,14 +146,13 @@ func (s *Server) reload() {
 		panic(err)
 	}
 
-	println("new pid:", cmd.Process.Pid)
+	console.Println("new pid:", cmd.Process.Pid)
 }
 
 func (s *Server) Shutdown() {
 	err := s.server.Shutdown(context.Background())
 	if err != nil {
-		println(err.Error())
+		console.Error(err)
 	}
-
-	println("kill pid:", os.Getpid())
+	console.Println("kill pid:", os.Getpid())
 }

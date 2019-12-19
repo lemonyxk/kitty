@@ -55,10 +55,7 @@ func (v *Value) Int() int {
 	case int:
 		return v.v.(int)
 	case string:
-		r, err := strconv.Atoi(v.v.(string))
-		if err != nil {
-			return 0
-		}
+		r, _ := strconv.Atoi(v.v.(string))
 		return r
 	case float64:
 		return int(v.v.(float64))
@@ -201,24 +198,23 @@ func (stream *Stream) JsonFormat(status string, code int, msg interface{}) excep
 }
 
 func (stream *Stream) End(data interface{}) error {
-
 	var err error
-
 	switch data.(type) {
 	case []byte:
 		err = stream.EndBytes(data.([]byte))
 	case string:
 		err = stream.EndString(data.(string))
 	default:
-		_, err = fmt.Fprint(stream.Response, data)
+		err = stream.EndString(fmt.Sprintf("%v", data))
 	}
-
 	return err
 }
 
 func (stream *Stream) EndJson(data interface{}) error {
 	stream.SetHeader("Content-Type", "application/json")
-	return jsoniter.NewEncoder(stream.Response).Encode(data)
+	var bts, err = jsoniter.Marshal(data)
+	_, err = stream.Response.Write(bts)
+	return err
 }
 
 func (stream *Stream) EndString(data string) error {
@@ -232,11 +228,9 @@ func (stream *Stream) EndBytes(data []byte) error {
 }
 
 func (stream *Stream) Host() string {
-
 	if host := stream.Request.Header.Get(Host); host != "" {
 		return host
 	}
-
 	return stream.Request.Host
 }
 

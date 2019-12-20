@@ -42,6 +42,14 @@ func (j json) JsonPath(data []byte, path ...interface{}) *Result {
 	return &Result{data: jsoniter.Get(data, path...)}
 }
 
+func (r *Result) Data() jsoniter.Any {
+	return r.data
+}
+
+func (r *Result) Exists() bool {
+	return r.data.LastError() == nil
+}
+
 func (r *Result) String() string {
 	return r.data.ToString()
 }

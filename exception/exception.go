@@ -66,12 +66,12 @@ func Try(fn func()) (c *catch) {
 
 	defer func() {
 		if err := recover(); err != nil {
-			var d = 12
+			var d = 1
 			var e = fmt.Errorf("%v", err)
 			if strings.HasPrefix(e.Error(), "#assert#") {
-				d = 14
+				d = 2
 			}
-			var stacks = NewStackWithError(d, err)
+			var stacks = NewStackWithError(d, strings.Replace(e.Error(), "#assert#", "", 1))
 			c = &catch{Catch: func(f CatchFunc) *finally {
 				var ef = f(stacks)
 				return &finally{
@@ -107,7 +107,7 @@ func Assert(v ...interface{}) {
 	if v[len(v)-1] == nil {
 		return
 	}
-	panic(fmt.Errorf("#assert# %v", v[len(v)-1]))
+	panic(fmt.Errorf("#assert#%v", v[len(v)-1]))
 }
 
 func Inspect(v ...interface{}) ErrorFunc {
@@ -180,6 +180,7 @@ func newErrorWithFileAndLine(v interface{}, file string, line int) ErrorFunc {
 }
 
 func NewStackWithError(deep int, v interface{}) ErrorFunc {
+	deep = 10 + deep*2
 	var file, line = caller.Stack(deep)
 	return newErrorWithFileAndLine(v, file, line)
 }

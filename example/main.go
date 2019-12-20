@@ -25,13 +25,15 @@ func main() {
 		})
 
 		utils.Goroutine.Run(func() {
+
+			utils.Goroutine.Run(func() {
+				panic(1)
+			})
+
 			var a interface{}
 			a = "1"
 			console.Log(a.(int))
 		})
-
-		var a []int
-		a[0] = 1
 
 		exception.Assert(os.Open(""))
 

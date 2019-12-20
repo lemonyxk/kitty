@@ -28,12 +28,12 @@ func (g goroutine) Run(fn func()) {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				var d = 12
+				var d = 1
 				var e = fmt.Errorf("%v", err)
 				if strings.HasPrefix(e.Error(), "#assert#") {
-					d = 14
+					d = 2
 				}
-				que.Push(exception.NewStackWithError(d, err))
+				que.Push(exception.NewStackWithError(d, strings.Replace(e.Error(), "#assert#", "", 1)))
 			}
 		}()
 		fn()

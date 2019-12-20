@@ -66,6 +66,10 @@ func (r *Result) Bool() bool {
 	return r.data.ToBool()
 }
 
+func (r *Result) Interface() interface{} {
+	return r.data.GetInterface()
+}
+
 func (r *Result) Array() *Array {
 	var result []jsoniter.Any
 	var val = r.data

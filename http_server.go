@@ -14,7 +14,9 @@ import (
 
 type HttpServer struct {
 	OnError    func(err exception.ErrorFunc)
-	MiddleWare func(stream *Stream)
+	OnMessage  func(stream *Stream)
+	OnClose    func(stream *Stream)
+	MiddleWare func(stream *Stream) exception.ErrorFunc
 	router     *HttpServerRouter
 }
 
@@ -27,24 +29,30 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 	// Get the router
 	node, formatPath := h.router.getRoute(r.Method, r.URL.Path)
 
-	var params = new(Params)
-	if node != nil {
-		params.Keys = node.Keys
-		params.Values = node.ParseParams(formatPath)
-	}
-
-	var stream = NewStream(w, r, params)
-
-	if h.MiddleWare != nil {
-		h.MiddleWare(stream)
-	}
-
 	if node == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
+	var params = &Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
+
+	var stream = NewStream(w, r, params)
+
 	var nodeData = node.Data.(*httpServerNode)
+
+	if h.OnMessage != nil {
+		h.OnMessage(stream)
+	}
+
+	if h.MiddleWare != nil {
+		var err = h.MiddleWare(stream)
+		if err != nil {
+			if h.OnError != nil {
+				h.OnError(err)
+			}
+			goto CLOSE
+		}
+	}
 
 	// Get the middleware
 	for i := 0; i < len(nodeData.Before); i++ {
@@ -53,7 +61,7 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 			if h.OnError != nil {
 				h.OnError(err)
 			}
-			return
+			goto CLOSE
 		}
 		stream.Context = context
 	}
@@ -64,7 +72,7 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 			if h.OnError != nil {
 				h.OnError(err)
 			}
-			return
+			goto CLOSE
 		}
 	}
 
@@ -74,9 +82,16 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 			if h.OnError != nil {
 				h.OnError(err)
 			}
-			return
+			goto CLOSE
 		}
 	}
+
+CLOSE:
+
+	if h.OnClose != nil {
+		h.OnClose(stream)
+	}
+
 }
 
 func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error {

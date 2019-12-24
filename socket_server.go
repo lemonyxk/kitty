@@ -136,18 +136,30 @@ func (socket *SocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
 	return socket.Push(fd, messageProtoBuf)
 }
 
-func (socket *SocketServer) JsonEmitAll(msg JsonPackage) {
+func (socket *SocketServer) JsonEmitAll(msg JsonPackage) (int, int) {
+	var counter = 0
+	var success = 0
 	socket.connections.Range(func(key, value interface{}) bool {
-		_ = socket.JsonEmit(key.(uint32), msg)
+		counter++
+		if socket.JsonEmit(key.(uint32), msg) == nil {
+			success++
+		}
 		return true
 	})
+	return counter, success
 }
 
-func (socket *SocketServer) ProtoBufEmitAll(msg ProtoBufPackage) {
+func (socket *SocketServer) ProtoBufEmitAll(msg ProtoBufPackage) (int, int) {
+	var counter = 0
+	var success = 0
 	socket.connections.Range(func(key, value interface{}) bool {
-		_ = socket.ProtoBufEmit(key.(uint32), msg)
+		counter++
+		if socket.ProtoBufEmit(key.(uint32), msg) == nil {
+			success++
+		}
 		return true
 	})
+	return counter, success
 }
 
 func (socket *SocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
@@ -321,9 +333,7 @@ func (socket *SocketServer) delConnect(conn *Socket) {
 }
 
 func (socket *SocketServer) GetConnections() chan *Socket {
-
 	var ch = make(chan *Socket, 1024)
-
 	go func() {
 		socket.connections.Range(func(key, value interface{}) bool {
 			ch <- value.(*Socket)
@@ -331,7 +341,6 @@ func (socket *SocketServer) GetConnections() chan *Socket {
 		})
 		close(ch)
 	}()
-
 	return ch
 }
 

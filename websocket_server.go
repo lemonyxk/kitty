@@ -172,25 +172,43 @@ func (socket *WebSocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
 	return socket.Push(fd, protocol.BinData, messageProtoBuf)
 }
 
-func (socket *WebSocketServer) JsonFormatAll(msg JsonPackage) {
+func (socket *WebSocketServer) JsonFormatAll(msg JsonPackage) (int, int) {
+	var counter = 0
+	var success = 0
 	socket.connections.Range(func(key, value interface{}) bool {
-		_ = socket.JsonFormat(key.(uint32), msg)
+		counter++
+		if socket.JsonFormat(key.(uint32), msg) == nil {
+			success++
+		}
 		return true
 	})
+	return counter, success
 }
 
-func (socket *WebSocketServer) JsonEmitAll(msg JsonPackage) {
+func (socket *WebSocketServer) JsonEmitAll(msg JsonPackage) (int, int) {
+	var counter = 0
+	var success = 0
 	socket.connections.Range(func(key, value interface{}) bool {
-		_ = socket.JsonEmit(key.(uint32), msg)
+		counter++
+		if socket.JsonEmit(key.(uint32), msg) == nil {
+			success++
+		}
 		return true
 	})
+	return counter, success
 }
 
-func (socket *WebSocketServer) ProtoBufEmitAll(msg ProtoBufPackage) {
+func (socket *WebSocketServer) ProtoBufEmitAll(msg ProtoBufPackage) (int, int) {
+	var counter = 0
+	var success = 0
 	socket.connections.Range(func(key, value interface{}) bool {
-		_ = socket.ProtoBufEmit(key.(uint32), msg)
+		counter++
+		if socket.ProtoBufEmit(key.(uint32), msg) == nil {
+			success++
+		}
 		return true
 	})
+	return counter, success
 }
 
 func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
@@ -261,9 +279,7 @@ func (socket *WebSocketServer) delConnect(conn *WebSocket) {
 }
 
 func (socket *WebSocketServer) GetConnections() chan *WebSocket {
-
 	var ch = make(chan *WebSocket, 1024)
-
 	go func() {
 		socket.connections.Range(func(key, value interface{}) bool {
 			ch <- value.(*WebSocket)
@@ -271,7 +287,6 @@ func (socket *WebSocketServer) GetConnections() chan *WebSocket {
 		})
 		close(ch)
 	}()
-
 	return ch
 }
 

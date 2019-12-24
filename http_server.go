@@ -13,9 +13,9 @@ import (
 )
 
 type HttpServer struct {
-	OnError   func(err exception.ErrorFunc)
-	OnMessage func(stream *Stream)
-	router    *HttpServerRouter
+	OnError    func(err exception.ErrorFunc)
+	MiddleWare func(stream *Stream)
+	router     *HttpServerRouter
 }
 
 func (h *HttpServer) Ready() {
@@ -35,8 +35,8 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 
 	var stream = NewStream(w, r, params)
 
-	if h.OnMessage != nil {
-		h.OnMessage(stream)
+	if h.MiddleWare != nil {
+		h.MiddleWare(stream)
 	}
 
 	if node == nil {

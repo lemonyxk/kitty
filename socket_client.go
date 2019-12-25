@@ -54,7 +54,13 @@ type SocketClient struct {
 
 	router *SocketClientRouter
 
+	middleware []func(c *SocketClient, receive *Receive) exception.ErrorFunc
+
 	mux sync.RWMutex
+}
+
+func (client *SocketClient) Use(middleware ...func(c *SocketClient, receive *Receive) exception.ErrorFunc) {
+	client.middleware = append(client.middleware, middleware...)
 }
 
 // Json 发送JSON字符
@@ -362,6 +368,16 @@ func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
 	receive.Message = msg
 	receive.Context = nil
 	receive.Params = params
+
+	for i := 0; i < len(client.middleware); i++ {
+		err := client.middleware[i](conn, receive)
+		if err != nil {
+			if client.OnError != nil {
+				client.OnError(err)
+			}
+			return
+		}
+	}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		context, err := nodeData.Before[i](conn, receive)

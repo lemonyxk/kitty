@@ -102,6 +102,11 @@ type SocketServer struct {
 	count       uint32
 	connections sync.Map
 	router      *SocketServerRouter
+	middleware  []func(conn *Socket, receive *Receive) exception.ErrorFunc
+}
+
+func (socket *SocketServer) Use(middleware ...func(conn *Socket, receive *Receive) exception.ErrorFunc) {
+	socket.middleware = append(socket.middleware, middleware...)
 }
 
 // Push 发送消息
@@ -519,6 +524,16 @@ func (socket *SocketServer) handler(conn *Socket, msg *ReceivePackage) {
 	receive.Message = msg
 	receive.Context = nil
 	receive.Params = params
+
+	for i := 0; i < len(socket.middleware); i++ {
+		err := socket.middleware[i](conn, receive)
+		if err != nil {
+			if socket.OnError != nil {
+				socket.OnError(err)
+			}
+			return
+		}
+	}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		context, err := nodeData.Before[i](conn, receive)

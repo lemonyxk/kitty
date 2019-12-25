@@ -28,49 +28,6 @@ type WebSocket struct {
 	Request  *http.Request
 }
 
-// WebSocketServer conn
-type WebSocketServer struct {
-	OnClose   func(fd uint32)
-	OnMessage func(conn *WebSocket, messageType int, msg []byte)
-	OnOpen    func(conn *WebSocket)
-	OnError   func(err exception.ErrorFunc)
-
-	HeartBeatTimeout  int
-	HeartBeatInterval int
-	HandshakeTimeout  int
-	ReadBufferSize    int
-	WriteBufferSize   int
-	WaitQueueSize     int
-	CheckOrigin       func(r *http.Request) bool
-	Path              string
-
-	PingHandler func(connection *WebSocket) func(appData string) error
-
-	PongHandler func(connection *WebSocket) func(appData string) error
-
-	// 连接
-	connOpen chan *WebSocket
-
-	// 关闭
-	connClose chan *WebSocket
-
-	// 写入
-	connPush chan *PushPackage
-
-	// 返回
-	connBack chan error
-
-	// 错误
-	connError chan exception.ErrorFunc
-
-	upgrade websocket.Upgrader
-
-	fd          uint32
-	count       uint32
-	connections sync.Map
-	router      *WebSocketServerRouter
-}
-
 func (conn *WebSocket) Host() string {
 
 	if host := conn.Request.Header.Get(Host); host != "" {
@@ -123,6 +80,54 @@ func (conn *WebSocket) ProtoBufEmit(msg ProtoBufPackage) error {
 
 func (conn *WebSocket) Close() error {
 	return conn.Conn.Close()
+}
+
+// WebSocketServer conn
+type WebSocketServer struct {
+	OnClose   func(fd uint32)
+	OnMessage func(conn *WebSocket, messageType int, msg []byte)
+	OnOpen    func(conn *WebSocket)
+	OnError   func(err exception.ErrorFunc)
+
+	HeartBeatTimeout  int
+	HeartBeatInterval int
+	HandshakeTimeout  int
+	ReadBufferSize    int
+	WriteBufferSize   int
+	WaitQueueSize     int
+	CheckOrigin       func(r *http.Request) bool
+	Path              string
+
+	PingHandler func(connection *WebSocket) func(appData string) error
+
+	PongHandler func(connection *WebSocket) func(appData string) error
+
+	// 连接
+	connOpen chan *WebSocket
+
+	// 关闭
+	connClose chan *WebSocket
+
+	// 写入
+	connPush chan *PushPackage
+
+	// 返回
+	connBack chan error
+
+	// 错误
+	connError chan exception.ErrorFunc
+
+	upgrade websocket.Upgrader
+
+	fd          uint32
+	count       uint32
+	connections sync.Map
+	router      *WebSocketServerRouter
+	middleware  []func(conn *WebSocket, receive *Receive) exception.ErrorFunc
+}
+
+func (socket *WebSocketServer) Use(middleware ...func(conn *WebSocket, receive *Receive) exception.ErrorFunc) {
+	socket.middleware = append(socket.middleware, middleware...)
 }
 
 func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
@@ -553,6 +558,16 @@ func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
 	receive.Message = msg
 	receive.Context = nil
 	receive.Params = params
+
+	for i := 0; i < len(socket.middleware); i++ {
+		err := socket.middleware[i](conn, receive)
+		if err != nil {
+			if socket.OnError != nil {
+				socket.OnError(err)
+			}
+			return
+		}
+	}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		context, err := nodeData.Before[i](conn, receive)

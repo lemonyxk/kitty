@@ -53,7 +53,12 @@ type WebSocketClient struct {
 
 	mux sync.RWMutex
 
-	router *WebSocketClientRouter
+	router     *WebSocketClientRouter
+	middleware []func(c *WebSocketClient, receive *Receive) exception.ErrorFunc
+}
+
+func (client *WebSocketClient) Use(middleware ...func(c *WebSocketClient, receive *Receive) exception.ErrorFunc) {
+	client.middleware = append(client.middleware, middleware...)
 }
 
 // Json 发送JSON字符
@@ -350,6 +355,16 @@ func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackag
 	receive.Message = msg
 	receive.Context = nil
 	receive.Params = params
+
+	for i := 0; i < len(client.middleware); i++ {
+		err := client.middleware[i](conn, receive)
+		if err != nil {
+			if client.OnError != nil {
+				client.OnError(err)
+			}
+			return
+		}
+	}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		context, err := nodeData.Before[i](conn, receive)

@@ -13,10 +13,12 @@ import (
 )
 
 type HttpServer struct {
-	OnError    func(err exception.ErrorFunc)
-	OnMessage  func(stream *Stream)
-	OnClose    func(stream *Stream)
-	MiddleWare func(stream *Stream) exception.ErrorFunc
+	OnOpen    func(w http.ResponseWriter, r *http.Request)
+	OnMessage func(stream *Stream)
+	OnClose   func(w http.ResponseWriter, r *http.Request)
+	OnError   func(err exception.ErrorFunc)
+
+	middleware []func(stream *Stream) exception.ErrorFunc
 	router     *HttpServerRouter
 }
 
@@ -24,13 +26,27 @@ func (h *HttpServer) Ready() {
 
 }
 
+func (h *HttpServer) Use(middleware ...func(stream *Stream) exception.ErrorFunc) {
+	h.middleware = append(h.middleware, middleware...)
+}
+
 func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
+
+	if h.OnOpen != nil {
+		h.OnOpen(w, r)
+	}
 
 	// Get the router
 	node, formatPath := h.router.getRoute(r.Method, r.URL.Path)
 
 	if node == nil {
 		w.WriteHeader(http.StatusNotFound)
+		if h.OnError != nil {
+			h.OnError(exception.New("404 not found"))
+		}
+		if h.OnClose != nil {
+			h.OnClose(w, r)
+		}
 		return
 	}
 
@@ -44,24 +60,29 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 		h.OnMessage(stream)
 	}
 
-	if h.MiddleWare != nil {
-		var err = h.MiddleWare(stream)
+	for i := 0; i < len(h.middleware); i++ {
+		err := h.middleware[i](stream)
 		if err != nil {
 			if h.OnError != nil {
 				h.OnError(err)
 			}
-			goto CLOSE
+			if h.OnClose != nil {
+				h.OnClose(w, r)
+			}
+			return
 		}
 	}
 
-	// Get the middleware
 	for i := 0; i < len(nodeData.Before); i++ {
 		context, err := nodeData.Before[i](stream)
 		if err != nil {
 			if h.OnError != nil {
 				h.OnError(err)
 			}
-			goto CLOSE
+			if h.OnClose != nil {
+				h.OnClose(w, r)
+			}
+			return
 		}
 		stream.Context = context
 	}
@@ -72,7 +93,10 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 			if h.OnError != nil {
 				h.OnError(err)
 			}
-			goto CLOSE
+			if h.OnClose != nil {
+				h.OnClose(w, r)
+			}
+			return
 		}
 	}
 
@@ -82,14 +106,11 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 			if h.OnError != nil {
 				h.OnError(err)
 			}
-			goto CLOSE
+			if h.OnClose != nil {
+				h.OnClose(w, r)
+			}
+			return
 		}
-	}
-
-CLOSE:
-
-	if h.OnClose != nil {
-		h.OnClose(stream)
 	}
 
 }

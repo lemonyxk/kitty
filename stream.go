@@ -46,61 +46,38 @@ func (ps *Params) ByName(name string) string {
 }
 
 type Value struct {
-	v interface{}
+	v *string
 }
 
 func (v *Value) Int() int {
-
-	switch v.v.(type) {
-	case int:
-		return v.v.(int)
-	case string:
-		r, _ := strconv.Atoi(v.v.(string))
-		return r
-	case float64:
-		return int(v.v.(float64))
-	default:
+	if v.v == nil {
 		return 0
 	}
+	r, _ := strconv.Atoi(*v.v)
+	return r
 }
 
 func (v *Value) Float64() float64 {
-	switch v.v.(type) {
-	case int:
-		return float64(v.v.(int))
-	case string:
-		r, err := strconv.ParseFloat(v.v.(string), 64)
-		if err != nil {
-			return 0
-		}
-		return r
-	case float64:
-		return v.v.(float64)
-	default:
+	if v.v == nil {
 		return 0
 	}
+	r, _ := strconv.ParseFloat(*v.v, 64)
+	return r
 }
 
 func (v *Value) String() string {
-	switch v.v.(type) {
-	case int:
-		return strconv.Itoa(v.v.(int))
-	case string:
-		return v.v.(string)
-	case float64:
-		return strconv.FormatFloat(v.v.(float64), 'f', -1, 64)
-	default:
+	if v.v == nil {
 		return ""
 	}
+	return *v.v
 }
 
 func (v *Value) Bool() bool {
-	switch v.v.(type) {
-	case bool:
-		return v.v.(bool)
-	default:
-		return strings.ToUpper(v.String()) == "TRUE"
-	}
+	return strings.ToUpper(v.String()) == "TRUE"
+}
+
+func (v *Value) Bytes() []byte {
+	return []byte(v.String())
 }
 
 type Json struct {
@@ -408,7 +385,11 @@ func (stream *Stream) AutoGet(key string) *Value {
 		}
 	}
 	if stream.Json != nil {
-		return &Value{v: stream.Json.Path(key).GetInterface()}
+		var path = stream.Json.Path(key)
+		if path.LastError() == nil {
+			var p = path.ToString()
+			return &Value{v: &p}
+		}
 	}
 	return &Value{}
 }
@@ -459,7 +440,7 @@ func (stream *Stream) Scheme() string {
 
 type Store struct {
 	keys   []string
-	values []interface{}
+	values []string
 }
 
 func (store *Store) Has(key string) bool {
@@ -479,14 +460,14 @@ func (store *Store) Get(key string) *Value {
 	var val = &Value{}
 	for i := 0; i < len(store.keys); i++ {
 		if store.keys[i] == key {
-			val.v = store.values[i]
+			val.v = &store.values[i]
 			return val
 		}
 	}
 	return val
 }
 
-func (store *Store) Add(key string, value interface{}) {
+func (store *Store) Add(key string, value string) {
 	store.keys = append(store.keys, key)
 	store.values = append(store.values, value)
 }
@@ -510,7 +491,7 @@ func (store *Store) Keys() []string {
 	return store.keys
 }
 
-func (store *Store) Values() []interface{} {
+func (store *Store) Values() []string {
 	return store.values
 }
 
@@ -520,16 +501,7 @@ func (store *Store) String() string {
 
 	for i := 0; i < len(store.keys); i++ {
 		buff.WriteString(store.keys[i] + ":")
-		switch store.values[i].(type) {
-		case int:
-			buff.WriteString(strconv.Itoa(store.values[i].(int)))
-		case string:
-			buff.WriteString(store.values[i].(string))
-		case float64:
-			buff.WriteString(strconv.FormatFloat(store.values[i].(float64), 'f', -1, 64))
-		default:
-			buff.WriteString(fmt.Sprintf("%v", store.values[i]))
-		}
+		buff.WriteString(store.values[i])
 		buff.WriteString(" ")
 	}
 

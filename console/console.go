@@ -36,15 +36,15 @@ func init() {
 	logger = new(Logger)
 
 	SetDebugHook(func(t time.Time, file string, line int, v ...interface{}) {
-		FgBlue.Printf("DEB %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
+		FgBlue.Printf("DEB %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.JoinInterface(v, " "))
 	})
 
 	SetLogHook(func(t time.Time, file string, line int, v ...interface{}) {
-		Bold.Printf("LOG %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
+		Bold.Printf("LOG %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.JoinInterface(v, " "))
 	})
 
 	SetWarningHook(func(t time.Time, file string, line int, v ...interface{}) {
-		FgYellow.Printf("WAR %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.Join(v, " "))
+		FgYellow.Printf("WAR %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.JoinInterface(v, " "))
 	})
 
 	SetErrorHook(func(err *exception.Error) {

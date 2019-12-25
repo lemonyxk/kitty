@@ -67,6 +67,11 @@ func (t *table) Header(v ...interface{}) *table {
 	return t
 }
 
+func (t *table) SetPageSize(limit int) *table {
+	t.write.SetPageSize(limit)
+	return t
+}
+
 func (t *table) Row(v ...interface{}) *table {
 	t.write.AppendRow(v)
 	return t

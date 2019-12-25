@@ -72,6 +72,10 @@ func (t *table) SetPageSize(limit int) *table {
 	return t
 }
 
+func (t *table) Style() *tab.Style {
+	return t.write.Style()
+}
+
 func (t *table) Row(v ...interface{}) *table {
 	t.write.AppendRow(v)
 	return t

@@ -18,7 +18,12 @@ import (
 
 func Udp() {
 
-	udp, err := net.ListenPacket("udp", "127.0.0.1:5000")
+	var addr, err = net.ResolveUDPAddr("udp", "127.0.0.1:5000")
+	if err != nil {
+		panic(err)
+	}
+
+	udp, err := net.ListenUDP("udp", addr)
 	if err != nil {
 		panic(err)
 	}
@@ -32,12 +37,13 @@ func Udp() {
 
 	for {
 
-		n, addr, err := udp.ReadFrom(buf)
+		n, addr, err := udp.ReadFromUDP(buf)
 		if err != nil {
 			console.Error(err)
 			continue
 		}
-		console.Println(n, addr.String(), string(buf[0:n]))
+
+		console.Println(n, addr.String())
 	}
 
 }

@@ -271,7 +271,7 @@ func (h *httpClient) AddCookie(cookie *http.Cookie) *httpClient {
 	return h
 }
 
-func (h *httpClient) Body(body interface{}) *httpClient {
+func (h *httpClient) Json(body interface{}) *httpClient {
 	h.SetHeader("Content-Type", "application/json")
 	h.body = body
 	return h

@@ -33,11 +33,9 @@ type Socket struct {
 }
 
 func (conn *Socket) ClientIP() string {
-
 	if ip, _, err := net.SplitHostPort(conn.Conn.RemoteAddr().String()); err == nil {
 		return ip
 	}
-
 	return ""
 }
 
@@ -566,7 +564,11 @@ func (socket *SocketServer) handler(conn *Socket, msg *ReceivePackage) {
 
 }
 
-func (socket *SocketServer) Router(router *SocketServerRouter) *SocketServer {
+func (socket *SocketServer) SetRouter(router *SocketServerRouter) *SocketServer {
 	socket.router = router
 	return socket
+}
+
+func (socket *SocketServer) GetRouter() *SocketServerRouter {
+	return socket.router
 }

@@ -76,6 +76,6 @@ func main() {
 		})
 	})
 
-	server.Start(webSocketServer.Router(webSocketServerRouter), httpServer.Router(httpServerRouter))
+	server.Start(webSocketServer.SetRouter(webSocketServerRouter), httpServer.SetRouter(httpServerRouter))
 
 }

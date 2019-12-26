@@ -17,7 +17,7 @@ import (
 	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/exception"
 
-	"github.com/Lemo-yxk/tire"
+	"github.com/Lemo-yxk/lemo/container/tire"
 )
 
 type SocketServerGroupFunction func(handler *SocketServerRouteHandler)

@@ -146,6 +146,7 @@ func (a Array) Float64() []float64 {
 }
 
 type Stream struct {
+	Server   *HttpServer
 	Response http.ResponseWriter
 	Request  *http.Request
 	Params   *Params
@@ -158,8 +159,12 @@ type Stream struct {
 	maxMemory int64
 }
 
-func NewStream(w http.ResponseWriter, r *http.Request, p *Params) *Stream {
-	return &Stream{Response: w, Request: r, Params: p}
+func NewStream(h *HttpServer, w http.ResponseWriter, r *http.Request, p *Params) *Stream {
+	return &Stream{Server: h, Response: w, Request: r, Params: p}
+}
+
+func (stream *Stream) Forward(fn HttpServerFunction) exception.ErrorFunc {
+	return fn(stream)
 }
 
 func (stream *Stream) SetMaxMemory(maxMemory int64) {

@@ -410,7 +410,11 @@ func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
 
 }
 
-func (client *SocketClient) Router(router *SocketClientRouter) *SocketClient {
+func (client *SocketClient) SetRouter(router *SocketClientRouter) *SocketClient {
 	client.router = router
 	return client
+}
+
+func (client *SocketClient) GetRouter() *SocketClientRouter {
+	return client.router
 }

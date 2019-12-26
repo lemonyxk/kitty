@@ -397,7 +397,11 @@ func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackag
 
 }
 
-func (client *WebSocketClient) Router(router *WebSocketClientRouter) *WebSocketClient {
+func (client *WebSocketClient) SetRouter(router *WebSocketClientRouter) *WebSocketClient {
 	client.router = router
 	return client
+}
+
+func (client *WebSocketClient) GetRouter() *WebSocketClientRouter {
+	return client.router
 }

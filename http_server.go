@@ -52,7 +52,7 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 
 	var params = &Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
 
-	var stream = NewStream(w, r, params)
+	var stream = NewStream(h, w, r, params)
 
 	var nodeData = node.Data.(*httpServerNode)
 
@@ -170,7 +170,11 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 
 }
 
-func (h *HttpServer) Router(router *HttpServerRouter) *HttpServer {
+func (h *HttpServer) SetRouter(router *HttpServerRouter) *HttpServer {
 	h.router = router
 	return h
+}
+
+func (h *HttpServer) GetRouter() *HttpServerRouter {
+	return h.router
 }

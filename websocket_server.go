@@ -600,7 +600,11 @@ func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
 
 }
 
-func (socket *WebSocketServer) Router(router *WebSocketServerRouter) *WebSocketServer {
+func (socket *WebSocketServer) SetRouter(router *WebSocketServerRouter) *WebSocketServer {
 	socket.router = router
 	return socket
+}
+
+func (socket *WebSocketServer) GetRouter() *WebSocketServerRouter {
+	return socket.router
 }

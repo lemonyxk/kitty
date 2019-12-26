@@ -452,8 +452,9 @@ func (store *Store) Has(key string) bool {
 	return false
 }
 
-func (store *Store) IsEmpty(key string) bool {
-	return store.Get(key).v == nil
+func (store *Store) Empty(key string) bool {
+	var v = store.Get(key).v
+	return v == nil || *v == ""
 }
 
 func (store *Store) Get(key string) *Value {

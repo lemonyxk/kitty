@@ -100,11 +100,13 @@ type SocketServer struct {
 	count       uint32
 	connections sync.Map
 	router      *SocketServerRouter
-	middleware  []func(conn *Socket, receive *Receive) exception.ErrorFunc
+	middle      []func(SocketServerMiddle) SocketServerMiddle
 }
 
-func (socket *SocketServer) Use(middleware ...func(conn *Socket, receive *Receive) exception.ErrorFunc) {
-	socket.middleware = append(socket.middleware, middleware...)
+type SocketServerMiddle func(conn *Socket, receive *ReceivePackage)
+
+func (socket *SocketServer) Use(middle ...func(SocketServerMiddle) SocketServerMiddle) {
+	socket.middle = append(socket.middle, middle...)
 }
 
 // Push 发送消息
@@ -498,11 +500,19 @@ func (socket *SocketServer) decodeMessage(connection *Socket, message []byte) er
 
 	// on router
 	if socket.router != nil {
-		go socket.handler(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+		go socket.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 		return nil
 	}
 
 	return nil
+}
+
+func (socket *SocketServer) middleware(conn *Socket, msg *ReceivePackage) {
+	var next SocketServerMiddle = socket.handler
+	for i := len(socket.middle) - 1; i >= 0; i-- {
+		next = socket.middle[i](next)
+	}
+	next(conn, msg)
 }
 
 func (socket *SocketServer) handler(conn *Socket, msg *ReceivePackage) {
@@ -522,16 +532,6 @@ func (socket *SocketServer) handler(conn *Socket, msg *ReceivePackage) {
 	receive.Message = msg
 	receive.Context = nil
 	receive.Params = params
-
-	for i := 0; i < len(socket.middleware); i++ {
-		err := socket.middleware[i](conn, receive)
-		if err != nil {
-			if socket.OnError != nil {
-				socket.OnError(err)
-			}
-			return
-		}
-	}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		context, err := nodeData.Before[i](conn, receive)

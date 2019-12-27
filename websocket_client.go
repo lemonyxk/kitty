@@ -53,12 +53,14 @@ type WebSocketClient struct {
 
 	mux sync.RWMutex
 
-	router     *WebSocketClientRouter
-	middleware []func(c *WebSocketClient, receive *Receive) exception.ErrorFunc
+	router *WebSocketClientRouter
+	middle []func(WebSocketClientMiddle) WebSocketClientMiddle
 }
 
-func (client *WebSocketClient) Use(middleware ...func(c *WebSocketClient, receive *Receive) exception.ErrorFunc) {
-	client.middleware = append(client.middleware, middleware...)
+type WebSocketClientMiddle func(c *WebSocketClient, receive *ReceivePackage)
+
+func (client *WebSocketClient) Use(middle ...func(WebSocketClientMiddle) WebSocketClientMiddle) {
+	client.middle = append(client.middle, middle...)
 }
 
 // Json 发送JSON字符
@@ -290,7 +292,7 @@ func (client *WebSocketClient) Connect() {
 			if version != protocol.Version {
 				route, body := protocol.ParseMessage(message)
 				if route != nil {
-					go client.handler(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
+					go client.middleware(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
 				}
 				continue
 			}
@@ -317,7 +319,7 @@ func (client *WebSocketClient) Connect() {
 
 			// on router
 			if client.router != nil {
-				go client.handler(client, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+				go client.middleware(client, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 				continue
 			}
 
@@ -338,6 +340,14 @@ func (client *WebSocketClient) Connect() {
 	client.reconnecting()
 }
 
+func (client *WebSocketClient) middleware(conn *WebSocketClient, msg *ReceivePackage) {
+	var next WebSocketClientMiddle = client.handler
+	for i := len(client.middle) - 1; i >= 0; i-- {
+		next = client.middle[i](next)
+	}
+	next(conn, msg)
+}
+
 func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackage) {
 
 	var node, formatPath = client.router.getRoute(msg.Event)
@@ -355,16 +365,6 @@ func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackag
 	receive.Message = msg
 	receive.Context = nil
 	receive.Params = params
-
-	for i := 0; i < len(client.middleware); i++ {
-		err := client.middleware[i](conn, receive)
-		if err != nil {
-			if client.OnError != nil {
-				client.OnError(err)
-			}
-			return
-		}
-	}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		context, err := nodeData.Before[i](conn, receive)

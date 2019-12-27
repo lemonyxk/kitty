@@ -61,3 +61,5 @@ type PushPackage struct {
 }
 
 type M map[string]interface{}
+
+type Context interface{}

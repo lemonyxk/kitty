@@ -1,37 +1,69 @@
 package lemo
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"mime"
+	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
+	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
 type HttpServer struct {
+	// Host 服务Host
+	Host string
+	// Port 服务端口
+	Port int
+	// Protocol 协议
+	Protocol string
+	// TLS FILE
+	CertFile string
+	// TLS KEY
+	KeyFile string
+
 	OnOpen    func(w http.ResponseWriter, r *http.Request)
 	OnMessage func(stream *Stream)
 	OnClose   func(w http.ResponseWriter, r *http.Request)
 	OnError   func(err exception.ErrorFunc)
 
-	middleware []func(stream *Stream) exception.ErrorFunc
-	router     *HttpServerRouter
+	middle []func(next HttpServerMiddle) HttpServerMiddle
+	router *HttpServerRouter
+
+	netListen net.Listener
+	server    *http.Server
 }
 
 func (h *HttpServer) Ready() {
 
 }
 
-func (h *HttpServer) Use(middleware ...func(stream *Stream) exception.ErrorFunc) {
-	h.middleware = append(h.middleware, middleware...)
+type HttpServerMiddle func(w http.ResponseWriter, r *http.Request)
+
+func (h *HttpServer) Use(middle ...func(next HttpServerMiddle) HttpServerMiddle) {
+	h.middle = append(h.middle, middle...)
+}
+
+func (h *HttpServer) process(w http.ResponseWriter, r *http.Request) {
+	h.middleware(w, r)
+}
+
+func (h *HttpServer) middleware(w http.ResponseWriter, r *http.Request) {
+	var next HttpServerMiddle = h.handler
+	for i := len(h.middle) - 1; i >= 0; i-- {
+		next = h.middle[i](next)
+	}
+	next(w, r)
 }
 
 func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
-
 	if h.OnOpen != nil {
 		h.OnOpen(w, r)
 	}
@@ -60,21 +92,8 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 		h.OnMessage(stream)
 	}
 
-	for i := 0; i < len(h.middleware); i++ {
-		err := h.middleware[i](stream)
-		if err != nil {
-			if h.OnError != nil {
-				h.OnError(err)
-			}
-			if h.OnClose != nil {
-				h.OnClose(w, r)
-			}
-			return
-		}
-	}
-
 	for i := 0; i < len(nodeData.Before); i++ {
-		context, err := nodeData.Before[i](stream)
+		ctx, err := nodeData.Before[i](stream)
 		if err != nil {
 			if h.OnError != nil {
 				h.OnError(err)
@@ -84,7 +103,7 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 			}
 			return
 		}
-		stream.Context = context
+		stream.Context = ctx
 	}
 
 	if nodeData.HttpServerFunction != nil {
@@ -112,7 +131,6 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
 }
 
 func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error {
@@ -177,4 +195,99 @@ func (h *HttpServer) SetRouter(router *HttpServerRouter) *HttpServer {
 
 func (h *HttpServer) GetRouter() *HttpServerRouter {
 	return h.router
+}
+
+// Start Http
+func (h *HttpServer) Start() {
+
+	h.Ready()
+
+	var server = http.Server{Addr: h.Host + ":" + strconv.Itoa(h.Port), Handler: h}
+
+	var err error
+	var netListen net.Listener
+
+	switch os.Getenv("pid") {
+	case "":
+		netListen, err = net.Listen("tcp", server.Addr)
+	default:
+		f := os.NewFile(3, "")
+		netListen, err = net.FileListener(f)
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	h.netListen = netListen
+	h.server = &server
+
+	switch h.Protocol {
+	case "TLS":
+		err = server.ServeTLS(netListen, h.CertFile, h.KeyFile)
+	default:
+		err = server.Serve(netListen)
+	}
+
+	if err != nil {
+		console.Error(err)
+	}
+}
+
+func (h *HttpServer) reload() {
+
+	tl, ok := h.netListen.(*net.TCPListener)
+	if !ok {
+		panic("listener is not tcp listener")
+	}
+
+	f, err := tl.File()
+	if err != nil {
+		panic(err)
+	}
+
+	err = os.Setenv("pid", strconv.Itoa(os.Getpid()))
+	if err != nil {
+		panic(err)
+	}
+
+	cmd := exec.Command(os.Args[0], os.Args[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	cmd.ExtraFiles = []*os.File{f}
+	err = cmd.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	console.Println("new pid:", cmd.Process.Pid)
+}
+
+func (h *HttpServer) Shutdown() {
+	err := h.server.Shutdown(context.Background())
+	if err != nil {
+		console.Error(err)
+	}
+	console.Println("kill pid:", os.Getpid())
+}
+
+func (h *HttpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	// HttpServer router not exists
+	if h.router == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// static file
+	if h.router.staticPath != "" && r.Method == http.MethodGet {
+		err := h.staticHandler(w, r)
+		if err == nil {
+			return
+		}
+	}
+
+	h.process(w, r)
+	return
 }

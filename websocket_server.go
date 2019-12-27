@@ -1,9 +1,12 @@
 package lemo
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/http"
+	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,11 +32,9 @@ type WebSocket struct {
 }
 
 func (conn *WebSocket) Host() string {
-
 	if host := conn.Request.Header.Get(Host); host != "" {
 		return host
 	}
-
 	return conn.Request.Host
 }
 
@@ -84,6 +85,18 @@ func (conn *WebSocket) Close() error {
 
 // WebSocketServer conn
 type WebSocketServer struct {
+
+	// Host 服务Host
+	Host string
+	// Port 服务端口
+	Port int
+	// Protocol 协议
+	Protocol string
+	// TLS FILE
+	CertFile string
+	// TLS KEY
+	KeyFile string
+
 	OnClose   func(fd uint32)
 	OnMessage func(conn *WebSocket, messageType int, msg []byte)
 	OnOpen    func(conn *WebSocket)
@@ -123,11 +136,15 @@ type WebSocketServer struct {
 	count       uint32
 	connections sync.Map
 	router      *WebSocketServerRouter
-	middleware  []func(conn *WebSocket, receive *Receive) exception.ErrorFunc
+	middle      []func(next WebSocketServerMiddle) WebSocketServerMiddle
+	server      *http.Server
+	netListen   net.Listener
 }
 
-func (socket *WebSocketServer) Use(middleware ...func(conn *WebSocket, receive *Receive) exception.ErrorFunc) {
-	socket.middleware = append(socket.middleware, middleware...)
+type WebSocketServerMiddle func(conn *WebSocket, receive *ReceivePackage)
+
+func (socket *WebSocketServer) Use(middle ...func(next WebSocketServerMiddle) WebSocketServerMiddle) {
+	socket.middle = append(socket.middle, middle...)
 }
 
 func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
@@ -517,7 +534,7 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 	if version != protocol.Version {
 		route, body := protocol.ParseMessage(message)
 		if route != nil {
-			go socket.handler(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
+			go socket.middleware(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
 		}
 		return nil
 	}
@@ -534,11 +551,19 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 
 	// on router
 	if socket.router != nil {
-		go socket.handler(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+		go socket.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 		return nil
 	}
 
 	return nil
+}
+
+func (socket *WebSocketServer) middleware(conn *WebSocket, msg *ReceivePackage) {
+	var next WebSocketServerMiddle = socket.handler
+	for i := len(socket.middle) - 1; i >= 0; i-- {
+		next = socket.middle[i](next)
+	}
+	next(conn, msg)
 }
 
 func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
@@ -559,25 +584,15 @@ func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
 	receive.Context = nil
 	receive.Params = params
 
-	for i := 0; i < len(socket.middleware); i++ {
-		err := socket.middleware[i](conn, receive)
-		if err != nil {
-			if socket.OnError != nil {
-				socket.OnError(err)
-			}
-			return
-		}
-	}
-
 	for i := 0; i < len(nodeData.Before); i++ {
-		context, err := nodeData.Before[i](conn, receive)
+		ctx, err := nodeData.Before[i](conn, receive)
 		if err != nil {
 			if socket.OnError != nil {
 				socket.OnError(err)
 			}
 			return
 		}
-		receive.Context = context
+		receive.Context = ctx
 	}
 
 	err := nodeData.WebSocketServerFunction(conn, receive)
@@ -607,4 +622,88 @@ func (socket *WebSocketServer) SetRouter(router *WebSocketServerRouter) *WebSock
 
 func (socket *WebSocketServer) GetRouter() *WebSocketServerRouter {
 	return socket.router
+}
+
+// Start Http
+func (socket *WebSocketServer) Start() {
+
+	socket.Ready()
+
+	var server = http.Server{Addr: socket.Host + ":" + strconv.Itoa(socket.Port), Handler: socket}
+
+	var err error
+	var netListen net.Listener
+
+	switch os.Getenv("pid") {
+	case "":
+		netListen, err = net.Listen("tcp", server.Addr)
+	default:
+		f := os.NewFile(3, "")
+		netListen, err = net.FileListener(f)
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	socket.netListen = netListen
+	socket.server = &server
+
+	switch socket.Protocol {
+	case "TLS":
+		err = server.ServeTLS(netListen, socket.CertFile, socket.KeyFile)
+	default:
+		err = server.Serve(netListen)
+	}
+
+	if err != nil {
+		console.Error(err)
+	}
+}
+
+func (socket *WebSocketServer) reload() {
+
+	tl, ok := socket.netListen.(*net.TCPListener)
+	if !ok {
+		panic("listener is not tcp listener")
+	}
+
+	f, err := tl.File()
+	if err != nil {
+		panic(err)
+	}
+
+	err = os.Setenv("pid", strconv.Itoa(os.Getpid()))
+	if err != nil {
+		panic(err)
+	}
+
+	cmd := exec.Command(os.Args[0], os.Args[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	cmd.ExtraFiles = []*os.File{f}
+	err = cmd.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	console.Println("new pid:", cmd.Process.Pid)
+}
+
+func (socket *WebSocketServer) Shutdown() {
+	err := socket.server.Shutdown(context.Background())
+	if err != nil {
+		console.Error(err)
+	}
+	console.Println("kill pid:", os.Getpid())
+}
+
+func (socket *WebSocketServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Match the websocket router
+	if r.Method == http.MethodGet && socket.CheckPath(r.URL.Path, socket.Path) {
+		socket.process(w, r)
+		return
+	}
+	return
 }

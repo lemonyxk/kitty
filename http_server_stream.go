@@ -175,8 +175,8 @@ func (stream *Stream) SetHeader(header string, content string) {
 	stream.Response.Header().Set(header, content)
 }
 
-func (stream *Stream) JsonFormat(status string, code int, msg interface{}) exception.ErrorFunc {
-	return exception.New(stream.EndJson(HttpJsonResponse{status, code, msg}))
+func (stream *Stream) JsonFormat(status string, code int, msg interface{}) error {
+	return stream.EndJson(HttpJsonResponse{status, code, msg})
 }
 
 func (stream *Stream) End(data interface{}) error {

@@ -54,13 +54,15 @@ type SocketClient struct {
 
 	router *SocketClientRouter
 
-	middleware []func(c *SocketClient, receive *Receive) exception.ErrorFunc
+	middle []func(SocketClientMiddle) SocketClientMiddle
 
 	mux sync.RWMutex
 }
 
-func (client *SocketClient) Use(middleware ...func(c *SocketClient, receive *Receive) exception.ErrorFunc) {
-	client.middleware = append(client.middleware, middleware...)
+type SocketClientMiddle func(c *SocketClient, receive *ReceivePackage)
+
+func (client *SocketClient) Use(middle ...func(SocketClientMiddle) SocketClientMiddle) {
+	client.middle = append(client.middle, middle...)
 }
 
 // Json 发送JSON字符
@@ -344,11 +346,19 @@ func (client *SocketClient) decodeMessage(connection *SocketClient, message []by
 
 	// on router
 	if client.router != nil {
-		go client.handler(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+		go client.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
 		return nil
 	}
 
 	return nil
+}
+
+func (client *SocketClient) middleware(conn *SocketClient, msg *ReceivePackage) {
+	var next SocketClientMiddle = client.handler
+	for i := len(client.middle) - 1; i >= 0; i-- {
+		next = client.middle[i](next)
+	}
+	next(conn, msg)
 }
 
 func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
@@ -368,16 +378,6 @@ func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
 	receive.Message = msg
 	receive.Context = nil
 	receive.Params = params
-
-	for i := 0; i < len(client.middleware); i++ {
-		err := client.middleware[i](conn, receive)
-		if err != nil {
-			if client.OnError != nil {
-				client.OnError(err)
-			}
-			return
-		}
-	}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		context, err := nodeData.Before[i](conn, receive)

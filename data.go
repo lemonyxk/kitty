@@ -18,8 +18,8 @@ type JsonMessage struct {
 	Msg    interface{} `json:"msg"`
 }
 
-func H(status string, code int, msg interface{}) JsonMessage {
-	return JsonMessage{Status: status, Code: code, Msg: msg}
+func JM(status string, code int, msg interface{}) *JsonMessage {
+	return &JsonMessage{Status: status, Code: code, Msg: msg}
 }
 
 type EventMessage struct {
@@ -27,8 +27,8 @@ type EventMessage struct {
 	Data  interface{} `json:"data"`
 }
 
-func S(event string, data interface{}) EventMessage {
-	return EventMessage{Event: event, Data: data}
+func EM(event string, data interface{}) *EventMessage {
+	return &EventMessage{Event: event, Data: data}
 }
 
 type Receive struct {

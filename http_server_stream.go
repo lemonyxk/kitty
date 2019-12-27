@@ -150,7 +150,7 @@ type Stream struct {
 	Response http.ResponseWriter
 	Request  *http.Request
 	Params   *Params
-	Context  interface{}
+	Context  Context
 	Query    *Store
 	Form     *Store
 	Json     *Json

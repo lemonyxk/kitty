@@ -46,7 +46,7 @@ type SocketClient struct {
 	OnError   func(err exception.ErrorFunc)
 	Status    bool
 
-	Context interface{}
+	Context Context
 
 	PingHandler func(c *SocketClient) func(appData string) error
 
@@ -380,14 +380,14 @@ func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
 	receive.Params = params
 
 	for i := 0; i < len(nodeData.Before); i++ {
-		context, err := nodeData.Before[i](conn, receive)
+		ctx, err := nodeData.Before[i](conn, receive)
 		if err != nil {
 			if client.OnError != nil {
 				client.OnError(err)
 			}
 			return
 		}
-		receive.Context = context
+		receive.Context = ctx
 	}
 
 	err := nodeData.SocketClientFunction(conn, receive)

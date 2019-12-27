@@ -698,12 +698,13 @@ func (socket *WebSocketServer) Shutdown() {
 }
 
 func (socket *WebSocketServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
 	// Match the websocket router
-	if r.Method == http.MethodGet && socket.CheckPath(r.URL.Path, socket.Path) {
-		socket.process(w, r)
+	if r.Method != http.MethodGet || !socket.CheckPath(r.URL.Path, socket.Path) {
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusInternalServerError)
+	socket.process(w, r)
 	return
 }

@@ -703,5 +703,7 @@ func (socket *WebSocketServer) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		socket.process(w, r)
 		return
 	}
+
+	w.WriteHeader(http.StatusInternalServerError)
 	return
 }

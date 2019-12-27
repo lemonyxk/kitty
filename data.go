@@ -12,23 +12,23 @@ package lemo
 
 import "github.com/golang/protobuf/proto"
 
-type HttpJsonResponse struct {
+type JsonMessage struct {
 	Status string      `json:"status"`
 	Code   int         `json:"code"`
 	Msg    interface{} `json:"msg"`
 }
 
-func H(status string, code int, msg interface{}) HttpJsonResponse {
-	return HttpJsonResponse{Status: status, Code: code, Msg: msg}
+func H(status string, code int, msg interface{}) JsonMessage {
+	return JsonMessage{Status: status, Code: code, Msg: msg}
 }
 
-type SocketJsonResponse struct {
+type EventMessage struct {
 	Event string      `json:"event"`
 	Data  interface{} `json:"data"`
 }
 
-func S(event string, data interface{}) SocketJsonResponse {
-	return SocketJsonResponse{Event: event, Data: data}
+func S(event string, data interface{}) EventMessage {
+	return EventMessage{Event: event, Data: data}
 }
 
 type Receive struct {
@@ -46,7 +46,7 @@ type ReceivePackage struct {
 
 type JsonPackage struct {
 	Event   string
-	Message interface{}
+	Message *JsonMessage
 }
 
 type ProtoBufPackage struct {

@@ -24,8 +24,7 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
-			return exception.New(t.EndString("hello world"))
-			// return exception.New(t.EndBytes(utils.Captcha.New(240, 80).ToPNG()))
+			return t.JsonFormat("SUCCESS", 200, "hello world")
 		})
 	})
 
@@ -46,10 +45,14 @@ func main() {
 	webSocketServerRouter.Group("/hello").Handler(func(handler *lemo.WebSocketServerRouteHandler) {
 		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) exception.ErrorFunc {
 			console.Log(3)
-			return exception.New(conn.JsonFormat(lemo.JsonPackage{
-				Event:   "/hello/world",
-				Message: "hello world",
-			}))
+			return conn.JsonFormat(lemo.JsonPackage{
+				Event: "/hello/world",
+				Message: &lemo.JsonMessage{
+					Status: "",
+					Code:   0,
+					Msg:    nil,
+				},
+			})
 		})
 	})
 

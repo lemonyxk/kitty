@@ -74,14 +74,12 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 	return client.Push(protocol.TextData, messageJson)
 }
 
-func (client *WebSocketClient) JsonFormat(msg JsonPackage) error {
-
-	messageJson, err := jsoniter.Marshal(SocketJsonResponse{msg.Event, msg.Message})
+func (client *WebSocketClient) JsonFormat(msg JsonPackage) exception.ErrorFunc {
+	messageJson, err := jsoniter.Marshal(EventMessage{msg.Event, msg.Message})
 	if err != nil {
-		return err
+		return exception.New(err)
 	}
-
-	return client.Push(protocol.TextData, messageJson)
+	return exception.New(client.Push(protocol.TextData, messageJson))
 }
 
 func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {

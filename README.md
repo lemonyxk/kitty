@@ -2,6 +2,7 @@
 package main
 
 import (
+	"net/http"
 	"os"
 
 	"github.com/Lemo-yxk/lemo"
@@ -12,70 +13,55 @@ import (
 
 func main() {
 
-	exception.Try(func() {
-
-		utils.Goroutine.Run(func() {
-			var a []int
-			a[0] = 1
-		})
-
-		utils.Goroutine.Run(func() {
-			var a *lemo.Server
-			a = nil
-			a.Host = "a"
-		})
-
-		utils.Goroutine.Run(func() {
-			var a interface{}
-			a = "1"
-			console.Log(a.(int))
-		})
-
-		var a []int
-		a[0] = 1
-
-		exception.Assert(os.Open(""))
-
-	}).Catch(func(errorFunc exception.ErrorFunc) exception.ErrorFunc {
-
-		utils.Goroutine.Watch(func(errorFunc exception.ErrorFunc) {
-			console.Error(errorFunc)
-		})
-
-		console.Error(errorFunc)
-		return nil
-
-	}).Finally(func(errorFunc exception.ErrorFunc) exception.ErrorFunc {
-
-		console.Error("finally")
-		return nil
-	})
-
-	var server = lemo.Server{Host: "0.0.0.0", Port: 8666}
-
-	var webSocketServer = &lemo.WebSocketServer{}
-
-	var webSocketServerRouter = &lemo.WebSocketServerRouter{}
-
-	webSocketServerRouter.Group("/hello").Handler(func(handler *lemo.WebSocketServerRouteHandler) {
-		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) exception.ErrorFunc {
-			console.Debug("hello world")
-			return nil
-		})
-	})
-
-	var httpServer = &lemo.HttpServer{}
+	var httpServer = lemo.HttpServer{Host: "0.0.0.0", Port: 8666}
 
 	var httpServerRouter = &lemo.HttpServerRouter{}
 
+	httpServer.Use(func(next lemo.HttpServerMiddle) lemo.HttpServerMiddle {
+		return func(w http.ResponseWriter, r *http.Request) {
+			next(w, r)
+		}
+	})
+
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
-			return exception.New(t.EndString("hello world"))
-			// return exception.New(t.EndBytes(utils.Captcha.New(240, 80).ToPNG()))
+			return t.JsonFormat("SUCCESS", 200, "hello world")
 		})
 	})
 
-	server.Start(webSocketServer.Router(webSocketServerRouter), httpServer.Router(httpServerRouter))
+	go httpServer.SetRouter(httpServerRouter).Start()
 
+	var webSocketServer = &lemo.WebSocketServer{Host: "0.0.0.0", Port: 8667, Path: "/"}
+
+	var webSocketServerRouter = &lemo.WebSocketServerRouter{}
+
+	webSocketServer.Use(func(next lemo.WebSocketServerMiddle) lemo.WebSocketServerMiddle {
+		return func(conn *lemo.WebSocket, receive *lemo.ReceivePackage) {
+			console.Log(1)
+			next(conn, receive)
+			console.Log(2)
+		}
+	})
+
+	webSocketServerRouter.Group("/hello").Handler(func(handler *lemo.WebSocketServerRouteHandler) {
+		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) exception.ErrorFunc {
+			console.Log(3)
+			return conn.JsonFormat(lemo.JsonPackage{
+				Event: "/hello/world",
+				Message: &lemo.JsonMessage{
+					Status: "",
+					Code:   0,
+					Msg:    nil,
+				},
+			})
+		})
+	})
+
+	go webSocketServer.SetRouter(webSocketServerRouter).Start()
+
+	utils.Signal.ListenAll().Done(func(sig os.Signal) {
+		console.Log(sig)
+	})
 }
+
 ```

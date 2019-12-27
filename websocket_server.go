@@ -59,7 +59,7 @@ func (conn *WebSocket) Push(messageType int, msg []byte) error {
 	return conn.Server.Push(conn.FD, messageType, msg)
 }
 
-func (conn *WebSocket) JsonFormat(msg JsonPackage) error {
+func (conn *WebSocket) JsonFormat(msg JsonPackage) exception.ErrorFunc {
 	return conn.Server.JsonFormat(conn.FD, msg)
 }
 
@@ -163,14 +163,12 @@ func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) erro
 	return <-socket.connBack
 }
 
-func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) error {
-
-	messageJsonFormat, err := jsoniter.Marshal(SocketJsonResponse{msg.Event, msg.Message})
+func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) exception.ErrorFunc {
+	messageJsonFormat, err := jsoniter.Marshal(EventMessage{msg.Event, msg.Message})
 	if err != nil {
-		return err
+		return exception.New(err)
 	}
-
-	return socket.Push(fd, protocol.TextData, messageJsonFormat)
+	return exception.New(socket.Push(fd, protocol.TextData, messageJsonFormat))
 }
 
 // Push Json 发送消息

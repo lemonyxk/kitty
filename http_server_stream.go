@@ -10,11 +10,9 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/json-iterator/go"
 
-	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
@@ -166,20 +164,8 @@ func NewStream(h *HttpServer, w http.ResponseWriter, r *http.Request, p *Params)
 	return &Stream{Server: h, Response: w, Request: r, Params: p}
 }
 
-func (stream *Stream) LastError() exception.ErrorFunc {
-	switch stream.error.(type) {
-	case exception.ErrorFunc:
-		return stream.error.(exception.ErrorFunc)
-	case *error:
-		return func() *exception.Error {
-			return stream.error.(*exception.Error)
-		}
-	default:
-		file, line := caller.Caller(2)
-		return func() *exception.Error {
-			return &exception.Error{Time: time.Now(), File: file, Line: line, Message: fmt.Sprintf("%v", stream.error)}
-		}
-	}
+func (stream *Stream) LastError() interface{} {
+	return stream.error
 }
 
 func (stream *Stream) Match() bool {

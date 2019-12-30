@@ -178,3 +178,19 @@ func NewStackWithError(deep int, v interface{}) ErrorFunc {
 	var file, line = caller.Stack(deep)
 	return newErrorWithFileAndLine(v, file, line)
 }
+
+func Parse(err interface{}) ErrorFunc {
+	switch err.(type) {
+	case ErrorFunc:
+		return err.(ErrorFunc)
+	case *Error:
+		return func() *Error {
+			return err.(*Error)
+		}
+	default:
+		file, line := caller.Caller(2)
+		return func() *Error {
+			return &Error{Time: time.Now(), File: file, Line: line, Message: fmt.Sprintf("%v", err)}
+		}
+	}
+}

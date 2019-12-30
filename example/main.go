@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -19,11 +18,11 @@ func main() {
 	var httpServerRouter = &lemo.HttpServerRouter{}
 
 	httpServer.Use(func(next lemo.HttpServerMiddle) lemo.HttpServerMiddle {
-		return func(w http.ResponseWriter, r *http.Request) {
-			if r.Header.Get("Upgrade") == "websocket" {
-				httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(w, r)
+		return func(stream *lemo.Stream) {
+			if stream.Request.Header.Get("Upgrade") == "websocket" {
+				httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
 			} else {
-				next(w, r)
+				next(stream)
 			}
 		}
 	})

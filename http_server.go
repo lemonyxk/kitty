@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/Lemo-yxk/lemo/console"
-	"github.com/Lemo-yxk/lemo/exception"
 )
 
 type HttpServer struct {
@@ -29,10 +28,10 @@ type HttpServer struct {
 	// TLS KEY
 	KeyFile string
 
-	OnOpen    func(w http.ResponseWriter, r *http.Request)
+	OnOpen    func(stream *Stream)
 	OnMessage func(stream *Stream)
-	OnClose   func(w http.ResponseWriter, r *http.Request)
-	OnError   func(err exception.ErrorFunc)
+	OnClose   func(stream *Stream)
+	OnError   func(stream *Stream)
 
 	middle []func(next HttpServerMiddle) HttpServerMiddle
 	router *HttpServerRouter
@@ -45,46 +44,49 @@ func (h *HttpServer) Ready() {
 
 }
 
-type HttpServerMiddle func(w http.ResponseWriter, r *http.Request)
+type HttpServerMiddle func(*Stream)
 
 func (h *HttpServer) Use(middle ...func(next HttpServerMiddle) HttpServerMiddle) {
 	h.middle = append(h.middle, middle...)
 }
 
 func (h *HttpServer) process(w http.ResponseWriter, r *http.Request) {
-	h.middleware(w, r)
+	var stream = NewStream(h, w, r, nil)
+	h.middleware(stream)
 }
 
-func (h *HttpServer) middleware(w http.ResponseWriter, r *http.Request) {
+func (h *HttpServer) middleware(stream *Stream) {
 	var next HttpServerMiddle = h.handler
 	for i := len(h.middle) - 1; i >= 0; i-- {
 		next = h.middle[i](next)
 	}
-	next(w, r)
+	next(stream)
 }
 
-func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
+func (h *HttpServer) handler(stream *Stream) {
+
 	if h.OnOpen != nil {
-		h.OnOpen(w, r)
+		h.OnOpen(stream)
 	}
 
 	// Get the router
-	node, formatPath := h.router.getRoute(r.Method, r.URL.Path)
+	node, formatPath := h.router.getRoute(stream.Request.Method, stream.Request.URL.Path)
 
 	if node == nil {
-		w.WriteHeader(http.StatusNotFound)
+		stream.Response.WriteHeader(http.StatusNotFound)
+		stream.error = "404 not found"
 		if h.OnError != nil {
-			h.OnError(exception.New("404 not found"))
+			h.OnError(stream)
 		}
 		if h.OnClose != nil {
-			h.OnClose(w, r)
+			h.OnClose(stream)
 		}
 		return
 	}
 
 	var params = &Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
 
-	var stream = NewStream(h, w, r, params)
+	stream.Params = params
 
 	var nodeData = node.Data.(*httpServerNode)
 
@@ -95,11 +97,12 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < len(nodeData.Before); i++ {
 		ctx, err := nodeData.Before[i](stream)
 		if err != nil {
+			stream.error = err
 			if h.OnError != nil {
-				h.OnError(err)
+				h.OnError(stream)
 			}
 			if h.OnClose != nil {
-				h.OnClose(w, r)
+				h.OnClose(stream)
 			}
 			return
 		}
@@ -109,11 +112,12 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 	if nodeData.HttpServerFunction != nil {
 		err := nodeData.HttpServerFunction(stream)
 		if err != nil {
+			stream.error = err
 			if h.OnError != nil {
-				h.OnError(err)
+				h.OnError(stream)
 			}
 			if h.OnClose != nil {
-				h.OnClose(w, r)
+				h.OnClose(stream)
 			}
 			return
 		}
@@ -122,11 +126,12 @@ func (h *HttpServer) handler(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < len(nodeData.After); i++ {
 		err := nodeData.After[i](stream)
 		if err != nil {
+			stream.error = err
 			if h.OnError != nil {
-				h.OnError(err)
+				h.OnError(stream)
 			}
 			if h.OnClose != nil {
-				h.OnClose(w, r)
+				h.OnClose(stream)
 			}
 			return
 		}
@@ -158,18 +163,12 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 
 	f, err := os.OpenFile(absFilePath, os.O_RDONLY, 0666)
 	if err != nil {
-		if h.OnError != nil {
-			h.OnError(exception.New(err))
-		}
 		w.WriteHeader(http.StatusForbidden)
 		return nil
 	}
 
 	bts, err := ioutil.ReadAll(f)
 	if err != nil {
-		if h.OnError != nil {
-			h.OnError(exception.New(err))
-		}
 		w.WriteHeader(http.StatusForbidden)
 		return nil
 	}
@@ -177,9 +176,6 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 	w.Header().Set("Content-Type", contentType)
 	_, err = w.Write(bts)
 	if err != nil {
-		if h.OnError != nil {
-			h.OnError(exception.New(err))
-		}
 		w.WriteHeader(http.StatusForbidden)
 		return nil
 	}

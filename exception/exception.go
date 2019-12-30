@@ -39,12 +39,6 @@ type CatchFunc func(ErrorFunc) ErrorFunc
 
 type FinallyFunc func(ErrorFunc) ErrorFunc
 
-var Empty = func() ErrorFunc {
-	return func() *Error {
-		return nil
-	}
-}
-
 func (err *Error) Error() string {
 	return err.Message
 }

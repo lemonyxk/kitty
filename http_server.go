@@ -74,7 +74,7 @@ func (h *HttpServer) handler(stream *Stream) {
 
 	if node == nil {
 		stream.Response.WriteHeader(http.StatusNotFound)
-		stream.error = "404 not found"
+		stream.error = stream.Request.URL.Path + " " + "404 not found"
 		if h.OnError != nil {
 			h.OnError(stream)
 		}

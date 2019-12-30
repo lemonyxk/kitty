@@ -386,25 +386,36 @@ func (stream *Stream) AutoParse() {
 }
 
 func (stream *Stream) AutoGet(key string) *Value {
-	if stream.Query != nil {
-		var val = stream.Query.Get(key)
-		if val.v != nil {
-			return val
+	if strings.ToUpper(stream.Request.Method) == "GET" {
+		if stream.Query != nil {
+			return stream.Query.Get(key)
 		}
 	}
-	if stream.Form != nil {
-		var val = stream.Form.Get(key)
-		if val.v != nil {
-			return val
+
+	var header = stream.Request.Header.Get("Content-Type")
+
+	if strings.HasPrefix(header, "multipart/form-data") {
+		if stream.Form != nil {
+			return stream.Form.Get(key)
 		}
 	}
-	if stream.Json != nil {
-		var path = stream.Json.Path(key)
-		if path.LastError() == nil {
-			var p = path.ToString()
-			return &Value{v: &p}
+
+	if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
+		if stream.Form != nil {
+			return stream.Form.Get(key)
 		}
 	}
+
+	if strings.HasPrefix(header, "application/json") {
+		if stream.Json != nil {
+			var path = stream.Json.Path(key)
+			if path.LastError() == nil {
+				var p = path.ToString()
+				return &Value{v: &p}
+			}
+		}
+	}
+
 	return &Value{}
 }
 

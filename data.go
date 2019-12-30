@@ -10,7 +10,9 @@
 
 package lemo
 
-import "github.com/golang/protobuf/proto"
+import (
+	"github.com/golang/protobuf/proto"
+)
 
 type JsonMessage struct {
 	Status string      `json:"status"`

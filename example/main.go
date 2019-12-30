@@ -2,6 +2,8 @@ package main
 
 import (
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 
 	"github.com/Lemo-yxk/lemo"
@@ -18,7 +20,11 @@ func main() {
 
 	httpServer.Use(func(next lemo.HttpServerMiddle) lemo.HttpServerMiddle {
 		return func(w http.ResponseWriter, r *http.Request) {
-			next(w, r)
+			if r.Header.Get("Upgrade") == "websocket" {
+				httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(w, r)
+			} else {
+				next(w, r)
+			}
 		}
 	})
 

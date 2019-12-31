@@ -29,6 +29,10 @@ func main() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
+			// console.Log(t.Json.Empty("a"))
+			// console.Log(t.Query.Get("a"))
+			// console.Log(t.Form.Get("a"))
+			// console.Log(t.Files.Get("a"))
 			return t.JsonFormat("SUCCESS", 200, "hello world")
 		})
 	})

@@ -51,7 +51,7 @@ func (h *HttpServer) Use(middle ...func(next HttpServerMiddle) HttpServerMiddle)
 }
 
 func (h *HttpServer) process(w http.ResponseWriter, r *http.Request) {
-	var stream = NewStream(h, w, r, nil)
+	var stream = NewStream(h, w, r)
 	h.middleware(stream)
 }
 
@@ -84,9 +84,7 @@ func (h *HttpServer) handler(stream *Stream) {
 		return
 	}
 
-	var params = &Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
-
-	stream.Params = params
+	stream.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
 
 	var nodeData = node.Data.(*httpServerNode)
 

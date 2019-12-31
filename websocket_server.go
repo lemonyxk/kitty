@@ -573,14 +573,10 @@ func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
 
 	var nodeData = node.Data.(*WebSocketServerNode)
 
-	var params = new(Params)
-	params.Keys = node.Keys
-	params.Values = node.ParseParams(formatPath)
-
 	var receive = &Receive{}
 	receive.Message = msg
 	receive.Context = nil
-	receive.Params = params
+	receive.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		ctx, err := nodeData.Before[i](conn, receive)

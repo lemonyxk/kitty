@@ -20,13 +20,13 @@ type Files struct {
 	files map[string][]*multipart.FileHeader
 }
 
-func (f *Files) All() map[string][]*multipart.FileHeader {
+func (f Files) All() map[string][]*multipart.FileHeader {
 	return f.files
 }
 
-func (f *Files) Get(fileName string) []*multipart.FileHeader {
+func (f Files) Get(fileName string) *multipart.FileHeader {
 	if file, ok := f.files[fileName]; ok {
-		return file
+		return file[0]
 	}
 	return nil
 }
@@ -36,7 +36,7 @@ type Params struct {
 	Values []string
 }
 
-func (ps *Params) ByName(name string) string {
+func (ps Params) ByName(name string) string {
 	for i := 0; i < len(ps.Keys); i++ {
 		if ps.Keys[i] == name {
 			return ps.Values[i]
@@ -49,7 +49,7 @@ type Value struct {
 	v *string
 }
 
-func (v *Value) Int() int {
+func (v Value) Int() int {
 	if v.v == nil {
 		return 0
 	}
@@ -57,7 +57,7 @@ func (v *Value) Int() int {
 	return r
 }
 
-func (v *Value) Float64() float64 {
+func (v Value) Float64() float64 {
 	if v.v == nil {
 		return 0
 	}
@@ -65,18 +65,18 @@ func (v *Value) Float64() float64 {
 	return r
 }
 
-func (v *Value) String() string {
+func (v Value) String() string {
 	if v.v == nil {
 		return ""
 	}
 	return *v.v
 }
 
-func (v *Value) Bool() bool {
+func (v Value) Bool() bool {
 	return strings.ToUpper(v.String()) == "TRUE"
 }
 
-func (v *Value) Bytes() []byte {
+func (v Value) Bytes() []byte {
 	return []byte(v.String())
 }
 
@@ -84,35 +84,57 @@ type Json struct {
 	any jsoniter.Any
 }
 
-func (j *Json) Reset(data interface{}) jsoniter.Any {
-	bts, err := jsoniter.Marshal(data)
-	if err != nil {
-		return j.any
-	}
+func (j Json) Reset(data interface{}) jsoniter.Any {
+	bts, _ := jsoniter.Marshal(data)
 	j.any = jsoniter.Get(bts)
 	return j.any
 }
 
-// GetByID 获取
-func (j *Json) Iter() jsoniter.Any {
+func (j Json) getAny() jsoniter.Any {
+	if j.any != nil {
+		return j.any
+	}
+	j.any = jsoniter.Get(nil)
 	return j.any
 }
 
-func (j *Json) Bytes() []byte {
+// GetByID 获取
+func (j Json) Iter() jsoniter.Any {
+	return j.getAny()
+}
+
+func (j Json) Has(key string) bool {
+	return j.getAny().Get(key).LastError() == nil
+}
+
+func (j Json) Empty(key string) bool {
+	return j.getAny().Get(key).ToString() == ""
+}
+
+func (j Json) Get(path ...interface{}) Value {
+	var res = j.getAny().Get(path...)
+	if res.LastError() != nil {
+		return Value{}
+	}
+	var p = res.ToString()
+	return Value{v: &p}
+}
+
+func (j Json) Bytes() []byte {
 	return j.Bytes()
 }
 
-func (j *Json) String() string {
-	return j.any.ToString()
+func (j Json) String() string {
+	return j.getAny().ToString()
 }
 
-func (j *Json) Path(path ...interface{}) jsoniter.Any {
-	return j.any.Get(path...)
+func (j Json) Path(path ...interface{}) jsoniter.Any {
+	return j.getAny().Get(path...)
 }
 
-func (j *Json) Array(path ...interface{}) Array {
+func (j Json) Array(path ...interface{}) Array {
 	var result []jsoniter.Any
-	var val = j.any.Get(path...)
+	var val = j.getAny().Get(path...)
 	for i := 0; i < val.Size(); i++ {
 		result = append(result, val.Get(i))
 	}
@@ -149,19 +171,23 @@ type Stream struct {
 	Server   *HttpServer
 	Response http.ResponseWriter
 	Request  *http.Request
-	Params   *Params
+	Params   Params
 	Context  Context
-	Query    *Store
-	Form     *Store
-	Json     *Json
-	Files    *Files
+	Query    Store
+	Form     Store
+	Json     Json
+	Files    Files
 
-	maxMemory int64
-	error     interface{}
+	maxMemory     int64
+	error         interface{}
+	hasParseQuery bool
+	hasParseForm  bool
+	hasParseJson  bool
+	hasParseFiles bool
 }
 
-func NewStream(h *HttpServer, w http.ResponseWriter, r *http.Request, p *Params) *Stream {
-	return &Stream{Server: h, Response: w, Request: r, Params: p}
+func NewStream(h *HttpServer, w http.ResponseWriter, r *http.Request) *Stream {
+	return &Stream{Server: h, Response: w, Request: r}
 }
 
 func (stream *Stream) LastError() interface{} {
@@ -169,7 +195,7 @@ func (stream *Stream) LastError() interface{} {
 }
 
 func (stream *Stream) Match() bool {
-	return stream.Params != nil
+	return stream.error != nil
 }
 
 func (stream *Stream) Forward(fn HttpServerFunction) exception.ErrorFunc {
@@ -242,13 +268,15 @@ func (stream *Stream) ClientIP() string {
 	return ""
 }
 
-func (stream *Stream) ParseJson() *Json {
+func (stream *Stream) ParseJson() Json {
 
-	if stream.Json != nil {
+	if stream.hasParseJson {
 		return stream.Json
 	}
 
-	var json = new(Json)
+	stream.hasParseJson = true
+
+	var json = Json{}
 
 	jsonBody, err := ioutil.ReadAll(stream.Request.Body)
 	if err != nil {
@@ -262,13 +290,15 @@ func (stream *Stream) ParseJson() *Json {
 	return stream.Json
 }
 
-func (stream *Stream) ParseFiles() *Files {
+func (stream *Stream) ParseFiles() Files {
 
-	if stream.Files != nil {
+	if stream.hasParseFiles {
 		return stream.Files
 	}
 
-	var file = new(Files)
+	stream.hasParseFiles = true
+
+	var file = Files{}
 
 	err := stream.Request.ParseMultipartForm(stream.maxMemory)
 	if err != nil {
@@ -284,13 +314,15 @@ func (stream *Stream) ParseFiles() *Files {
 	return file
 }
 
-func (stream *Stream) ParseMultipart() *Store {
+func (stream *Stream) ParseMultipart() Store {
 
-	if stream.Form != nil {
+	if stream.hasParseForm {
 		return stream.Form
 	}
 
-	var form = new(Store)
+	stream.hasParseForm = true
+
+	var form = Store{}
 
 	err := stream.Request.ParseMultipartForm(stream.maxMemory)
 	if err != nil {
@@ -309,13 +341,15 @@ func (stream *Stream) ParseMultipart() *Store {
 	return form
 }
 
-func (stream *Stream) ParseQuery() *Store {
+func (stream *Stream) ParseQuery() Store {
 
-	if stream.Query != nil {
+	if stream.hasParseQuery {
 		return stream.Query
 	}
 
-	var query = new(Store)
+	stream.hasParseQuery = true
+
+	var query = Store{}
 
 	var params = stream.Request.URL.RawQuery
 
@@ -334,13 +368,15 @@ func (stream *Stream) ParseQuery() *Store {
 	return query
 }
 
-func (stream *Stream) ParseForm() *Store {
+func (stream *Stream) ParseForm() Store {
 
-	if stream.Form != nil {
+	if stream.hasParseForm {
 		return stream.Form
 	}
 
-	var form = new(Store)
+	stream.hasParseForm = true
+
+	var form = Store{}
 
 	err := stream.Request.ParseForm()
 	if err != nil {
@@ -385,38 +421,26 @@ func (stream *Stream) AutoParse() {
 	}
 }
 
-func (stream *Stream) AutoGet(key string) *Value {
+func (stream *Stream) AutoGet(key string) Value {
 	if strings.ToUpper(stream.Request.Method) == "GET" {
-		if stream.Query != nil {
-			return stream.Query.Get(key)
-		}
+		return stream.Query.Get(key)
 	}
 
 	var header = stream.Request.Header.Get("Content-Type")
 
 	if strings.HasPrefix(header, "multipart/form-data") {
-		if stream.Form != nil {
-			return stream.Form.Get(key)
-		}
+		return stream.Form.Get(key)
 	}
 
 	if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
-		if stream.Form != nil {
-			return stream.Form.Get(key)
-		}
+		return stream.Form.Get(key)
 	}
 
 	if strings.HasPrefix(header, "application/json") {
-		if stream.Json != nil {
-			var path = stream.Json.Path(key)
-			if path.LastError() == nil {
-				var p = path.ToString()
-				return &Value{v: &p}
-			}
-		}
+		return stream.Json.Get(key)
 	}
 
-	return &Value{}
+	return Value{}
 }
 
 func (stream *Stream) Url() string {
@@ -468,7 +492,7 @@ type Store struct {
 	values []string
 }
 
-func (store *Store) Has(key string) bool {
+func (store Store) Has(key string) bool {
 	for i := 0; i < len(store.keys); i++ {
 		if store.keys[i] == key {
 			return true
@@ -477,13 +501,13 @@ func (store *Store) Has(key string) bool {
 	return false
 }
 
-func (store *Store) Empty(key string) bool {
+func (store Store) Empty(key string) bool {
 	var v = store.Get(key).v
 	return v == nil || *v == ""
 }
 
-func (store *Store) Get(key string) *Value {
-	var val = &Value{}
+func (store Store) Get(key string) Value {
+	var val = Value{}
 	for i := 0; i < len(store.keys); i++ {
 		if store.keys[i] == key {
 			val.v = &store.values[i]
@@ -493,12 +517,12 @@ func (store *Store) Get(key string) *Value {
 	return val
 }
 
-func (store *Store) Add(key string, value string) {
+func (store Store) Add(key string, value string) {
 	store.keys = append(store.keys, key)
 	store.values = append(store.values, value)
 }
 
-func (store *Store) Remove(key string) {
+func (store Store) Remove(key string) {
 	var index = -1
 	for i := 0; i < len(store.keys); i++ {
 		if store.keys[i] == key {
@@ -513,15 +537,15 @@ func (store *Store) Remove(key string) {
 	store.values = append(store.values[0:index], store.values[index+1:]...)
 }
 
-func (store *Store) Keys() []string {
+func (store Store) Keys() []string {
 	return store.keys
 }
 
-func (store *Store) Values() []string {
+func (store Store) Values() []string {
 	return store.values
 }
 
-func (store *Store) String() string {
+func (store Store) String() string {
 
 	var buff bytes.Buffer
 

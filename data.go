@@ -35,7 +35,7 @@ func EM(event string, data interface{}) *EventMessage {
 
 type Receive struct {
 	Context Context
-	Params  *Params
+	Params  Params
 	Message *ReceivePackage
 }
 

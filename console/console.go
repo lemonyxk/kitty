@@ -129,6 +129,18 @@ func Log(v ...interface{}) {
 	}
 }
 
+func Customize(color Color, tp string, format string, v ...interface{}) {
+	file, line := caller.Caller(1)
+
+	var t = time.Now()
+
+	color.Printf(format, v...)
+
+	if hook && logger.hook != nil {
+		logger.hook(tp, t, file, line, v...)
+	}
+}
+
 func Error(err interface{}) {
 
 	switch err.(type) {

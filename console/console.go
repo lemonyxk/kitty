@@ -129,7 +129,19 @@ func Log(v ...interface{}) {
 	}
 }
 
-func Customize(color Color, tp string, format string, v ...interface{}) {
+func Customize(color Color, tp string, v ...interface{}) {
+	file, line := caller.Caller(1)
+
+	var t = time.Now()
+
+	color.Println(v...)
+
+	if hook && logger.hook != nil {
+		logger.hook(tp, t, file, line, v...)
+	}
+}
+
+func CustomizeFormat(color Color, tp string, format string, v ...interface{}) {
 	file, line := caller.Caller(1)
 
 	var t = time.Now()
@@ -137,7 +149,7 @@ func Customize(color Color, tp string, format string, v ...interface{}) {
 	color.Printf(format, v...)
 
 	if hook && logger.hook != nil {
-		logger.hook(tp, t, file, line, v...)
+		logger.hook(tp, t, file, line, fmt.Sprintf(format, v...))
 	}
 }
 

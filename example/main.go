@@ -67,6 +67,8 @@ func main() {
 
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
 
+	console.Log("start success")
+
 	utils.Signal.ListenAll().Done(func(sig os.Signal) {
 		console.Log(sig)
 	})

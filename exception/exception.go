@@ -131,14 +131,29 @@ func New(v ...interface{}) ErrorFunc {
 		return newErrorFromDeep(v[0], 2)
 	}
 
-	if len(v) > 1 {
-		if format, ok := v[0].(string); ok && len(format) > 1 && strings.Index(format, "%") != -1 {
-			return newErrorFromDeep(fmt.Errorf(format, v[1:]...), 2)
+	var str = fmt.Sprintln(v...)
+	return newErrorFromDeep(str[:len(str)-1], 2)
+}
+
+func NewFormat(format string, v ...interface{}) ErrorFunc {
+	if len(v) == 0 {
+		return nil
+	}
+
+	var invalid = true
+	for i := 0; i < len(v); i++ {
+		if v[i] != nil {
+			invalid = false
+			break
 		}
 	}
 
-	var str = fmt.Sprintln(v...)
-	return newErrorFromDeep(str[:len(str)-1], 2)
+	if invalid {
+		return nil
+	}
+
+	var str = fmt.Sprintf(format, v...)
+	return newErrorFromDeep(str, 2)
 }
 
 func newErrorFromDeep(v interface{}, deep int) ErrorFunc {

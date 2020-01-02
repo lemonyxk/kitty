@@ -338,7 +338,7 @@ func (m *Image) Digits() string {
 }
 
 // ToPNG encodes an image to PNG and returns
-// the result as a byte slice.
+// the res as a byte slice.
 func (m *Image) ToPNG() []byte {
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, m.Paletted); err != nil {

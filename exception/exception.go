@@ -62,19 +62,15 @@ func Try(fn func()) (c *catch) {
 		if err := recover(); err != nil {
 			var d = 1
 			var e = fmt.Errorf("%v", err)
-			if strings.HasPrefix(e.Error(), "#assert#") {
+			if strings.HasPrefix(e.Error(), "#exception#") {
 				d = 2
 			}
-			var stacks = NewStackWithError(d, strings.Replace(e.Error(), "#assert#", "", 1))
+			var stacks = NewStackWithError(d, strings.Replace(e.Error(), "#exception#", "", 1))
 			c = &catch{Catch: func(f CatchFunc) *finally {
 				var ef = f(stacks)
 				return &finally{
-					Finally: func(ff FinallyFunc) ErrorFunc {
-						return ff(ef)
-					},
-					ErrorFunc: func() ErrorFunc {
-						return ef
-					},
+					Finally:   func(ff FinallyFunc) ErrorFunc { return ff(ef) },
+					ErrorFunc: func() ErrorFunc { return ef },
 				}
 			}}
 		}
@@ -84,14 +80,14 @@ func Try(fn func()) (c *catch) {
 
 	return &catch{Catch: func(f CatchFunc) *finally {
 		return &finally{
-			Finally: func(ff FinallyFunc) ErrorFunc {
-				return ff(nil)
-			},
-			ErrorFunc: func() ErrorFunc {
-				return nil
-			},
+			Finally:   func(ff FinallyFunc) ErrorFunc { return ff(nil) },
+			ErrorFunc: func() ErrorFunc { return nil },
 		}
 	}}
+}
+
+func Throw(v interface{}) {
+	panic(fmt.Errorf("#exception#%v", v))
 }
 
 func Assert(v ...interface{}) {
@@ -101,7 +97,7 @@ func Assert(v ...interface{}) {
 	if v[len(v)-1] == nil {
 		return
 	}
-	panic(fmt.Errorf("#assert#%v", v[len(v)-1]))
+	panic(fmt.Errorf("#exception#%v", v[len(v)-1]))
 }
 
 func Inspect(v ...interface{}) ErrorFunc {
@@ -156,19 +152,13 @@ func newErrorFromDeep(v interface{}, deep int) ErrorFunc {
 func newErrorWithFileAndLine(v interface{}, file string, line int) ErrorFunc {
 	switch v.(type) {
 	case error:
-		var e ErrorFunc = func() *Error {
-			return &Error{time.Now(), file, line, v.(error).Error()}
-		}
+		var e ErrorFunc = func() *Error { return &Error{time.Now(), file, line, v.(error).Error()} }
 		return e
 	case string:
-		var e ErrorFunc = func() *Error {
-			return &Error{time.Now(), file, line, v.(string)}
-		}
+		var e ErrorFunc = func() *Error { return &Error{time.Now(), file, line, v.(string)} }
 		return e
 	default:
-		var e ErrorFunc = func() *Error {
-			return &Error{time.Now(), file, line, fmt.Sprintf("%v", v)}
-		}
+		var e ErrorFunc = func() *Error { return &Error{time.Now(), file, line, fmt.Sprintf("%v", v)} }
 		return e
 	}
 }
@@ -184,9 +174,7 @@ func Parse(err interface{}) ErrorFunc {
 	case ErrorFunc:
 		return err.(ErrorFunc)
 	case *Error:
-		return func() *Error {
-			return err.(*Error)
-		}
+		return func() *Error { return err.(*Error) }
 	default:
 		file, line := caller.Caller(2)
 		return func() *Error {

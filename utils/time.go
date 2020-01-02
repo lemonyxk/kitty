@@ -18,24 +18,35 @@ type ti int
 
 const Time ti = iota
 
-const format = "2006-01-02 15:04:05"
+const YMD = "2006-01-02"
+const HMS = "15:04:05"
+const FULL = "2006-01-02 15:04:05"
 
-func (_ ti) FormatNow() string {
-	return time.Now().Format(format)
+type Date struct {
+	time time.Time
 }
 
-func (_ ti) FormatTime(t time.Time) string {
-	return t.Format(format)
+func (d Date) Format(format string) string {
+	return d.time.Format(format)
 }
 
-func (t ti) FormatTimestamp(timestamp int) string {
-	return t.ParseTimestamp(timestamp).Format(format)
+func (d Date) Get(format string) time.Time {
+	return d.time
 }
 
-func (_ ti) ParseTimeString(timestamp string) (time.Time, error) {
-	return time.Parse(format, timestamp)
+func (ti ti) New() Date {
+	return Date{time: time.Now()}
 }
 
-func (_ ti) ParseTimestamp(timestamp int) time.Time {
-	return time.Unix(int64(timestamp), 0)
+func (ti ti) Time(t time.Time) Date {
+	return Date{time: t}
+}
+
+func (ti ti) Timestamp(timestamp int64) Date {
+	return Date{time: time.Unix(timestamp, 0)}
+}
+
+func (ti ti) String(timestamp string) Date {
+	var t, _ = time.Parse(FULL, timestamp)
+	return Date{time: t}
 }

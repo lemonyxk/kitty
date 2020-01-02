@@ -30,10 +30,10 @@ func (g goroutine) Run(fn func()) {
 			if err := recover(); err != nil {
 				var d = 1
 				var e = fmt.Errorf("%v", err)
-				if strings.HasPrefix(e.Error(), "#assert#") {
+				if strings.HasPrefix(e.Error(), "#exception#") {
 					d = 2
 				}
-				que.Push(exception.NewStackWithError(d, strings.Replace(e.Error(), "#assert#", "", 1)))
+				que.Push(exception.NewStackWithError(d, strings.Replace(e.Error(), "#exception#", "", 1)))
 			}
 		}()
 		fn()

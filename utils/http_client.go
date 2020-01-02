@@ -57,6 +57,10 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 			return nil, err
 		}
 
+		if body == nil {
+			body = make(map[string]interface{})
+		}
+
 		if _, ok := body.(map[string]interface{}); !ok {
 			return nil, errors.New("get method body must be map[string]interface")
 		}
@@ -98,6 +102,10 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 
 		switch contentType {
 		case "application/x-www-form-urlencoded":
+
+			if body == nil {
+				body = make(map[string]interface{})
+			}
 
 			if _, ok := body.(map[string]interface{}); !ok {
 				return nil, errors.New("application/x-www-form-urlencoded body must be map[string]interface")

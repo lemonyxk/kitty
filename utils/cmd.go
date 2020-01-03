@@ -55,6 +55,10 @@ func (c *cmd) Signal(sig syscall.Signal) error {
 	return c.c.Process.Signal(sig)
 }
 
+func (c *cmd) Cmd() *exec.Cmd {
+	return c.c
+}
+
 func (c *cmd) Kill() error {
 	var err error
 	switch runtime.GOOS {

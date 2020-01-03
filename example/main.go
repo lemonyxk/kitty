@@ -4,6 +4,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
@@ -13,31 +14,21 @@ import (
 
 func main() {
 
-	var httpServer = lemo.HttpServer{Host: "0.0.0.0", Port: 8666}
+	utils.Process.Fork(run, 1)
 
-	var httpServerRouter = &lemo.HttpServerRouter{}
-
-	httpServer.Use(func(next lemo.HttpServerMiddle) lemo.HttpServerMiddle {
-		return func(stream *lemo.Stream) {
-			if stream.Request.Header.Get("Upgrade") == "websocket" {
-				httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
-			} else {
-				next(stream)
-			}
+	time.AfterFunc(5*time.Second, func() {
+		var worker = utils.Process.Worker()
+		for i := 0; i < len(worker); i++ {
+			utils.Process.Kill(worker[i].Cmd.Cmd().Process.Pid)
 		}
 	})
 
-	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
-		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
-			// console.Log(t.Json.Empty("a"))
-			// console.Log(t.Query.Get("a"))
-			// console.Log(t.Form.Get("a"))
-			// console.Log(t.Files.Get("a"))
-			return t.JsonFormat("SUCCESS", 200, "hello world")
-		})
+	utils.Signal.ListenKill().Done(func(sig os.Signal) {
+		console.Log(sig)
 	})
+}
 
-	go httpServer.SetRouter(httpServerRouter).Start()
+func run() {
 
 	var webSocketServer = &lemo.WebSocketServer{Host: "0.0.0.0", Port: 8667, Path: "/"}
 
@@ -67,9 +58,27 @@ func main() {
 
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
 
-	console.Log("start success")
+	var httpServer = lemo.HttpServer{Host: "0.0.0.0", Port: 8666}
 
-	utils.Signal.ListenAll().Done(func(sig os.Signal) {
-		console.Log(sig)
+	var httpServerRouter = &lemo.HttpServerRouter{}
+
+	httpServer.Use(func(next lemo.HttpServerMiddle) lemo.HttpServerMiddle {
+		return func(stream *lemo.Stream) {
+			if stream.Request.Header.Get("Upgrade") == "websocket" {
+				httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
+			} else {
+				next(stream)
+			}
+		}
 	})
+
+	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
+		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
+			return t.JsonFormat("SUCCESS", 200, "hello world")
+		})
+	})
+
+	go httpServer.SetRouter(httpServerRouter).Start()
+
+	console.Log("start success")
 }

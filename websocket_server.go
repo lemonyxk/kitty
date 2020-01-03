@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -628,13 +627,7 @@ func (socket *WebSocketServer) Start() {
 	var err error
 	var netListen net.Listener
 
-	switch os.Getenv("pid") {
-	case "":
-		netListen, err = net.Listen("tcp", server.Addr)
-	default:
-		f := os.NewFile(3, "")
-		netListen, err = net.FileListener(f)
-	}
+	netListen, err = net.Listen("tcp", server.Addr)
 
 	if err != nil {
 		panic(err)
@@ -651,44 +644,14 @@ func (socket *WebSocketServer) Start() {
 	}
 
 	if err != nil {
-		console.Error(err)
-	}
-}
-
-func (socket *WebSocketServer) reload() {
-
-	tl, ok := socket.netListen.(*net.TCPListener)
-	if !ok {
-		panic("listener is not tcp listener")
-	}
-
-	f, err := tl.File()
-	if err != nil {
 		panic(err)
 	}
-
-	err = os.Setenv("pid", strconv.Itoa(os.Getpid()))
-	if err != nil {
-		panic(err)
-	}
-
-	cmd := exec.Command(os.Args[0], os.Args[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	cmd.ExtraFiles = []*os.File{f}
-	err = cmd.Start()
-	if err != nil {
-		panic(err)
-	}
-
-	console.Println("new pid:", cmd.Process.Pid)
 }
 
 func (socket *WebSocketServer) Shutdown() {
 	err := socket.server.Shutdown(context.Background())
 	if err != nil {
-		console.Error(err)
+		panic(err)
 	}
 	console.Println("kill pid:", os.Getpid())
 }

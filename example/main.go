@@ -1,10 +1,10 @@
 package main
 
 import (
+	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"time"
 
 	_ "github.com/mkevac/debugcharts"
 
@@ -17,6 +17,13 @@ import (
 func main() {
 
 	utils.Process.Fork(run, 1)
+
+	go func() {
+		http.HandleFunc("/reload", func(writer http.ResponseWriter, request *http.Request) {
+			utils.Process.Reload()
+		})
+		http.ListenAndServe(":12345", nil)
+	}()
 
 	utils.Signal.ListenKill().Done(func(sig os.Signal) {
 		console.Log(sig)
@@ -31,9 +38,7 @@ func run() {
 
 	webSocketServer.Use(func(next lemo.WebSocketServerMiddle) lemo.WebSocketServerMiddle {
 		return func(conn *lemo.WebSocket, receive *lemo.ReceivePackage) {
-			console.Log(1)
 			next(conn, receive)
-			console.Log(2)
 		}
 	})
 
@@ -72,7 +77,6 @@ func run() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
-			time.Sleep(time.Second * 5)
 			return t.JsonFormat("SUCCESS", 200, os.Getpid())
 		})
 	})

@@ -27,6 +27,9 @@ type HttpServer struct {
 	// TLS KEY
 	KeyFile string
 
+	// AutoBind
+	AutoBind bool
+
 	OnOpen    func(stream *Stream)
 	OnMessage func(stream *Stream)
 	OnClose   func(stream *Stream)
@@ -203,6 +206,13 @@ func (h *HttpServer) Start() {
 	netListen, err = net.Listen("tcp", server.Addr)
 
 	if err != nil {
+		if strings.HasSuffix(err.Error(), "address already in use") {
+			if h.AutoBind {
+				h.Port++
+				h.Start()
+				return
+			}
+		}
 		panic(err)
 	}
 

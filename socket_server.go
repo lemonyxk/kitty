@@ -14,6 +14,7 @@ import (
 	"errors"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,6 +67,7 @@ func (conn *Socket) Close() error {
 type SocketServer struct {
 	Host      string
 	Port      int
+	AutoBind  bool
 	OnClose   func(fd uint32)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
@@ -101,6 +103,8 @@ type SocketServer struct {
 	connections sync.Map
 	router      *SocketServerRouter
 	middle      []func(SocketServerMiddle) SocketServerMiddle
+
+	netListen net.Listener
 }
 
 type SocketServerMiddle func(conn *Socket, receive *ReceivePackage)
@@ -373,10 +377,23 @@ func (socket *SocketServer) Start() {
 
 	socket.Ready()
 
-	netListen, err := net.Listen("tcp", socket.Host+":"+strconv.Itoa(socket.Port))
+	var err error
+	var netListen net.Listener
+
+	netListen, err = net.Listen("tcp", socket.Host+":"+strconv.Itoa(socket.Port))
+
 	if err != nil {
+		if strings.HasSuffix(err.Error(), "address already in use") {
+			if socket.AutoBind {
+				socket.Port++
+				socket.Start()
+				return
+			}
+		}
 		panic(err)
 	}
+
+	socket.netListen = netListen
 
 	// defer func() { _ = netListen.Close() }()
 

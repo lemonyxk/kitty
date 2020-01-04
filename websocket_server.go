@@ -96,6 +96,8 @@ type WebSocketServer struct {
 	// TLS KEY
 	KeyFile string
 
+	AutoBind bool
+
 	OnClose   func(fd uint32)
 	OnMessage func(conn *WebSocket, messageType int, msg []byte)
 	OnOpen    func(conn *WebSocket)
@@ -630,6 +632,13 @@ func (socket *WebSocketServer) Start() {
 	netListen, err = net.Listen("tcp", server.Addr)
 
 	if err != nil {
+		if strings.HasSuffix(err.Error(), "address already in use") {
+			if socket.AutoBind {
+				socket.Port++
+				socket.Start()
+				return
+			}
+		}
 		panic(err)
 	}
 

@@ -51,7 +51,7 @@ func (s sig) Send(signal syscall.Signal) {
 }
 
 func (s sig) ListenKill() *done {
-	var signalList = []os.Signal{syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR2}
+	var signalList = []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 	// 创建信号
 	signalChan := make(chan os.Signal, 1)
 	// 通知

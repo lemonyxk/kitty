@@ -34,12 +34,12 @@ func Open(file string) *Plugin {
 	return &Plugin{p: p}
 }
 
-func (p *Plugin) Lookup(symName string) *Script {
+func (p *Plugin) Lookup(funcName string) *Script {
 	if p.p == nil {
 		return &Script{}
 	}
 
-	f, err := p.p.Lookup(symName)
+	f, err := p.p.Lookup(funcName)
 	if err != nil {
 		return &Script{}
 	}

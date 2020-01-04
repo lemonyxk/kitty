@@ -10,6 +10,5 @@ require (
 	github.com/json-iterator/go v1.1.9
 	github.com/mattn/go-runewidth v0.0.7 // indirect
 	github.com/mitchellh/mapstructure v1.1.2
-	github.com/stretchr/testify v1.4.0 // indirect
-	golang.org/x/sys v0.0.0-20191220220014-0732a990476f // indirect
+	github.com/mkevac/debugcharts v0.0.0-20191222103121-ae1c48aa8615
 )

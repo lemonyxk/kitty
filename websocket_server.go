@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -652,9 +651,7 @@ func (socket *WebSocketServer) Start() {
 		err = server.Serve(netListen)
 	}
 
-	if err != nil {
-		panic(err)
-	}
+	console.Exit(err)
 }
 
 func (socket *WebSocketServer) Shutdown() {
@@ -662,7 +659,6 @@ func (socket *WebSocketServer) Shutdown() {
 	if err != nil {
 		panic(err)
 	}
-	console.Println("kill pid:", os.Getpid())
 }
 
 func (socket *WebSocketServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -226,9 +226,7 @@ func (h *HttpServer) Start() {
 		err = server.Serve(netListen)
 	}
 
-	if err != nil {
-		panic(err)
-	}
+	console.Exit(err)
 }
 
 func (h *HttpServer) Shutdown() {
@@ -236,7 +234,6 @@ func (h *HttpServer) Shutdown() {
 	if err != nil {
 		panic(err)
 	}
-	console.Println("kill pid:", os.Getpid())
 }
 
 func (h *HttpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {

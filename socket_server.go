@@ -105,6 +105,7 @@ type SocketServer struct {
 	middle      []func(SocketServerMiddle) SocketServerMiddle
 
 	netListen net.Listener
+	shutdown  chan bool
 }
 
 type SocketServerMiddle func(conn *Socket, receive *ReceivePackage)
@@ -247,6 +248,8 @@ func (socket *SocketServer) Ready() {
 			}
 		}
 	}
+
+	socket.shutdown = make(chan bool)
 
 	// 连接
 	socket.connOpen = make(chan *Socket, socket.WaitQueueSize)
@@ -395,17 +398,27 @@ func (socket *SocketServer) Start() {
 
 	socket.netListen = netListen
 
-	// defer func() { _ = netListen.Close() }()
+	go func() {
+		for {
+			conn, err := netListen.Accept()
+			if err != nil {
+				socket.connError <- exception.New(err)
+				continue
+			}
 
-	for {
-		conn, err := netListen.Accept()
-		if err != nil {
-			socket.connError <- exception.New(err)
-			continue
+			go socket.process(conn)
 		}
+	}()
 
-		go socket.process(conn)
-	}
+	<-socket.shutdown
+
+	err = netListen.Close()
+
+	console.Exit(err)
+}
+
+func (socket *SocketServer) Shutdown() {
+	socket.shutdown <- true
 }
 
 func (socket *SocketServer) process(conn net.Conn) {

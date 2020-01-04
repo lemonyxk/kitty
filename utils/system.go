@@ -20,6 +20,8 @@ type system int
 
 const System system = iota
 
+var ch = make(chan int)
+
 func (system system) OpenBrowser(url string) error {
 	var err error
 	switch runtime.GOOS {
@@ -33,4 +35,12 @@ func (system system) OpenBrowser(url string) error {
 		err = fmt.Errorf("unsupported platform")
 	}
 	return err
+}
+
+func (system system) Exit(code int) {
+	ch <- code
+}
+
+func (system system) Block() int {
+	return <-ch
 }

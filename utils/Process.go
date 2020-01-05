@@ -53,6 +53,10 @@ func run() {
 	mux.Lock()
 	for i := 0; i < workerNumber; i++ {
 		var c = Cmd.New(strings.Join(os.Args, " "))
+		err := c.c.Start()
+		if err != nil {
+			panic(err)
+		}
 		go func() { _, _ = c.c.Process.Wait() }()
 		worker = append(worker, &proc{Cmd: c})
 	}

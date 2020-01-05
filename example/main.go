@@ -22,7 +22,7 @@ func main() {
 		http.HandleFunc("/reload", func(writer http.ResponseWriter, request *http.Request) {
 			utils.Process.Reload()
 		})
-		http.ListenAndServe(":12345", nil)
+		console.Log(http.ListenAndServe(":12345", nil))
 	}()
 
 	utils.Signal.ListenKill().Done(func(sig os.Signal) {

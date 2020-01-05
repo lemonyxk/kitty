@@ -23,8 +23,7 @@ type cm int
 const Cmd cm = iota
 
 type cmd struct {
-	c   *exec.Cmd
-	err error
+	c *exec.Cmd
 }
 
 func (cm cm) New(command string) *cmd {
@@ -42,13 +41,7 @@ func (cm cm) New(command string) *cmd {
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 
-	err := c.Start()
-
-	return &cmd{c: c, err: err}
-}
-
-func (c *cmd) LastError() error {
-	return c.err
+	return &cmd{c: c}
 }
 
 func (c *cmd) Signal(sig syscall.Signal) error {

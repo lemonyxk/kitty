@@ -13,8 +13,10 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -43,15 +45,41 @@ func (n ne) SaveFD(l net.Listener, fileName string) error {
 		return err
 	}
 
+	var fdPath = filepath.Join(os.TempDir(), fileName)
+	fmt.Println(fdPath)
+	ff, err := os.Create(fdPath)
+	defer func() { _ = ff.Close() }()
+
+	if err != nil {
+		return err
+	}
+
 	var fd = fmt.Sprintf("%v", f.Fd())
 	var name = f.Name()
 
-	return os.Setenv(fileName, fmt.Sprintf("%s %s", fd, name))
+	_, err = ff.Write([]byte(fmt.Sprintf("%s %s", fd, name)))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (n ne) GetFD(fileName string) (*os.File, error) {
 
-	var arr = strings.Split(os.Getenv(fileName), " ")
+	var fdPath = filepath.Join(os.TempDir(), fileName)
+	fmt.Println(fdPath)
+	ff, err := os.Open(fdPath)
+	if err != nil {
+		return nil, err
+	}
+
+	bts, err := ioutil.ReadAll(ff)
+	if err != nil {
+		return nil, err
+	}
+
+	var arr = strings.Split(string(bts), " ")
 	if len(arr) != 2 {
 		return nil, errors.New("bad data")
 	}

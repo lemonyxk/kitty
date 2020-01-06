@@ -144,7 +144,7 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 		return errors.New("not match")
 	}
 
-	var absFilePath = h.router.staticPath + r.URL.Path[len(h.router.prefixPath):]
+	var absFilePath = filepath.Join(h.router.staticPath, r.URL.Path[len(h.router.prefixPath):])
 
 	var info, err = os.Stat(absFilePath)
 	if err != nil {

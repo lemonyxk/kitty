@@ -26,6 +26,12 @@ type Date struct {
 	time time.Time
 }
 
+type Ticker struct {
+	duration time.Duration
+	fn       func()
+	ticker   *time.Ticker
+}
+
 func (d Date) Format(format string) string {
 	return d.time.Format(format)
 }
@@ -49,4 +55,24 @@ func (ti ti) Timestamp(timestamp int64) Date {
 func (ti ti) String(timestamp string) Date {
 	var t, _ = time.Parse(FULL, timestamp)
 	return Date{time: t}
+}
+
+func (ti ti) Ticker(duration time.Duration, fn func()) *Ticker {
+	return &Ticker{fn: fn, duration: duration}
+}
+
+func (ticker *Ticker) Start() {
+	ticker.ticker = time.NewTicker(ticker.duration)
+	go func() {
+		for {
+			select {
+			case <-ticker.ticker.C:
+				ticker.fn()
+			}
+		}
+	}()
+}
+
+func (ticker *Ticker) Stop() {
+	ticker.ticker.Stop()
 }

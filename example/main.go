@@ -6,8 +6,6 @@ import (
 	"net/url"
 	"os"
 
-	_ "github.com/mkevac/debugcharts"
-
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"

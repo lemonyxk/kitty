@@ -27,6 +27,9 @@ type hc int
 
 const HttpClient hc = iota
 
+const applicationFormUrlencoded = "application/x-www-form-urlencoded"
+const applicationJson = "application/json"
+
 var dial = net.Dialer{
 	Timeout:   30 * time.Second,
 	KeepAlive: 30 * time.Second,
@@ -97,11 +100,11 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 		}
 
 		if contentType == "" {
-			return nil, errors.New("invalid content-type")
+			contentType = applicationFormUrlencoded
 		}
 
 		switch contentType {
-		case "application/x-www-form-urlencoded":
+		case applicationFormUrlencoded:
 
 			if body == nil {
 				body = make(map[string]interface{})
@@ -130,7 +133,7 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 				return nil, err
 			}
 
-		case "application/json":
+		case applicationJson:
 
 			jsonBody, err := jsoniter.Marshal(body)
 			if err != nil {
@@ -280,7 +283,7 @@ func (h *httpClient) AddCookie(cookie *http.Cookie) *httpClient {
 }
 
 func (h *httpClient) Json(body interface{}) *httpClient {
-	h.SetHeader("Content-Type", "application/json")
+	h.SetHeader("Content-Type", applicationJson)
 	h.body = body
 	return h
 }
@@ -291,7 +294,7 @@ func (h *httpClient) Query(body map[string]interface{}) *httpClient {
 }
 
 func (h *httpClient) Form(body map[string]interface{}) *httpClient {
-	h.SetHeader("Content-Type", "application/x-www-form-urlencoded")
+	h.SetHeader("Content-Type", applicationFormUrlencoded)
 	h.body = body
 	return h
 }

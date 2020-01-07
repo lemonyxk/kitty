@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"syscall"
 )
 
 type system int
@@ -43,4 +44,12 @@ func (system system) Exit(code int) {
 
 func (system system) Block() int {
 	return <-ch
+}
+
+func (system system) Kill(pid int, sig syscall.Signal) error {
+	return syscall.Kill(pid, sig)
+}
+
+func (system system) KillGroup(pid int, sig syscall.Signal) error {
+	return syscall.Kill(-pid, sig)
 }

@@ -68,7 +68,7 @@ func (p pro) Kill(pid int) {
 		return
 	}
 	mux.Lock()
-	_ = syscall.Kill(pid, syscall.SIGTERM)
+	_ = System.KillGroup(pid, syscall.SIGTERM)
 	for i := 0; i < len(worker); i++ {
 		if worker[i].Cmd.c.Process.Pid == pid {
 			worker = append(worker[0:i], worker[i+1:]...)

@@ -46,10 +46,6 @@ func (s sig) ListenAll() *done {
 	}}
 }
 
-func (s sig) Send(signal syscall.Signal) {
-	_ = syscall.Kill(syscall.Getpid(), signal)
-}
-
 func (s sig) ListenKill() *done {
 	var signalList = []os.Signal{syscall.SIGINT, syscall.SIGTERM}
 	// 创建信号

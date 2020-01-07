@@ -10,6 +10,6 @@
 
 package head
 
-type Interface interface {
+type Value interface {
 	Value() int
 }

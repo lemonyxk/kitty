@@ -10,7 +10,7 @@
 
 package head
 
-func NewMaxHead(list ...Interface) *maxHead {
+func NewMaxHead(list ...Value) *maxHead {
 	var head = &maxHead{}
 	head.data = list
 	head.len = len(list)
@@ -19,11 +19,11 @@ func NewMaxHead(list ...Interface) *maxHead {
 }
 
 type maxHead struct {
-	data []Interface
+	data []Value
 	len  int
 }
 
-func (h *maxHead) Pop() (Interface, bool) {
+func (h *maxHead) Pop() (Value, bool) {
 	if h.len == 0 {
 		return nil, false
 	}
@@ -39,7 +39,7 @@ func (h *maxHead) Pop() (Interface, bool) {
 	return value, true
 }
 
-func (h *maxHead) Push(v Interface) {
+func (h *maxHead) Push(v Value) {
 	h.data = append(h.data, v)
 	h.len++
 	h.up(h.len - 1)

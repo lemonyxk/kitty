@@ -10,7 +10,7 @@
 
 package head
 
-func NewMinHead(list ...Interface) *minHead {
+func NewMinHead(list ...Value) *minHead {
 	var head = &minHead{}
 	head.data = list
 	head.len = len(list)
@@ -19,11 +19,11 @@ func NewMinHead(list ...Interface) *minHead {
 }
 
 type minHead struct {
-	data []Interface
+	data []Value
 	len  int
 }
 
-func (h *minHead) Pop() (Interface, bool) {
+func (h *minHead) Pop() (Value, bool) {
 	if h.len == 0 {
 		return nil, false
 	}
@@ -39,7 +39,7 @@ func (h *minHead) Pop() (Interface, bool) {
 	return value, true
 }
 
-func (h *minHead) Push(v Interface) {
+func (h *minHead) Push(v Value) {
 	h.data = append(h.data, v)
 	h.len++
 	h.up(h.len - 1)

@@ -285,6 +285,11 @@ func (h *httpClient) Json(body interface{}) *httpClient {
 	return h
 }
 
+func (h *httpClient) Query(body map[string]interface{}) *httpClient {
+	h.body = body
+	return h
+}
+
 func (h *httpClient) Form(body map[string]interface{}) *httpClient {
 	h.SetHeader("Content-Type", "application/x-www-form-urlencoded")
 	h.body = body

@@ -73,3 +73,11 @@ func (s sig) Listen(sig ...os.Signal) *done {
 		signal.Stop(signalChan)
 	}}
 }
+
+func (s sig) Kill(pid int, sig syscall.Signal) error {
+	return syscall.Kill(pid, sig)
+}
+
+func (s sig) KillGroup(pid int, sig syscall.Signal) error {
+	return syscall.Kill(-pid, sig)
+}

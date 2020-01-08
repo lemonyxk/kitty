@@ -134,7 +134,9 @@ func Customize(color Color, tp string, format string, v ...interface{}) {
 
 	var t = time.Now()
 
-	color.Printf(format, v...)
+	if output {
+		color.Printf(format, v...)
+	}
 
 	if hook && logger.hook != nil {
 		logger.hook(tp, t, file, line, v...)

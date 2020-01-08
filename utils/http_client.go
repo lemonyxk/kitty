@@ -131,7 +131,7 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 				case float64:
 					buff.WriteString(key + "=" + strconv.FormatFloat(value.(float64), 'f', -1, 64) + "&")
 				default:
-					buff.WriteString(key + "=" + fmt.Sprintf("%v", value))
+					buff.WriteString(key + "=" + fmt.Sprintf("%v", value) + "&")
 				}
 			}
 

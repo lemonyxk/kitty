@@ -179,12 +179,12 @@ func (client *WebSocketClient) Connect() {
 
 	// 写入BUF大小
 	if client.WriteBufferSize == 0 {
-		client.WriteBufferSize = 1024 * 1024 * 2
+		client.WriteBufferSize = 1024
 	}
 
 	// 读出BUF大小
 	if client.ReadBufferSize == 0 {
-		client.ReadBufferSize = 1024 * 1024 * 2
+		client.ReadBufferSize = 1024
 	}
 
 	// 定时心跳间隔

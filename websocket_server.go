@@ -299,7 +299,7 @@ func (socket *WebSocketServer) delConnect(conn *WebSocket) {
 }
 
 func (socket *WebSocketServer) GetConnections() chan *WebSocket {
-	var ch = make(chan *WebSocket, 1024)
+	var ch = make(chan *WebSocket, 1)
 	go func() {
 		socket.connections.Range(func(key, value interface{}) bool {
 			ch <- value.(*WebSocket)
@@ -346,11 +346,11 @@ func (socket *WebSocketServer) Ready() {
 
 	// must be 4096 or the memory will leak
 	if socket.ReadBufferSize == 0 {
-		socket.ReadBufferSize = 4096
+		socket.ReadBufferSize = 1024
 	}
 	// must be 4096 or the memory will leak
 	if socket.WriteBufferSize == 0 {
-		socket.WriteBufferSize = 4096
+		socket.WriteBufferSize = 1024
 	}
 
 	if socket.WaitQueueSize == 0 {

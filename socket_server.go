@@ -76,6 +76,7 @@ type SocketServer struct {
 	HeartBeatTimeout  int
 	HeartBeatInterval int
 	ReadBufferSize    int
+	WriteBufferSize   int
 	WaitQueueSize     int
 	HandshakeTimeout  int
 
@@ -207,6 +208,10 @@ func (socket *SocketServer) Ready() {
 
 	if socket.ReadBufferSize == 0 {
 		socket.ReadBufferSize = 1024
+	}
+
+	if socket.WriteBufferSize == 0 {
+		socket.WriteBufferSize = 1024
 	}
 
 	if socket.WaitQueueSize == 0 {
@@ -345,7 +350,7 @@ func (socket *SocketServer) delConnect(conn *Socket) {
 }
 
 func (socket *SocketServer) GetConnections() chan *Socket {
-	var ch = make(chan *Socket, 1024)
+	var ch = make(chan *Socket, 1)
 	go func() {
 		socket.connections.Range(func(key, value interface{}) bool {
 			ch <- value.(*Socket)
@@ -428,6 +433,15 @@ func (socket *SocketServer) process(conn net.Conn) {
 	if err != nil {
 		socket.connError <- exception.New(err)
 		return
+	}
+
+	err = conn.(*net.TCPConn).SetReadBuffer(socket.ReadBufferSize)
+	if err != nil {
+		panic(err)
+	}
+	err = conn.(*net.TCPConn).SetWriteBuffer(socket.WriteBufferSize)
+	if err != nil {
+		panic(err)
 	}
 
 	var connection = &Socket{

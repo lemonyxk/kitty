@@ -37,6 +37,7 @@ type SocketClient struct {
 	Reconnect         bool
 	ReconnectInterval int
 	ReadBufferSize    int
+	WriteBufferSize   int
 	HandshakeTimeout  int
 
 	// 消息处理
@@ -170,6 +171,11 @@ func (client *SocketClient) Connect() {
 		client.ReadBufferSize = 1024
 	}
 
+	// 读出BUF大小
+	if client.WriteBufferSize == 0 {
+		client.WriteBufferSize = 1024
+	}
+
 	// 定时心跳间隔
 	if client.HeartBeatInterval == 0 {
 		client.HeartBeatInterval = 15
@@ -212,6 +218,16 @@ func (client *SocketClient) Connect() {
 	if err != nil {
 		go client.OnError(exception.New(err))
 		return
+	}
+
+	err = handler.(*net.TCPConn).SetReadBuffer(client.ReadBufferSize)
+	if err != nil {
+		panic(err)
+	}
+
+	err = handler.(*net.TCPConn).SetWriteBuffer(client.WriteBufferSize)
+	if err != nil {
+		panic(err)
 	}
 
 	client.Conn = handler

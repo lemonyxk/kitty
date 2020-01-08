@@ -51,3 +51,10 @@ func (s sig) Listen(sig ...os.Signal) *done {
 		signal.Stop(signalChan)
 	}}
 }
+
+func (s sig) Kill(pid int) error {
+	kill := exec.Command("TASKKILL", "/T", "/F", "/PID", strconv.Itoa(pid))
+	kill.Stderr = os.Stderr
+	kill.Stdout = os.Stdout
+	return kill.Run()
+}

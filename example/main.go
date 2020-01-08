@@ -82,4 +82,5 @@ func run() {
 	go httpServer.SetRouter(httpServerRouter).Start()
 
 	console.Log("start success")
+
 }

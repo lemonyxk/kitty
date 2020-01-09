@@ -170,6 +170,10 @@ func newErrorWithFileAndLine(v interface{}, file string, line int) ErrorFunc {
 	case string:
 		var e ErrorFunc = func() *Error { return &Error{time.Now(), file, line, v.(string)} }
 		return e
+	case ErrorFunc:
+		return v.(ErrorFunc)
+	case *Error:
+		return func() *Error { return v.(*Error) }
 	default:
 		var e ErrorFunc = func() *Error { return &Error{time.Now(), file, line, fmt.Sprintf("%v", v)} }
 		return e

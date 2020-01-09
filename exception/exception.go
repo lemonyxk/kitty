@@ -13,6 +13,7 @@ package exception
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -94,7 +95,7 @@ func Assert(v ...interface{}) {
 	if len(v) == 0 {
 		return
 	}
-	if v[len(v)-1] == nil {
+	if IsNil(v[len(v)-1]) {
 		return
 	}
 	panic(fmt.Errorf("#exception#%v", v[len(v)-1]))
@@ -104,7 +105,7 @@ func Inspect(v ...interface{}) ErrorFunc {
 	if len(v) == 0 {
 		return nil
 	}
-	if v[len(v)-1] == nil {
+	if IsNil(v[len(v)-1]) {
 		return nil
 	}
 	return newErrorFromDeep(v[len(v)-1], 2)
@@ -117,7 +118,7 @@ func New(v ...interface{}) ErrorFunc {
 
 	var invalid = true
 	for i := 0; i < len(v); i++ {
-		if v[i] != nil {
+		if !IsNil(v[i]) {
 			invalid = false
 			break
 		}
@@ -142,7 +143,7 @@ func NewFormat(format string, v ...interface{}) ErrorFunc {
 
 	var invalid = true
 	for i := 0; i < len(v); i++ {
-		if v[i] != nil {
+		if !IsNil(v[i]) {
 			invalid = false
 			break
 		}
@@ -157,9 +158,6 @@ func NewFormat(format string, v ...interface{}) ErrorFunc {
 }
 
 func newErrorFromDeep(v interface{}, deep int) ErrorFunc {
-	if v == nil {
-		return nil
-	}
 	file, line := caller.Caller(deep)
 	return newErrorWithFileAndLine(v, file, line)
 }
@@ -196,4 +194,30 @@ func Parse(err interface{}) ErrorFunc {
 			return &Error{Time: time.Now(), File: file, Line: line, Message: fmt.Sprintf("%v", err)}
 		}
 	}
+}
+
+func IsNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+	vi := reflect.ValueOf(i)
+
+	switch vi.Kind() {
+	case reflect.UnsafePointer:
+		return vi.IsNil()
+	case reflect.Ptr:
+		return vi.IsNil()
+	case reflect.Chan:
+		return vi.IsNil()
+	case reflect.Func:
+		return vi.IsNil()
+	case reflect.Interface:
+		return vi.IsNil()
+	case reflect.Map:
+		return vi.IsNil()
+	case reflect.Slice:
+		return vi.IsNil()
+	}
+
+	return false
 }

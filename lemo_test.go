@@ -11,24 +11,21 @@
 package lemo
 
 import (
-	"encoding/json"
+	"net/http"
 	"testing"
 
-	"github.com/json-iterator/go"
+	"github.com/Lemo-yxk/lemo/console"
+	"github.com/Lemo-yxk/lemo/exception"
 )
 
-var a = []byte(`{"a":1}`)
-var b M
+var t2 http.Server
+
+func init() {
+	console.Log(exception.IsNil(t2))
+}
 
 func BenchmarkStdAppLogs_normal_jsoniter(b *testing.B) {
 	for j := 0; j <= b.N; j++ {
-		jsoniter.Unmarshal(a, &b)
-	}
-}
-
-func BenchmarkStdAppLogs_normal_json(b *testing.B) {
-
-	for j := 0; j <= b.N; j++ {
-		json.Unmarshal(a, &b)
+		exception.IsNil(t2)
 	}
 }

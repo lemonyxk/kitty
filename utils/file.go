@@ -31,6 +31,10 @@ func (fi fi) ReadFromBytes(bts []byte) Info {
 	return Info{err: nil, bytes: bts}
 }
 
+func (fi fi) ReadFromString(str string) Info {
+	return Info{err: nil, bytes: []byte(str)}
+}
+
 func (fi fi) ReadFromReader(r io.Reader) Info {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {

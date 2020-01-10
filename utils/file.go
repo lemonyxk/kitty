@@ -63,6 +63,16 @@ func (i Info) Bytes() []byte {
 	return i.bytes
 }
 
+func (i Info) Append(bts []byte) Info {
+	i.bytes = append(i.bytes)
+	return i
+}
+
+func (i Info) Slice(start int, end int) Info {
+	i.bytes = i.bytes[start:end]
+	return i
+}
+
 func (i Info) String() string {
 	return string(i.bytes)
 }

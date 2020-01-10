@@ -46,7 +46,6 @@ func (n ne) SaveFD(l net.Listener, fileName string) error {
 	}
 
 	var fdPath = filepath.Join(os.TempDir(), fileName)
-	fmt.Println(fdPath)
 	ff, err := os.Create(fdPath)
 	defer func() { _ = ff.Close() }()
 
@@ -68,7 +67,7 @@ func (n ne) SaveFD(l net.Listener, fileName string) error {
 func (n ne) GetFD(fileName string) (*os.File, error) {
 
 	var fdPath = filepath.Join(os.TempDir(), fileName)
-	fmt.Println(fdPath)
+
 	ff, err := os.Open(fdPath)
 	if err != nil {
 		return nil, err

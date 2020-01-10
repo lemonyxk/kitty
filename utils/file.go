@@ -64,7 +64,7 @@ func (i Info) Bytes() []byte {
 }
 
 func (i Info) Append(bts []byte) Info {
-	i.bytes = append(i.bytes)
+	i.bytes = append(i.bytes, bts...)
 	return i
 }
 

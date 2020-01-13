@@ -73,6 +73,10 @@ func run() {
 		}
 	})
 
+	httpServerRouter.Route("GET", "/hello").Handler(func(stream *lemo.Stream) exception.ErrorFunc {
+		return exception.New(stream.EndString("hello"))
+	})
+
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
 		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
 			return t.JsonFormat("SUCCESS", 200, os.Getpid())

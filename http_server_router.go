@@ -262,6 +262,10 @@ func (router *HttpServerRouter) Group(path string) *HttpServerGroup {
 	return group
 }
 
+func (router *HttpServerRouter) Route(method string, path string) *HttpServerRoute {
+	return (&HttpServerRouteHandler{group: router.Group("")}).Route(method, path)
+}
+
 func (router *HttpServerRouter) getRoute(method string, path string) (*tire.Tire, []byte) {
 
 	if router.tire == nil {

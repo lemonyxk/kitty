@@ -177,6 +177,10 @@ func (router *WebSocketServerRouter) Group(path string) *WebSocketServerGroup {
 	return group
 }
 
+func (router *WebSocketServerRouter) Route(path string) *WebSocketServerRoute {
+	return (&WebSocketServerRouteHandler{group: router.Group("")}).Route(path)
+}
+
 func (router *WebSocketServerRouter) GetAllRouters() []*WebSocketServerNode {
 	var res []*WebSocketServerNode
 	var tires = router.tire.GetAllValue()

@@ -186,6 +186,10 @@ func (router *WebSocketClientRouter) Group(path string) *WebSocketClientGroup {
 	return group
 }
 
+func (router *WebSocketClientRouter) Route(path string) *WebSocketClientRoute {
+	return (&WebSocketClientRouteHandler{group: router.Group("")}).Route(path)
+}
+
 func (router *WebSocketClientRouter) getRoute(path string) (*tire.Tire, []byte) {
 
 	if router.tire == nil {

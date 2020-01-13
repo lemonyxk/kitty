@@ -191,6 +191,10 @@ func (router *SocketClientRouter) Group(path string) *SocketClientGroup {
 	return group
 }
 
+func (router *SocketClientRouter) Route(path string) *SocketClientRoute {
+	return (&SocketClientRouteHandler{group: router.Group("")}).Route(path)
+}
+
 func (router *SocketClientRouter) getRoute(path string) (*tire.Tire, []byte) {
 
 	if router.tire == nil {

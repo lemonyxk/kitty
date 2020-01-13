@@ -48,7 +48,7 @@ func run() {
 		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) exception.ErrorFunc {
 			return conn.JsonFormat(lemo.JsonPackage{
 				Event: "/hello/world",
-				Message: &lemo.JsonMessage{
+				Message: &lemo.JsonFormat{
 					Status: "",
 					Code:   0,
 					Msg:    nil,

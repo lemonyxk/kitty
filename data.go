@@ -14,23 +14,23 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-type JsonMessage struct {
+type JsonFormat struct {
 	Status string      `json:"status"`
 	Code   int         `json:"code"`
 	Msg    interface{} `json:"msg"`
 }
 
-func JM(status string, code int, msg interface{}) *JsonMessage {
-	return &JsonMessage{Status: status, Code: code, Msg: msg}
+func JM(status string, code int, msg interface{}) *JsonFormat {
+	return &JsonFormat{Status: status, Code: code, Msg: msg}
 }
 
-type EventMessage struct {
+type JsonMessage struct {
 	Event string      `json:"event"`
 	Data  interface{} `json:"data"`
 }
 
-func EM(event string, data interface{}) *EventMessage {
-	return &EventMessage{Event: event, Data: data}
+func EM(event string, data interface{}) *JsonMessage {
+	return &JsonMessage{Event: event, Data: data}
 }
 
 type Receive struct {
@@ -48,7 +48,7 @@ type ReceivePackage struct {
 
 type JsonPackage struct {
 	Event   string
-	Message *JsonMessage
+	Message interface{}
 }
 
 type ProtoBufPackage struct {

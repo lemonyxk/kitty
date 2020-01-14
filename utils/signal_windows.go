@@ -1,3 +1,5 @@
+// +build windows
+
 /**
 * @program: lemo
 *

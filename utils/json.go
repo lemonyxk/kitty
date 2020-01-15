@@ -38,8 +38,6 @@ type result struct {
 	any jsoniter.Any
 }
 
-type array []jsoniter.Any
-
 func (j json) New(v interface{}) data {
 	return data{any: jsoniter.Get(j.Encode(v))}
 }
@@ -101,6 +99,8 @@ func (r result) Array() array {
 	return result
 }
 
+type array []jsoniter.Any
+
 func (a array) String() []string {
 	var result []string
 	for i := 0; i < len(a); i++ {
@@ -121,6 +121,14 @@ func (a array) Float64() []float64 {
 	var result []float64
 	for i := 0; i < len(a); i++ {
 		result = append(result, a[i].ToFloat64())
+	}
+	return result
+}
+
+func (a array) Get(path ...interface{}) array {
+	var result []jsoniter.Any
+	for i := 0; i < len(a); i++ {
+		result = append(result, a[i].Get(path...))
 	}
 	return result
 }

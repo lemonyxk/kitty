@@ -24,6 +24,7 @@ const (
 	Version byte = 'V'
 
 	// message type
+	Unknown  int = 0
 	TextData int = 1
 	BinData  int = 2
 	PingData int = 9
@@ -75,11 +76,16 @@ func IsHeaderInvalid(message []byte) bool {
 	return true
 }
 
+func convert(message []byte) (a, b, c, d, e int) {
+	return int(message[3]), int(message[7]), int(message[6]), int(message[5]), int(message[4])
+}
+
 func GetLen(message []byte) int {
+	var a, b, c, d, e = convert(message[:8])
 	if message[1] == byte(TextData) {
-		return int(message[3]+(message[7]|message[6]<<7|message[5]<<14|message[4]<<21)) + 8
+		return a + (b | c<<7 | d<<14 | e<<21) + 8
 	} else {
-		return int(message[3]+(message[7]|message[6]<<8|message[5]<<16|message[4]<<24)) + 8
+		return a + (b | c<<8 | d<<16 | e<<24) + 8
 	}
 }
 
@@ -89,14 +95,8 @@ func UnPack(message []byte) (version byte, messageType int, protoType int, route
 		return
 	}
 
-	if message[1] == byte(TextData) {
-		if int(message[3]+(message[7]|message[6]<<7|message[5]<<14|message[4]<<21))+8 != len(message) {
-			return
-		}
-	} else {
-		if int(message[3]+(message[7]|message[6]<<8|message[5]<<16|message[4]<<24))+8 != len(message) {
-			return
-		}
+	if GetLen(message) != len(message) {
+		return
 	}
 
 	return message[0], int(message[1]), int(message[2]), message[8 : 8+message[3]], message[8+message[3]:]

@@ -41,7 +41,7 @@ func run() {
 	})
 
 	webSocketServer.OnMessage = func(conn *lemo.WebSocket, messageType int, msg []byte) {
-		console.Log(os.Getpid())
+		console.Log(len(msg))
 	}
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *lemo.WebSocketServerRouteHandler) {
@@ -86,5 +86,26 @@ func run() {
 	go httpServer.SetRouter(httpServerRouter).Start()
 
 	console.Log("start success")
+
+	var tcpServer = &lemo.SocketServer{
+		Host:     "127.0.0.1",
+		Port:     8888,
+		AutoBind: true,
+	}
+
+	tcpServer.OnMessage = func(conn *lemo.Socket, messageType int, msg []byte) {
+		console.Log(len(msg))
+	}
+
+	var tcpServerRouter = &lemo.SocketServerRouter{IgnoreCase: true}
+
+	tcpServerRouter.Group("/hello").Handler(func(handler *lemo.SocketServerRouteHandler) {
+		handler.Route("/world").Handler(func(conn *lemo.Socket, receive *lemo.Receive) exception.ErrorFunc {
+			console.Log(len(receive.Message.Message))
+			return nil
+		})
+	})
+
+	tcpServer.SetRouter(tcpServerRouter).Start()
 
 }

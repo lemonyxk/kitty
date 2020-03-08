@@ -27,6 +27,7 @@ type WebSocket struct {
 	Server   *WebSocketServer
 	Response http.ResponseWriter
 	Request  *http.Request
+	Context  interface{}
 }
 
 func (conn *WebSocket) Host() string {
@@ -97,7 +98,7 @@ type WebSocketServer struct {
 
 	AutoBind bool
 
-	OnClose   func(fd uint32)
+	OnClose   func(conn *WebSocket)
 	OnMessage func(conn *WebSocket, messageType int, msg []byte)
 	OnOpen    func(conn *WebSocket)
 	OnError   func(err exception.ErrorFunc)
@@ -370,8 +371,8 @@ func (socket *WebSocketServer) Ready() {
 	}
 
 	if socket.OnClose == nil {
-		socket.OnClose = func(fd uint32) {
-			console.Println(fd, "is close")
+		socket.OnClose = func(conn *WebSocket) {
+			console.Println(conn.FD, "is close")
 		}
 	}
 
@@ -434,12 +435,11 @@ func (socket *WebSocketServer) Ready() {
 				// 触发OPEN事件
 				go socket.OnOpen(conn)
 			case conn := <-socket.connClose:
-				var fd = conn.FD
 				_ = conn.Conn.Close()
 				socket.delConnect(conn)
 				socket.count--
 				// 触发CLOSE事件
-				go socket.OnClose(fd)
+				go socket.OnClose(conn)
 			case push := <-socket.connPush:
 				var conn, ok = socket.connections.Load(push.FD)
 				if !ok {

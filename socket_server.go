@@ -28,9 +28,10 @@ import (
 )
 
 type Socket struct {
-	FD     uint32
-	Conn   net.Conn
-	Server *SocketServer
+	FD      uint32
+	Conn    net.Conn
+	Server  *SocketServer
+	Context interface{}
 }
 
 func (conn *Socket) ClientIP() string {
@@ -68,7 +69,7 @@ type SocketServer struct {
 	Host      string
 	Port      int
 	AutoBind  bool
-	OnClose   func(fd uint32)
+	OnClose   func(conn *Socket)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
 	OnError   func(err exception.ErrorFunc)
@@ -225,8 +226,8 @@ func (socket *SocketServer) Ready() {
 	}
 
 	if socket.OnClose == nil {
-		socket.OnClose = func(fd uint32) {
-			console.Println(fd, "is close")
+		socket.OnClose = func(conn *Socket) {
+			console.Println(conn.FD, "is close")
 		}
 	}
 
@@ -280,12 +281,11 @@ func (socket *SocketServer) Ready() {
 				// 触发OPEN事件
 				go socket.OnOpen(conn)
 			case conn := <-socket.connClose:
-				var fd = conn.FD
 				_ = conn.Conn.Close()
 				socket.delConnect(conn)
 				socket.count--
 				// 触发CLOSE事件
-				go socket.OnClose(fd)
+				go socket.OnClose(conn)
 			case push := <-socket.connPush:
 				var conn, ok = socket.connections.Load(push.FD)
 				if !ok {

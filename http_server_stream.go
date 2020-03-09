@@ -244,10 +244,10 @@ func (stream *Stream) EndBytes(data []byte) error {
 	return err
 }
 
-func (stream *Stream) EndFile(fileName string, content []byte) error {
+func (stream *Stream) EndFile(fileName string, content interface{}) error {
 	stream.SetHeader("Content-Type", "application/octet-stream")
 	stream.SetHeader("content-Disposition", "attachment;filename="+fileName)
-	return stream.EndBytes(content)
+	return stream.End(content)
 }
 
 func (stream *Stream) Host() string {

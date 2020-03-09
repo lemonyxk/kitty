@@ -244,6 +244,12 @@ func (stream *Stream) EndBytes(data []byte) error {
 	return err
 }
 
+func (stream *Stream) EndFile(fileName string, content []byte) error {
+	stream.SetHeader("Content-Type", "application/octet-stream")
+	stream.SetHeader("content-Disposition", "attachment;filename="+fileName)
+	return stream.EndBytes(content)
+}
+
 func (stream *Stream) Host() string {
 	if host := stream.Request.Header.Get(Host); host != "" {
 		return host

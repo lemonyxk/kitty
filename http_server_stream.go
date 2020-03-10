@@ -31,6 +31,13 @@ func (f Files) Get(fileName string) *multipart.FileHeader {
 	return nil
 }
 
+func (f Files) GetAll(fileName string) []*multipart.FileHeader {
+	if file, ok := f.files[fileName]; ok {
+		return file
+	}
+	return nil
+}
+
 type Params struct {
 	Keys   []string
 	Values []string
@@ -339,7 +346,7 @@ func (stream *Stream) ParseMultipart() Store {
 
 	for k, v := range parse {
 		form.keys = append(form.keys, k)
-		form.values = append(form.values, v[0])
+		form.values = append(form.values, v)
 	}
 
 	stream.Form = form
@@ -366,7 +373,7 @@ func (stream *Stream) ParseQuery() Store {
 
 	for k, v := range parse {
 		query.keys = append(query.keys, k)
-		query.values = append(query.values, v[0])
+		query.values = append(query.values, v)
 	}
 
 	stream.Query = query
@@ -393,7 +400,7 @@ func (stream *Stream) ParseForm() Store {
 
 	for k, v := range parse {
 		form.keys = append(form.keys, k)
-		form.values = append(form.values, v[0])
+		form.values = append(form.values, v)
 	}
 
 	stream.Form = form
@@ -495,7 +502,7 @@ func (stream *Stream) Scheme() string {
 
 type Store struct {
 	keys   []string
-	values []string
+	values [][]string
 }
 
 func (store Store) Has(key string) bool {
@@ -516,16 +523,25 @@ func (store Store) Get(key string) Value {
 	var val = Value{}
 	for i := 0; i < len(store.keys); i++ {
 		if store.keys[i] == key {
-			val.v = &store.values[i]
+			val.v = &store.values[i][0]
 			return val
 		}
 	}
 	return val
 }
 
+func (store Store) GetAll(key string) []string {
+	for i := 0; i < len(store.keys); i++ {
+		if store.keys[i] == key {
+			return store.values[i]
+		}
+	}
+	return nil
+}
+
 func (store Store) Add(key string, value string) {
 	store.keys = append(store.keys, key)
-	store.values = append(store.values, value)
+	store.values = append(store.values, []string{value})
 }
 
 func (store Store) Remove(key string) {
@@ -548,6 +564,14 @@ func (store Store) Keys() []string {
 }
 
 func (store Store) Values() []string {
+	var res []string
+	for i := 0; i < len(store.values); i++ {
+		res = append(res, store.values[i][0])
+	}
+	return res
+}
+
+func (store Store) AllValues() [][]string {
 	return store.values
 }
 
@@ -557,7 +581,12 @@ func (store Store) String() string {
 
 	for i := 0; i < len(store.keys); i++ {
 		buff.WriteString(store.keys[i] + ":")
-		buff.WriteString(store.values[i])
+		for j := 0; j < len(store.values[i]); j++ {
+			buff.WriteString(store.values[i][j])
+			if j != len(store.values[i])-1 {
+				buff.WriteString(",")
+			}
+		}
 		buff.WriteString(" ")
 	}
 

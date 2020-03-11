@@ -387,7 +387,7 @@ func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
 	var nodeData = node.Data.(*SocketClientNode)
 
 	var receive = &Receive{}
-	receive.Message = msg
+	receive.Body = msg
 	receive.Context = nil
 	receive.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
 

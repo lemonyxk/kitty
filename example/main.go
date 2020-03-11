@@ -101,7 +101,7 @@ func run() {
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *lemo.SocketServerRouteHandler) {
 		handler.Route("/world").Handler(func(conn *lemo.Socket, receive *lemo.Receive) exception.ErrorFunc {
-			console.Log(len(receive.Message.Message))
+			console.Log(len(receive.Body.Message))
 			return nil
 		})
 	})

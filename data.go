@@ -36,7 +36,7 @@ func EM(event string, data interface{}) *JsonMessage {
 type Receive struct {
 	Context Context
 	Params  Params
-	Message *ReceivePackage
+	Body    *ReceivePackage
 }
 
 type ReceivePackage struct {
@@ -57,7 +57,7 @@ type ProtoBufPackage struct {
 	Message proto.Message
 }
 
-type PushPackage struct {
+type PushInfo struct {
 	MessageType int
 	FD          uint32
 	Message     []byte

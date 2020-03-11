@@ -356,7 +356,7 @@ func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackag
 	var nodeData = node.Data.(*WebSocketClientNode)
 
 	var receive = &Receive{}
-	receive.Message = msg
+	receive.Body = msg
 	receive.Context = nil
 	receive.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
 

@@ -92,7 +92,7 @@ type SocketServer struct {
 	connClose chan *Socket
 
 	// 写入
-	connPush chan *PushPackage
+	connPush chan *PushInfo
 
 	// 返回
 	connBack chan error
@@ -119,7 +119,7 @@ func (socket *SocketServer) Use(middle ...func(SocketServerMiddle) SocketServerM
 // Push 发送消息
 func (socket *SocketServer) Push(fd uint32, msg []byte) error {
 
-	socket.connPush <- &PushPackage{
+	socket.connPush <- &PushInfo{
 		FD:      fd,
 		Message: msg,
 	}
@@ -264,7 +264,7 @@ func (socket *SocketServer) Ready() {
 	socket.connClose = make(chan *Socket, socket.WaitQueueSize)
 
 	// 写入
-	socket.connPush = make(chan *PushPackage, socket.WaitQueueSize)
+	socket.connPush = make(chan *PushInfo, socket.WaitQueueSize)
 
 	// 返回
 	socket.connBack = make(chan error, socket.WaitQueueSize)
@@ -569,7 +569,7 @@ func (socket *SocketServer) handler(conn *Socket, msg *ReceivePackage) {
 	var nodeData = node.Data.(*SocketServerNode)
 
 	var receive = &Receive{}
-	receive.Message = msg
+	receive.Body = msg
 	receive.Context = nil
 	receive.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
 

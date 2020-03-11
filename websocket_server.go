@@ -123,7 +123,7 @@ type WebSocketServer struct {
 	connClose chan *WebSocket
 
 	// 写入
-	connPush chan *PushPackage
+	connPush chan *PushInfo
 
 	// 返回
 	connBack chan error
@@ -155,7 +155,7 @@ func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
 // Push 发送消息
 func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) error {
 
-	socket.connPush <- &PushPackage{
+	socket.connPush <- &PushInfo{
 		MessageType: messageType,
 		FD:          fd,
 		Message:     msg,
@@ -418,7 +418,7 @@ func (socket *WebSocketServer) Ready() {
 	socket.connClose = make(chan *WebSocket, socket.WaitQueueSize)
 
 	// 写入
-	socket.connPush = make(chan *PushPackage, socket.WaitQueueSize)
+	socket.connPush = make(chan *PushInfo, socket.WaitQueueSize)
 
 	// 返回
 	socket.connBack = make(chan error, socket.WaitQueueSize)
@@ -574,7 +574,7 @@ func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
 	var nodeData = node.Data.(*WebSocketServerNode)
 
 	var receive = &Receive{}
-	receive.Message = msg
+	receive.Body = msg
 	receive.Context = nil
 	receive.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
 

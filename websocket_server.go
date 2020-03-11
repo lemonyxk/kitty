@@ -27,7 +27,7 @@ type WebSocket struct {
 	Server   *WebSocketServer
 	Response http.ResponseWriter
 	Request  *http.Request
-	Context  interface{}
+	Context  Context
 }
 
 func (conn *WebSocket) Host() string {

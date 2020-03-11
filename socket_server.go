@@ -31,7 +31,7 @@ type Socket struct {
 	FD      uint32
 	Conn    net.Conn
 	Server  *SocketServer
-	Context interface{}
+	Context Context
 }
 
 func (conn *Socket) ClientIP() string {

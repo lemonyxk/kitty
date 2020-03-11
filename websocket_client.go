@@ -290,7 +290,7 @@ func (client *WebSocketClient) Connect() {
 			if version != protocol.Version {
 				route, body := protocol.ParseMessage(message)
 				if route != nil {
-					go client.middleware(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
+					go client.middleware(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json, Raw: message})
 				}
 				continue
 			}
@@ -317,7 +317,7 @@ func (client *WebSocketClient) Connect() {
 
 			// on router
 			if client.router != nil {
-				go client.middleware(client, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+				go client.middleware(client, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 				continue
 			}
 

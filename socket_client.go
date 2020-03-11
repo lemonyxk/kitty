@@ -362,7 +362,7 @@ func (client *SocketClient) decodeMessage(connection *SocketClient, message []by
 
 	// on router
 	if client.router != nil {
-		go client.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+		go client.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 

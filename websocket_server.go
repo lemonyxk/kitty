@@ -532,7 +532,7 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 	if version != protocol.Version {
 		route, body := protocol.ParseMessage(message)
 		if route != nil {
-			go socket.middleware(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json})
+			go socket.middleware(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json, Raw: message})
 		}
 		return nil
 	}
@@ -549,7 +549,7 @@ func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []by
 
 	// on router
 	if socket.router != nil {
-		go socket.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+		go socket.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 

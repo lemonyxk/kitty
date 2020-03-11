@@ -44,6 +44,7 @@ type ReceivePackage struct {
 	Event       string
 	Message     []byte
 	ProtoType   int
+	Raw         []byte
 }
 
 type JsonPackage struct {

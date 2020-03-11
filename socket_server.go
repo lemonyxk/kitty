@@ -544,7 +544,7 @@ func (socket *SocketServer) decodeMessage(connection *Socket, message []byte) er
 
 	// on router
 	if socket.router != nil {
-		go socket.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType})
+		go socket.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 

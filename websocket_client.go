@@ -350,6 +350,9 @@ func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackag
 
 	var node, formatPath = client.router.getRoute(msg.Event)
 	if node == nil {
+		if client.OnError != nil {
+			client.OnError(exception.New(msg.Event + " " + "404 not found"))
+		}
 		return
 	}
 

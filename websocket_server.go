@@ -452,7 +452,6 @@ func (socket *WebSocketServer) Ready() {
 			}
 		}
 	}()
-
 }
 
 func (socket *WebSocketServer) process(w http.ResponseWriter, r *http.Request) {
@@ -568,6 +567,9 @@ func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
 
 	var node, formatPath = socket.router.getRoute(msg.Event)
 	if node == nil {
+		if socket.OnError != nil {
+			socket.OnError(exception.New(msg.Event + " " + "404 not found"))
+		}
 		return
 	}
 

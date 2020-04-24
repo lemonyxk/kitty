@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -14,15 +13,15 @@ import (
 
 func main() {
 
-	utils.Process.Fork(run, 1)
-
-	go func() {
-		http.HandleFunc("/reload", func(writer http.ResponseWriter, request *http.Request) {
-			utils.Process.Reload()
-		})
-		console.Log(http.ListenAndServe(":12345", nil))
-	}()
-
+	// utils.Process.Fork(run, 1)
+	//
+	// go func() {
+	// 	http.HandleFunc("/reload", func(writer http.ResponseWriter, request *http.Request) {
+	// 		utils.Process.Reload()
+	// 	})
+	// 	console.Log(http.ListenAndServe(":12345", nil))
+	// }()
+	run()
 	utils.Signal.ListenKill().Done(func(sig os.Signal) {
 		console.Log(sig)
 	})

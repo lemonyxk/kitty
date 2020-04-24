@@ -381,6 +381,9 @@ func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
 
 	var node, formatPath = client.router.getRoute(msg.Event)
 	if node == nil {
+		if client.OnError != nil {
+			client.OnError(exception.New(msg.Event + " " + "404 not found"))
+		}
 		return
 	}
 

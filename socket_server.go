@@ -291,8 +291,7 @@ func (socket *SocketServer) Ready() {
 				if !ok {
 					socket.connBack <- errors.New("client " + strconv.Itoa(int(push.FD)) + " is close")
 				} else {
-					_, err := conn.(*Socket).Conn.Write(push.Message)
-					socket.connBack <- err
+					socket.connBack <- exception.Inspect(conn.(*Socket).Conn.Write(push.Message)).Error()
 				}
 			case err := <-socket.connError:
 				go socket.OnError(err)
@@ -563,6 +562,9 @@ func (socket *SocketServer) handler(conn *Socket, msg *ReceivePackage) {
 
 	var node, formatPath = socket.router.getRoute(msg.Event)
 	if node == nil {
+		if socket.OnError != nil {
+			socket.OnError(exception.New(msg.Event + " " + "404 not found"))
+		}
 		return
 	}
 

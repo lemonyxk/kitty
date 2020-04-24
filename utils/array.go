@@ -76,3 +76,25 @@ func (a arr) UniqueFloat64(input []float64) []float64 {
 	}
 	return res
 }
+
+func (a arr) CountInt(v []int, index int) int {
+	if index > len(v)-1 {
+		index = len(v) - 1
+	}
+	var res = 0
+	for i := 0; i <= index; i++ {
+		res += v[i]
+	}
+	return res
+}
+
+func (a arr) CountFloat64(v []float64, index int) float64 {
+	if index > len(v)-1 {
+		index = len(v) - 1
+	}
+	var res = 0.0
+	for i := 0; i <= index; i++ {
+		res += v[i]
+	}
+	return res
+}

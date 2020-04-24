@@ -78,6 +78,9 @@ func (a arr) UniqueFloat64(input []float64) []float64 {
 }
 
 func (a arr) CountInt(v []int, index int) int {
+	if index < 0 {
+		return 0
+	}
 	if index > len(v)-1 {
 		index = len(v) - 1
 	}
@@ -89,6 +92,9 @@ func (a arr) CountInt(v []int, index int) int {
 }
 
 func (a arr) CountFloat64(v []float64, index int) float64 {
+	if index < 0 {
+		return 0
+	}
 	if index > len(v)-1 {
 		index = len(v) - 1
 	}

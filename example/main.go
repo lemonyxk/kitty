@@ -5,12 +5,9 @@ import (
 	"net/url"
 	"os"
 
-	"go.mongodb.org/mongo-driver/bson"
-
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 func main() {
@@ -28,26 +25,6 @@ func main() {
 	// 	console.Log(sig)
 	// })
 
-	var dst = Test{
-		Name:  "Hello",
-		Money: 1.1,
-	}
-
-	var src = bson.M{"Money": 2.9, "name": "MaoShi"}
-
-	var a interface{} = src
-
-	err := utils.Assign(&dst, &a).AllowZero().AllowWeak().AllowTag().Do()
-	if err != nil {
-		console.Error(err)
-	}
-
-	console.Log(dst)
-}
-
-type Test struct {
-	Name  string `json:"name"`
-	Money float64
 }
 
 func run() {

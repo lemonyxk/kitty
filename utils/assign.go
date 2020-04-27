@@ -12,47 +12,84 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 )
 
-type assign struct {
+type destination struct {
 	dst       interface{}
 	src       interface{}
+	tag       string
 	allowZero bool
-	allowWeak bool
 	allowTag  bool
 }
 
-func Assign(dst, src interface{}) *assign {
-	return &assign{
+type field struct {
+	data *destination
+	name string
+}
+
+type source struct {
+	data *destination
+}
+
+func Struct(dst interface{}) *destination {
+	return &destination{
 		dst:       dst,
-		src:       src,
+		src:       nil,
+		tag:       "json",
 		allowZero: false,
-		allowWeak: false,
 		allowTag:  false,
 	}
 }
 
-func (a *assign) AllowZero() *assign {
-	a.allowZero = true
-	return a
+func (d *destination) Src(src interface{}) *source {
+	d.src = src
+	return &source{data: d}
 }
 
-func (a *assign) AllowWeak() *assign {
-	a.allowWeak = true
-	return a
+func (s *source) Do() error {
+	var d = s.data
+	return doAssign(d.dst, d.src, d.tag, d.allowZero, d.allowTag)
 }
 
-func (a *assign) AllowTag() *assign {
-	a.allowTag = true
-	return a
+func (s *source) AllowZero() *source {
+	s.data.allowZero = true
+	return s
 }
 
-func (a *assign) Do() error {
-	return doAssign(a.dst, a.src, a.allowZero, a.allowWeak, a.allowTag)
+func (s *source) AllowTag() *source {
+	s.data.allowTag = true
+	return s
 }
 
-func doAssign(dst, src interface{}, allowZero, allowWeak, allowTag bool) error {
+func (s *source) SetTag(tag string) *source {
+	s.data.tag = tag
+	return s
+}
+
+func (d *destination) Field(name string) *field {
+	return &field{data: d, name: name}
+}
+
+func (f *field) Set(v interface{}) error {
+	var d = f.data
+	d.src = map[string]interface{}{f.name: v}
+	d.allowZero = true
+	return doAssign(d.dst, d.src, d.tag, d.allowZero, d.allowTag)
+}
+
+func (f *field) AllowTag() *field {
+	f.data.allowTag = true
+	return f
+}
+
+func (f *field) SetTag(tag string) *field {
+	f.data.tag = tag
+	return f
+}
+
+func doAssign(dst, src interface{}, tag string, allowZero, allowTag bool) error {
 
 	var dstValue = reflect.ValueOf(dst)
 	var srcValue = reflect.ValueOf(src)
@@ -133,21 +170,31 @@ func doAssign(dst, src interface{}, allowZero, allowWeak, allowTag bool) error {
 			var s, ok = dstTypeElem.FieldByName(srcKey)
 			if !ok {
 				if !allowTag {
+					if len(keys) == 1 {
+						return fmt.Errorf("not found field %s", srcKey)
+					}
 					continue
 				}
-				k, ok := hasTag(dstTypeElem, srcKey)
+				k, ok := hasTag(dstTypeElem, tag, srcKey)
 				if !ok {
+					if len(keys) == 1 {
+						return fmt.Errorf("not found %s in tag %s", srcKey, tag)
+					}
 					continue
 				}
 
-				srcKey = k
+				srcKey = k.Name
+				s = k
 
 			}
 
-			if !allowWeak {
-				if s.Type.Kind() != t.Kind() {
-					continue
+			var it = reflect.TypeOf(t.Interface())
+
+			if s.Type.Kind() != it.Kind() {
+				if len(keys) == 1 {
+					return fmt.Errorf("field %s type is %s get %s", s.Name, s.Type.String(), it.Kind().String())
 				}
+				continue
 			}
 
 			v := dstValueElem.FieldByName(srcKey)
@@ -175,12 +222,12 @@ func doAssign(dst, src interface{}, allowZero, allowWeak, allowTag bool) error {
 	return nil
 }
 
-func hasTag(s reflect.Type, k string) (string, bool) {
+func hasTag(s reflect.Type, t, k string) (reflect.StructField, bool) {
 	var n = s.NumField()
 	for i := 0; i < n; i++ {
-		if s.Field(i).Tag.Get("json") == k {
-			return s.Field(i).Name, true
+		if s.Field(i).Tag.Get(t) == k {
+			return s.Field(i), true
 		}
 	}
-	return "", false
+	return reflect.StructField{}, false
 }

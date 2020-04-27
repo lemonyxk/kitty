@@ -13,9 +13,9 @@ package exception
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/Lemo-yxk/lemo/caller"
 )
@@ -204,24 +204,10 @@ func IsNil(i interface{}) bool {
 	if i == nil {
 		return true
 	}
-	vi := reflect.ValueOf(i)
+	return (*eFace)(unsafe.Pointer(&i)).data == nil
+}
 
-	switch vi.Kind() {
-	case reflect.UnsafePointer:
-		return vi.IsNil()
-	case reflect.Ptr:
-		return vi.IsNil()
-	case reflect.Chan:
-		return vi.IsNil()
-	case reflect.Func:
-		return vi.IsNil()
-	case reflect.Interface:
-		return vi.IsNil()
-	case reflect.Map:
-		return vi.IsNil()
-	case reflect.Slice:
-		return vi.IsNil()
-	}
-
-	return false
+type eFace struct {
+	_type unsafe.Pointer
+	data  unsafe.Pointer
 }

@@ -10,4 +10,5 @@ require (
 	github.com/json-iterator/go v1.1.9
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mitchellh/mapstructure v1.2.2
+	go.mongodb.org/mongo-driver v1.0.3
 )

@@ -55,7 +55,7 @@ func init() {
 }
 
 func Exit(v interface{}) {
-	Error(v)
+	errorWithStack(v, 3)
 	os.Exit(0)
 }
 
@@ -143,7 +143,21 @@ func Customize(color Color, tp string, format string, v ...interface{}) {
 	}
 }
 
+func Assert(v ...interface{}) {
+	if len(v) == 0 {
+		return
+	}
+	if exception.IsNil(v[len(v)-1]) {
+		return
+	}
+	errorWithStack(v[len(v)-1], 3)
+}
+
 func Error(err interface{}) {
+	errorWithStack(err, 3)
+}
+
+func errorWithStack(err interface{}, deep int) {
 
 	switch err.(type) {
 	case exception.ErrorFunc:
@@ -151,14 +165,14 @@ func Error(err interface{}) {
 		var res = err.(exception.ErrorFunc)
 
 		if res == nil {
-			printDefault(res)
+			printDefault(res, deep)
 			return
 		}
 
 		var r = res()
 
 		if r == nil {
-			printDefault(r)
+			printDefault(r, deep)
 			return
 		}
 
@@ -167,13 +181,13 @@ func Error(err interface{}) {
 		var r = err.(*exception.Error)
 
 		if r == nil {
-			printDefault(r)
+			printDefault(r, deep)
 			return
 		}
 
 		printError(r)
 	default:
-		printDefault(err)
+		printDefault(err, deep)
 	}
 }
 
@@ -187,8 +201,8 @@ func printError(err *exception.Error) {
 	}
 }
 
-func printDefault(err interface{}) {
-	file, line := caller.Caller(2)
+func printDefault(err interface{}, deep int) {
+	file, line := caller.Caller(deep)
 
 	var t = time.Now()
 

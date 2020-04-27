@@ -25,6 +25,7 @@ func main() {
 	// 	console.Log(sig)
 	// })
 
+	console.Assert(exception.New("xxi"))
 }
 
 func run() {

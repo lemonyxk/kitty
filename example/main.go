@@ -20,12 +20,12 @@ func main() {
 	// 	})
 	// 	console.Log(http.ListenAndServe(":12345", nil))
 	// }()
+
 	// run()
 	// utils.Signal.ListenKill().Done(func(sig os.Signal) {
 	// 	console.Log(sig)
 	// })
 
-	console.Assert(exception.New("xxi"))
 }
 
 func run() {

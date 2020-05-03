@@ -12,6 +12,7 @@ package utils
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -29,18 +30,57 @@ func (d di) New(path string) dir {
 	return dir{path: absPath, err: err}
 }
 
+func (d dir) RemoveAll() error {
+	return os.RemoveAll(d.path)
+}
+
+func (d dir) CreateAll(perm os.FileMode) error {
+	return os.MkdirAll(d.path, perm)
+}
+
+func (d dir) Create(perm os.FileMode) error {
+	return os.Mkdir(d.path, perm)
+}
+
+func (d dir) Exists() bool {
+	_, err := os.Stat(d.path)
+	return err == nil
+}
+
 func (d dir) LastError() error {
 	return d.err
 }
 
-func (d dir) Walk() chan os.FileInfo {
-	var ch = make(chan os.FileInfo)
+func (d dir) Walk() chan fileInfo {
+	var ch = make(chan fileInfo)
 	go func() {
 		_ = filepath.Walk(d.path, func(path string, info os.FileInfo, err error) error {
-			ch <- info
+			ch <- fileInfo{path, info, err}
 			return err
 		})
 		close(ch)
 	}()
 	return ch
+}
+
+type fileInfo struct {
+	path string
+	info os.FileInfo
+	err  error
+}
+
+func (f *fileInfo) LastError() error {
+	return f.err
+}
+
+func (f *fileInfo) Info() os.FileInfo {
+	return f.info
+}
+
+func (f *fileInfo) AbsPath() string {
+	return f.path
+}
+
+func (f *fileInfo) FullName() string {
+	return path.Join(f.path, f.info.Name())
 }

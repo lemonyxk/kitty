@@ -12,7 +12,6 @@ package utils
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 )
 
@@ -77,10 +76,6 @@ func (f *fileInfo) Info() os.FileInfo {
 	return f.info
 }
 
-func (f *fileInfo) AbsPath() string {
+func (f *fileInfo) Path() string {
 	return f.path
-}
-
-func (f *fileInfo) FullName() string {
-	return path.Join(f.path, f.info.Name())
 }

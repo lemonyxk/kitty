@@ -63,9 +63,7 @@ func (z unzipReader) To(dst string) error {
 		return err
 	}
 
-	return doUnzip(&zip2.ReadCloser{
-		Reader: *cf,
-	}, absPath)
+	return doUnzip2(cf, absPath)
 }
 
 // need a dir
@@ -85,6 +83,33 @@ func (z unzipFile) To(dst string) error {
 	defer func() { _ = cf.Close() }()
 
 	return doUnzip(cf, absPath)
+}
+
+func doUnzip2(cf *zip2.Reader, absPath string) error {
+	for _, file := range cf.File {
+
+		if file.FileInfo().IsDir() {
+			_ = os.Mkdir(path.Join(absPath, file.Name), 0666)
+			continue
+		}
+
+		rc, err := file.Open()
+		if err != nil {
+			return err
+		}
+
+		f, err := os.Create(path.Join(absPath, file.Name))
+		_, err = io.Copy(f, rc)
+		if err != nil {
+			_ = rc.Close()
+			return err
+		}
+
+		_ = rc.Close()
+		_ = f.Close()
+
+	}
+	return nil
 }
 
 func doUnzip(cf *zip2.ReadCloser, absPath string) error {

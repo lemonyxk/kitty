@@ -161,7 +161,7 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 	// has found
 	var contentType = mime.TypeByExtension(filepath.Ext(absFilePath))
 
-	f, err := os.OpenFile(absFilePath, os.O_RDONLY, 0666)
+	f, err := os.Open(absFilePath)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		return nil

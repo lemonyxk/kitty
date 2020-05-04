@@ -56,14 +56,16 @@ func (z unzipReader) To(dst string) error {
 		return err
 	}
 
-	_ = os.MkdirAll(absPath, 0666)
+	_ = os.MkdirAll(absPath, 0755)
 
 	cf, err := zip2.NewReader(z.src, z.len)
 	if err != nil {
 		return err
 	}
 
-	return doUnzip2(cf, absPath)
+	return doUnzip(&zip2.ReadCloser{
+		Reader: *cf,
+	}, absPath)
 }
 
 // need a dir
@@ -74,7 +76,7 @@ func (z unzipFile) To(dst string) error {
 		return err
 	}
 
-	_ = os.MkdirAll(absPath, 0666)
+	_ = os.MkdirAll(absPath, 0755)
 
 	cf, err := zip2.OpenReader(z.src) // 读取zip文件
 	if err != nil {
@@ -85,38 +87,11 @@ func (z unzipFile) To(dst string) error {
 	return doUnzip(cf, absPath)
 }
 
-func doUnzip2(cf *zip2.Reader, absPath string) error {
-	for _, file := range cf.File {
-
-		if file.FileInfo().IsDir() {
-			_ = os.Mkdir(path.Join(absPath, file.Name), 0666)
-			continue
-		}
-
-		rc, err := file.Open()
-		if err != nil {
-			return err
-		}
-
-		f, err := os.Create(path.Join(absPath, file.Name))
-		_, err = io.Copy(f, rc)
-		if err != nil {
-			_ = rc.Close()
-			return err
-		}
-
-		_ = rc.Close()
-		_ = f.Close()
-
-	}
-	return nil
-}
-
 func doUnzip(cf *zip2.ReadCloser, absPath string) error {
 	for _, file := range cf.File {
 
 		if file.FileInfo().IsDir() {
-			_ = os.Mkdir(path.Join(absPath, file.Name), 0666)
+			_ = os.Mkdir(path.Join(absPath, file.Name), 0755)
 			continue
 		}
 
@@ -168,7 +143,7 @@ func (z zipDir) To(dst string) error {
 		return err
 	}
 
-	_ = os.MkdirAll(filepath.Dir(absPath), 0666)
+	_ = os.MkdirAll(filepath.Dir(absPath), 0755)
 
 	if _, err := os.Stat(filepath.Join(z.src, filepath.Base(absPath))); err == nil {
 		return errors.New(absPath + " is exists")
@@ -215,7 +190,7 @@ func (z zipFile) To(dst string) error {
 		return err
 	}
 
-	_ = os.MkdirAll(filepath.Dir(absPath), 0666)
+	_ = os.MkdirAll(filepath.Dir(absPath), 0755)
 
 	fStat, err := os.Stat(z.src)
 	if err != nil {

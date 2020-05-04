@@ -11,6 +11,7 @@
 package utils
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -48,6 +49,35 @@ func (d dir) Exists() bool {
 
 func (d dir) LastError() error {
 	return d.err
+}
+
+func (d dir) ReadAll() []fileInfo {
+
+	var res []fileInfo
+
+	var fn func(path string, res *[]fileInfo)
+
+	fn = func(path string, res *[]fileInfo) {
+
+		files, err := ioutil.ReadDir(path)
+		if err != nil {
+			*res = append(*res, fileInfo{path, nil, err})
+			return
+		}
+
+		for i := 0; i < len(files); i++ {
+			var fullPath = filepath.Join(path, files[i].Name())
+			if files[i].IsDir() {
+				fn(fullPath, res)
+			}
+			*res = append(*res, fileInfo{fullPath, files[i], nil})
+		}
+	}
+
+	fn(d.path, &res)
+
+	return res
+
 }
 
 func (d dir) Walk() chan fileInfo {

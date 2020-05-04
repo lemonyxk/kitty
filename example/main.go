@@ -68,12 +68,23 @@ func run() {
 			if stream.Request.Header.Get("Upgrade") == "websocket" {
 				httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
 			} else {
+				console.Log(1, "start")
 				next(stream)
+				console.Log(1, "end")
 			}
 		}
 	})
 
+	httpServer.Use(func(next lemo.HttpServerMiddle) lemo.HttpServerMiddle {
+		return func(stream *lemo.Stream) {
+			console.Log(2, "start")
+			next(stream)
+			console.Log(2, "end")
+		}
+	})
+
 	httpServerRouter.Route("GET", "/hello").Handler(func(stream *lemo.Stream) exception.ErrorFunc {
+		console.Log("handler")
 		return exception.New(stream.EndString("hello"))
 	})
 

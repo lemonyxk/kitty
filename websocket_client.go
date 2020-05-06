@@ -42,7 +42,7 @@ type WebSocketClient struct {
 	OnOpen    func(c *WebSocketClient)
 	OnClose   func(c *WebSocketClient)
 	OnMessage func(c *WebSocketClient, messageType int, msg []byte)
-	OnError   func(err exception.ErrorFunc)
+	OnError   func(err exception.Error)
 	Status    bool
 
 	Context interface{}
@@ -74,7 +74,7 @@ func (client *WebSocketClient) Json(msg interface{}) error {
 	return client.Push(protocol.TextData, messageJson)
 }
 
-func (client *WebSocketClient) JsonFormat(msg JsonPackage) exception.ErrorFunc {
+func (client *WebSocketClient) JsonFormat(msg JsonPackage) exception.Error {
 	messageJson, err := jsoniter.Marshal(JsonMessage{msg.Event, msg.Message})
 	if err != nil {
 		return exception.New(err)

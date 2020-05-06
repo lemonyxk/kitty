@@ -15,7 +15,7 @@ import (
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
-func Add(v ...interface{}) (interface{}, exception.ErrorFunc) {
+func Add(v ...interface{}) (interface{}, exception.Error) {
 	console.Log("hello plugin", v)
 	return nil, nil
 }

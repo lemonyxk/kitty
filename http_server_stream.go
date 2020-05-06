@@ -205,7 +205,7 @@ func (stream *Stream) Match() bool {
 	return stream.error != nil
 }
 
-func (stream *Stream) Forward(fn HttpServerFunction) exception.ErrorFunc {
+func (stream *Stream) Forward(fn HttpServerFunction) exception.Error {
 	return fn(stream)
 }
 
@@ -217,7 +217,7 @@ func (stream *Stream) SetHeader(header string, content string) {
 	stream.Response.Header().Set(header, content)
 }
 
-func (stream *Stream) JsonFormat(status string, code int, msg interface{}) exception.ErrorFunc {
+func (stream *Stream) JsonFormat(status string, code int, msg interface{}) exception.Error {
 	return exception.New(stream.EndJson(JsonFormat{status, code, msg}))
 }
 

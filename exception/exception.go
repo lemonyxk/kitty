@@ -11,7 +11,6 @@
 package exception
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -20,41 +19,52 @@ import (
 	"github.com/Lemo-yxk/lemo/caller"
 )
 
-type Error struct {
-	Time    time.Time
-	File    string
-	Line    int
-	Message string
+type errors struct {
+	time  time.Time
+	file  string
+	line  int
+	error string
 }
 
-type ErrorFunc func() *Error
-
-func (err ErrorFunc) Error() error {
-	if err == nil {
-		return nil
-	}
-	return errors.New(err().Message)
+func (err errors) Time() time.Time {
+	return err.time
 }
 
-type CatchFunc func(ErrorFunc) ErrorFunc
-
-type FinallyFunc func(ErrorFunc) ErrorFunc
-
-func (err *Error) Error() string {
-	return err.Message
+func (err errors) File() string {
+	return err.file
 }
 
-func (err *Error) String() string {
-	return fmt.Sprintf("ERR %s %s:%d %s", err.Time.Format("2006-01-02 15:04:05"), err.File, err.Line, err.Message)
+func (err errors) Line() int {
+	return err.line
 }
+
+func (err errors) Error() string {
+	return err.error
+}
+
+func (err errors) String() string {
+	return fmt.Sprintf("ERR %s %s:%d %s", err.time.Format("2006-01-02 15:04:05"), err.file, err.line, err.error)
+}
+
+type Error interface {
+	Time() time.Time
+	File() string
+	Line() int
+	Error() string
+	String() string
+}
+
+type CatchFunc func(Error) Error
+
+type FinallyFunc func(Error) Error
 
 type catch struct {
 	Catch func(CatchFunc) *finally
 }
 
 type finally struct {
-	Finally   func(FinallyFunc) ErrorFunc
-	ErrorFunc func() ErrorFunc
+	Finally   func(FinallyFunc) Error
+	ErrorFunc func() Error
 }
 
 func Try(fn func()) (c *catch) {
@@ -66,12 +76,12 @@ func Try(fn func()) (c *catch) {
 			if strings.HasPrefix(e.Error(), "#exception#") {
 				d = 2
 			}
-			var stacks = NewStackWithError(d, strings.Replace(e.Error(), "#exception#", "", 1))
+			var stacks = NewStackErrorFromDeep(strings.Replace(e.Error(), "#exception#", "", 1), d)
 			c = &catch{Catch: func(f CatchFunc) *finally {
 				var ef = f(stacks)
 				return &finally{
-					Finally:   func(ff FinallyFunc) ErrorFunc { return ff(ef) },
-					ErrorFunc: func() ErrorFunc { return ef },
+					Finally:   func(ff FinallyFunc) Error { return ff(ef) },
+					ErrorFunc: func() Error { return ef },
 				}
 			}}
 		}
@@ -81,8 +91,8 @@ func Try(fn func()) (c *catch) {
 
 	return &catch{Catch: func(f CatchFunc) *finally {
 		return &finally{
-			Finally:   func(ff FinallyFunc) ErrorFunc { return ff(nil) },
-			ErrorFunc: func() ErrorFunc { return nil },
+			Finally:   func(ff FinallyFunc) Error { return ff(nil) },
+			ErrorFunc: func() Error { return nil },
 		}
 	}}
 }
@@ -101,17 +111,17 @@ func Assert(v ...interface{}) {
 	panic(fmt.Errorf("#exception#%v", v[len(v)-1]))
 }
 
-func Inspect(v ...interface{}) ErrorFunc {
+func Inspect(v ...interface{}) Error {
 	if len(v) == 0 {
 		return nil
 	}
 	if IsNil(v[len(v)-1]) {
 		return nil
 	}
-	return newErrorFromDeep(v[len(v)-1], 2)
+	return NewErrorFromDeep(v[len(v)-1], 2)
 }
 
-func New(v ...interface{}) ErrorFunc {
+func New(v ...interface{}) Error {
 	if len(v) == 0 {
 		return nil
 	}
@@ -129,14 +139,14 @@ func New(v ...interface{}) ErrorFunc {
 	}
 
 	if len(v) == 1 {
-		return newErrorFromDeep(v[0], 2)
+		return NewErrorFromDeep(v[0], 2)
 	}
 
 	var str = fmt.Sprintln(v...)
-	return newErrorFromDeep(str[:len(str)-1], 2)
+	return NewErrorFromDeep(str[:len(str)-1], 2)
 }
 
-func NewFormat(format string, v ...interface{}) ErrorFunc {
+func NewFormat(format string, v ...interface{}) Error {
 	if len(v) == 0 {
 		return nil
 	}
@@ -154,49 +164,30 @@ func NewFormat(format string, v ...interface{}) ErrorFunc {
 	}
 
 	var str = fmt.Sprintf(format, v...)
-	return newErrorFromDeep(str, 2)
+	return NewErrorFromDeep(str, 2)
 }
 
-func newErrorFromDeep(v interface{}, deep int) ErrorFunc {
+func NewErrorFromDeep(v interface{}, deep int) Error {
 	file, line := caller.Caller(deep)
 	return newErrorWithFileAndLine(v, file, line)
 }
 
-func newErrorWithFileAndLine(v interface{}, file string, line int) ErrorFunc {
-	switch v.(type) {
-	case error:
-		var e ErrorFunc = func() *Error { return &Error{time.Now(), file, line, v.(error).Error()} }
-		return e
-	case string:
-		var e ErrorFunc = func() *Error { return &Error{time.Now(), file, line, v.(string)} }
-		return e
-	case ErrorFunc:
-		return v.(ErrorFunc)
-	case *Error:
-		return func() *Error { return v.(*Error) }
-	default:
-		var e ErrorFunc = func() *Error { return &Error{time.Now(), file, line, fmt.Sprintf("%v", v)} }
-		return e
-	}
-}
-
-func NewStackWithError(deep int, v interface{}) ErrorFunc {
+func NewStackErrorFromDeep(v interface{}, deep int) Error {
 	deep = 10 + deep*2
 	var file, line = caller.Stack(deep)
 	return newErrorWithFileAndLine(v, file, line)
 }
 
-func Parse(err interface{}) ErrorFunc {
-	switch err.(type) {
-	case ErrorFunc:
-		return err.(ErrorFunc)
-	case *Error:
-		return func() *Error { return err.(*Error) }
+func newErrorWithFileAndLine(v interface{}, file string, line int) Error {
+	switch v.(type) {
+	case error:
+		return errors{time.Now(), file, line, v.(error).Error()}
+	case string:
+		return errors{time.Now(), file, line, v.(string)}
+	case Error:
+		return v.(Error)
 	default:
-		file, line := caller.Caller(2)
-		return func() *Error {
-			return &Error{Time: time.Now(), File: file, Line: line, Message: fmt.Sprintf("%v", err)}
-		}
+		return errors{time.Now(), file, line, fmt.Sprintf("%v", v)}
 	}
 }
 

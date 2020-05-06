@@ -58,7 +58,7 @@ func (conn *WebSocket) Push(messageType int, msg []byte) error {
 	return conn.Server.Push(conn.FD, messageType, msg)
 }
 
-func (conn *WebSocket) JsonFormat(msg JsonPackage) exception.ErrorFunc {
+func (conn *WebSocket) JsonFormat(msg JsonPackage) exception.Error {
 	return conn.Server.JsonFormat(conn.FD, msg)
 }
 
@@ -101,7 +101,7 @@ type WebSocketServer struct {
 	OnClose   func(conn *WebSocket)
 	OnMessage func(conn *WebSocket, messageType int, msg []byte)
 	OnOpen    func(conn *WebSocket)
-	OnError   func(err exception.ErrorFunc)
+	OnError   func(err exception.Error)
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -129,7 +129,7 @@ type WebSocketServer struct {
 	connBack chan error
 
 	// 错误
-	connError chan exception.ErrorFunc
+	connError chan exception.Error
 
 	upgrade websocket.Upgrader
 
@@ -164,7 +164,7 @@ func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) erro
 	return <-socket.connBack
 }
 
-func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) exception.ErrorFunc {
+func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) exception.Error {
 	messageJsonFormat, err := jsoniter.Marshal(JsonMessage{msg.Event, msg.Message})
 	if err != nil {
 		return exception.New(err)
@@ -377,7 +377,7 @@ func (socket *WebSocketServer) Ready() {
 	}
 
 	if socket.OnError == nil {
-		socket.OnError = func(err exception.ErrorFunc) {
+		socket.OnError = func(err exception.Error) {
 			console.Error(err)
 		}
 	}
@@ -424,7 +424,7 @@ func (socket *WebSocketServer) Ready() {
 	socket.connBack = make(chan error, socket.WaitQueueSize)
 
 	// 错误
-	socket.connError = make(chan exception.ErrorFunc, socket.WaitQueueSize)
+	socket.connError = make(chan exception.Error, socket.WaitQueueSize)
 
 	go func() {
 		for {

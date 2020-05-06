@@ -8,6 +8,7 @@ import (
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 func main() {
@@ -25,6 +26,23 @@ func main() {
 	// utils.Signal.ListenKill().Done(func(sig os.Signal) {
 	// 	console.Log(sig)
 	// })
+
+	// exception.Try(func() {
+	// 	utils.Goroutine.Run(func() {
+	// 		panic(1)
+	// 	})
+	// }).Catch(func(errorFunc exception.Error) exception.Error {
+	// 	console.Error(errorFunc)
+	// 	return nil
+	// })
+	//
+
+	var progress = utils.HttpClient.NewProgress()
+	progress.Rate(0.01).OnProgress(func(p []byte, current int64, total int64) {
+		console.OneLine("Downloading... %d %d B complete", current, total)
+	})
+
+	utils.HttpClient.Get("https://www.twle.cn/static/js/jquery.min.js").Progress(progress).Send()
 
 }
 
@@ -45,7 +63,7 @@ func run() {
 	}
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *lemo.WebSocketServerRouteHandler) {
-		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) exception.ErrorFunc {
+		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) exception.Error {
 			return conn.JsonFormat(lemo.JsonPackage{
 				Event: "/hello/world",
 				Message: &lemo.JsonFormat{
@@ -83,13 +101,13 @@ func run() {
 		}
 	})
 
-	httpServerRouter.Route("GET", "/hello").Handler(func(stream *lemo.Stream) exception.ErrorFunc {
+	httpServerRouter.Route("GET", "/hello").Handler(func(stream *lemo.Stream) exception.Error {
 		console.Log("handler")
 		return exception.New(stream.EndString("hello"))
 	})
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
-		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
+		handler.Get("/world").Handler(func(t *lemo.Stream) exception.Error {
 			return t.JsonFormat("SUCCESS", 200, os.Getpid())
 		})
 	})
@@ -111,7 +129,7 @@ func run() {
 	var tcpServerRouter = &lemo.SocketServerRouter{IgnoreCase: true}
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *lemo.SocketServerRouteHandler) {
-		handler.Route("/world").Handler(func(conn *lemo.Socket, receive *lemo.Receive) exception.ErrorFunc {
+		handler.Route("/world").Handler(func(conn *lemo.Socket, receive *lemo.Receive) exception.Error {
 			console.Log(len(receive.Body.Message))
 			return nil
 		})

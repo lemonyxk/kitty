@@ -29,7 +29,7 @@ func main() {
 	})
 
 	httpServerRouter.Group("/hello").Handler(func(handler *lemo.HttpServerRouteHandler) {
-		handler.Get("/world").Handler(func(t *lemo.Stream) exception.ErrorFunc {
+		handler.Get("/world").Handler(func(t *lemo.Stream) exception.Error {
 			// console.Log(t.Json.Empty("a"))
 			// console.Log(t.Query.Get("a"))
 			// console.Log(t.Form.Get("a"))
@@ -53,7 +53,7 @@ func main() {
 	})
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *lemo.WebSocketServerRouteHandler) {
-		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) exception.ErrorFunc {
+		handler.Route("/world").Handler(func(conn *lemo.WebSocket, receive *lemo.Receive) exception.Error {
 			console.Log(3)
 			return conn.JsonFormat(lemo.JsonPackage{
 				Event: "/hello/world",

@@ -25,7 +25,7 @@ type Logger struct {
 	debugHook   func(t time.Time, file string, line int, v ...interface{})
 	logHook     func(t time.Time, file string, line int, v ...interface{})
 	warningHook func(t time.Time, file string, line int, v ...interface{})
-	errorHook   func(err *exception.Error)
+	errorHook   func(err exception.Error)
 	hook        func(status string, t time.Time, file string, line int, v ...interface{})
 }
 
@@ -47,8 +47,8 @@ func init() {
 		FgYellow.Printf("WAR %s %s:%d %s \n", time.Now().Format("2006-01-02 15:04:05"), file, line, utils.String.JoinInterface(v, " "))
 	})
 
-	SetErrorHook(func(err *exception.Error) {
-		FgRed.Printf("ERR %s %s:%d %s \n", err.Time.Format("2006-01-02 15:04:05"), err.File, err.Line, err.Message)
+	SetErrorHook(func(err exception.Error) {
+		FgRed.Printf("ERR %s %s:%d %s \n", err.Time().Format("2006-01-02 15:04:05"), err.File(), err.Line(), err.Error())
 	})
 
 	SetHook(nil)
@@ -71,7 +71,7 @@ func SetWarningHook(fn func(t time.Time, file string, line int, v ...interface{}
 	logger.warningHook = fn
 }
 
-func SetErrorHook(fn func(err *exception.Error)) {
+func SetErrorHook(fn func(err exception.Error)) {
 	logger.errorHook = fn
 }
 
@@ -85,6 +85,10 @@ func Println(v ...interface{}) {
 
 func Printf(format string, v ...interface{}) {
 	fmt.Printf(format, v...)
+}
+
+func OneLine(format string, v ...interface{}) {
+	fmt.Printf("\r"+format, v...)
 }
 
 func Warning(v ...interface{}) {
@@ -129,7 +133,7 @@ func Log(v ...interface{}) {
 	}
 }
 
-func Customize(color Color, tp string, format string, v ...interface{}) {
+func Customize(color Color, prefix string, format string, v ...interface{}) {
 	file, line := caller.Caller(1)
 
 	var t = time.Now()
@@ -139,7 +143,7 @@ func Customize(color Color, tp string, format string, v ...interface{}) {
 	}
 
 	if hook && logger.hook != nil {
-		logger.hook(tp, t, file, line, v...)
+		logger.hook(prefix, t, file, line, v...)
 	}
 }
 
@@ -160,57 +164,32 @@ func Error(err interface{}) {
 func errorWithStack(err interface{}, deep int) {
 
 	switch err.(type) {
-	case exception.ErrorFunc:
-
-		var res = err.(exception.ErrorFunc)
-
-		if res == nil {
-			printDefault(res, deep)
-			return
-		}
-
-		var r = res()
-
-		if r == nil {
-			printDefault(r, deep)
-			return
-		}
-
-		printError(r)
-	case *exception.Error:
-		var r = err.(*exception.Error)
-
-		if r == nil {
-			printDefault(r, deep)
-			return
-		}
-
-		printError(r)
+	case exception.Error:
+		printError(err.(exception.Error))
 	default:
 		printDefault(err, deep)
 	}
 }
 
-func printError(err *exception.Error) {
+func printError(err exception.Error) {
 	if output && logger.errorHook != nil {
 		logger.errorHook(err)
 	}
 
 	if hook && logger.hook != nil {
-		logger.hook("ERR", err.Time, err.File, err.Line, err.Message)
+		logger.hook("ERR", err.Time(), err.File(), err.Line(), err.Error())
 	}
 }
 
 func printDefault(err interface{}, deep int) {
-	file, line := caller.Caller(deep)
 
-	var t = time.Now()
+	var res = exception.NewErrorFromDeep(err, deep+1)
 
 	if output && logger.errorHook != nil {
-		logger.errorHook(&exception.Error{Time: t, File: file, Line: line, Message: fmt.Sprintf("%v", err)})
+		logger.errorHook(res)
 	}
 
 	if hook && logger.hook != nil {
-		logger.hook("ERR", t, file, line, err)
+		logger.hook("ERR", res.Time(), res.File(), res.Line(), res.Error())
 	}
 }

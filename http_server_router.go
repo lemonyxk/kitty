@@ -23,11 +23,11 @@ import (
 
 type HttpServerGroupFunction func(handler *HttpServerRouteHandler)
 
-type HttpServerFunction func(stream *Stream) exception.ErrorFunc
+type HttpServerFunction func(stream *Stream) exception.Error
 
-type HttpServerBefore func(stream *Stream) (Context, exception.ErrorFunc)
+type HttpServerBefore func(stream *Stream) (Context, exception.Error)
 
-type HttpServerAfter func(stream *Stream) exception.ErrorFunc
+type HttpServerAfter func(stream *Stream) exception.Error
 
 var httpServerGlobalBefore []HttpServerBefore
 var httpServerGlobalAfter []HttpServerAfter

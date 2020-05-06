@@ -35,22 +35,65 @@ const applicationFormUrlencoded = "application/x-www-form-urlencoded"
 const applicationJson = "application/json"
 const multipartFormData = "multipart/form-data"
 
-var dial = net.Dialer{
-	Timeout:   30 * time.Second,
-	KeepAlive: 30 * time.Second,
+type writeProgress struct {
+	total      int64
+	current    int64
+	onProgress func(p []byte, current int64, total int64)
+	last       int64
+	rate       int64
 }
 
-var transport = http.Transport{
-	TLSHandshakeTimeout:   10 * time.Second,
-	ResponseHeaderTimeout: 15 * time.Second,
-	ExpectContinueTimeout: 2 * time.Second,
+func (w *writeProgress) Write(p []byte) (int, error) {
+	n := len(p)
+	w.current += int64(n)
+
+	if w.total == 0 {
+		w.onProgress(p, w.current, -1)
+	} else {
+		w.last += int64(n) * w.rate
+
+		if w.last >= w.total {
+			w.onProgress(p, w.current, w.total)
+			w.last = w.last - w.total
+		}
+	}
+
+	return n, nil
 }
 
-var client = http.Client{
-	Timeout: 15 * time.Second,
+func (h hc) NewProgress() *progress {
+	return &progress{}
 }
 
-func do(client *http.Client, method string, url string, headerKey []string, headerValue []string, body interface{}, cookies []*http.Cookie) *Request {
+type progress struct {
+	rate     int64
+	progress func(p []byte, current int64, total int64)
+}
+
+// 0.01 - 100
+func (p *progress) Rate(rate float64) *progress {
+	if rate < 0.01 || rate > 100 {
+		rate = 1
+	}
+	p.rate = int64(100 / rate)
+	return p
+}
+
+func (p *progress) OnProgress(fn func(p []byte, current int64, total int64)) *progress {
+	p.progress = fn
+	return p
+}
+
+func do(httpClient *httpClient) *Request {
+
+	var client = httpClient.client
+	var method = httpClient.method
+	var url = httpClient.url
+	var headerKey = httpClient.headerKey
+	var headerValue = httpClient.headerValue
+	var body = httpClient.body
+	var cookies = httpClient.cookies
+	var progress = httpClient.progress
 
 	var request *http.Request
 	var response *http.Response
@@ -229,13 +272,30 @@ func do(client *http.Client, method string, url string, headerKey []string, head
 	if err != nil {
 		return &Request{err: err}
 	}
+	defer func() { _ = response.Body.Close() }()
 
-	dataBytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		_ = response.Body.Close()
-		return &Request{err: err}
+	var dataBytes []byte
+
+	if progress != nil {
+
+		var total, _ = strconv.ParseInt(response.Header.Get("Content-Length"), 10, 64)
+
+		var writer = &writeProgress{
+			total:      total,
+			onProgress: progress.progress,
+			rate:       progress.rate,
+		}
+
+		dataBytes, err = ioutil.ReadAll(io.TeeReader(response.Body, writer))
+		if err != nil {
+			return &Request{err: err}
+		}
+	} else {
+		dataBytes, err = ioutil.ReadAll(response.Body)
+		if err != nil {
+			return &Request{err: err}
+		}
 	}
-	_ = response.Body.Close()
 
 	return &Request{err: nil, code: response.StatusCode, data: dataBytes, requestHeader: response.Request.Header, responseHeader: response.Header}
 }
@@ -249,15 +309,12 @@ type httpClient struct {
 	body        interface{}
 	client      *http.Client
 	transport   *http.Transport
-	dial        *net.Dialer
+	dialer      *net.Dialer
+	progress    *progress
 }
 
-type httpRequest struct {
-	h *httpClient
-}
-
-type requestType struct {
-	h *httpClient
+type httpInfo struct {
+	handler *httpClient
 }
 
 type Request struct {
@@ -296,120 +353,151 @@ func (h hc) New() *httpClient {
 	return &httpClient{
 		client:    &http.Client{},
 		transport: &http.Transport{},
-		dial:      &net.Dialer{},
+		dialer:    &net.Dialer{},
 	}
 }
 
-func (h hc) Post(url string) *httpRequest {
+func createDefaultClient() (*http.Client, *http.Transport, *net.Dialer) {
+	var dialer = net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+
+	var transport = http.Transport{
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
+		ExpectContinueTimeout: 2 * time.Second,
+	}
+
+	var client = http.Client{
+		Timeout: 15 * time.Second,
+	}
+
+	return &client, &transport, &dialer
+}
+
+func (h hc) Post(url string) *httpInfo {
+
+	var client, transport, dialer = createDefaultClient()
+
 	return (&httpClient{
 		method:    http.MethodPost,
 		url:       url,
-		client:    &client,
-		transport: &transport,
-		dial:      &dial,
+		client:    client,
+		transport: transport,
+		dialer:    dialer,
 	}).Post(url)
 }
 
-func (h hc) Get(url string) *httpRequest {
+func (h hc) Get(url string) *httpInfo {
+
+	var client, transport, dialer = createDefaultClient()
+
 	return (&httpClient{
 		method:    http.MethodGet,
 		url:       url,
-		client:    &client,
-		transport: &transport,
-		dial:      &dial,
+		client:    client,
+		transport: transport,
+		dialer:    dialer,
 	}).Get(url)
 }
 
-func (h *httpClient) Post(url string) *httpRequest {
+func (h *httpClient) Post(url string) *httpInfo {
 	h.method = http.MethodPost
 	h.url = url
-	return &httpRequest{h: h}
+	return &httpInfo{handler: h}
 }
 
-func (h *httpClient) Get(url string) *httpRequest {
+func (h *httpClient) Get(url string) *httpInfo {
 	h.method = http.MethodGet
 	h.url = url
-	return &httpRequest{h: h}
+	return &httpInfo{handler: h}
 }
 
-func (h *httpRequest) Timeout(timeout time.Duration) *httpRequest {
-	h.h.client.Timeout = timeout
+func (h *httpInfo) Progress(progress *progress) *httpInfo {
+	h.Timeout(0)
+	h.handler.progress = progress
 	return h
 }
 
-func (h *httpRequest) Proxy(url string) *httpRequest {
+func (h *httpInfo) Timeout(timeout time.Duration) *httpInfo {
+	h.handler.client.Timeout = timeout
+	return h
+}
+
+func (h *httpInfo) Proxy(url string) *httpInfo {
 	var fixUrl, _ = url2.Parse(url)
-	h.h.transport.Proxy = http.ProxyURL(fixUrl)
+	h.handler.transport.Proxy = http.ProxyURL(fixUrl)
 	return h
 }
 
-func (h *httpRequest) KeepAlive(timeout time.Duration) *httpRequest {
-	h.h.dial.KeepAlive = timeout
+func (h *httpInfo) KeepAlive(keepalive time.Duration) *httpInfo {
+	h.handler.dialer.KeepAlive = keepalive
 	return h
 }
 
-func (h *httpRequest) SetHeaders(headers map[string]string) *httpRequest {
+func (h *httpInfo) SetHeaders(headers map[string]string) *httpInfo {
 	for key, value := range headers {
-		h.h.headerKey = append(h.h.headerKey, key)
-		h.h.headerValue = append(h.h.headerValue, value)
+		h.handler.headerKey = append(h.handler.headerKey, key)
+		h.handler.headerValue = append(h.handler.headerValue, value)
 	}
 	return h
 }
 
-func (h *httpRequest) AddHeader(key string, value string) *httpRequest {
-	h.h.headerKey = append(h.h.headerKey, key)
-	h.h.headerValue = append(h.h.headerValue, value)
+func (h *httpInfo) AddHeader(key string, value string) *httpInfo {
+	h.handler.headerKey = append(h.handler.headerKey, key)
+	h.handler.headerValue = append(h.handler.headerValue, value)
 	return h
 }
 
-func (h *httpRequest) SetHeader(key string, value string) *httpRequest {
-	for i := 0; i < len(h.h.headerKey); i++ {
-		if h.h.headerKey[i] == key {
-			h.h.headerValue[i] = value
+func (h *httpInfo) SetHeader(key string, value string) *httpInfo {
+	for i := 0; i < len(h.handler.headerKey); i++ {
+		if h.handler.headerKey[i] == key {
+			h.handler.headerValue[i] = value
 			return h
 		}
 	}
 
-	h.h.headerKey = append(h.h.headerKey, key)
-	h.h.headerValue = append(h.h.headerValue, value)
+	h.handler.headerKey = append(h.handler.headerKey, key)
+	h.handler.headerValue = append(h.handler.headerValue, value)
 	return h
 }
 
-func (h *httpRequest) SetCookies(cookies []*http.Cookie) *httpRequest {
-	h.h.cookies = cookies
+func (h *httpInfo) SetCookies(cookies []*http.Cookie) *httpInfo {
+	h.handler.cookies = cookies
 	return h
 }
 
-func (h *httpRequest) AddCookie(cookie *http.Cookie) *httpRequest {
-	h.h.cookies = append(h.h.cookies, cookie)
+func (h *httpInfo) AddCookie(cookie *http.Cookie) *httpInfo {
+	h.handler.cookies = append(h.handler.cookies, cookie)
 	return h
 }
 
-func (h *httpRequest) Json(body interface{}) *requestType {
+func (h *httpInfo) Json(body interface{}) *httpInfo {
 	h.SetHeader("Content-Type", applicationJson)
-	h.h.body = body
-	return &requestType{h: h.h}
+	h.handler.body = body
+	return h
 }
 
-func (h *httpRequest) Query(body map[string]interface{}) *requestType {
-	h.h.body = body
-	return &requestType{h: h.h}
+func (h *httpInfo) Query(body map[string]interface{}) *httpInfo {
+	h.handler.body = body
+	return h
 }
 
-func (h *httpRequest) Form(body map[string]interface{}) *requestType {
+func (h *httpInfo) Form(body map[string]interface{}) *httpInfo {
 	h.SetHeader("Content-Type", applicationFormUrlencoded)
-	h.h.body = body
-	return &requestType{h: h.h}
+	h.handler.body = body
+	return h
 }
 
-func (h *httpRequest) Multipart(body map[string]interface{}) *requestType {
+func (h *httpInfo) Multipart(body map[string]interface{}) *httpInfo {
 	h.SetHeader("Content-Type", multipartFormData)
-	h.h.body = body
-	return &requestType{h: h.h}
+	h.handler.body = body
+	return h
 }
 
-func (h *requestType) Send() *Request {
-	h.h.transport.DialContext = h.h.dial.DialContext
-	h.h.client.Transport = h.h.transport
-	return do(h.h.client, h.h.method, h.h.url, h.h.headerKey, h.h.headerValue, h.h.body, h.h.cookies)
+func (h *httpInfo) Send() *Request {
+	h.handler.transport.DialContext = h.handler.dialer.DialContext
+	h.handler.client.Transport = h.handler.transport
+	return do(h.handler)
 }

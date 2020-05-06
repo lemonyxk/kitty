@@ -33,17 +33,17 @@ func (g goroutine) Run(fn func()) {
 				if strings.HasPrefix(e.Error(), "#exception#") {
 					d = 2
 				}
-				que.Push(exception.NewStackWithError(d, strings.Replace(e.Error(), "#exception#", "", 1)))
+				que.Push(exception.NewStackErrorFromDeep(strings.Replace(e.Error(), "#exception#", "", 1), d))
 			}
 		}()
 		fn()
 	}()
 }
 
-func (g goroutine) Watch(fn func(exception.ErrorFunc)) {
+func (g goroutine) Watch(fn func(exception.Error)) {
 	go func() {
 		for {
-			fn(que.Pop().(exception.ErrorFunc))
+			fn(que.Pop().(exception.Error))
 		}
 	}()
 }

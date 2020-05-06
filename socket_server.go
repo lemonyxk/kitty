@@ -72,7 +72,7 @@ type SocketServer struct {
 	OnClose   func(conn *Socket)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
-	OnError   func(err exception.ErrorFunc)
+	OnError   func(err exception.Error)
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -98,7 +98,7 @@ type SocketServer struct {
 	connBack chan error
 
 	// 错误
-	connError chan exception.ErrorFunc
+	connError chan exception.Error
 
 	fd          uint32
 	count       uint32
@@ -232,7 +232,7 @@ func (socket *SocketServer) Ready() {
 	}
 
 	if socket.OnError == nil {
-		socket.OnError = func(err exception.ErrorFunc) {
+		socket.OnError = func(err exception.Error) {
 			console.Error(err)
 		}
 	}
@@ -270,7 +270,7 @@ func (socket *SocketServer) Ready() {
 	socket.connBack = make(chan error, socket.WaitQueueSize)
 
 	// 错误
-	socket.connError = make(chan exception.ErrorFunc, socket.WaitQueueSize)
+	socket.connError = make(chan exception.Error, socket.WaitQueueSize)
 
 	go func() {
 		for {
@@ -291,7 +291,7 @@ func (socket *SocketServer) Ready() {
 				if !ok {
 					socket.connBack <- errors.New("client " + strconv.Itoa(int(push.FD)) + " is close")
 				} else {
-					socket.connBack <- exception.Inspect(conn.(*Socket).Conn.Write(push.Message)).Error()
+					socket.connBack <- errors.New(exception.Inspect(conn.(*Socket).Conn.Write(push.Message)).Error())
 				}
 			case err := <-socket.connError:
 				go socket.OnError(err)

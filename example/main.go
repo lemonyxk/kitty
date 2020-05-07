@@ -8,7 +8,6 @@ import (
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 func main() {
@@ -27,22 +26,12 @@ func main() {
 	// 	console.Log(sig)
 	// })
 
-	// exception.Try(func() {
-	// 	utils.Goroutine.Run(func() {
-	// 		panic(1)
-	// 	})
-	// }).Catch(func(errorFunc exception.Error) exception.Error {
-	// 	console.Error(errorFunc)
-	// 	return nil
+	// var progress = utils.HttpClient.NewProgress()
+	// progress.Rate(0.01).OnProgress(func(p []byte, current int64, total int64) {
+	// 	console.OneLine("Downloading... %d %d B complete", current, total)
 	// })
 	//
-
-	var progress = utils.HttpClient.NewProgress()
-	progress.Rate(0.01).OnProgress(func(p []byte, current int64, total int64) {
-		console.OneLine("Downloading... %d %d B complete", current, total)
-	})
-
-	utils.HttpClient.Get("https://www.twle.cn/static/js/jquery.min.js").Progress(progress).Send()
+	// utils.HttpClient.Get("https://www.twle.cn/static/js/jquery.min.js").Progress(progress).Send()
 
 }
 

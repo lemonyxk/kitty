@@ -54,16 +54,30 @@ type Error interface {
 	String() string
 }
 
-type CatchFunc func(Error) Error
+type Catch func(Error)
 
-type FinallyFunc func(Error) Error
+type Finally func(Error)
 
 type catch struct {
-	Catch func(CatchFunc) *finally
+	fn func(Catch) *finally
+}
+
+func (c *catch) Catch(fn Catch) *finally {
+	return c.fn(fn)
 }
 
 type finally struct {
-	Finally func(FinallyFunc) Error
+	fn  func(Finally)
+	err Error
+}
+
+func (f *finally) Finally(fn Finally) Error {
+	f.fn(fn)
+	return f.err
+}
+
+func (f *finally) Error() Error {
+	return f.err
 }
 
 func Try(fn func()) (c *catch) {
@@ -76,10 +90,11 @@ func Try(fn func()) (c *catch) {
 				d = 2
 			}
 			var stacks = NewStackErrorFromDeep(strings.Replace(e.Error(), "#exception#", "", 1), d)
-			c = &catch{Catch: func(f CatchFunc) *finally {
-				var ef = f(stacks)
+			c = &catch{fn: func(f Catch) *finally {
+				f(stacks)
 				return &finally{
-					Finally: func(ff FinallyFunc) Error { return ff(ef) },
+					err: stacks,
+					fn:  func(ff Finally) { ff(stacks) },
 				}
 			}}
 		}
@@ -87,9 +102,9 @@ func Try(fn func()) (c *catch) {
 
 	fn()
 
-	return &catch{Catch: func(f CatchFunc) *finally {
+	return &catch{fn: func(f Catch) *finally {
 		return &finally{
-			Finally: func(ff FinallyFunc) Error { return ff(nil) },
+			fn: func(ff Finally) { ff(nil) },
 		}
 	}}
 }

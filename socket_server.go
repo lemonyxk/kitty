@@ -291,7 +291,7 @@ func (socket *SocketServer) Ready() {
 				if !ok {
 					socket.connBack <- errors.New("client " + strconv.Itoa(int(push.FD)) + " is close")
 				} else {
-					socket.connBack <- errors.New(exception.Inspect(conn.(*Socket).Conn.Write(push.Message)).Error())
+					socket.connBack <- exception.Inspect(conn.(*Socket).Conn.Write(push.Message))
 				}
 			case err := <-socket.connError:
 				go socket.OnError(err)

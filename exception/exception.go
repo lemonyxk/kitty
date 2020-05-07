@@ -63,8 +63,7 @@ type catch struct {
 }
 
 type finally struct {
-	Finally   func(FinallyFunc) Error
-	ErrorFunc func() Error
+	Finally func(FinallyFunc) Error
 }
 
 func Try(fn func()) (c *catch) {
@@ -80,8 +79,7 @@ func Try(fn func()) (c *catch) {
 			c = &catch{Catch: func(f CatchFunc) *finally {
 				var ef = f(stacks)
 				return &finally{
-					Finally:   func(ff FinallyFunc) Error { return ff(ef) },
-					ErrorFunc: func() Error { return ef },
+					Finally: func(ff FinallyFunc) Error { return ff(ef) },
 				}
 			}}
 		}
@@ -91,8 +89,7 @@ func Try(fn func()) (c *catch) {
 
 	return &catch{Catch: func(f CatchFunc) *finally {
 		return &finally{
-			Finally:   func(ff FinallyFunc) Error { return ff(nil) },
-			ErrorFunc: func() Error { return nil },
+			Finally: func(ff FinallyFunc) Error { return ff(nil) },
 		}
 	}}
 }

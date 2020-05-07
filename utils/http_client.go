@@ -35,6 +35,21 @@ const applicationFormUrlencoded = "application/x-www-form-urlencoded"
 const applicationJson = "application/json"
 const multipartFormData = "multipart/form-data"
 
+var dialer = net.Dialer{
+	Timeout:   30 * time.Second,
+	KeepAlive: 30 * time.Second,
+}
+
+var client = http.Client{
+	Timeout: 15 * time.Second,
+}
+
+var transport = http.Transport{
+	TLSHandshakeTimeout:   10 * time.Second,
+	ResponseHeaderTimeout: 15 * time.Second,
+	ExpectContinueTimeout: 2 * time.Second,
+}
+
 type writeProgress struct {
 	total      int64
 	current    int64
@@ -352,53 +367,28 @@ func (r *Request) RequestHeader() http.Header {
 func (h hc) New() *httpClient {
 	return &httpClient{
 		client:    &http.Client{},
-		transport: &http.Transport{},
+		transport: &transport,
 		dialer:    &net.Dialer{},
 	}
 }
 
-func createDefaultClient() (*http.Client, *http.Transport, *net.Dialer) {
-	var dialer = net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-	}
-
-	var transport = http.Transport{
-		TLSHandshakeTimeout:   10 * time.Second,
-		ResponseHeaderTimeout: 15 * time.Second,
-		ExpectContinueTimeout: 2 * time.Second,
-	}
-
-	var client = http.Client{
-		Timeout: 15 * time.Second,
-	}
-
-	return &client, &transport, &dialer
-}
-
 func (h hc) Post(url string) *httpInfo {
-
-	var client, transport, dialer = createDefaultClient()
-
 	return (&httpClient{
 		method:    http.MethodPost,
 		url:       url,
-		client:    client,
-		transport: transport,
-		dialer:    dialer,
+		client:    &client,
+		transport: &transport,
+		dialer:    &dialer,
 	}).Post(url)
 }
 
 func (h hc) Get(url string) *httpInfo {
-
-	var client, transport, dialer = createDefaultClient()
-
 	return (&httpClient{
 		method:    http.MethodGet,
 		url:       url,
-		client:    client,
-		transport: transport,
-		dialer:    dialer,
+		client:    &client,
+		transport: &transport,
+		dialer:    &dialer,
 	}).Get(url)
 }
 

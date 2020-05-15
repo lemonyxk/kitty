@@ -48,7 +48,7 @@ func (d Date) Format(format string) string {
 	return d.time.Format(format)
 }
 
-func (d Date) Time(format string) time.Time {
+func (d Date) Time() time.Time {
 	return d.time
 }
 
@@ -145,8 +145,13 @@ func (ti ti) Timestamp(timestamp int64) Date {
 	return Date{time: time.Unix(timestamp, 0)}
 }
 
-func (ti ti) String(timestamp string) Date {
-	var t, _ = time.Parse(FULL, timestamp)
+func (ti ti) String(dateString string) Date {
+	var t, _ = time.Parse(FULL, dateString)
+	return Date{time: t}
+}
+
+func (ti ti) FormatString(format string, dateString string) Date {
+	var t, _ = time.Parse(format, dateString)
 	return Date{time: t}
 }
 

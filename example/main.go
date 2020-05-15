@@ -8,7 +8,6 @@ import (
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 func main() {

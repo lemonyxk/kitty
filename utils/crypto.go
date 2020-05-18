@@ -13,6 +13,8 @@ package utils
 import (
 	"crypto/md5"
 	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/base64"
 	"encoding/hex"
 )
@@ -31,10 +33,28 @@ func (c crypto) Md5(input []byte) string {
 }
 
 func (c crypto) Sha1(input []byte) string {
-	var byte20 = sha1.Sum(input)
+	var sha = sha1.Sum(input)
 	var bytes = make([]byte, 20)
 	for i := 0; i < 20; i++ {
-		bytes[i] = byte20[i]
+		bytes[i] = sha[i]
+	}
+	return hex.EncodeToString(bytes)
+}
+
+func (c crypto) Sha256(input []byte) string {
+	var sha = sha256.Sum256(input)
+	var bytes = make([]byte, 32)
+	for i := 0; i < 32; i++ {
+		bytes[i] = sha[i]
+	}
+	return hex.EncodeToString(bytes)
+}
+
+func (c crypto) Sha512(input []byte) string {
+	var sha = sha512.Sum512(input)
+	var bytes = make([]byte, 64)
+	for i := 0; i < 64; i++ {
+		bytes[i] = sha[i]
 	}
 	return hex.EncodeToString(bytes)
 }

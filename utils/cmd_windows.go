@@ -13,7 +13,6 @@
 package utils
 
 import (
-	"os"
 	"os/exec"
 )
 
@@ -26,14 +25,7 @@ type cmd struct {
 }
 
 func (cm cm) New(command string) *cmd {
-	var c *exec.Cmd
-
-	c = exec.Command("cmd", "/c", command)
-
-	c.Stderr = os.Stderr
-	c.Stdin = os.Stdin
-	c.Stdout = os.Stdout
-
+	var c = exec.Command("cmd", "/c", command)
 	return &cmd{c: c}
 }
 

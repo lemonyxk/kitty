@@ -32,7 +32,6 @@ func main() {
 	// })
 	//
 	// utils.HttpClient.Get("https://www.twle.cn/static/js/jquery.min.js").Progress(progress).Send()
-
 }
 
 func run() {

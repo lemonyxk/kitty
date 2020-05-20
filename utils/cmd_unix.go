@@ -13,6 +13,7 @@
 package utils
 
 import (
+	"os"
 	"os/exec"
 	"syscall"
 )
@@ -26,7 +27,7 @@ type cmd struct {
 }
 
 func (cm cm) New(command string) *cmd {
-	var c = exec.Command("bash", "-c", command)
+	var c = exec.Command(os.Getenv("SHELL"), "-c", command)
 	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	return &cmd{c: c}
 }

@@ -76,7 +76,7 @@ func (s sig) Listen(sig ...os.Signal) *done {
 	}}
 }
 
-func (s sig) Kill(pid int, sig syscall.Signal) error {
+func (s sig) Signal(pid int, sig syscall.Signal) error {
 	return syscall.Kill(pid, sig)
 }
 

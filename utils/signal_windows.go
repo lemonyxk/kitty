@@ -56,7 +56,7 @@ func (s sig) Listen(sig ...os.Signal) *done {
 	}}
 }
 
-func (s sig) Kill(pid int) error {
+func (s sig) Kill(pid int, sig syscall.Signal) error {
 	kill := exec.Command("TASKKILL", "/T", "/F", "/PID", strconv.Itoa(pid))
 	kill.Stderr = os.Stderr
 	kill.Stdout = os.Stdout

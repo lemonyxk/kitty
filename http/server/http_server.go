@@ -56,7 +56,7 @@ func (h *Server) Use(middle ...func(next Middle) Middle) {
 }
 
 func (h *Server) process(w http.ResponseWriter, r *http.Request) {
-	var stream = http2.NewStream(h, w, r)
+	var stream = http2.NewStream(w, r)
 	h.middleware(stream)
 }
 

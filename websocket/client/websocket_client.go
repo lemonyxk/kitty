@@ -224,6 +224,7 @@ func (client *Client) Connect() {
 	handler, response, err := dialer.Dial(protocol+"://"+client.Host+":"+strconv.Itoa(client.Port)+client.Path, nil)
 	if err != nil {
 		go client.OnError(exception.New(err))
+		client.reconnecting()
 		return
 	}
 

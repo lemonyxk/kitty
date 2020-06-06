@@ -203,6 +203,7 @@ func (client *Client) Connect() {
 	handler, err := net.DialTimeout("tcp", client.Host+":"+strconv.Itoa(client.Port), time.Duration(client.HandshakeTimeout)*time.Second)
 	if err != nil {
 		go client.OnError(exception.New(err))
+		client.reconnecting()
 		return
 	}
 

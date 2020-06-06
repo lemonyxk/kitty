@@ -63,6 +63,8 @@ func run() {
 		}).Start()
 	}()
 
-	client.SetRouter(router).Connect()
+	go client.SetRouter(router).Connect()
+
+	select {}
 
 }

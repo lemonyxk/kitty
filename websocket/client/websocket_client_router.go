@@ -132,30 +132,30 @@ func (route *route) Handler(fn function) {
 
 	var wba = &node{}
 
-	wba.info = file + ":" + strconv.Itoa(line)
+	wba.Info = file + ":" + strconv.Itoa(line)
 
-	wba.function = fn
+	wba.Function = fn
 
-	wba.before = append(g.before, route.before...)
+	wba.Before = append(g.before, route.before...)
 	if route.passBefore {
-		wba.before = nil
+		wba.Before = nil
 	}
 	if route.forceBefore {
-		wba.before = route.before
+		wba.Before = route.before
 	}
 
-	wba.after = append(g.after, route.after...)
+	wba.After = append(g.after, route.after...)
 	if route.passAfter {
-		wba.after = nil
+		wba.After = nil
 	}
 	if route.forceAfter {
-		wba.after = route.after
+		wba.After = route.after
 	}
 
-	wba.before = append(wba.before, globalBefore...)
-	wba.after = append(wba.after, globalAfter...)
+	wba.Before = append(wba.Before, globalBefore...)
+	wba.After = append(wba.After, globalAfter...)
 
-	wba.route = []byte(path)
+	wba.Route = []byte(path)
 
 	router.tire.Insert(path, wba)
 
@@ -217,9 +217,9 @@ func (router *Router) formatPath(path string) string {
 }
 
 type node struct {
-	info     string
-	route    []byte
-	function function
-	before   []before
-	after    []after
+	Info     string
+	Route    []byte
+	Function function
+	Before   []before
+	After    []after
 }

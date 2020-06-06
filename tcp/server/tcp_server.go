@@ -545,8 +545,8 @@ func (socket *Server) handler(conn *Socket, msg *lemo.ReceivePackage) {
 	receive.Context = nil
 	receive.Params = lemo.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
-	for i := 0; i < len(nodeData.before); i++ {
-		ctx, err := nodeData.before[i](conn, receive)
+	for i := 0; i < len(nodeData.Before); i++ {
+		ctx, err := nodeData.Before[i](conn, receive)
 		if err != nil {
 			if socket.OnError != nil {
 				socket.OnError(err)
@@ -556,7 +556,7 @@ func (socket *Server) handler(conn *Socket, msg *lemo.ReceivePackage) {
 		receive.Context = ctx
 	}
 
-	err := nodeData.function(conn, receive)
+	err := nodeData.Function(conn, receive)
 	if err != nil {
 		if socket.OnError != nil {
 			socket.OnError(err)
@@ -564,8 +564,8 @@ func (socket *Server) handler(conn *Socket, msg *lemo.ReceivePackage) {
 		return
 	}
 
-	for i := 0; i < len(nodeData.after); i++ {
-		err := nodeData.after[i](conn, receive)
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](conn, receive)
 		if err != nil {
 			if socket.OnError != nil {
 				socket.OnError(err)

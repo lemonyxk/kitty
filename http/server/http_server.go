@@ -1,4 +1,4 @@
-package http
+package server
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
+	"github.com/Lemo-yxk/lemo/exception"
+	http2 "github.com/Lemo-yxk/lemo/http"
 )
 
 type Server struct {
@@ -31,10 +33,10 @@ type Server struct {
 	// AutoBind
 	AutoBind bool
 
-	OnOpen    func(stream *Stream)
-	OnMessage func(stream *Stream)
-	OnClose   func(stream *Stream)
-	OnError   func(stream *Stream)
+	OnOpen    func(stream *http2.Stream)
+	OnMessage func(stream *http2.Stream)
+	OnClose   func(stream *http2.Stream)
+	OnError   func(stream *http2.Stream, err exception.Error)
 
 	middle []func(next Middle) Middle
 	router *Router
@@ -47,18 +49,18 @@ func (h *Server) Ready() {
 
 }
 
-type Middle func(*Stream)
+type Middle func(*http2.Stream)
 
 func (h *Server) Use(middle ...func(next Middle) Middle) {
 	h.middle = append(h.middle, middle...)
 }
 
 func (h *Server) process(w http.ResponseWriter, r *http.Request) {
-	var stream = NewStream(h, w, r)
+	var stream = http2.NewStream(h, w, r)
 	h.middleware(stream)
 }
 
-func (h *Server) middleware(stream *Stream) {
+func (h *Server) middleware(stream *http2.Stream) {
 	var next Middle = h.handler
 	for i := len(h.middle) - 1; i >= 0; i-- {
 		next = h.middle[i](next)
@@ -66,7 +68,7 @@ func (h *Server) middleware(stream *Stream) {
 	next(stream)
 }
 
-func (h *Server) handler(stream *Stream) {
+func (h *Server) handler(stream *http2.Stream) {
 
 	if h.OnOpen != nil {
 		h.OnOpen(stream)
@@ -77,9 +79,9 @@ func (h *Server) handler(stream *Stream) {
 
 	if n == nil {
 		stream.Response.WriteHeader(http.StatusNotFound)
-		stream.error = stream.Request.URL.Path + " " + "404 not found"
+		var err = exception.New(stream.Request.URL.Path + " " + "404 not found")
 		if h.OnError != nil {
-			h.OnError(stream)
+			h.OnError(stream, err)
 		}
 		if h.OnClose != nil {
 			h.OnClose(stream)
@@ -95,12 +97,11 @@ func (h *Server) handler(stream *Stream) {
 		h.OnMessage(stream)
 	}
 
-	for i := 0; i < len(nodeData.before); i++ {
-		ctx, err := nodeData.before[i](stream)
+	for i := 0; i < len(nodeData.Before); i++ {
+		ctx, err := nodeData.Before[i](stream)
 		if err != nil {
-			stream.error = err
 			if h.OnError != nil {
-				h.OnError(stream)
+				h.OnError(stream, err)
 			}
 			if h.OnClose != nil {
 				h.OnClose(stream)
@@ -110,12 +111,11 @@ func (h *Server) handler(stream *Stream) {
 		stream.Context = ctx
 	}
 
-	if nodeData.function != nil {
-		err := nodeData.function(stream)
+	if nodeData.Function != nil {
+		err := nodeData.Function(stream)
 		if err != nil {
-			stream.error = err
 			if h.OnError != nil {
-				h.OnError(stream)
+				h.OnError(stream, err)
 			}
 			if h.OnClose != nil {
 				h.OnClose(stream)
@@ -124,12 +124,11 @@ func (h *Server) handler(stream *Stream) {
 		}
 	}
 
-	for i := 0; i < len(nodeData.after); i++ {
-		err := nodeData.after[i](stream)
+	for i := 0; i < len(nodeData.After); i++ {
+		err := nodeData.After[i](stream)
 		if err != nil {
-			stream.error = err
 			if h.OnError != nil {
-				h.OnError(stream)
+				h.OnError(stream, err)
 			}
 			if h.OnClose != nil {
 				h.OnClose(stream)

@@ -8,7 +8,7 @@
 * @create: 2019-11-25 11:29
 **/
 
-package http
+package server
 
 import (
 	"os"
@@ -20,15 +20,16 @@ import (
 	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/container/tire"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/http"
 )
 
 type groupFunction func(handler *RouteHandler)
 
-type function func(stream *Stream) exception.Error
+type function func(stream *http.Stream) exception.Error
 
-type before func(stream *Stream) (lemo.Context, exception.Error)
+type before func(stream *http.Stream) (lemo.Context, exception.Error)
 
-type after func(stream *Stream) exception.Error
+type after func(stream *http.Stream) exception.Error
 
 var globalBefore []before
 var globalAfter []after
@@ -172,32 +173,32 @@ func (route *route) Handler(fn function) {
 
 	var hba = &node{}
 
-	hba.info = file + ":" + strconv.Itoa(line)
+	hba.Info = file + ":" + strconv.Itoa(line)
 
-	hba.function = fn
+	hba.Function = fn
 
-	hba.before = append(g.before, route.before...)
+	hba.Before = append(g.before, route.before...)
 	if route.passBefore {
-		hba.before = nil
+		hba.Before = nil
 	}
 	if route.forceBefore {
-		hba.before = route.before
+		hba.Before = route.before
 	}
 
-	hba.after = append(g.after, route.after...)
+	hba.After = append(g.after, route.after...)
 	if route.passAfter {
-		hba.after = nil
+		hba.After = nil
 	}
 	if route.forceAfter {
-		hba.after = route.after
+		hba.After = route.after
 	}
 
-	hba.before = append(hba.before, globalBefore...)
-	hba.after = append(hba.after, globalAfter...)
+	hba.Before = append(hba.Before, globalBefore...)
+	hba.After = append(hba.After, globalAfter...)
 
-	hba.method = method
+	hba.Method = method
 
-	hba.route = []byte(path)
+	hba.Route = []byte(path)
 
 	router.tire.Insert(path, hba)
 }
@@ -285,7 +286,7 @@ func (router *Router) getRoute(method string, path string) (*tire.Tire, []byte) 
 		return nil, nil
 	}
 
-	if t.Data.(*node).method != method {
+	if t.Data.(*node).Method != method {
 		return nil, nil
 	}
 
@@ -300,10 +301,10 @@ func (router *Router) formatPath(path string) string {
 }
 
 type node struct {
-	info     string
-	route    []byte
-	method   string
-	function function
-	before   []before
-	after    []after
+	Info     string
+	Route    []byte
+	Method   string
+	Function function
+	Before   []before
+	After    []after
 }

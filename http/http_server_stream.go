@@ -15,6 +15,7 @@ import (
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/http/server"
 )
 
 type Files struct {
@@ -162,7 +163,7 @@ func (a Array) Float64() []float64 {
 }
 
 type Stream struct {
-	Server   *Server
+	Server   *server.Server
 	Response http.ResponseWriter
 	Request  *http.Request
 	Params   lemo.Params
@@ -173,26 +174,17 @@ type Stream struct {
 	Files    Files
 
 	maxMemory     int64
-	error         interface{}
 	hasParseQuery bool
 	hasParseForm  bool
 	hasParseJson  bool
 	hasParseFiles bool
 }
 
-func NewStream(h *Server, w http.ResponseWriter, r *http.Request) *Stream {
+func NewStream(h *server.Server, w http.ResponseWriter, r *http.Request) *Stream {
 	return &Stream{Server: h, Response: w, Request: r}
 }
 
-func (stream *Stream) LastError() interface{} {
-	return stream.error
-}
-
-func (stream *Stream) Match() bool {
-	return stream.error != nil
-}
-
-func (stream *Stream) Forward(fn function) exception.Error {
+func (stream *Stream) Forward(fn func(stream *Stream) exception.Error) exception.Error {
 	return fn(stream)
 }
 

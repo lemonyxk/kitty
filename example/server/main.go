@@ -9,6 +9,7 @@ import (
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/http"
+	server3 "github.com/Lemo-yxk/lemo/http/server"
 	"github.com/Lemo-yxk/lemo/tcp/server"
 	"github.com/Lemo-yxk/lemo/utils"
 	server2 "github.com/Lemo-yxk/lemo/websocket/server"
@@ -66,11 +67,11 @@ func run() {
 
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
 
-	var httpServer = http.Server{Host: "0.0.0.0", Port: 8666, AutoBind: true}
+	var httpServer = server3.Server{Host: "0.0.0.0", Port: 8666, AutoBind: true}
 
-	var httpServerRouter = &http.Router{}
+	var httpServerRouter = &server3.Router{}
 
-	httpServer.Use(func(next http.Middle) http.Middle {
+	httpServer.Use(func(next server3.Middle) server3.Middle {
 		return func(stream *http.Stream) {
 			if stream.Request.Header.Get("Upgrade") == "websocket" {
 				httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
@@ -82,7 +83,7 @@ func run() {
 		}
 	})
 
-	httpServer.Use(func(next http.Middle) http.Middle {
+	httpServer.Use(func(next server3.Middle) server3.Middle {
 		return func(stream *http.Stream) {
 			console.Log(2, "start")
 			next(stream)
@@ -95,7 +96,7 @@ func run() {
 		return exception.New(stream.EndString("hello"))
 	})
 
-	httpServerRouter.Group("/hello").Handler(func(handler *http.RouteHandler) {
+	httpServerRouter.Group("/hello").Handler(func(handler *server3.RouteHandler) {
 		handler.Get("/world").Handler(func(t *http.Stream) exception.Error {
 			return t.JsonFormat("SUCCESS", 200, os.Getpid())
 		})

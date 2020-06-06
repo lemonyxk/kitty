@@ -134,7 +134,7 @@ func (route *route) Handler(fn function) {
 
 	wba.Info = file + ":" + strconv.Itoa(line)
 
-	wba.ServerFunction = fn
+	wba.Function = fn
 
 	wba.Before = append(g.before, route.before...)
 	if route.passBefore {
@@ -217,9 +217,9 @@ func (router *Router) formatPath(path string) string {
 }
 
 type node struct {
-	Info           string
-	Route          []byte
-	ServerFunction function
-	Before         []before
-	After          []after
+	Info     string
+	Route    []byte
+	Function function
+	Before   []before
+	After    []after
 }

@@ -585,7 +585,7 @@ func (socket *Server) handler(conn *WebSocket, msg *lemo.ReceivePackage) {
 		receive.Context = ctx
 	}
 
-	err := nodeData.ServerFunction(conn, receive)
+	err := nodeData.Function(conn, receive)
 	if err != nil {
 		if socket.OnError != nil {
 			socket.OnError(err)

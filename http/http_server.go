@@ -1,4 +1,4 @@
-package lemo
+package http
 
 import (
 	"context"
@@ -12,10 +12,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 )
 
-type HttpServer struct {
+type Server struct {
 	// Host 服务Host
 	Host string
 	// Port 服务端口
@@ -35,46 +36,46 @@ type HttpServer struct {
 	OnClose   func(stream *Stream)
 	OnError   func(stream *Stream)
 
-	middle []func(next HttpServerMiddle) HttpServerMiddle
-	router *HttpServerRouter
+	middle []func(next Middle) Middle
+	router *Router
 
 	netListen net.Listener
 	server    *http.Server
 }
 
-func (h *HttpServer) Ready() {
+func (h *Server) Ready() {
 
 }
 
-type HttpServerMiddle func(*Stream)
+type Middle func(*Stream)
 
-func (h *HttpServer) Use(middle ...func(next HttpServerMiddle) HttpServerMiddle) {
+func (h *Server) Use(middle ...func(next Middle) Middle) {
 	h.middle = append(h.middle, middle...)
 }
 
-func (h *HttpServer) process(w http.ResponseWriter, r *http.Request) {
+func (h *Server) process(w http.ResponseWriter, r *http.Request) {
 	var stream = NewStream(h, w, r)
 	h.middleware(stream)
 }
 
-func (h *HttpServer) middleware(stream *Stream) {
-	var next HttpServerMiddle = h.handler
+func (h *Server) middleware(stream *Stream) {
+	var next Middle = h.handler
 	for i := len(h.middle) - 1; i >= 0; i-- {
 		next = h.middle[i](next)
 	}
 	next(stream)
 }
 
-func (h *HttpServer) handler(stream *Stream) {
+func (h *Server) handler(stream *Stream) {
 
 	if h.OnOpen != nil {
 		h.OnOpen(stream)
 	}
 
 	// Get the router
-	node, formatPath := h.router.getRoute(stream.Request.Method, stream.Request.URL.Path)
+	n, formatPath := h.router.getRoute(stream.Request.Method, stream.Request.URL.Path)
 
-	if node == nil {
+	if n == nil {
 		stream.Response.WriteHeader(http.StatusNotFound)
 		stream.error = stream.Request.URL.Path + " " + "404 not found"
 		if h.OnError != nil {
@@ -86,16 +87,16 @@ func (h *HttpServer) handler(stream *Stream) {
 		return
 	}
 
-	stream.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
+	stream.Params = lemo.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
-	var nodeData = node.Data.(*httpServerNode)
+	var nodeData = n.Data.(*node)
 
 	if h.OnMessage != nil {
 		h.OnMessage(stream)
 	}
 
-	for i := 0; i < len(nodeData.Before); i++ {
-		ctx, err := nodeData.Before[i](stream)
+	for i := 0; i < len(nodeData.before); i++ {
+		ctx, err := nodeData.before[i](stream)
 		if err != nil {
 			stream.error = err
 			if h.OnError != nil {
@@ -109,8 +110,8 @@ func (h *HttpServer) handler(stream *Stream) {
 		stream.Context = ctx
 	}
 
-	if nodeData.HttpServerFunction != nil {
-		err := nodeData.HttpServerFunction(stream)
+	if nodeData.function != nil {
+		err := nodeData.function(stream)
 		if err != nil {
 			stream.error = err
 			if h.OnError != nil {
@@ -123,8 +124,8 @@ func (h *HttpServer) handler(stream *Stream) {
 		}
 	}
 
-	for i := 0; i < len(nodeData.After); i++ {
-		err := nodeData.After[i](stream)
+	for i := 0; i < len(nodeData.after); i++ {
+		err := nodeData.after[i](stream)
 		if err != nil {
 			stream.error = err
 			if h.OnError != nil {
@@ -138,7 +139,7 @@ func (h *HttpServer) handler(stream *Stream) {
 	}
 }
 
-func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 	if !strings.HasPrefix(r.URL.Path, h.router.prefixPath) {
 		return errors.New("not match")
@@ -184,17 +185,17 @@ func (h *HttpServer) staticHandler(w http.ResponseWriter, r *http.Request) error
 
 }
 
-func (h *HttpServer) SetRouter(router *HttpServerRouter) *HttpServer {
+func (h *Server) SetRouter(router *Router) *Server {
 	h.router = router
 	return h
 }
 
-func (h *HttpServer) GetRouter() *HttpServerRouter {
+func (h *Server) GetRouter() *Router {
 	return h.router
 }
 
 // Start Http
-func (h *HttpServer) Start() {
+func (h *Server) Start() {
 
 	h.Ready()
 
@@ -229,16 +230,16 @@ func (h *HttpServer) Start() {
 	console.Exit(err)
 }
 
-func (h *HttpServer) Shutdown() {
+func (h *Server) Shutdown() {
 	err := h.server.Shutdown(context.Background())
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (h *HttpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	// HttpServer router not exists
+	// router not exists
 	if h.router == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

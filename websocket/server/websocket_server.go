@@ -1,4 +1,4 @@
-package lemo
+package server
 
 import (
 	"context"
@@ -10,11 +10,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/json-iterator/go"
+
+	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/protocol"
-
-	"github.com/json-iterator/go"
+	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
@@ -24,14 +25,14 @@ import (
 type WebSocket struct {
 	FD       uint32
 	Conn     *websocket.Conn
-	Server   *WebSocketServer
+	Server   *Server
 	Response http.ResponseWriter
 	Request  *http.Request
-	Context  Context
+	Context  lemo.Context
 }
 
 func (conn *WebSocket) Host() string {
-	if host := conn.Request.Header.Get(Host); host != "" {
+	if host := conn.Request.Header.Get(lemo.Host); host != "" {
 		return host
 	}
 	return conn.Request.Host
@@ -39,11 +40,11 @@ func (conn *WebSocket) Host() string {
 
 func (conn *WebSocket) ClientIP() string {
 
-	if ip := strings.Split(conn.Request.Header.Get(XForwardedFor), ",")[0]; ip != "" {
+	if ip := strings.Split(conn.Request.Header.Get(lemo.XForwardedFor), ",")[0]; ip != "" {
 		return ip
 	}
 
-	if ip := conn.Request.Header.Get(XRealIP); ip != "" {
+	if ip := conn.Request.Header.Get(lemo.XRealIP); ip != "" {
 		return ip
 	}
 
@@ -58,23 +59,19 @@ func (conn *WebSocket) Push(messageType int, msg []byte) error {
 	return conn.Server.Push(conn.FD, messageType, msg)
 }
 
-func (conn *WebSocket) JsonFormat(msg JsonPackage) exception.Error {
-	return conn.Server.JsonFormat(conn.FD, msg)
+func (conn *WebSocket) Emit(event []byte, body []byte, dataType int, protoType int) error {
+	return conn.Server.Emit(conn.FD, event, body, dataType, protoType)
 }
 
-func (conn *WebSocket) Json(msg interface{}) error {
+func (conn *WebSocket) Json(msg lemo.JsonPackage) exception.Error {
 	return conn.Server.Json(conn.FD, msg)
 }
 
-func (conn *WebSocket) ProtoBuf(msg proto.Message) error {
-	return conn.Server.ProtoBuf(conn.FD, msg)
-}
-
-func (conn *WebSocket) JsonEmit(msg JsonPackage) error {
+func (conn *WebSocket) JsonEmit(msg lemo.JsonPackage) error {
 	return conn.Server.JsonEmit(conn.FD, msg)
 }
 
-func (conn *WebSocket) ProtoBufEmit(msg ProtoBufPackage) error {
+func (conn *WebSocket) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
 	return conn.Server.ProtoBufEmit(conn.FD, msg)
 }
 
@@ -82,15 +79,14 @@ func (conn *WebSocket) Close() error {
 	return conn.Conn.Close()
 }
 
-// WebSocketServer conn
-type WebSocketServer struct {
+type Server struct {
 
 	// Host 服务Host
 	Host string
 	// Port 服务端口
 	Port int
 	// Protocol 协议
-	Protocol string
+	TLS bool
 	// TLS FILE
 	CertFile string
 	// TLS KEY
@@ -116,6 +112,8 @@ type WebSocketServer struct {
 
 	PongHandler func(connection *WebSocket) func(appData string) error
 
+	Protocol websocket2.Protocol
+
 	// 连接
 	connOpen chan *WebSocket
 
@@ -123,7 +121,7 @@ type WebSocketServer struct {
 	connClose chan *WebSocket
 
 	// 写入
-	connPush chan *PushInfo
+	connPush chan *lemo.PushPackage
 
 	// 返回
 	connBack chan error
@@ -136,69 +134,52 @@ type WebSocketServer struct {
 	fd          uint32
 	count       uint32
 	connections sync.Map
-	router      *WebSocketServerRouter
-	middle      []func(next WebSocketServerMiddle) WebSocketServerMiddle
+	router      *Router
+	middle      []func(next Middle) Middle
 	server      *http.Server
 	netListen   net.Listener
 }
 
-type WebSocketServerMiddle func(conn *WebSocket, receive *ReceivePackage)
+type Middle func(conn *WebSocket, receive *lemo.ReceivePackage)
 
-func (socket *WebSocketServer) Use(middle ...func(next WebSocketServerMiddle) WebSocketServerMiddle) {
+func (socket *Server) Use(middle ...func(next Middle) Middle) {
 	socket.middle = append(socket.middle, middle...)
 }
 
-func (socket *WebSocketServer) CheckPath(p1 string, p2 string) bool {
+func (socket *Server) CheckPath(p1 string, p2 string) bool {
 	return p1 == p2
 }
 
 // Push 发送消息
-func (socket *WebSocketServer) Push(fd uint32, messageType int, msg []byte) error {
+func (socket *Server) Push(fd uint32, messageType int, msg []byte) error {
 
-	socket.connPush <- &PushInfo{
-		MessageType: messageType,
-		FD:          fd,
-		Message:     msg,
+	socket.connPush <- &lemo.PushPackage{
+		Type: messageType,
+		FD:   fd,
+		Data: msg,
 	}
 
 	return <-socket.connBack
 }
 
-func (socket *WebSocketServer) JsonFormat(fd uint32, msg JsonPackage) exception.Error {
-	messageJsonFormat, err := jsoniter.Marshal(JsonMessage{msg.Event, msg.Message})
+func (socket *Server) Json(fd uint32, msg lemo.JsonPackage) exception.Error {
+	data, err := jsoniter.Marshal(lemo.JsonPackage{Event: msg.Event, Data: msg.Data})
 	if err != nil {
 		return exception.New(err)
 	}
-	return exception.New(socket.Push(fd, protocol.TextData, messageJsonFormat))
+	return exception.New(socket.Push(fd, lemo.TextData, data))
 }
 
-// Push Json 发送消息
-func (socket *WebSocketServer) Json(fd uint32, msg interface{}) error {
-
-	messageJson, err := jsoniter.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	return socket.Push(fd, protocol.TextData, messageJson)
+func (socket *Server) Emit(fd uint32, event []byte, body []byte, dataType int, protoType int) error {
+	return socket.Push(fd, lemo.BinData, socket.Protocol.Encode(event, body, dataType, protoType))
 }
 
-func (socket *WebSocketServer) ProtoBuf(fd uint32, msg proto.Message) error {
-
-	messageProtoBuf, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	return socket.Push(fd, protocol.BinData, messageProtoBuf)
-}
-
-func (socket *WebSocketServer) JsonFormatAll(msg JsonPackage) (int, int) {
+func (socket *Server) EmitAll(event []byte, body []byte, dataType int, protoType int) (int, int) {
 	var counter = 0
 	var success = 0
 	socket.connections.Range(func(key, value interface{}) bool {
 		counter++
-		if socket.JsonFormat(key.(uint32), msg) == nil {
+		if socket.Emit(key.(uint32), event, body, dataType, protoType) == nil {
 			success++
 		}
 		return true
@@ -206,7 +187,20 @@ func (socket *WebSocketServer) JsonFormatAll(msg JsonPackage) (int, int) {
 	return counter, success
 }
 
-func (socket *WebSocketServer) JsonEmitAll(msg JsonPackage) (int, int) {
+func (socket *Server) JsonAll(msg lemo.JsonPackage) (int, int) {
+	var counter = 0
+	var success = 0
+	socket.connections.Range(func(key, value interface{}) bool {
+		counter++
+		if socket.Json(key.(uint32), msg) == nil {
+			success++
+		}
+		return true
+	})
+	return counter, success
+}
+
+func (socket *Server) JsonEmitAll(msg lemo.JsonPackage) (int, int) {
 	var counter = 0
 	var success = 0
 	socket.connections.Range(func(key, value interface{}) bool {
@@ -219,7 +213,7 @@ func (socket *WebSocketServer) JsonEmitAll(msg JsonPackage) (int, int) {
 	return counter, success
 }
 
-func (socket *WebSocketServer) ProtoBufEmitAll(msg ProtoBufPackage) (int, int) {
+func (socket *Server) ProtoBufEmitAll(msg lemo.ProtoBufPackage) (int, int) {
 	var counter = 0
 	var success = 0
 	socket.connections.Range(func(key, value interface{}) bool {
@@ -232,26 +226,26 @@ func (socket *WebSocketServer) ProtoBufEmitAll(msg ProtoBufPackage) (int, int) {
 	return counter, success
 }
 
-func (socket *WebSocketServer) ProtoBufEmit(fd uint32, msg ProtoBufPackage) error {
+func (socket *Server) ProtoBufEmit(fd uint32, msg lemo.ProtoBufPackage) error {
 
-	messageProtoBuf, err := proto.Marshal(msg.Message)
+	messageProtoBuf, err := proto.Marshal(msg.Data)
 	if err != nil {
 		return err
 	}
 
-	return socket.Push(fd, protocol.BinData, protocol.Pack([]byte(msg.Event), messageProtoBuf, protocol.BinData, protocol.ProtoBuf))
+	return socket.Push(fd, lemo.BinData, socket.Protocol.Encode([]byte(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
 
 }
 
-func (socket *WebSocketServer) JsonEmit(fd uint32, msg JsonPackage) error {
-	data, err := jsoniter.Marshal(msg.Message)
+func (socket *Server) JsonEmit(fd uint32, msg lemo.JsonPackage) error {
+	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
 		return err
 	}
-	return socket.Push(fd, protocol.TextData, protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
+	return socket.Push(fd, lemo.TextData, socket.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
-func (socket *WebSocketServer) addConnect(conn *WebSocket) {
+func (socket *Server) addConnect(conn *WebSocket) {
 
 	// +1
 	socket.fd++
@@ -295,11 +289,11 @@ func (socket *WebSocketServer) addConnect(conn *WebSocket) {
 
 }
 
-func (socket *WebSocketServer) delConnect(conn *WebSocket) {
+func (socket *Server) delConnect(conn *WebSocket) {
 	socket.connections.Delete(conn.FD)
 }
 
-func (socket *WebSocketServer) GetConnections() chan *WebSocket {
+func (socket *Server) GetConnections() chan *WebSocket {
 	var ch = make(chan *WebSocket, 1)
 	go func() {
 		socket.connections.Range(func(key, value interface{}) bool {
@@ -311,7 +305,7 @@ func (socket *WebSocketServer) GetConnections() chan *WebSocket {
 	return ch
 }
 
-func (socket *WebSocketServer) GetConnection(fd uint32) (*WebSocket, bool) {
+func (socket *Server) GetConnection(fd uint32) (*WebSocket, bool) {
 	conn, ok := socket.connections.Load(fd)
 	if !ok {
 		return nil, false
@@ -319,11 +313,11 @@ func (socket *WebSocketServer) GetConnection(fd uint32) (*WebSocket, bool) {
 	return conn.(*WebSocket), true
 }
 
-func (socket *WebSocketServer) GetConnectionsCount() uint32 {
+func (socket *Server) GetConnectionsCount() uint32 {
 	return socket.count
 }
 
-func (socket *WebSocketServer) Close(fd uint32) error {
+func (socket *Server) Close(fd uint32) error {
 	conn, ok := socket.GetConnection(fd)
 	if !ok {
 		return errors.New("fd not found")
@@ -331,7 +325,7 @@ func (socket *WebSocketServer) Close(fd uint32) error {
 	return conn.Close()
 }
 
-func (socket *WebSocketServer) Ready() {
+func (socket *Server) Ready() {
 
 	if socket.HeartBeatTimeout == 0 {
 		socket.HeartBeatTimeout = 30
@@ -382,11 +376,15 @@ func (socket *WebSocketServer) Ready() {
 		}
 	}
 
+	if socket.Protocol == nil {
+		socket.Protocol = &websocket2.DefaultProtocol{}
+	}
+
 	if socket.PingHandler == nil {
 		socket.PingHandler = func(connection *WebSocket) func(appData string) error {
 			return func(appData string) error {
 				// unnecessary
-				// err := Server.Push(connection.FD, BinData, Pack(nil, nil, PongData, BinData))
+				// err := Server.Push(connection.FD, BinData, socket.Protocol.Encode(nil, nil, PongData, BinData))
 				return connection.Conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 			}
 		}
@@ -418,7 +416,7 @@ func (socket *WebSocketServer) Ready() {
 	socket.connClose = make(chan *WebSocket, socket.WaitQueueSize)
 
 	// 写入
-	socket.connPush = make(chan *PushInfo, socket.WaitQueueSize)
+	socket.connPush = make(chan *lemo.PushPackage, socket.WaitQueueSize)
 
 	// 返回
 	socket.connBack = make(chan error, socket.WaitQueueSize)
@@ -445,7 +443,7 @@ func (socket *WebSocketServer) Ready() {
 				if !ok {
 					socket.connBack <- errors.New("client " + strconv.Itoa(int(push.FD)) + " is close")
 				} else {
-					socket.connBack <- conn.(*WebSocket).Conn.WriteMessage(push.MessageType, push.Message)
+					socket.connBack <- conn.(*WebSocket).Conn.WriteMessage(push.Type, push.Data)
 				}
 			case err := <-socket.connError:
 				go socket.OnError(err)
@@ -454,7 +452,7 @@ func (socket *WebSocketServer) Ready() {
 	}()
 }
 
-func (socket *WebSocketServer) process(w http.ResponseWriter, r *http.Request) {
+func (socket *Server) process(w http.ResponseWriter, r *http.Request) {
 
 	// 升级协议
 	conn, err := socket.upgrade.Upgrade(w, r, nil)
@@ -518,67 +516,63 @@ func (socket *WebSocketServer) process(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (socket *WebSocketServer) decodeMessage(connection *WebSocket, message []byte, messageFrame int) error {
+func (socket *Server) decodeMessage(connection *WebSocket, message []byte, messageFrame int) error {
 
 	// unpack
-	version, messageType, protoType, route, body := protocol.UnPack(message)
+	version, messageType, protoType, route, body := socket.Protocol.Decode(message)
 
 	if socket.OnMessage != nil {
 		go socket.OnMessage(connection, messageFrame, message)
 	}
 
 	// check version
-	if version != protocol.Version {
-		route, body := protocol.ParseMessage(message)
-		if route != nil {
-			go socket.middleware(connection, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json, Raw: message})
-		}
+	if version != lemo.Version {
 		return nil
 	}
 
 	// Ping
-	if messageType == protocol.PingData {
+	if messageType == lemo.PingData {
 		return socket.PingHandler(connection)("")
 	}
 
 	// Pong
-	if messageType == protocol.PongData {
+	if messageType == lemo.PongData {
 		return socket.PongHandler(connection)("")
 	}
 
 	// on router
 	if socket.router != nil {
-		go socket.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+		go socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 
 	return nil
 }
 
-func (socket *WebSocketServer) middleware(conn *WebSocket, msg *ReceivePackage) {
-	var next WebSocketServerMiddle = socket.handler
+func (socket *Server) middleware(conn *WebSocket, msg *lemo.ReceivePackage) {
+	var next Middle = socket.handler
 	for i := len(socket.middle) - 1; i >= 0; i-- {
 		next = socket.middle[i](next)
 	}
 	next(conn, msg)
 }
 
-func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
+func (socket *Server) handler(conn *WebSocket, msg *lemo.ReceivePackage) {
 
-	var node, formatPath = socket.router.getRoute(msg.Event)
-	if node == nil {
+	var n, formatPath = socket.router.getRoute(msg.Event)
+	if n == nil {
 		if socket.OnError != nil {
 			socket.OnError(exception.New(msg.Event + " " + "404 not found"))
 		}
 		return
 	}
 
-	var nodeData = node.Data.(*WebSocketServerNode)
+	var nodeData = n.Data.(*node)
 
-	var receive = &Receive{}
+	var receive = &lemo.Receive{}
 	receive.Body = msg
 	receive.Context = nil
-	receive.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
+	receive.Params = lemo.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		ctx, err := nodeData.Before[i](conn, receive)
@@ -591,7 +585,7 @@ func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
 		receive.Context = ctx
 	}
 
-	err := nodeData.WebSocketServerFunction(conn, receive)
+	err := nodeData.ServerFunction(conn, receive)
 	if err != nil {
 		if socket.OnError != nil {
 			socket.OnError(err)
@@ -611,17 +605,17 @@ func (socket *WebSocketServer) handler(conn *WebSocket, msg *ReceivePackage) {
 
 }
 
-func (socket *WebSocketServer) SetRouter(router *WebSocketServerRouter) *WebSocketServer {
+func (socket *Server) SetRouter(router *Router) *Server {
 	socket.router = router
 	return socket
 }
 
-func (socket *WebSocketServer) GetRouter() *WebSocketServerRouter {
+func (socket *Server) GetRouter() *Router {
 	return socket.router
 }
 
 // Start Http
-func (socket *WebSocketServer) Start() {
+func (socket *Server) Start() {
 
 	socket.Ready()
 
@@ -646,24 +640,23 @@ func (socket *WebSocketServer) Start() {
 	socket.netListen = netListen
 	socket.server = &server
 
-	switch socket.Protocol {
-	case "TLS":
+	if socket.TLS {
 		err = server.ServeTLS(netListen, socket.CertFile, socket.KeyFile)
-	default:
+	} else {
 		err = server.Serve(netListen)
 	}
 
 	console.Exit(err)
 }
 
-func (socket *WebSocketServer) Shutdown() {
+func (socket *Server) Shutdown() {
 	err := socket.server.Shutdown(context.Background())
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (socket *WebSocketServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (socket *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Match the websocket router
 	if r.Method != http.MethodGet || !socket.CheckPath(r.URL.Path, socket.Path) {

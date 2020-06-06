@@ -1,4 +1,4 @@
-package lemo
+package http
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/json-iterator/go"
 
+	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/exception"
 )
 
@@ -36,20 +37,6 @@ func (f Files) GetAll(fileName string) []*multipart.FileHeader {
 		return file
 	}
 	return nil
-}
-
-type Params struct {
-	Keys   []string
-	Values []string
-}
-
-func (ps Params) ByName(name string) string {
-	for i := 0; i < len(ps.Keys); i++ {
-		if ps.Keys[i] == name {
-			return ps.Values[i]
-		}
-	}
-	return ""
 }
 
 type Value struct {
@@ -175,11 +162,11 @@ func (a Array) Float64() []float64 {
 }
 
 type Stream struct {
-	Server   *HttpServer
+	Server   *Server
 	Response http.ResponseWriter
 	Request  *http.Request
-	Params   Params
-	Context  Context
+	Params   lemo.Params
+	Context  lemo.Context
 	Query    Store
 	Form     Store
 	Json     Json
@@ -193,7 +180,7 @@ type Stream struct {
 	hasParseFiles bool
 }
 
-func NewStream(h *HttpServer, w http.ResponseWriter, r *http.Request) *Stream {
+func NewStream(h *Server, w http.ResponseWriter, r *http.Request) *Stream {
 	return &Stream{Server: h, Response: w, Request: r}
 }
 
@@ -205,7 +192,7 @@ func (stream *Stream) Match() bool {
 	return stream.error != nil
 }
 
-func (stream *Stream) Forward(fn HttpServerFunction) exception.Error {
+func (stream *Stream) Forward(fn function) exception.Error {
 	return fn(stream)
 }
 
@@ -217,8 +204,14 @@ func (stream *Stream) SetHeader(header string, content string) {
 	stream.Response.Header().Set(header, content)
 }
 
+type JsonFormat struct {
+	Status string      `json:"status"`
+	Code   int         `json:"code"`
+	Msg    interface{} `json:"msg"`
+}
+
 func (stream *Stream) JsonFormat(status string, code int, msg interface{}) exception.Error {
-	return exception.New(stream.EndJson(JsonFormat{status, code, msg}))
+	return exception.New(stream.EndJson(JsonFormat{Status: status, Code: code, Msg: msg}))
 }
 
 func (stream *Stream) End(data interface{}) error {
@@ -258,7 +251,7 @@ func (stream *Stream) EndFile(fileName string, content interface{}) error {
 }
 
 func (stream *Stream) Host() string {
-	if host := stream.Request.Header.Get(Host); host != "" {
+	if host := stream.Request.Header.Get(lemo.Host); host != "" {
 		return host
 	}
 	return stream.Request.Host
@@ -266,11 +259,11 @@ func (stream *Stream) Host() string {
 
 func (stream *Stream) ClientIP() string {
 
-	if ip := strings.Split(stream.Request.Header.Get(XForwardedFor), ",")[0]; ip != "" {
+	if ip := strings.Split(stream.Request.Header.Get(lemo.XForwardedFor), ",")[0]; ip != "" {
 		return ip
 	}
 
-	if ip := stream.Request.Header.Get(XRealIP); ip != "" {
+	if ip := stream.Request.Header.Get(lemo.XRealIP); ip != "" {
 		return ip
 	}
 

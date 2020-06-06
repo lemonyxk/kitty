@@ -5,71 +5,77 @@
 *
 * @author: lemo
 *
-* @create: 2019-10-09 16:02
+* @create: 2020-06-06 10:54
 **/
 
-package protocol
+package websocket
 
-// 0 version
-// 1 message type
-// 2 proto type
-// 3 route len
-// 4 body len
-// 5 body len
-// 6 body len
-// 7 body len
-
-const (
-	// Version
-	Version byte = 'V'
-
-	// message type
-	Unknown  int = 0
-	TextData int = 1
-	BinData  int = 2
-	PingData int = 9
-	PongData int = 10
-
-	// proto type
-	Text     int = 1
-	Json     int = 2
-	ProtoBuf int = 3
+import (
+	"github.com/Lemo-yxk/lemo"
 )
 
-func Pack(route []byte, body []byte, messageType int, protoType int) []byte {
+type Protocol interface {
+	Decode(message []byte) (version byte, messageType int, protoType int, route []byte, body []byte)
+	Encode(route []byte, body []byte, messageType int, protoType int) []byte
+	Read()
+}
 
+type DefaultProtocol struct{}
+
+func (Protocol *DefaultProtocol) Decode(message []byte) (version byte, messageType int, protoType int, route []byte, body []byte) {
+	if !isHeaderInvalid(message) {
+		route, body := parseMessage(message)
+
+		if len(route) != 0 {
+			return lemo.Version, lemo.Text, lemo.Json, route, body
+		}
+		return 0, 0, 0, nil, nil
+	}
+
+	if getLen(message) != len(message) {
+		return 0, 0, 0, nil, nil
+	}
+
+	return message[0], int(message[1]), int(message[2]), message[8 : 8+message[3]], message[8+message[3]:]
+}
+
+func (Protocol *DefaultProtocol) Encode(route []byte, body []byte, messageType int, protoType int) []byte {
 	switch messageType {
-	case TextData:
+	case lemo.TextData:
 		return packText(route, body, protoType)
-	case BinData:
+	case lemo.BinData:
 		return packBin(route, body, protoType)
-	case PingData:
-		return []byte{Version, byte(PingData), byte(protoType), 0, 0, 0, 0, 0}
-	case PongData:
-		return []byte{Version, byte(PongData), byte(protoType), 0, 0, 0, 0, 0}
+	case lemo.PingData:
+		return []byte{lemo.Version, byte(lemo.PingData), byte(protoType), 0, 0, 0, 0, 0}
+	case lemo.PongData:
+		return []byte{lemo.Version, byte(lemo.PongData), byte(protoType), 0, 0, 0, 0, 0}
 	}
 
 	return nil
 }
 
-func IsHeaderInvalid(message []byte) bool {
+func (Protocol *DefaultProtocol) Read() {
+
+}
+
+func isHeaderInvalid(message []byte) bool {
 
 	if len(message) < 8 {
 		return false
 	}
 
 	// version
-	if message[0] != Version {
+	if message[0] != lemo.Version {
 		return false
 	}
 
 	// message type
-	if message[1] != byte(TextData) && message[1] != byte(BinData) && message[1] != byte(PingData) && message[1] != byte(PongData) {
+	if message[1] != byte(lemo.TextData) && message[1] != byte(lemo.BinData) && message[1] != byte(lemo.PingData) && message[1] != byte(lemo.PongData) {
 		return false
 	}
 
 	// proto type
-	if message[2] != byte(Json) && message[2] != byte(ProtoBuf) && message[2] != byte(Text) {
+	if message[2] != byte(lemo.Json) && message[2] != byte(lemo.ProtoBuf) && message[2] != byte(lemo.Text) {
 		return false
 	}
 
@@ -80,26 +86,13 @@ func convert(message []byte) (a, b, c, d, e int) {
 	return int(message[3]), int(message[7]), int(message[6]), int(message[5]), int(message[4])
 }
 
-func GetLen(message []byte) int {
+func getLen(message []byte) int {
 	var a, b, c, d, e = convert(message[:8])
-	if message[1] == byte(TextData) {
+	if message[1] == byte(lemo.TextData) {
 		return a + (b | c<<7 | d<<14 | e<<21) + 8
 	} else {
 		return a + (b | c<<8 | d<<16 | e<<24) + 8
 	}
-}
-
-func UnPack(message []byte) (version byte, messageType int, protoType int, route []byte, body []byte) {
-
-	if !IsHeaderInvalid(message) {
-		return
-	}
-
-	if GetLen(message) != len(message) {
-		return
-	}
-
-	return message[0], int(message[1]), int(message[2]), message[8 : 8+message[3]], message[8+message[3]:]
 }
 
 func packText(route []byte, body []byte, protoType int) []byte {
@@ -110,10 +103,10 @@ func packText(route []byte, body []byte, protoType int) []byte {
 	var data []byte
 
 	// 0 version
-	data = append(data, Version)
+	data = append(data, lemo.Version)
 
 	// 1 message type
-	data = append(data, byte(TextData))
+	data = append(data, byte(lemo.TextData))
 
 	// 2 proto type
 	data = append(data, byte(protoType))
@@ -148,10 +141,10 @@ func packBin(route []byte, body []byte, protoType int) []byte {
 	var data []byte
 
 	// 0 version
-	data = append(data, Version)
+	data = append(data, lemo.Version)
 
 	// 1 message type
-	data = append(data, byte(BinData))
+	data = append(data, byte(lemo.BinData))
 
 	// 2 proto type
 	data = append(data, byte(protoType))
@@ -178,7 +171,7 @@ func packBin(route []byte, body []byte, protoType int) []byte {
 	return data
 }
 
-func ParseMessage(bts []byte) ([]byte, []byte) {
+func parseMessage(bts []byte) ([]byte, []byte) {
 
 	var s, e int
 

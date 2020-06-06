@@ -8,7 +8,7 @@
 * @create: 2019-10-16 16:10
 **/
 
-package lemo
+package client
 
 import (
 	"errors"
@@ -19,13 +19,14 @@ import (
 
 	"github.com/json-iterator/go"
 
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/protocol"
-
 	"github.com/golang/protobuf/proto"
+
+	"github.com/Lemo-yxk/lemo"
+	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/tcp"
 )
 
-type SocketClient struct {
+type Client struct {
 	Host string
 	Port int
 
@@ -33,7 +34,7 @@ type SocketClient struct {
 	AutoHeartBeat     bool
 	HeartBeatTimeout  int
 	HeartBeatInterval int
-	HeartBeat         func(c *SocketClient) error
+	HeartBeat         func(c *Client) error
 	Reconnect         bool
 	ReconnectInterval int
 	ReadBufferSize    int
@@ -41,75 +42,56 @@ type SocketClient struct {
 	HandshakeTimeout  int
 
 	// 消息处理
-	OnOpen    func(c *SocketClient)
-	OnClose   func(c *SocketClient)
-	OnMessage func(c *SocketClient, messageType int, msg []byte)
+	OnOpen    func(c *Client)
+	OnClose   func(c *Client)
+	OnMessage func(c *Client, messageType int, msg []byte)
 	OnError   func(err exception.Error)
 	Status    bool
 
-	Context Context
+	Context lemo.Context
 
-	PingHandler func(c *SocketClient) func(appData string) error
+	PingHandler func(c *Client) func(appData string) error
 
-	PongHandler func(c *SocketClient) func(appData string) error
+	PongHandler func(c *Client) func(appData string) error
 
-	router *SocketClientRouter
+	Protocol tcp.Protocol
 
-	middle []func(SocketClientMiddle) SocketClientMiddle
+	router *Router
+
+	middle []func(Middle) Middle
 
 	mux sync.RWMutex
 }
 
-type SocketClientMiddle func(c *SocketClient, receive *ReceivePackage)
+type Middle func(c *Client, receive *lemo.ReceivePackage)
 
-func (client *SocketClient) Use(middle ...func(SocketClientMiddle) SocketClientMiddle) {
+func (client *Client) Use(middle ...func(Middle) Middle) {
 	client.middle = append(client.middle, middle...)
 }
 
 // Json 发送JSON字符
-func (client *SocketClient) Json(msg interface{}) error {
-
-	messageJson, err := jsoniter.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	return client.Push(messageJson)
+func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) error {
+	return client.Push(client.Protocol.Encode(event, body, dataType, protoType))
 }
 
-func (client *SocketClient) ProtoBuf(msg proto.Message) error {
-
-	messageProtoBuf, err := proto.Marshal(msg)
+func (client *Client) JsonEmit(msg lemo.JsonPackage) error {
+	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
 		return err
 	}
-
-	return client.Push(messageProtoBuf)
-
+	return client.Push(client.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
-func (client *SocketClient) JsonEmit(msg JsonPackage) error {
-	data, err := jsoniter.Marshal(msg.Message)
+func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
+	data, err := proto.Marshal(msg.Data)
 	if err != nil {
 		return err
 	}
-	return client.Push(protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
-
-}
-
-func (client *SocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
-
-	messageProtoBuf, err := proto.Marshal(msg.Message)
-	if err != nil {
-		return err
-	}
-
-	return client.Push(protocol.Pack([]byte(msg.Event), messageProtoBuf, protocol.BinData, protocol.ProtoBuf))
-
+	return client.Push(client.Protocol.Encode([]byte(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
 }
 
 // Push 发送消息
-func (client *SocketClient) Push(message []byte) error {
+func (client *Client) Push(message []byte) error {
 
 	if client.Status == false {
 		return errors.New("client is close")
@@ -122,12 +104,12 @@ func (client *SocketClient) Push(message []byte) error {
 	return err
 }
 
-func (client *SocketClient) Close() error {
+func (client *Client) Close() error {
 	client.Reconnect = false
 	return client.Conn.Close()
 }
 
-func (client *SocketClient) reconnecting() {
+func (client *Client) reconnecting() {
 	if client.Reconnect == true {
 		time.AfterFunc(time.Duration(client.ReconnectInterval)*time.Second, func() {
 			client.Connect()
@@ -135,7 +117,7 @@ func (client *SocketClient) reconnecting() {
 	}
 }
 
-func (client *SocketClient) Connect() {
+func (client *Client) Connect() {
 
 	// 设置LOG信息
 
@@ -190,15 +172,19 @@ func (client *SocketClient) Connect() {
 		client.ReconnectInterval = 1
 	}
 
+	if client.Protocol == nil {
+		client.Protocol = &tcp.DefaultProtocol{}
+	}
+
 	// heartbeat function
 	if client.HeartBeat == nil {
-		client.HeartBeat = func(client *SocketClient) error {
-			return client.Push(protocol.Pack(nil, nil, protocol.PingData, protocol.BinData))
+		client.HeartBeat = func(client *Client) error {
+			return client.Push(client.Protocol.Encode(nil, nil, lemo.PingData, lemo.BinData))
 		}
 	}
 
 	if client.PingHandler == nil {
-		client.PingHandler = func(connection *SocketClient) func(appData string) error {
+		client.PingHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
 				return nil
 			}
@@ -206,7 +192,7 @@ func (client *SocketClient) Connect() {
 	}
 
 	if client.PongHandler == nil {
-		client.PongHandler = func(connection *SocketClient) func(appData string) error {
+		client.PongHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
 				return nil
 			}
@@ -256,9 +242,7 @@ func (client *SocketClient) Connect() {
 
 	go func() {
 
-		var singleMessageLen = 0
-
-		var message []byte
+		var reader = client.Protocol.Reader()
 
 		var buffer = make([]byte, client.ReadBufferSize)
 
@@ -268,58 +252,29 @@ func (client *SocketClient) Connect() {
 
 			// close error
 			if err != nil {
-				goto OUT
+				break
 			}
 
-			message = append(message, buffer[0:n]...)
+			message, err := reader(n, buffer)
 
-			// read continue
-			if len(message) < 8 {
+			if err != nil {
+				go client.OnError(exception.New(err))
+				break
+			}
+
+			if message == nil {
 				continue
 			}
 
-			for {
+			err = client.decodeMessage(client, message)
 
-				// jump out and read continue
-				if len(message) < 8 {
-					break
-				}
-
-				// just begin
-				if singleMessageLen == 0 {
-
-					// proto error
-					if !protocol.IsHeaderInvalid(message) {
-						go client.OnError(exception.New("invalid header"))
-						goto OUT
-					}
-
-					singleMessageLen = protocol.GetLen(message)
-				}
-
-				// jump out and read continue
-				if len(message) < singleMessageLen {
-					break
-				}
-
-				// a complete message
-				err := client.decodeMessage(client, message[0:singleMessageLen])
-				if err != nil {
-					go client.OnError(exception.New(err))
-					goto OUT
-				}
-
-				// delete this message
-				message = message[singleMessageLen:]
-
-				// reset len
-				singleMessageLen = 0
-
+			if err != nil {
+				go client.OnError(exception.New(err))
+				break
 			}
 
 		}
 
-	OUT:
 		closeChan <- false
 	}()
 
@@ -337,65 +292,65 @@ func (client *SocketClient) Connect() {
 	client.reconnecting()
 }
 
-func (client *SocketClient) decodeMessage(connection *SocketClient, message []byte) error {
+func (client *Client) decodeMessage(connection *Client, message []byte) error {
 	// unpack
-	version, messageType, protoType, route, body := protocol.UnPack(message)
+	version, messageType, protoType, route, body := client.Protocol.Decode(message)
 
 	if client.OnMessage != nil {
 		go client.OnMessage(connection, messageType, message)
 	}
 
 	// check version
-	if version != protocol.Version {
+	if version != lemo.Version {
 		return nil
 	}
 
 	// Ping
-	if messageType == protocol.PingData {
+	if messageType == lemo.PingData {
 		return client.PingHandler(connection)("")
 	}
 
 	// Pong
-	if messageType == protocol.PongData {
+	if messageType == lemo.PongData {
 		return client.PongHandler(connection)("")
 	}
 
 	// on router
 	if client.router != nil {
-		go client.middleware(connection, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+		go client.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 
 	return nil
 }
 
-func (client *SocketClient) middleware(conn *SocketClient, msg *ReceivePackage) {
-	var next SocketClientMiddle = client.handler
+func (client *Client) middleware(conn *Client, msg *lemo.ReceivePackage) {
+	var next Middle = client.handler
 	for i := len(client.middle) - 1; i >= 0; i-- {
 		next = client.middle[i](next)
 	}
 	next(conn, msg)
 }
 
-func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
+func (client *Client) handler(conn *Client, msg *lemo.ReceivePackage) {
 
-	var node, formatPath = client.router.getRoute(msg.Event)
-	if node == nil {
+	var n, formatPath = client.router.getRoute(msg.Event)
+	if n == nil {
 		if client.OnError != nil {
 			client.OnError(exception.New(msg.Event + " " + "404 not found"))
 		}
 		return
 	}
 
-	var nodeData = node.Data.(*SocketClientNode)
+	var nodeData = n.Data.(*node)
 
-	var receive = &Receive{}
+	var receive = &lemo.Receive{}
 	receive.Body = msg
 	receive.Context = nil
-	receive.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
+	receive.Params = lemo.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
-	for i := 0; i < len(nodeData.Before); i++ {
-		ctx, err := nodeData.Before[i](conn, receive)
+	for i := 0; i < len(nodeData.before); i++ {
+		ctx, err := nodeData.before[i](conn, receive)
 		if err != nil {
 			if client.OnError != nil {
 				client.OnError(err)
@@ -405,7 +360,7 @@ func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
 		receive.Context = ctx
 	}
 
-	err := nodeData.SocketClientFunction(conn, receive)
+	err := nodeData.function(conn, receive)
 	if err != nil {
 		if client.OnError != nil {
 			client.OnError(err)
@@ -413,8 +368,8 @@ func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
 		return
 	}
 
-	for i := 0; i < len(nodeData.After); i++ {
-		err := nodeData.After[i](conn, receive)
+	for i := 0; i < len(nodeData.after); i++ {
+		err := nodeData.after[i](conn, receive)
 		if err != nil {
 			if client.OnError != nil {
 				client.OnError(err)
@@ -425,11 +380,11 @@ func (client *SocketClient) handler(conn *SocketClient, msg *ReceivePackage) {
 
 }
 
-func (client *SocketClient) SetRouter(router *SocketClientRouter) *SocketClient {
+func (client *Client) SetRouter(router *Router) *Client {
 	client.router = router
 	return client
 }
 
-func (client *SocketClient) GetRouter() *SocketClientRouter {
+func (client *Client) GetRouter() *Router {
 	return client.router
 }

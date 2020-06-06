@@ -14,24 +14,37 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-type JsonFormat struct {
-	Status string      `json:"status"`
-	Code   int         `json:"code"`
-	Msg    interface{} `json:"msg"`
-}
+// 0 version
+// 1 message type
+// 2 proto type
+// 3 route len
+// 4 body len
+// 5 body len
+// 6 body len
+// 7 body len
 
-func JM(status string, code int, msg interface{}) *JsonFormat {
-	return &JsonFormat{Status: status, Code: code, Msg: msg}
-}
+const (
+	// Version
+	Version byte = 'V'
 
-type JsonMessage struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
-}
+	// message type
+	Unknown  int = 0
+	TextData int = 1
+	BinData  int = 2
+	PingData int = 9
+	PongData int = 10
 
-func EM(event string, data interface{}) *JsonMessage {
-	return &JsonMessage{Event: event, Data: data}
-}
+	// proto type
+	Text     int = 1
+	Json     int = 2
+	ProtoBuf int = 3
+)
+
+const (
+	XForwardedFor = "X-Forwarded-For"
+	XRealIP       = "X-Real-IP"
+	Host          = "Host"
+)
 
 type Receive struct {
 	Context Context
@@ -48,19 +61,19 @@ type ReceivePackage struct {
 }
 
 type JsonPackage struct {
-	Event   string
-	Message interface{}
+	Event string      `json:"event"`
+	Data  interface{} `json:"data"`
 }
 
 type ProtoBufPackage struct {
-	Event   string
-	Message proto.Message
+	Event string
+	Data  proto.Message
 }
 
-type PushInfo struct {
-	MessageType int
-	FD          uint32
-	Message     []byte
+type PushPackage struct {
+	Type int
+	FD   uint32
+	Data []byte
 }
 
 type M map[string]interface{}
@@ -68,3 +81,17 @@ type M map[string]interface{}
 type A []interface{}
 
 type Context interface{}
+
+type Params struct {
+	Keys   []string
+	Values []string
+}
+
+func (ps Params) ByName(name string) string {
+	for i := 0; i < len(ps.Keys); i++ {
+		if ps.Keys[i] == name {
+			return ps.Values[i]
+		}
+	}
+	return ""
+}

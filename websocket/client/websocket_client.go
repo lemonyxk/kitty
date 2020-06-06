@@ -1,4 +1,4 @@
-package lemo
+package client
 
 import (
 	"errors"
@@ -7,22 +7,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/protocol"
-
 	"github.com/json-iterator/go"
+
+	"github.com/Lemo-yxk/lemo"
+	"github.com/Lemo-yxk/lemo/exception"
+	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
 
-// WebSocketClient 客户端
-type WebSocketClient struct {
+type Client struct {
 	// 服务器信息
-	Protocol string
-	Host     string
-	Port     int
-	Path     string
+	TSL  bool
+	Host string
+	Port int
+	Path string
 	// Origin   http.Header
 
 	// 客户端信息
@@ -31,7 +31,7 @@ type WebSocketClient struct {
 	AutoHeartBeat     bool
 	HeartBeatTimeout  int
 	HeartBeatInterval int
-	HeartBeat         func(c *WebSocketClient) error
+	HeartBeat         func(c *Client) error
 	Reconnect         bool
 	ReconnectInterval int
 	WriteBufferSize   int
@@ -39,81 +39,65 @@ type WebSocketClient struct {
 	HandshakeTimeout  int
 
 	// 消息处理
-	OnOpen    func(c *WebSocketClient)
-	OnClose   func(c *WebSocketClient)
-	OnMessage func(c *WebSocketClient, messageType int, msg []byte)
+	OnOpen    func(c *Client)
+	OnClose   func(c *Client)
+	OnMessage func(c *Client, messageType int, msg []byte)
 	OnError   func(err exception.Error)
 	Status    bool
 
 	Context interface{}
 
-	PingHandler func(c *WebSocketClient) func(appData string) error
+	PingHandler func(c *Client) func(appData string) error
 
-	PongHandler func(c *WebSocketClient) func(appData string) error
+	PongHandler func(c *Client) func(appData string) error
+
+	Protocol websocket2.Protocol
 
 	mux sync.RWMutex
 
-	router *WebSocketClientRouter
-	middle []func(WebSocketClientMiddle) WebSocketClientMiddle
+	router *Router
+	middle []func(Middle) Middle
 }
 
-type WebSocketClientMiddle func(c *WebSocketClient, receive *ReceivePackage)
+type Middle func(c *Client, receive *lemo.ReceivePackage)
 
-func (client *WebSocketClient) Use(middle ...func(WebSocketClientMiddle) WebSocketClientMiddle) {
+func (client *Client) Use(middle ...func(Middle) Middle) {
 	client.middle = append(client.middle, middle...)
 }
 
-// Json 发送JSON字符
-func (client *WebSocketClient) Json(msg interface{}) error {
-
-	messageJson, err := jsoniter.Marshal(msg)
-	if err != nil {
-		return err
-	}
-
-	return client.Push(protocol.TextData, messageJson)
+func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) error {
+	return client.Push(dataType, client.Protocol.Encode(event, body, dataType, protoType))
 }
 
-func (client *WebSocketClient) JsonFormat(msg JsonPackage) exception.Error {
-	messageJson, err := jsoniter.Marshal(JsonMessage{msg.Event, msg.Message})
+func (client *Client) Json(msg lemo.JsonPackage) exception.Error {
+	messageJson, err := jsoniter.Marshal(lemo.JsonPackage{Event: msg.Event, Data: msg.Data})
 	if err != nil {
 		return exception.New(err)
 	}
-	return exception.New(client.Push(protocol.TextData, messageJson))
+	return exception.New(client.Push(lemo.TextData, messageJson))
 }
 
-func (client *WebSocketClient) ProtoBuf(msg proto.Message) error {
+func (client *Client) JsonEmit(msg lemo.JsonPackage) error {
+	data, err := jsoniter.Marshal(msg.Data)
+	if err != nil {
+		return err
+	}
+	return client.Push(lemo.TextData, client.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
+}
 
-	messageProtoBuf, err := proto.Marshal(msg)
+func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
+
+	messageProtoBuf, err := proto.Marshal(msg.Data)
 	if err != nil {
 		return err
 	}
 
-	return client.Push(protocol.BinData, messageProtoBuf)
-
-}
-
-func (client *WebSocketClient) JsonEmit(msg JsonPackage) error {
-	data, err := jsoniter.Marshal(msg.Message)
-	if err != nil {
-		return err
-	}
-	return client.Push(protocol.TextData, protocol.Pack([]byte(msg.Event), data, protocol.TextData, protocol.Json))
-}
-
-func (client *WebSocketClient) ProtoBufEmit(msg ProtoBufPackage) error {
-
-	messageProtoBuf, err := proto.Marshal(msg.Message)
-	if err != nil {
-		return err
-	}
-
-	return client.Push(protocol.BinData, protocol.Pack([]byte(msg.Event), messageProtoBuf, protocol.BinData, protocol.ProtoBuf))
+	return client.Push(lemo.BinData, client.Protocol.Encode([]byte(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
 
 }
 
 // Push 发送消息
-func (client *WebSocketClient) Push(messageType int, message []byte) error {
+func (client *Client) Push(messageType int, message []byte) error {
 
 	if client.Status == false {
 		return errors.New("client is close")
@@ -125,12 +109,12 @@ func (client *WebSocketClient) Push(messageType int, message []byte) error {
 	return err
 }
 
-func (client *WebSocketClient) Close() error {
+func (client *Client) Close() error {
 	client.Reconnect = false
 	return client.Conn.Close()
 }
 
-func (client *WebSocketClient) reconnecting() {
+func (client *Client) reconnecting() {
 	if client.Reconnect == true {
 		time.AfterFunc(time.Duration(client.ReconnectInterval)*time.Second, func() {
 			client.Connect()
@@ -139,10 +123,12 @@ func (client *WebSocketClient) reconnecting() {
 }
 
 // Connect 连接服务器
-func (client *WebSocketClient) Connect() {
+func (client *Client) Connect() {
 	// 设置LOG信息
 
 	var closeChan = make(chan bool)
+
+	var protocol = "ws"
 
 	if client.Host == "" {
 		client.Host = "127.0.0.1"
@@ -152,8 +138,8 @@ func (client *WebSocketClient) Connect() {
 		client.Port = 1207
 	}
 
-	if client.Protocol == "" {
-		client.Protocol = "ws"
+	if client.TSL {
+		protocol = "wss"
 	}
 
 	if client.Path == "" {
@@ -201,15 +187,19 @@ func (client *WebSocketClient) Connect() {
 		client.ReconnectInterval = 1
 	}
 
+	if client.Protocol == nil {
+		client.Protocol = &websocket2.DefaultProtocol{}
+	}
+
 	// heartbeat function
 	if client.HeartBeat == nil {
-		client.HeartBeat = func(client *WebSocketClient) error {
-			return client.Push(protocol.BinData, protocol.Pack(nil, nil, protocol.PingData, protocol.BinData))
+		client.HeartBeat = func(client *Client) error {
+			return client.Push(lemo.BinData, client.Protocol.Encode(nil, nil, lemo.PingData, lemo.BinData))
 		}
 	}
 
 	if client.PingHandler == nil {
-		client.PingHandler = func(connection *WebSocketClient) func(appData string) error {
+		client.PingHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
 				return nil
 			}
@@ -217,7 +207,7 @@ func (client *WebSocketClient) Connect() {
 	}
 
 	if client.PongHandler == nil {
-		client.PongHandler = func(connection *WebSocketClient) func(appData string) error {
+		client.PongHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
 				return nil
 			}
@@ -231,7 +221,7 @@ func (client *WebSocketClient) Connect() {
 	}
 
 	// 连接服务器
-	handler, response, err := dialer.Dial(client.Protocol+"://"+client.Host+":"+strconv.Itoa(client.Port)+client.Path, nil)
+	handler, response, err := dialer.Dial(protocol+"://"+client.Host+":"+strconv.Itoa(client.Port)+client.Path, nil)
 	if err != nil {
 		go client.OnError(exception.New(err))
 		return
@@ -280,23 +270,19 @@ func (client *WebSocketClient) Connect() {
 			}
 
 			// unpack
-			version, messageType, protoType, route, body := protocol.UnPack(message)
+			version, messageType, protoType, route, body := client.Protocol.Decode(message)
 
 			if client.OnMessage != nil {
 				go client.OnMessage(client, messageFrame, message)
 			}
 
 			// check version
-			if version != protocol.Version {
-				route, body := protocol.ParseMessage(message)
-				if route != nil {
-					go client.middleware(client, &ReceivePackage{MessageType: messageFrame, Event: string(route), Message: body, ProtoType: protocol.Json, Raw: message})
-				}
+			if version != lemo.Version {
 				continue
 			}
 
 			// Ping
-			if messageType == protocol.PingData {
+			if messageType == lemo.PingData {
 				err := client.PingHandler(client)("")
 				if err != nil {
 					closeChan <- false
@@ -306,7 +292,7 @@ func (client *WebSocketClient) Connect() {
 			}
 
 			// Pong
-			if messageType == protocol.PongData {
+			if messageType == lemo.PongData {
 				err := client.PongHandler(client)("")
 				if err != nil {
 					closeChan <- false
@@ -317,7 +303,7 @@ func (client *WebSocketClient) Connect() {
 
 			// on router
 			if client.router != nil {
-				go client.middleware(client, &ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+				go client.middleware(client, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 				continue
 			}
 
@@ -338,33 +324,33 @@ func (client *WebSocketClient) Connect() {
 	client.reconnecting()
 }
 
-func (client *WebSocketClient) middleware(conn *WebSocketClient, msg *ReceivePackage) {
-	var next WebSocketClientMiddle = client.handler
+func (client *Client) middleware(conn *Client, msg *lemo.ReceivePackage) {
+	var next Middle = client.handler
 	for i := len(client.middle) - 1; i >= 0; i-- {
 		next = client.middle[i](next)
 	}
 	next(conn, msg)
 }
 
-func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackage) {
+func (client *Client) handler(conn *Client, msg *lemo.ReceivePackage) {
 
-	var node, formatPath = client.router.getRoute(msg.Event)
-	if node == nil {
+	var n, formatPath = client.router.getRoute(msg.Event)
+	if n == nil {
 		if client.OnError != nil {
 			client.OnError(exception.New(msg.Event + " " + "404 not found"))
 		}
 		return
 	}
 
-	var nodeData = node.Data.(*WebSocketClientNode)
+	var nodeData = n.Data.(*node)
 
-	var receive = &Receive{}
+	var receive = &lemo.Receive{}
 	receive.Body = msg
 	receive.Context = nil
-	receive.Params = Params{Keys: node.Keys, Values: node.ParseParams(formatPath)}
+	receive.Params = lemo.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
-	for i := 0; i < len(nodeData.Before); i++ {
-		ctx, err := nodeData.Before[i](conn, receive)
+	for i := 0; i < len(nodeData.before); i++ {
+		ctx, err := nodeData.before[i](conn, receive)
 		if err != nil {
 			if client.OnError != nil {
 				client.OnError(err)
@@ -374,7 +360,7 @@ func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackag
 		receive.Context = ctx
 	}
 
-	err := nodeData.WebSocketClientFunction(conn, receive)
+	err := nodeData.function(conn, receive)
 	if err != nil {
 		if client.OnError != nil {
 			client.OnError(err)
@@ -382,8 +368,8 @@ func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackag
 		return
 	}
 
-	for i := 0; i < len(nodeData.After); i++ {
-		err := nodeData.After[i](conn, receive)
+	for i := 0; i < len(nodeData.after); i++ {
+		err := nodeData.after[i](conn, receive)
 		if err != nil {
 			if client.OnError != nil {
 				client.OnError(err)
@@ -394,11 +380,11 @@ func (client *WebSocketClient) handler(conn *WebSocketClient, msg *ReceivePackag
 
 }
 
-func (client *WebSocketClient) SetRouter(router *WebSocketClientRouter) *WebSocketClient {
+func (client *Client) SetRouter(router *Router) *Client {
 	client.router = router
 	return client
 }
 
-func (client *WebSocketClient) GetRouter() *WebSocketClientRouter {
+func (client *Client) GetRouter() *Router {
 	return client.router
 }

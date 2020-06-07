@@ -17,8 +17,6 @@ import (
 	ra "math/rand"
 	"strconv"
 	"time"
-
-	"github.com/Lemo-yxk/lemo/exception"
 )
 
 type rd int
@@ -51,7 +49,10 @@ func (r rd) RandomFloat64n(start float64, end float64) float64 {
 
 func (r rd) UUID() string {
 	var bytes = make([]byte, 16)
-	exception.Assert(io.ReadFull(rand.Reader, bytes))
+	var _, err = io.ReadFull(rand.Reader, bytes)
+	if err != nil {
+		panic(err)
+	}
 	return hex.EncodeToString(bytes)
 }
 

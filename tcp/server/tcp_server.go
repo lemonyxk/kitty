@@ -24,6 +24,7 @@ import (
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/tcp"
+	"github.com/Lemo-yxk/lemo/utils"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -33,6 +34,10 @@ type Socket struct {
 	Conn    net.Conn
 	Server  *Server
 	Context lemo.Context
+}
+
+func (conn *Socket) Host() string {
+	return conn.Conn.RemoteAddr().String()
 }
 
 func (conn *Socket) ClientIP() string {
@@ -63,8 +68,10 @@ func (conn *Socket) Close() error {
 }
 
 type Server struct {
+	Name      string
 	Host      string
 	Port      int
+	IP        string
 	AutoBind  bool
 	OnClose   func(conn *Socket)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
@@ -110,6 +117,10 @@ type Server struct {
 }
 
 type Middle func(conn *Socket, receive *lemo.ReceivePackage)
+
+func (socket *Server) LocalAddr() net.Addr {
+	return socket.netListen.Addr()
+}
 
 func (socket *Server) Use(middle ...func(Middle) Middle) {
 	socket.middle = append(socket.middle, middle...)
@@ -385,10 +396,19 @@ func (socket *Server) Start() {
 
 	socket.Ready()
 
+	if socket.Host != "" {
+		var ip, port, err = utils.Addr.Parse(socket.Host)
+		if err != nil {
+			panic(err)
+		}
+		socket.IP = ip
+		socket.Port = port
+	}
+
 	var err error
 	var netListen net.Listener
 
-	netListen, err = net.Listen("tcp", socket.Host+":"+strconv.Itoa(socket.Port))
+	netListen, err = net.Listen("tcp", socket.IP+":"+strconv.Itoa(socket.Port))
 
 	if err != nil {
 		if strings.HasSuffix(err.Error(), "address already in use") {

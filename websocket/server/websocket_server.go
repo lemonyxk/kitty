@@ -15,6 +15,7 @@ import (
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/utils"
 	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
@@ -82,9 +83,12 @@ func (conn *WebSocket) Close() error {
 type Server struct {
 
 	// Host 服务Host
+	Name string
 	Host string
 	// Port 服务端口
 	Port int
+	// IP
+	IP string
 	// Protocol 协议
 	TLS bool
 	// TLS FILE
@@ -141,6 +145,10 @@ type Server struct {
 }
 
 type Middle func(conn *WebSocket, receive *lemo.ReceivePackage)
+
+func (socket *Server) LocalAddr() net.Addr {
+	return socket.netListen.Addr()
+}
 
 func (socket *Server) Use(middle ...func(next Middle) Middle) {
 	socket.middle = append(socket.middle, middle...)
@@ -619,7 +627,16 @@ func (socket *Server) Start() {
 
 	socket.Ready()
 
-	var server = http.Server{Addr: socket.Host + ":" + strconv.Itoa(socket.Port), Handler: socket}
+	if socket.Host != "" {
+		var ip, port, err = utils.Addr.Parse(socket.Host)
+		if err != nil {
+			panic(err)
+		}
+		socket.IP = ip
+		socket.Port = port
+	}
+
+	var server = http.Server{Addr: socket.IP + ":" + strconv.Itoa(socket.Port), Handler: socket}
 
 	var err error
 	var netListen net.Listener

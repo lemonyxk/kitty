@@ -41,7 +41,7 @@ func main() {
 
 func run() {
 
-	var webSocketServer = &server2.Server{Host: "0.0.0.0", Port: 8667, Path: "/", AutoBind: true}
+	var webSocketServer = &server2.Server{IP: "0.0.0.0", Port: 8667, Path: "/", AutoBind: true}
 
 	var webSocketServerRouter = &server2.Router{IgnoreCase: true}
 
@@ -67,7 +67,7 @@ func run() {
 
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
 
-	var httpServer = server3.Server{Host: "0.0.0.0", Port: 8666, AutoBind: true}
+	var httpServer = server3.Server{IP: "0.0.0.0", Port: 8666, AutoBind: true}
 
 	var httpServerRouter = &server3.Router{}
 
@@ -107,7 +107,7 @@ func run() {
 	console.Log("start success")
 
 	var tcpServer = &server.Server{
-		Host:     "127.0.0.1",
+		IP:       "127.0.0.1",
 		Port:     8888,
 		AutoBind: true,
 	}

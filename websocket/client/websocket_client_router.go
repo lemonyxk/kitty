@@ -14,25 +14,14 @@ type groupFunction func(handler *RouteHandler)
 
 type function func(c *Client, receive *lemo.Receive) exception.Error
 
-type before func(c *Client, receive *lemo.Receive) (lemo.Context, exception.Error)
+type Before func(c *Client, receive *lemo.Receive) (lemo.Context, exception.Error)
 
-type after func(c *Client, receive *lemo.Receive) exception.Error
-
-var globalBefore []before
-var globalAfter []after
-
-func SetBefore(before ...before) {
-	globalBefore = append(globalBefore, before...)
-}
-
-func SetAfter(after ...after) {
-	globalAfter = append(globalAfter, after...)
-}
+type After func(c *Client, receive *lemo.Receive) exception.Error
 
 type group struct {
 	path   string
-	before []before
-	after  []after
+	before []Before
+	after  []After
 	router *Router
 }
 
@@ -41,12 +30,12 @@ func (group *group) Route(path string) *group {
 	return group
 }
 
-func (group *group) Before(before ...before) *group {
+func (group *group) Before(before ...Before) *group {
 	group.before = append(group.before, before...)
 	return group
 }
 
-func (group *group) After(after ...after) *group {
+func (group *group) After(after ...After) *group {
 	group.after = append(group.after, after...)
 	return group
 }
@@ -69,8 +58,8 @@ func (handler *RouteHandler) Route(path string) *route {
 
 type route struct {
 	path        string
-	before      []before
-	after       []after
+	before      []Before
+	after       []After
 	socket      *Client
 	passBefore  bool
 	forceBefore bool
@@ -79,7 +68,7 @@ type route struct {
 	group       *group
 }
 
-func (route *route) Before(before ...before) *route {
+func (route *route) Before(before ...Before) *route {
 	route.before = append(route.before, before...)
 	return route
 }
@@ -94,7 +83,7 @@ func (route *route) ForceBefore() *route {
 	return route
 }
 
-func (route *route) After(after ...after) *route {
+func (route *route) After(after ...After) *route {
 	route.after = append(route.after, after...)
 	return route
 }
@@ -152,8 +141,8 @@ func (route *route) Handler(fn function) {
 		wba.After = route.after
 	}
 
-	wba.Before = append(wba.Before, globalBefore...)
-	wba.After = append(wba.After, globalAfter...)
+	wba.Before = append(wba.Before, router.globalBefore...)
+	wba.After = append(wba.After, router.globalAfter...)
 
 	wba.Route = []byte(path)
 
@@ -162,8 +151,18 @@ func (route *route) Handler(fn function) {
 }
 
 type Router struct {
-	tire       *tire.Tire
-	IgnoreCase bool
+	tire         *tire.Tire
+	IgnoreCase   bool
+	globalAfter  []After
+	globalBefore []Before
+}
+
+func (router *Router) SetGlobalBefore(before ...Before) {
+	router.globalBefore = append(router.globalBefore, before...)
+}
+
+func (router *Router) SetGlobalAfter(after ...After) {
+	router.globalAfter = append(router.globalAfter, after...)
 }
 
 func (router *Router) GetAllRouters() []*node {
@@ -220,6 +219,6 @@ type node struct {
 	Info     string
 	Route    []byte
 	Function function
-	Before   []before
-	After    []after
+	Before   []Before
+	After    []After
 }

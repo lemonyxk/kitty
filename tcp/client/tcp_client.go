@@ -24,10 +24,13 @@ import (
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/tcp"
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type Client struct {
+	Name string
 	Host string
+	IP   string
 	Port int
 
 	Conn              net.Conn
@@ -64,6 +67,14 @@ type Client struct {
 }
 
 type Middle func(c *Client, receive *lemo.ReceivePackage)
+
+func (client *Client) LocalAddr() net.Addr {
+	return client.Conn.LocalAddr()
+}
+
+func (client *Client) RemoteAddr() net.Addr {
+	return client.Conn.RemoteAddr()
+}
 
 func (client *Client) Use(middle ...func(Middle) Middle) {
 	client.middle = append(client.middle, middle...)
@@ -199,8 +210,17 @@ func (client *Client) Connect() {
 		}
 	}
 
+	if client.Host != "" {
+		var ip, port, err = utils.Addr.Parse(client.Host)
+		if err != nil {
+			panic(err)
+		}
+		client.IP = ip
+		client.Port = port
+	}
+
 	// 连接服务器
-	handler, err := net.DialTimeout("tcp", client.Host+":"+strconv.Itoa(client.Port), time.Duration(client.HandshakeTimeout)*time.Second)
+	handler, err := net.DialTimeout("tcp", client.IP+":"+strconv.Itoa(client.Port), time.Duration(client.HandshakeTimeout)*time.Second)
 	if err != nil {
 		go client.OnError(exception.New(err))
 		client.reconnecting()

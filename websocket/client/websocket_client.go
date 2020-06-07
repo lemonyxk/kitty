@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/utils"
 	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
@@ -19,10 +21,12 @@ import (
 
 type Client struct {
 	// 服务器信息
-	TSL  bool
-	Host string
-	Port int
-	Path string
+	Name   string
+	Scheme string
+	Host   string
+	IP     string
+	Port   int
+	Path   string
 	// Origin   http.Header
 
 	// 客户端信息
@@ -45,7 +49,7 @@ type Client struct {
 	OnError   func(err exception.Error)
 	Status    bool
 
-	Context interface{}
+	Context lemo.Context
 
 	PingHandler func(c *Client) func(appData string) error
 
@@ -60,6 +64,14 @@ type Client struct {
 }
 
 type Middle func(c *Client, receive *lemo.ReceivePackage)
+
+func (client *Client) LocalAddr() net.Addr {
+	return client.Conn.LocalAddr()
+}
+
+func (client *Client) RemoteAddr() net.Addr {
+	return client.Conn.RemoteAddr()
+}
 
 func (client *Client) Use(middle ...func(Middle) Middle) {
 	client.middle = append(client.middle, middle...)
@@ -128,18 +140,12 @@ func (client *Client) Connect() {
 
 	var closeChan = make(chan bool)
 
-	var protocol = "ws"
-
 	if client.Host == "" {
 		client.Host = "127.0.0.1"
 	}
 
 	if client.Port == 0 {
 		client.Port = 1207
-	}
-
-	if client.TSL {
-		protocol = "wss"
 	}
 
 	if client.Path == "" {
@@ -220,8 +226,17 @@ func (client *Client) Connect() {
 		ReadBufferSize:   client.ReadBufferSize,
 	}
 
+	if client.Host != "" {
+		var ip, port, err = utils.Addr.Parse(client.Host)
+		if err != nil {
+			panic(err)
+		}
+		client.IP = ip
+		client.Port = port
+	}
+
 	// 连接服务器
-	handler, response, err := dialer.Dial(protocol+"://"+client.Host+":"+strconv.Itoa(client.Port)+client.Path, nil)
+	handler, response, err := dialer.Dial(client.Scheme+"://"+client.IP+":"+strconv.Itoa(client.Port)+client.Path, nil)
 	if err != nil {
 		go client.OnError(exception.New(err))
 		client.reconnecting()

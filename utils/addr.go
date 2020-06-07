@@ -2,7 +2,9 @@ package utils
 
 import (
 	"encoding/binary"
+	"errors"
 	"net"
+	"strconv"
 	"strings"
 )
 
@@ -83,4 +85,22 @@ func (a addr) IsLocalNet(ip net.IP) bool {
 	}
 
 	return ip.IsLoopback()
+}
+
+func (a addr) Parse(host string) (string, int, error) {
+
+	var u = strings.Split(host, ":")
+
+	if len(u) == 0 || len(u) > 2 {
+		return "", 0, errors.New("invalid host")
+	}
+
+	if len(u) == 1 {
+		return u[0], 80, nil
+	}
+
+	var ip = u[0]
+	var port, _ = strconv.Atoi(u[1])
+
+	return ip, port, nil
 }

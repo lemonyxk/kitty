@@ -77,6 +77,7 @@ type Server struct {
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
 	OnError   func(err exception.Error)
+	OnSuccess func()
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -422,6 +423,11 @@ func (socket *Server) Start() {
 	}
 
 	socket.netListen = netListen
+
+	// start success
+	if socket.OnSuccess != nil {
+		socket.OnSuccess()
+	}
 
 	go func() {
 		for {

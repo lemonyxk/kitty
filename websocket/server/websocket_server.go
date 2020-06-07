@@ -102,6 +102,7 @@ type Server struct {
 	OnMessage func(conn *WebSocket, messageType int, msg []byte)
 	OnOpen    func(conn *WebSocket)
 	OnError   func(err exception.Error)
+	OnSuccess func()
 
 	HeartBeatTimeout  int
 	HeartBeatInterval int
@@ -656,6 +657,11 @@ func (socket *Server) Start() {
 
 	socket.netListen = netListen
 	socket.server = &server
+
+	// start success
+	if socket.OnSuccess != nil {
+		socket.OnSuccess()
+	}
 
 	if socket.TLS {
 		err = server.ServeTLS(netListen, socket.CertFile, socket.KeyFile)

@@ -41,6 +41,7 @@ type Server struct {
 	OnMessage func(stream *http2.Stream)
 	OnClose   func(stream *http2.Stream)
 	OnError   func(stream *http2.Stream, err exception.Error)
+	OnSuccess func()
 
 	middle []func(next Middle) Middle
 	router *Router
@@ -235,6 +236,11 @@ func (h *Server) Start() {
 
 	h.netListen = netListen
 	h.server = &server
+
+	// start success
+	if h.OnSuccess != nil {
+		h.OnSuccess()
+	}
 
 	if h.TSL {
 		err = server.ServeTLS(netListen, h.CertFile, h.KeyFile)

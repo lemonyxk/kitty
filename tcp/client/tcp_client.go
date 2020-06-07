@@ -49,6 +49,7 @@ type Client struct {
 	OnClose   func(c *Client)
 	OnMessage func(c *Client, messageType int, msg []byte)
 	OnError   func(err exception.Error)
+	OnSuccess func()
 	Status    bool
 
 	Context lemo.Context
@@ -240,6 +241,11 @@ func (client *Client) Connect() {
 	client.Conn = handler
 
 	client.Status = true
+
+	// start success
+	if client.OnSuccess != nil {
+		client.OnSuccess()
+	}
 
 	// 连接成功
 	go client.OnOpen(client)

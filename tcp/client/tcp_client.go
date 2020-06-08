@@ -117,7 +117,6 @@ func (client *Client) Push(message []byte) error {
 }
 
 func (client *Client) Close() error {
-	client.Reconnect = false
 	return client.Conn.Close()
 }
 

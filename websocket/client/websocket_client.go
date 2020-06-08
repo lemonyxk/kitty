@@ -123,7 +123,6 @@ func (client *Client) Push(messageType int, message []byte) error {
 }
 
 func (client *Client) Close() error {
-	client.Reconnect = false
 	return client.Conn.Close()
 }
 

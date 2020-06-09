@@ -130,7 +130,7 @@ func New(v ...interface{}) Error {
 	if IsNil(v[len(v)-1]) {
 		return nil
 	}
-	return NewErrorFromDeep(v[len(v)-1], 2)
+	return newErrorFromDeep(v[len(v)-1], 2)
 }
 
 func NewMany(v ...interface{}) Error {
@@ -151,11 +151,11 @@ func NewMany(v ...interface{}) Error {
 	}
 
 	if len(v) == 1 {
-		return NewErrorFromDeep(v[0], 2)
+		return newErrorFromDeep(v[0], 2)
 	}
 
 	var str = fmt.Sprintln(v...)
-	return NewErrorFromDeep(str[:len(str)-1], 2)
+	return newErrorFromDeep(str[:len(str)-1], 2)
 }
 
 func NewFormat(format string, v ...interface{}) Error {
@@ -176,10 +176,10 @@ func NewFormat(format string, v ...interface{}) Error {
 	}
 
 	var str = fmt.Sprintf(format, v...)
-	return NewErrorFromDeep(str, 2)
+	return newErrorFromDeep(str, 2)
 }
 
-func NewErrorFromDeep(v interface{}, deep int) Error {
+func newErrorFromDeep(v interface{}, deep int) Error {
 	file, line := caller.Caller(deep)
 	return newErrorWithFileAndLine(v, file, line)
 }

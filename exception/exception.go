@@ -123,7 +123,7 @@ func Assert(v ...interface{}) {
 	panic(fmt.Errorf("#exception#%v", v[len(v)-1]))
 }
 
-func Inspect(v ...interface{}) Error {
+func New(v ...interface{}) Error {
 	if len(v) == 0 {
 		return nil
 	}
@@ -133,7 +133,7 @@ func Inspect(v ...interface{}) Error {
 	return NewErrorFromDeep(v[len(v)-1], 2)
 }
 
-func New(v ...interface{}) Error {
+func NewMany(v ...interface{}) Error {
 	if len(v) == 0 {
 		return nil
 	}

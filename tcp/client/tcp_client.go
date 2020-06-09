@@ -11,7 +11,6 @@
 package client
 
 import (
-	"errors"
 	"net"
 	"strconv"
 	"sync"
@@ -82,38 +81,37 @@ func (client *Client) Use(middle ...func(Middle) Middle) {
 }
 
 // Json 发送JSON字符
-func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) error {
+func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) exception.Error {
 	return client.Push(client.Protocol.Encode(event, body, dataType, protoType))
 }
 
-func (client *Client) JsonEmit(msg lemo.JsonPackage) error {
+func (client *Client) JsonEmit(msg lemo.JsonPackage) exception.Error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
-		return err
+		return exception.New(err)
 	}
 	return client.Push(client.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
-func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
+func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
 	data, err := proto.Marshal(msg.Data)
 	if err != nil {
-		return err
+		return exception.New(err)
 	}
 	return client.Push(client.Protocol.Encode([]byte(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
 }
 
 // Push 发送消息
-func (client *Client) Push(message []byte) error {
-
-	if client.Status == false {
-		return errors.New("client is close")
-	}
+func (client *Client) Push(message []byte) exception.Error {
 
 	client.mux.Lock()
-	_, err := client.Conn.Write(message)
-	client.mux.Unlock()
+	defer client.mux.Unlock()
 
-	return err
+	if client.Status == false {
+		return exception.New("client is close")
+	}
+
+	return exception.New(client.Conn.Write(message))
 }
 
 func (client *Client) Close() error {

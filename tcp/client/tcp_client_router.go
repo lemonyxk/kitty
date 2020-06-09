@@ -179,11 +179,11 @@ func (router *Router) GetAllRouters() []*node {
 	return res
 }
 
-func (router *Router) Group(path string) *group {
+func (router *Router) Group(path ...string) *group {
 
 	var group = new(group)
 
-	group.Route(path)
+	group.Route(strings.Join(path, ""))
 
 	group.router = router
 

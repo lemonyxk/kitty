@@ -15,6 +15,7 @@ import (
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type Files struct {
@@ -205,37 +206,31 @@ func (stream *Stream) JsonFormat(status string, code int, msg interface{}) excep
 	return exception.New(stream.EndJson(JsonFormat{Status: status, Code: code, Msg: msg}))
 }
 
-func (stream *Stream) End(data interface{}) error {
-	var err error
+func (stream *Stream) End(data interface{}) exception.Error {
 	switch data.(type) {
 	case []byte:
-		err = stream.EndBytes(data.([]byte))
+		return stream.EndBytes(data.([]byte))
 	case string:
-		err = stream.EndString(data.(string))
+		return stream.EndString(data.(string))
 	default:
-		err = stream.EndString(fmt.Sprintf("%v", data))
+		return stream.EndString(fmt.Sprintf("%v", data))
 	}
-	return err
 }
 
-func (stream *Stream) EndJson(data interface{}) error {
+func (stream *Stream) EndJson(data interface{}) exception.Error {
 	stream.SetHeader("Content-Type", "application/json")
-	var bts, err = jsoniter.Marshal(data)
-	_, err = stream.Response.Write(bts)
-	return err
+	return exception.New(stream.Response.Write(utils.Json.Encode(data)))
 }
 
-func (stream *Stream) EndString(data string) error {
-	_, err := stream.Response.Write([]byte(data))
-	return err
+func (stream *Stream) EndString(data string) exception.Error {
+	return exception.New(stream.Response.Write([]byte(data)))
 }
 
-func (stream *Stream) EndBytes(data []byte) error {
-	_, err := stream.Response.Write(data)
-	return err
+func (stream *Stream) EndBytes(data []byte) exception.Error {
+	return exception.New(stream.Response.Write(data))
 }
 
-func (stream *Stream) EndFile(fileName string, content interface{}) error {
+func (stream *Stream) EndFile(fileName string, content interface{}) exception.Error {
 	stream.SetHeader("Content-Type", "application/octet-stream")
 	stream.SetHeader("content-Disposition", "attachment;filename="+fileName)
 	return stream.End(content)

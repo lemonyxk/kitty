@@ -1,7 +1,6 @@
 package client
 
 import (
-	"errors"
 	"net"
 	"net/http"
 	"strconv"
@@ -78,7 +77,7 @@ func (client *Client) Use(middle ...func(Middle) Middle) {
 	client.middle = append(client.middle, middle...)
 }
 
-func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) error {
+func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) exception.Error {
 	return client.Push(dataType, client.Protocol.Encode(event, body, dataType, protoType))
 }
 
@@ -90,36 +89,33 @@ func (client *Client) Json(msg lemo.JsonPackage) exception.Error {
 	return exception.New(client.Push(lemo.TextData, messageJson))
 }
 
-func (client *Client) JsonEmit(msg lemo.JsonPackage) error {
+func (client *Client) JsonEmit(msg lemo.JsonPackage) exception.Error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
-		return err
+		return exception.New(err)
 	}
 	return client.Push(lemo.TextData, client.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
-func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
-
+func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
 	messageProtoBuf, err := proto.Marshal(msg.Data)
 	if err != nil {
-		return err
+		return exception.New(err)
 	}
-
 	return client.Push(lemo.BinData, client.Protocol.Encode([]byte(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
-
 }
 
 // Push 发送消息
-func (client *Client) Push(messageType int, message []byte) error {
-
-	if client.Status == false {
-		return errors.New("client is close")
-	}
+func (client *Client) Push(messageType int, message []byte) exception.Error {
 
 	client.mux.Lock()
-	err := client.Conn.WriteMessage(messageType, message)
-	client.mux.Unlock()
-	return err
+	defer client.mux.Unlock()
+
+	if client.Status == false {
+		return exception.New("client is close")
+	}
+
+	return exception.New(client.Conn.WriteMessage(messageType, message))
 }
 
 func (client *Client) Close() error {

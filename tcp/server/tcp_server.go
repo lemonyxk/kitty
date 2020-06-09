@@ -47,19 +47,19 @@ func (conn *Socket) ClientIP() string {
 	return ""
 }
 
-func (conn *Socket) Push(msg []byte) error {
+func (conn *Socket) Push(msg []byte) exception.Error {
 	return conn.Server.Push(conn.FD, msg)
 }
 
-func (conn *Socket) Emit(event []byte, body []byte, dataType int, protoType int) error {
+func (conn *Socket) Emit(event []byte, body []byte, dataType int, protoType int) exception.Error {
 	return conn.Server.Emit(conn.FD, event, body, dataType, protoType)
 }
 
-func (conn *Socket) JsonEmit(msg lemo.JsonPackage) error {
+func (conn *Socket) JsonEmit(msg lemo.JsonPackage) exception.Error {
 	return conn.Server.JsonEmit(conn.FD, msg)
 }
 
-func (conn *Socket) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
+func (conn *Socket) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
 	return conn.Server.ProtoBufEmit(conn.FD, msg)
 }
 
@@ -102,7 +102,7 @@ type Server struct {
 	connPush chan *lemo.PushPackage
 
 	// 返回
-	connBack chan error
+	connBack chan exception.Error
 
 	// 错误
 	connError chan exception.Error
@@ -128,7 +128,7 @@ func (socket *Server) Use(middle ...func(Middle) Middle) {
 }
 
 // Push 发送消息
-func (socket *Server) Push(fd uint32, msg []byte) error {
+func (socket *Server) Push(fd uint32, msg []byte) exception.Error {
 
 	socket.connPush <- &lemo.PushPackage{
 		FD:   fd,
@@ -138,7 +138,7 @@ func (socket *Server) Push(fd uint32, msg []byte) error {
 	return <-socket.connBack
 }
 
-func (socket *Server) Emit(fd uint32, event []byte, body []byte, dataType int, protoType int) error {
+func (socket *Server) Emit(fd uint32, event []byte, body []byte, dataType int, protoType int) exception.Error {
 	return socket.Push(fd, socket.Protocol.Encode(event, body, dataType, protoType))
 }
 
@@ -183,21 +183,21 @@ func (socket *Server) ProtoBufEmitAll(msg lemo.ProtoBufPackage) (int, int) {
 	return counter, success
 }
 
-func (socket *Server) ProtoBufEmit(fd uint32, msg lemo.ProtoBufPackage) error {
+func (socket *Server) ProtoBufEmit(fd uint32, msg lemo.ProtoBufPackage) exception.Error {
 
 	data, err := proto.Marshal(msg.Data)
 	if err != nil {
-		return err
+		return exception.New(err)
 	}
 
 	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
 
 }
 
-func (socket *Server) JsonEmit(fd uint32, msg lemo.JsonPackage) error {
+func (socket *Server) JsonEmit(fd uint32, msg lemo.JsonPackage) exception.Error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
-		return err
+		return exception.New(err)
 	}
 	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
 }
@@ -280,7 +280,7 @@ func (socket *Server) Ready() {
 	socket.connPush = make(chan *lemo.PushPackage, socket.WaitQueueSize)
 
 	// 返回
-	socket.connBack = make(chan error, socket.WaitQueueSize)
+	socket.connBack = make(chan exception.Error, socket.WaitQueueSize)
 
 	// 错误
 	socket.connError = make(chan exception.Error, socket.WaitQueueSize)
@@ -302,9 +302,9 @@ func (socket *Server) Ready() {
 			case push := <-socket.connPush:
 				var conn, ok = socket.connections.Load(push.FD)
 				if !ok {
-					socket.connBack <- errors.New("client " + strconv.Itoa(int(push.FD)) + " is close")
+					socket.connBack <- exception.New("client " + strconv.Itoa(int(push.FD)) + " is close")
 				} else {
-					socket.connBack <- exception.Inspect(conn.(*Socket).Conn.Write(push.Data))
+					socket.connBack <- exception.New(conn.(*Socket).Conn.Write(push.Data))
 				}
 			case err := <-socket.connError:
 				go socket.OnError(err)

@@ -41,10 +41,6 @@ func (group *group) After(after ...After) *group {
 }
 
 func (group *group) Handler(fn groupFunction) {
-	if group.path == "" {
-		panic("group path can not empty")
-	}
-
 	fn(&RouteHandler{group: group})
 }
 
@@ -165,11 +161,11 @@ func (router *Router) SetGlobalAfter(after ...After) {
 	router.globalAfter = append(router.globalAfter, after...)
 }
 
-func (router *Router) Group(path string) *group {
+func (router *Router) Group(path ...string) *group {
 
 	var group = new(group)
 
-	group.Route(path)
+	group.Route(strings.Join(path, ""))
 
 	group.router = router
 

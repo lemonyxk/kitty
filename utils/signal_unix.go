@@ -23,7 +23,11 @@ type sig int
 const Signal sig = iota
 
 type done struct {
-	Done func(func(sig os.Signal))
+	fn func(func(sig os.Signal))
+}
+
+func (d *done) Done(fn func(sig os.Signal)) {
+	d.fn(fn)
 }
 
 // listen all signal
@@ -40,7 +44,7 @@ func (s sig) ListenAll() *done {
 	signalChan := make(chan os.Signal, 1)
 	// 通知
 	signal.Notify(signalChan, signalList...)
-	return &done{Done: func(f func(signal os.Signal)) {
+	return &done{fn: func(f func(signal os.Signal)) {
 		// 阻塞
 		f(<-signalChan)
 		// 停止
@@ -54,7 +58,7 @@ func (s sig) ListenKill() *done {
 	signalChan := make(chan os.Signal, 1)
 	// 通知
 	signal.Notify(signalChan, signalList...)
-	return &done{Done: func(f func(signal os.Signal)) {
+	return &done{fn: func(f func(signal os.Signal)) {
 		// 阻塞
 		f(<-signalChan)
 		// 停止
@@ -68,7 +72,7 @@ func (s sig) Listen(sig ...os.Signal) *done {
 	signalChan := make(chan os.Signal, 1)
 	// 通知
 	signal.Notify(signalChan, signalList...)
-	return &done{Done: func(f func(signal os.Signal)) {
+	return &done{fn: func(f func(signal os.Signal)) {
 		// 阻塞
 		f(<-signalChan)
 		// 停止

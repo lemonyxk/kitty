@@ -13,7 +13,9 @@ package utils
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/container/queue"
 	"github.com/Lemo-yxk/lemo/exception"
 )
@@ -28,19 +30,25 @@ func (g goroutine) Run(fn func()) {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				var d = 1
+				var d = 0
 				var e = fmt.Errorf("%v", err)
-				if strings.HasPrefix(e.Error(), "#exception#") {
-					d = 2
+				var s = e.Error()
+				if strings.HasPrefix(s, "#exception#") {
+					d = 1
+					s = strings.Replace(s, "#exception#", "", 1)
 				}
-				que.Push(exception.NewStackErrorFromDeep(strings.Replace(e.Error(), "#exception#", "", 1), d))
+
+				d = 10 + d*2
+				var file, line = caller.Stack(d)
+
+				que.Push(exception.NewException(time.Now(), file, line, s))
 			}
 		}()
 		fn()
 	}()
 }
 
-func (g goroutine) Watch(fn func(exception.Error)) {
+func (g goroutine) Watch(fn func(err exception.Error)) {
 	go func() {
 		for {
 			fn(que.Pop().(exception.Error))

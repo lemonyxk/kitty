@@ -3,12 +3,23 @@ package console
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/utils"
 )
+
+const (
+	NONE   = 0
+	STATUS = 1 << iota
+	DATE
+	FILE
+)
+
+var flag int
 
 type Logger interface {
 	Errorf(string, ...interface{})
@@ -27,6 +38,17 @@ func SetLogger(logger Logger) {
 	wr.logger = logger
 }
 
+func SetFlags(v int) {
+	flag = v
+}
+
+func init() {
+	wr = new(writer)
+	DefaultLogger = new(defaultLogger)
+	SetLogger(DefaultLogger)
+	SetFlags(STATUS | DATE | FILE)
+}
+
 var DefaultLogger *defaultLogger
 
 type defaultLogger struct {
@@ -35,81 +57,156 @@ type defaultLogger struct {
 
 func (log *defaultLogger) Errorf(format string, args ...interface{}) {
 
-	var err interface{}
-
-	if len(args) == 0 {
-		err = ""
-	}
-
-	err = args[len(args)-1]
+	var status = "ERR"
 
 	var file string
 	var line int
 	var t time.Time
-	var msg string
+	var err interface{}
+	if len(args) > 0 {
+		err = args[0]
+	}
 
 	switch err.(type) {
 	case exception.Error:
 		file, line = err.(exception.Error).File(), err.(exception.Error).Line()
-		msg = err.(exception.Error).Error()
 		t = err.(exception.Error).Time()
 	default:
 		file, line = caller.Caller(2)
-		msg = fmt.Sprintf("%s", err)
 		t = time.Now()
 	}
 
-	FgRed.Printf(format, t.Format("2006-01-02 15:04:05"), file, line, msg)
+	var flags []string
+
+	if flag&STATUS != 0 {
+		flags = append(flags, status)
+	}
+
+	if flag&DATE != 0 {
+		flags = append(flags, t.Format("2006-01-02 15:04:05"))
+	}
+
+	if flag&FILE != 0 {
+		flags = append(flags, file+":"+strconv.Itoa(line))
+	}
+
+	if len(flags) > 0 {
+		format = "%s " + format
+		args = append([]interface{}{strings.Join(flags, " ")}, args...)
+	}
+
+	FgRed.Printf(format, args...)
 
 	if log.Hook != nil {
-		log.Hook("ERR", t, file, line, err)
+		log.Hook(status, t, file, line, args...)
 	}
+
 }
 
 func (log *defaultLogger) Warningf(format string, args ...interface{}) {
-	file, line := caller.Caller(2)
-	msg := utils.String.JoinInterface(args, " ")
-	t := time.Now()
 
-	FgYellow.Printf(format, t.Format("2006-01-02 15:04:05"), file, line, msg)
+	var status = "WAR"
+
+	var t = time.Now()
+
+	var flags []string
+
+	var file, line = caller.Caller(2)
+
+	if flag&STATUS != 0 {
+		flags = append(flags, status)
+	}
+
+	if flag&DATE != 0 {
+		flags = append(flags, t.Format("2006-01-02 15:04:05"))
+	}
+
+	if flag&FILE != 0 {
+		flags = append(flags, file+":"+strconv.Itoa(line))
+	}
+
+	if len(flags) > 0 {
+		format = "%s " + format
+		args = append([]interface{}{strings.Join(flags, " ")}, args...)
+	}
+
+	FgYellow.Printf(format, args...)
 
 	if log.Hook != nil {
-		log.Hook("WAR", t, file, line, args...)
+		log.Hook(status, t, file, line, args...)
 	}
 }
 
 func (log *defaultLogger) Infof(format string, args ...interface{}) {
-	file, line := caller.Caller(2)
-	msg := utils.String.JoinInterface(args, " ")
-	t := time.Now()
 
-	Bold.Printf(format, t.Format("2006-01-02 15:04:05"), file, line, msg)
+	var status = "INF"
+
+	var t = time.Now()
+
+	var flags []string
+
+	var file, line = caller.Caller(2)
+
+	if flag&STATUS != 0 {
+		flags = append(flags, status)
+	}
+
+	if flag&DATE != 0 {
+		flags = append(flags, t.Format("2006-01-02 15:04:05"))
+	}
+
+	if flag&FILE != 0 {
+		flags = append(flags, file+":"+strconv.Itoa(line))
+	}
+
+	if len(flags) > 0 {
+		format = "%s " + format
+		args = append([]interface{}{strings.Join(flags, " ")}, args...)
+	}
+
+	Bold.Printf(format, args...)
 
 	if log.Hook != nil {
-		log.Hook("LOG", t, file, line, args...)
+		log.Hook(status, t, file, line, args...)
 	}
 }
 
 func (log *defaultLogger) Debugf(format string, args ...interface{}) {
-	file, line := caller.Caller(2)
-	msg := utils.String.JoinInterface(args, " ")
-	t := time.Now()
 
-	FgBlue.Printf(format, t.Format("2006-01-02 15:04:05"), file, line, msg)
+	var status = "DEB"
+
+	var t = time.Now()
+
+	var flags []string
+
+	var file, line = caller.Caller(2)
+
+	if flag&STATUS != 0 {
+		flags = append(flags, status)
+	}
+
+	if flag&DATE != 0 {
+		flags = append(flags, t.Format("2006-01-02 15:04:05"))
+	}
+
+	if flag&FILE != 0 {
+		flags = append(flags, file+":"+strconv.Itoa(line))
+	}
+
+	if len(flags) > 0 {
+		format = "%s " + format
+		args = append([]interface{}{strings.Join(flags, " ")}, args...)
+	}
+
+	FgBlue.Printf(format, args...)
 
 	if log.Hook != nil {
-		log.Hook("DEB", t, file, line, args...)
+		log.Hook(status, t, file, line, args...)
 	}
 }
 
-func init() {
-	wr = new(writer)
-	DefaultLogger = new(defaultLogger)
-	SetLogger(DefaultLogger)
-}
-
 func Exit(v interface{}) {
-	wr.logger.Errorf("ERR %s %s:%d %s \n", v)
+	wr.logger.Errorf("%v\n", v)
 	os.Exit(0)
 }
 
@@ -125,32 +222,43 @@ func OneLine(format string, v ...interface{}) {
 	fmt.Printf("\r"+format, v...)
 }
 
-func Log(v ...interface{}) {
-	wr.logger.Infof("LOG %s %s:%d %s \n", v...)
+func Info(v ...interface{}) {
+	var msg = utils.String.JoinInterface(v, " ")
+	wr.logger.Infof("%s\n", msg)
 }
 
 func Debug(v ...interface{}) {
-	wr.logger.Debugf("DEB %s %s:%d %s \n", v...)
+	var msg = utils.String.JoinInterface(v, " ")
+	wr.logger.Debugf("%s\n", msg)
 }
 
 func Warning(v ...interface{}) {
-	wr.logger.Warningf("WAR %s %s:%d %s \n", v...)
+	var msg = utils.String.JoinInterface(v, " ")
+	wr.logger.Warningf("%s\n", msg)
 }
 
 func Error(v ...interface{}) {
-	wr.logger.Errorf("ERR %s %s:%d %s \n", v...)
+	var err interface{}
+	if len(v) > 0 {
+		err = v[len(v)-1]
+	}
+	wr.logger.Errorf("%v\n", err)
 }
 
-func Customize(color Color, prefix string, format string, v ...interface{}) {
-	file, line := caller.Caller(1)
+func Infof(format string, v ...interface{}) {
+	wr.logger.Infof(format, v...)
+}
 
-	var t = time.Now()
+func Warningf(format string, v ...interface{}) {
+	wr.logger.Warningf(format, v...)
+}
 
-	color.Printf(format, v...)
+func Debugf(format string, v ...interface{}) {
+	wr.logger.Debugf(format, v...)
+}
 
-	if DefaultLogger.Hook != nil {
-		DefaultLogger.Hook(prefix, t, file, line, v...)
-	}
+func Errorf(format string, v ...interface{}) {
+	wr.logger.Errorf(format, v...)
 }
 
 func Assert(v ...interface{}) {
@@ -161,5 +269,5 @@ func Assert(v ...interface{}) {
 		return
 	}
 
-	wr.logger.Errorf("ERR %s %s:%d %s \n", v...)
+	wr.logger.Errorf("%v\n", v[len(v)-1])
 }

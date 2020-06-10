@@ -437,13 +437,13 @@ func (socket *Server) Ready() {
 				socket.addConnect(conn)
 				socket.count++
 				// 触发OPEN事件
-				go socket.OnOpen(conn)
+				socket.OnOpen(conn)
 			case conn := <-socket.connClose:
 				_ = conn.Conn.Close()
 				socket.delConnect(conn)
 				socket.count--
 				// 触发CLOSE事件
-				go socket.OnClose(conn)
+				socket.OnClose(conn)
 			case push := <-socket.connPush:
 				var conn, ok = socket.connections.Load(push.FD)
 				if !ok {
@@ -452,7 +452,7 @@ func (socket *Server) Ready() {
 					socket.connBack <- exception.New(conn.(*WebSocket).Conn.WriteMessage(push.Type, push.Data))
 				}
 			case err := <-socket.connError:
-				go socket.OnError(err)
+				socket.OnError(err)
 			}
 		}
 	}()
@@ -684,6 +684,6 @@ func (socket *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	socket.process(w, r)
+	go socket.process(w, r)
 	return
 }

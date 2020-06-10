@@ -249,6 +249,8 @@ func (socket *Server) Ready() {
 
 	socket.shutdown = make(chan bool)
 
+	socket.connections = make(map[int64]*Socket)
+
 }
 
 func (socket *Server) onOpen(conn *Socket) {

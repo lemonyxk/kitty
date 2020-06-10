@@ -376,6 +376,8 @@ func (socket *Server) Ready() {
 		WriteBufferSize:  socket.WriteBufferSize,
 		CheckOrigin:      socket.CheckOrigin,
 	}
+
+	socket.connections = make(map[int64]*WebSocket)
 }
 
 func (socket *Server) process(w http.ResponseWriter, r *http.Request) {

@@ -147,7 +147,7 @@ func (socket *Server) CheckPath(p1 string, p2 string) bool {
 func (socket *Server) Push(fd int64, messageType int, msg []byte) exception.Error {
 	var conn, ok = socket.GetConnection(fd)
 	if !ok {
-		return exception.New("client " + strconv.Itoa(int(fd)) + " is close")
+		return exception.New("client is close")
 	}
 
 	conn.mux.Lock()

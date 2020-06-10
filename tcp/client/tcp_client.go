@@ -49,7 +49,6 @@ type Client struct {
 	OnMessage func(c *Client, messageType int, msg []byte)
 	OnError   func(err exception.Error)
 	OnSuccess func()
-	Status    bool
 
 	Context lemo.Context
 
@@ -60,10 +59,8 @@ type Client struct {
 	Protocol tcp.Protocol
 
 	router *Router
-
 	middle []func(Middle) Middle
-
-	mux sync.RWMutex
+	mux    sync.RWMutex
 }
 
 type Middle func(c *Client, receive *lemo.ReceivePackage)
@@ -103,14 +100,8 @@ func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
 
 // Push 发送消息
 func (client *Client) Push(message []byte) exception.Error {
-
 	client.mux.Lock()
 	defer client.mux.Unlock()
-
-	if client.Status == false {
-		return exception.New("client is close")
-	}
-
 	return exception.New(client.Conn.Write(message))
 }
 
@@ -127,10 +118,6 @@ func (client *Client) reconnecting() {
 }
 
 func (client *Client) Connect() {
-
-	// 设置LOG信息
-
-	var closeChan = make(chan bool)
 
 	if client.Host == "" {
 		client.Host = "127.0.0.1"
@@ -237,8 +224,6 @@ func (client *Client) Connect() {
 
 	client.Conn = handler
 
-	client.Status = true
-
 	// start success
 	if client.OnSuccess != nil {
 		client.OnSuccess()
@@ -258,56 +243,46 @@ func (client *Client) Connect() {
 	go func() {
 		for range ticker.C {
 			if err := client.HeartBeat(client); err != nil {
-				closeChan <- false
+				client.OnError(exception.New(err))
+				_ = client.Close()
 				break
 			}
 		}
 	}()
 
-	go func() {
+	var reader = client.Protocol.Reader()
 
-		var reader = client.Protocol.Reader()
+	var buffer = make([]byte, client.ReadBufferSize)
 
-		var buffer = make([]byte, client.ReadBufferSize)
-
-		for {
-
-			n, err := client.Conn.Read(buffer)
-
-			// close error
-			if err != nil {
-				break
-			}
-
-			message, err := reader(n, buffer)
-
-			if err != nil {
-				client.OnError(exception.New(err))
-				break
-			}
-
-			if message == nil {
-				continue
-			}
-
-			err = client.decodeMessage(client, message)
-
-			if err != nil {
-				client.OnError(exception.New(err))
-				break
-			}
-
+	for {
+		n, err := client.Conn.Read(buffer)
+		// close error
+		if err != nil {
+			break
 		}
 
-		closeChan <- false
-	}()
+		message, err := reader(n, buffer)
 
-	<-closeChan
+		if err != nil {
+			client.OnError(exception.New(err))
+			break
+		}
+
+		if message == nil {
+			continue
+		}
+
+		err = client.decodeMessage(client, message)
+
+		if err != nil {
+			client.OnError(exception.New(err))
+			break
+		}
+
+	}
 
 	// 关闭定时器
 	ticker.Stop()
-	// 更改状态
-	client.Status = false
 	// 关闭连接
 	_ = client.Close()
 	// 触发回调
@@ -342,7 +317,6 @@ func (client *Client) decodeMessage(connection *Client, message []byte) error {
 	// on router
 	if client.router != nil {
 		client.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
-		return nil
 	}
 
 	return nil

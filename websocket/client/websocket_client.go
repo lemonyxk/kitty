@@ -47,7 +47,6 @@ type Client struct {
 	OnMessage func(c *Client, messageType int, msg []byte)
 	OnError   func(err exception.Error)
 	OnSuccess func()
-	Status    bool
 
 	Context lemo.Context
 
@@ -57,8 +56,7 @@ type Client struct {
 
 	Protocol websocket2.Protocol
 
-	mux sync.RWMutex
-
+	mux    sync.RWMutex
 	router *Router
 	middle []func(Middle) Middle
 }
@@ -107,14 +105,8 @@ func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
 
 // Push 发送消息
 func (client *Client) Push(messageType int, message []byte) exception.Error {
-
 	client.mux.Lock()
 	defer client.mux.Unlock()
-
-	if client.Status == false {
-		return exception.New("client is close")
-	}
-
 	return exception.New(client.Conn.WriteMessage(messageType, message))
 }
 
@@ -132,9 +124,6 @@ func (client *Client) reconnecting() {
 
 // Connect 连接服务器
 func (client *Client) Connect() {
-	// 设置LOG信息
-
-	var closeChan = make(chan bool)
 
 	if client.Host == "" {
 		client.Host = "127.0.0.1"
@@ -249,8 +238,6 @@ func (client *Client) Connect() {
 
 	client.Conn = handler
 
-	client.Status = true
-
 	// start success
 	if client.OnSuccess != nil {
 		client.OnSuccess()
@@ -270,75 +257,67 @@ func (client *Client) Connect() {
 	go func() {
 		for range ticker.C {
 			if err := client.HeartBeat(client); err != nil {
-				closeChan <- false
+				client.OnError(exception.New(err))
+				_ = client.Close()
 				break
 			}
 		}
 	}()
 
-	go func() {
-		for {
-
-			// read message
-			messageFrame, message, err := client.Conn.ReadMessage()
-			if err != nil {
-				closeChan <- false
-				return
-			}
-
-			// unpack
-			version, messageType, protoType, route, body := client.Protocol.Decode(message)
-
-			if client.OnMessage != nil {
-				client.OnMessage(client, messageFrame, message)
-			}
-
-			// check version
-			if version != lemo.Version {
-				continue
-			}
-
-			// Ping
-			if messageType == lemo.PingData {
-				err := client.PingHandler(client)("")
-				if err != nil {
-					closeChan <- false
-					return
-				}
-				continue
-			}
-
-			// Pong
-			if messageType == lemo.PongData {
-				err := client.PongHandler(client)("")
-				if err != nil {
-					closeChan <- false
-					return
-				}
-				continue
-			}
-
-			// on router
-			if client.router != nil {
-				client.middleware(client, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
-				continue
-			}
-
+	for {
+		messageFrame, message, err := client.Conn.ReadMessage()
+		// close error
+		if err != nil {
+			break
 		}
-	}()
 
-	<-closeChan
+		err = client.decodeMessage(client, messageFrame, message)
+
+		if err != nil {
+			client.OnError(exception.New(err))
+			break
+		}
+	}
 
 	// 关闭定时器
 	ticker.Stop()
-	// 更改状态
-	client.Status = false
 	// 关闭连接
 	_ = client.Close()
 	// 触发回调
 	client.OnClose(client)
 	// 触发重连设置
 	client.reconnecting()
+}
+
+func (client *Client) decodeMessage(conn *Client, messageFrame int, message []byte) error {
+	// unpack
+	version, messageType, protoType, route, body := client.Protocol.Decode(message)
+
+	if client.OnMessage != nil {
+		client.OnMessage(client, messageFrame, message)
+	}
+
+	// check version
+	if version != lemo.Version {
+		return nil
+	}
+
+	// Ping
+	if messageType == lemo.PingData {
+		return client.PingHandler(client)("")
+	}
+
+	// Pong
+	if messageType == lemo.PongData {
+		return client.PongHandler(client)("")
+	}
+
+	// on router
+	if client.router != nil {
+		client.middleware(client, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+	}
+
+	return nil
 }
 
 func (client *Client) middleware(conn *Client, msg *lemo.ReceivePackage) {

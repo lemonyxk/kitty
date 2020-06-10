@@ -98,9 +98,8 @@ type Server struct {
 	mux         sync.RWMutex
 	router      *Router
 	middle      []func(Middle) Middle
-
-	netListen net.Listener
-	shutdown  chan bool
+	netListen   net.Listener
+	shutdown    chan bool
 }
 
 type Middle func(conn *Socket, receive *lemo.ReceivePackage)
@@ -116,7 +115,7 @@ func (socket *Server) Use(middle ...func(Middle) Middle) {
 func (socket *Server) Push(fd int64, msg []byte) exception.Error {
 	var conn, ok = socket.GetConnection(fd)
 	if !ok {
-		return exception.New("client " + strconv.Itoa(int(fd)) + " is close")
+		return exception.New("client is close")
 	}
 
 	conn.mux.Lock()

@@ -43,9 +43,8 @@ type Server struct {
 	OnError   func(stream *http2.Stream, err exception.Error)
 	OnSuccess func()
 
-	middle []func(next Middle) Middle
-	router *Router
-
+	middle    []func(next Middle) Middle
+	router    *Router
 	netListen net.Listener
 	server    *http.Server
 }

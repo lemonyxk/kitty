@@ -437,13 +437,13 @@ func (socket *Server) Ready() {
 				socket.addConnect(conn)
 				socket.count++
 				// 触发OPEN事件
-				go socket.OnOpen(conn)
+				socket.OnOpen(conn)
 			case conn := <-socket.connClose:
 				_ = conn.Conn.Close()
 				socket.delConnect(conn)
 				socket.count--
 				// 触发CLOSE事件
-				go socket.OnClose(conn)
+				socket.OnClose(conn)
 			case push := <-socket.connPush:
 				var conn, ok = socket.connections.Load(push.FD)
 				if !ok {
@@ -452,7 +452,7 @@ func (socket *Server) Ready() {
 					socket.connBack <- exception.New(conn.(*WebSocket).Conn.WriteMessage(push.Type, push.Data))
 				}
 			case err := <-socket.connError:
-				go socket.OnError(err)
+				socket.OnError(err)
 			}
 		}
 	}()
@@ -528,7 +528,7 @@ func (socket *Server) decodeMessage(connection *WebSocket, message []byte, messa
 	version, messageType, protoType, route, body := socket.Protocol.Decode(message)
 
 	if socket.OnMessage != nil {
-		go socket.OnMessage(connection, messageFrame, message)
+		socket.OnMessage(connection, messageFrame, message)
 	}
 
 	// check version
@@ -548,7 +548,7 @@ func (socket *Server) decodeMessage(connection *WebSocket, message []byte, messa
 
 	// on router
 	if socket.router != nil {
-		go socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 

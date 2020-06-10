@@ -220,7 +220,7 @@ func (client *Client) Connect() {
 	// 连接服务器
 	handler, err := net.DialTimeout("tcp", client.IP+":"+strconv.Itoa(client.Port), time.Duration(client.HandshakeTimeout)*time.Second)
 	if err != nil {
-		go client.OnError(exception.New(err))
+		client.OnError(exception.New(err))
 		client.reconnecting()
 		return
 	}
@@ -245,7 +245,7 @@ func (client *Client) Connect() {
 	}
 
 	// 连接成功
-	go client.OnOpen(client)
+	client.OnOpen(client)
 
 	// 定时器 心跳
 	ticker := time.NewTicker(time.Duration(client.HeartBeatInterval) * time.Second)
@@ -282,7 +282,7 @@ func (client *Client) Connect() {
 			message, err := reader(n, buffer)
 
 			if err != nil {
-				go client.OnError(exception.New(err))
+				client.OnError(exception.New(err))
 				break
 			}
 
@@ -293,7 +293,7 @@ func (client *Client) Connect() {
 			err = client.decodeMessage(client, message)
 
 			if err != nil {
-				go client.OnError(exception.New(err))
+				client.OnError(exception.New(err))
 				break
 			}
 
@@ -311,7 +311,7 @@ func (client *Client) Connect() {
 	// 关闭连接
 	_ = client.Close()
 	// 触发回调
-	go client.OnClose(client)
+	client.OnClose(client)
 	// 触发重连设置
 	client.reconnecting()
 }
@@ -321,7 +321,7 @@ func (client *Client) decodeMessage(connection *Client, message []byte) error {
 	version, messageType, protoType, route, body := client.Protocol.Decode(message)
 
 	if client.OnMessage != nil {
-		go client.OnMessage(connection, messageType, message)
+		client.OnMessage(connection, messageType, message)
 	}
 
 	// check version
@@ -341,7 +341,7 @@ func (client *Client) decodeMessage(connection *Client, message []byte) error {
 
 	// on router
 	if client.router != nil {
-		go client.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+		client.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 

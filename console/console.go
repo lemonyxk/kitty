@@ -43,13 +43,17 @@ func SetFlags(v int) {
 }
 
 func init() {
-	wr = new(writer)
-	DefaultLogger = new(defaultLogger)
+	wr = &writer{}
+	DefaultLogger = NewDefaultLogger()
 	SetLogger(DefaultLogger)
 	SetFlags(STATUS | DATE | FILE)
 }
 
 var DefaultLogger *defaultLogger
+
+func NewDefaultLogger() *defaultLogger {
+	return &defaultLogger{}
+}
 
 type defaultLogger struct {
 	Hook func(status string, t time.Time, file string, line int, v ...interface{})

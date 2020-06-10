@@ -30,10 +30,11 @@ import (
 )
 
 type Socket struct {
-	FD      uint32
+	FD      int64
 	Conn    net.Conn
 	Server  *Server
 	Context lemo.Context
+	mux     sync.RWMutex
 }
 
 func (conn *Socket) Host() string {
@@ -92,24 +93,9 @@ type Server struct {
 
 	Protocol tcp.Protocol
 
-	// 连接
-	connOpen chan *Socket
-
-	// 关闭
-	connClose chan *Socket
-
-	// 写入
-	connPush chan *lemo.PushPackage
-
-	// 返回
-	connBack chan exception.Error
-
-	// 错误
-	connError chan exception.Error
-
-	fd          uint32
-	count       uint32
-	connections sync.Map
+	fd          int64
+	connections map[int64]*Socket
+	mux         sync.RWMutex
 	router      *Router
 	middle      []func(Middle) Middle
 
@@ -127,74 +113,67 @@ func (socket *Server) Use(middle ...func(Middle) Middle) {
 	socket.middle = append(socket.middle, middle...)
 }
 
-// Push 发送消息
-func (socket *Server) Push(fd uint32, msg []byte) exception.Error {
-
-	socket.connPush <- &lemo.PushPackage{
-		FD:   fd,
-		Data: msg,
+func (socket *Server) Push(fd int64, msg []byte) exception.Error {
+	var conn, ok = socket.GetConnection(fd)
+	if !ok {
+		return exception.New("client " + strconv.Itoa(int(fd)) + " is close")
 	}
 
-	return <-socket.connBack
+	conn.mux.Lock()
+	defer conn.mux.Unlock()
+
+	return exception.New(conn.Conn.Write(msg))
 }
 
-func (socket *Server) Emit(fd uint32, event []byte, body []byte, dataType int, protoType int) exception.Error {
+func (socket *Server) Emit(fd int64, event []byte, body []byte, dataType int, protoType int) exception.Error {
 	return socket.Push(fd, socket.Protocol.Encode(event, body, dataType, protoType))
 }
 
 func (socket *Server) EmitAll(event []byte, body []byte, dataType int, protoType int) (int, int) {
-
 	var counter = 0
 	var success = 0
-	socket.connections.Range(func(key, value interface{}) bool {
+	for fd := range socket.connections {
 		counter++
-		if socket.Emit(key.(uint32), event, body, dataType, protoType) == nil {
+		if socket.Emit(fd, event, body, dataType, protoType) == nil {
 			success++
 		}
-		return true
-	})
+	}
 	return counter, success
-
 }
 
 func (socket *Server) JsonEmitAll(msg lemo.JsonPackage) (int, int) {
 	var counter = 0
 	var success = 0
-	socket.connections.Range(func(key, value interface{}) bool {
+	for fd := range socket.connections {
 		counter++
-		if socket.JsonEmit(key.(uint32), msg) == nil {
+		if socket.JsonEmit(fd, msg) == nil {
 			success++
 		}
-		return true
-	})
+	}
 	return counter, success
 }
 
 func (socket *Server) ProtoBufEmitAll(msg lemo.ProtoBufPackage) (int, int) {
 	var counter = 0
 	var success = 0
-	socket.connections.Range(func(key, value interface{}) bool {
+	for fd := range socket.connections {
 		counter++
-		if socket.ProtoBufEmit(key.(uint32), msg) == nil {
+		if socket.ProtoBufEmit(fd, msg) == nil {
 			success++
 		}
-		return true
-	})
+	}
 	return counter, success
 }
 
-func (socket *Server) ProtoBufEmit(fd uint32, msg lemo.ProtoBufPackage) exception.Error {
-
+func (socket *Server) ProtoBufEmit(fd int64, msg lemo.ProtoBufPackage) exception.Error {
 	data, err := proto.Marshal(msg.Data)
 	if err != nil {
 		return exception.New(err)
 	}
-
 	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
-
 }
 
-func (socket *Server) JsonEmit(fd uint32, msg lemo.JsonPackage) exception.Error {
+func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) exception.Error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
 		return exception.New(err)
@@ -270,110 +249,49 @@ func (socket *Server) Ready() {
 
 	socket.shutdown = make(chan bool)
 
-	// 连接
-	socket.connOpen = make(chan *Socket, socket.WaitQueueSize)
+}
 
-	// 关闭
-	socket.connClose = make(chan *Socket, socket.WaitQueueSize)
+func (socket *Server) onOpen(conn *Socket) {
+	socket.addConnect(conn)
+	socket.OnOpen(conn)
+}
 
-	// 写入
-	socket.connPush = make(chan *lemo.PushPackage, socket.WaitQueueSize)
+func (socket *Server) onClose(conn *Socket) {
+	_ = conn.Conn.Close()
+	socket.delConnect(conn)
+	socket.OnClose(conn)
+}
 
-	// 返回
-	socket.connBack = make(chan exception.Error, socket.WaitQueueSize)
-
-	// 错误
-	socket.connError = make(chan exception.Error, socket.WaitQueueSize)
-
-	go func() {
-		for {
-			select {
-			case conn := <-socket.connOpen:
-				socket.addConnect(conn)
-				socket.count++
-				// 触发OPEN事件
-				socket.OnOpen(conn)
-			case conn := <-socket.connClose:
-				_ = conn.Conn.Close()
-				socket.delConnect(conn)
-				socket.count--
-				// 触发CLOSE事件
-				socket.OnClose(conn)
-			case push := <-socket.connPush:
-				var conn, ok = socket.connections.Load(push.FD)
-				if !ok {
-					socket.connBack <- exception.New("client " + strconv.Itoa(int(push.FD)) + " is close")
-				} else {
-					socket.connBack <- exception.New(conn.(*Socket).Conn.Write(push.Data))
-				}
-			case err := <-socket.connError:
-				socket.OnError(err)
-			}
-		}
-	}()
+func (socket *Server) onError(err exception.Error) {
+	socket.OnError(err)
 }
 
 func (socket *Server) addConnect(conn *Socket) {
-
-	// +1
+	socket.mux.Lock()
+	defer socket.mux.Unlock()
 	socket.fd++
-
-	// 溢出
-	if socket.fd == 0 {
-		socket.fd++
-	}
-
-	var _, ok = socket.connections.Load(socket.fd)
-
-	if !ok {
-		socket.connections.Store(socket.fd, conn)
-	} else {
-		// 否则查找最大值
-		var maxFd uint32 = 0
-
-		for {
-
-			maxFd++
-
-			if maxFd == 0 {
-				console.Println("connections overflow")
-				return
-			}
-
-			var _, ok = socket.connections.Load(socket.fd)
-
-			if !ok {
-				socket.connections.Store(maxFd, conn)
-				break
-			}
-
-		}
-
-		socket.fd = maxFd
-	}
-
-	// 赋值
+	socket.connections[socket.fd] = conn
 	conn.FD = socket.fd
-
 }
 
 func (socket *Server) delConnect(conn *Socket) {
-	socket.connections.Delete(conn.FD)
+	socket.mux.Lock()
+	defer socket.mux.Unlock()
+	delete(socket.connections, conn.FD)
 }
 
 func (socket *Server) GetConnections() chan *Socket {
 	var ch = make(chan *Socket, 1)
 	go func() {
-		socket.connections.Range(func(key, value interface{}) bool {
-			ch <- value.(*Socket)
-			return true
-		})
+		for _, conn := range socket.connections {
+			ch <- conn
+		}
 		close(ch)
 	}()
 	return ch
 }
 
-func (socket *Server) Close(fd uint32) error {
+func (socket *Server) Close(fd int64) error {
 	conn, ok := socket.GetConnection(fd)
 	if !ok {
 		return errors.New("fd not found")
@@ -381,16 +299,17 @@ func (socket *Server) Close(fd uint32) error {
 	return conn.Close()
 }
 
-func (socket *Server) GetConnection(fd uint32) (*Socket, bool) {
-	conn, ok := socket.connections.Load(fd)
-	if !ok {
-		return nil, false
-	}
-	return conn.(*Socket), true
+func (socket *Server) GetConnection(fd int64) (*Socket, bool) {
+	socket.mux.RLock()
+	defer socket.mux.RUnlock()
+	conn, ok := socket.connections[fd]
+	return conn, ok
 }
 
-func (socket *Server) GetConnectionsCount() uint32 {
-	return socket.count
+func (socket *Server) GetConnectionsCount() int {
+	socket.mux.RLock()
+	defer socket.mux.RUnlock()
+	return len(socket.connections)
 }
 
 func (socket *Server) Start() {
@@ -433,7 +352,7 @@ func (socket *Server) Start() {
 		for {
 			conn, err := netListen.Accept()
 			if err != nil {
-				socket.connError <- exception.New(err)
+				socket.onError(exception.New(err))
 				continue
 			}
 
@@ -457,7 +376,7 @@ func (socket *Server) process(conn net.Conn) {
 	// 超时时间
 	err := conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 	if err != nil {
-		socket.connError <- exception.New(err)
+		socket.onError(exception.New(err))
 		return
 	}
 
@@ -476,7 +395,7 @@ func (socket *Server) process(conn net.Conn) {
 		Server: socket,
 	}
 
-	socket.connOpen <- connection
+	socket.onOpen(connection)
 
 	var reader = socket.Protocol.Reader()
 
@@ -494,7 +413,7 @@ func (socket *Server) process(conn net.Conn) {
 		message, err := reader(n, buffer)
 
 		if err != nil {
-			socket.connError <- exception.New(err)
+			socket.onError(exception.New(err))
 			break
 		}
 
@@ -505,13 +424,13 @@ func (socket *Server) process(conn net.Conn) {
 		err = socket.decodeMessage(connection, message)
 
 		if err != nil {
-			socket.connError <- exception.New(err)
+			socket.onError(exception.New(err))
 			break
 		}
 
 	}
 
-	socket.connClose <- connection
+	socket.onClose(connection)
 }
 
 func (socket *Server) decodeMessage(connection *Socket, message []byte) error {

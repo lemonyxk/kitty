@@ -22,14 +22,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// WebSocket WebSocket
 type WebSocket struct {
-	FD       uint32
+	FD       int64
 	Conn     *websocket.Conn
 	Server   *Server
 	Response http.ResponseWriter
 	Request  *http.Request
 	Context  lemo.Context
+	mux      sync.Mutex
 }
 
 func (conn *WebSocket) Host() string {
@@ -119,26 +119,11 @@ type Server struct {
 
 	Protocol websocket2.Protocol
 
-	// 连接
-	connOpen chan *WebSocket
-
-	// 关闭
-	connClose chan *WebSocket
-
-	// 写入
-	connPush chan *lemo.PushPackage
-
-	// 返回
-	connBack chan exception.Error
-
-	// 错误
-	connError chan exception.Error
-
 	upgrade websocket.Upgrader
 
-	fd          uint32
-	count       uint32
-	connections sync.Map
+	fd          int64
+	connections map[int64]*WebSocket
+	mux         sync.RWMutex
 	router      *Router
 	middle      []func(next Middle) Middle
 	server      *http.Server
@@ -159,19 +144,19 @@ func (socket *Server) CheckPath(p1 string, p2 string) bool {
 	return p1 == p2
 }
 
-// Push 发送消息
-func (socket *Server) Push(fd uint32, messageType int, msg []byte) exception.Error {
-
-	socket.connPush <- &lemo.PushPackage{
-		Type: messageType,
-		FD:   fd,
-		Data: msg,
+func (socket *Server) Push(fd int64, messageType int, msg []byte) exception.Error {
+	var conn, ok = socket.GetConnection(fd)
+	if !ok {
+		return exception.New("client " + strconv.Itoa(int(fd)) + " is close")
 	}
 
-	return <-socket.connBack
+	conn.mux.Lock()
+	defer conn.mux.Unlock()
+
+	return exception.New(conn.Conn.WriteMessage(messageType, msg))
 }
 
-func (socket *Server) Json(fd uint32, msg lemo.JsonPackage) exception.Error {
+func (socket *Server) Json(fd int64, msg lemo.JsonPackage) exception.Error {
 	data, err := jsoniter.Marshal(lemo.JsonPackage{Event: msg.Event, Data: msg.Data})
 	if err != nil {
 		return exception.New(err)
@@ -179,63 +164,59 @@ func (socket *Server) Json(fd uint32, msg lemo.JsonPackage) exception.Error {
 	return exception.New(socket.Push(fd, lemo.TextData, data))
 }
 
-func (socket *Server) Emit(fd uint32, event []byte, body []byte, dataType int, protoType int) exception.Error {
+func (socket *Server) Emit(fd int64, event []byte, body []byte, dataType int, protoType int) exception.Error {
 	return socket.Push(fd, lemo.BinData, socket.Protocol.Encode(event, body, dataType, protoType))
 }
 
 func (socket *Server) EmitAll(event []byte, body []byte, dataType int, protoType int) (int, int) {
 	var counter = 0
 	var success = 0
-	socket.connections.Range(func(key, value interface{}) bool {
+	for fd := range socket.connections {
 		counter++
-		if socket.Emit(key.(uint32), event, body, dataType, protoType) == nil {
+		if socket.Emit(fd, event, body, dataType, protoType) == nil {
 			success++
 		}
-		return true
-	})
+	}
 	return counter, success
 }
 
 func (socket *Server) JsonAll(msg lemo.JsonPackage) (int, int) {
 	var counter = 0
 	var success = 0
-	socket.connections.Range(func(key, value interface{}) bool {
+	for fd := range socket.connections {
 		counter++
-		if socket.Json(key.(uint32), msg) == nil {
+		if socket.Json(fd, msg) == nil {
 			success++
 		}
-		return true
-	})
+	}
 	return counter, success
 }
 
 func (socket *Server) JsonEmitAll(msg lemo.JsonPackage) (int, int) {
 	var counter = 0
 	var success = 0
-	socket.connections.Range(func(key, value interface{}) bool {
+	for fd := range socket.connections {
 		counter++
-		if socket.JsonEmit(key.(uint32), msg) == nil {
+		if socket.JsonEmit(fd, msg) == nil {
 			success++
 		}
-		return true
-	})
+	}
 	return counter, success
 }
 
 func (socket *Server) ProtoBufEmitAll(msg lemo.ProtoBufPackage) (int, int) {
 	var counter = 0
 	var success = 0
-	socket.connections.Range(func(key, value interface{}) bool {
+	for fd := range socket.connections {
 		counter++
-		if socket.ProtoBufEmit(key.(uint32), msg) == nil {
+		if socket.ProtoBufEmit(fd, msg) == nil {
 			success++
 		}
-		return true
-	})
+	}
 	return counter, success
 }
 
-func (socket *Server) ProtoBufEmit(fd uint32, msg lemo.ProtoBufPackage) exception.Error {
+func (socket *Server) ProtoBufEmit(fd int64, msg lemo.ProtoBufPackage) exception.Error {
 	messageProtoBuf, err := proto.Marshal(msg.Data)
 	if err != nil {
 		return exception.New(err)
@@ -243,7 +224,7 @@ func (socket *Server) ProtoBufEmit(fd uint32, msg lemo.ProtoBufPackage) exceptio
 	return socket.Push(fd, lemo.BinData, socket.Protocol.Encode([]byte(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
 }
 
-func (socket *Server) JsonEmit(fd uint32, msg lemo.JsonPackage) exception.Error {
+func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) exception.Error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
 		return exception.New(err)
@@ -252,83 +233,64 @@ func (socket *Server) JsonEmit(fd uint32, msg lemo.JsonPackage) exception.Error 
 }
 
 func (socket *Server) addConnect(conn *WebSocket) {
-
-	// +1
+	socket.mux.Lock()
+	defer socket.mux.Unlock()
 	socket.fd++
-
-	// 溢出
-	if socket.fd == 0 {
-		socket.fd++
-	}
-
-	var _, ok = socket.connections.Load(socket.fd)
-
-	if !ok {
-		socket.connections.Store(socket.fd, conn)
-	} else {
-		// 否则查找最大值
-		var maxFd uint32 = 0
-
-		for {
-
-			maxFd++
-
-			if maxFd == 0 {
-				console.Println("connections overflow")
-				return
-			}
-
-			var _, ok = socket.connections.Load(socket.fd)
-
-			if !ok {
-				socket.connections.Store(maxFd, conn)
-				break
-			}
-
-		}
-
-		socket.fd = maxFd
-	}
-
-	// 赋值
+	socket.connections[socket.fd] = conn
 	conn.FD = socket.fd
-
 }
 
 func (socket *Server) delConnect(conn *WebSocket) {
-	socket.connections.Delete(conn.FD)
+	socket.mux.Lock()
+	defer socket.mux.Unlock()
+	delete(socket.connections, conn.FD)
 }
 
 func (socket *Server) GetConnections() chan *WebSocket {
 	var ch = make(chan *WebSocket, 1)
 	go func() {
-		socket.connections.Range(func(key, value interface{}) bool {
-			ch <- value.(*WebSocket)
-			return true
-		})
+		for _, conn := range socket.connections {
+			ch <- conn
+		}
 		close(ch)
 	}()
 	return ch
 }
 
-func (socket *Server) GetConnection(fd uint32) (*WebSocket, bool) {
-	conn, ok := socket.connections.Load(fd)
-	if !ok {
-		return nil, false
-	}
-	return conn.(*WebSocket), true
+func (socket *Server) GetConnection(fd int64) (*WebSocket, bool) {
+	socket.mux.RLock()
+	defer socket.mux.RUnlock()
+	conn, ok := socket.connections[fd]
+	return conn, ok
 }
 
-func (socket *Server) GetConnectionsCount() uint32 {
-	return socket.count
+func (socket *Server) GetConnectionsCount() int {
+	socket.mux.RLock()
+	defer socket.mux.RUnlock()
+	return len(socket.connections)
 }
 
-func (socket *Server) Close(fd uint32) error {
+func (socket *Server) Close(fd int64) error {
 	conn, ok := socket.GetConnection(fd)
 	if !ok {
 		return errors.New("fd not found")
 	}
 	return conn.Close()
+}
+
+func (socket *Server) onOpen(conn *WebSocket) {
+	socket.addConnect(conn)
+	socket.OnOpen(conn)
+}
+
+func (socket *Server) onClose(conn *WebSocket) {
+	_ = conn.Conn.Close()
+	socket.delConnect(conn)
+	socket.OnClose(conn)
+}
+
+func (socket *Server) onError(err exception.Error) {
+	socket.OnError(err)
 }
 
 func (socket *Server) Ready() {
@@ -414,48 +376,6 @@ func (socket *Server) Ready() {
 		WriteBufferSize:  socket.WriteBufferSize,
 		CheckOrigin:      socket.CheckOrigin,
 	}
-
-	// 连接
-	socket.connOpen = make(chan *WebSocket, socket.WaitQueueSize)
-
-	// 关闭
-	socket.connClose = make(chan *WebSocket, socket.WaitQueueSize)
-
-	// 写入
-	socket.connPush = make(chan *lemo.PushPackage, socket.WaitQueueSize)
-
-	// 返回
-	socket.connBack = make(chan exception.Error, socket.WaitQueueSize)
-
-	// 错误
-	socket.connError = make(chan exception.Error, socket.WaitQueueSize)
-
-	go func() {
-		for {
-			select {
-			case conn := <-socket.connOpen:
-				socket.addConnect(conn)
-				socket.count++
-				// 触发OPEN事件
-				socket.OnOpen(conn)
-			case conn := <-socket.connClose:
-				_ = conn.Conn.Close()
-				socket.delConnect(conn)
-				socket.count--
-				// 触发CLOSE事件
-				socket.OnClose(conn)
-			case push := <-socket.connPush:
-				var conn, ok = socket.connections.Load(push.FD)
-				if !ok {
-					socket.connBack <- exception.New("client " + strconv.Itoa(int(push.FD)) + " is close")
-				} else {
-					socket.connBack <- exception.New(conn.(*WebSocket).Conn.WriteMessage(push.Type, push.Data))
-				}
-			case err := <-socket.connError:
-				socket.OnError(err)
-			}
-		}
-	}()
 }
 
 func (socket *Server) process(w http.ResponseWriter, r *http.Request) {
@@ -465,14 +385,14 @@ func (socket *Server) process(w http.ResponseWriter, r *http.Request) {
 
 	// 错误处理
 	if err != nil {
-		socket.connError <- exception.New(err)
+		socket.onError(exception.New(err))
 		return
 	}
 
 	// 超时时间
 	err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
 	if err != nil {
-		socket.connError <- exception.New(err)
+		socket.onError(exception.New(err))
 		return
 	}
 
@@ -491,7 +411,7 @@ func (socket *Server) process(w http.ResponseWriter, r *http.Request) {
 	conn.SetPongHandler(socket.PongHandler(connection))
 
 	// 打开连接 记录
-	socket.connOpen <- connection
+	socket.onOpen(connection)
 
 	// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
 	for {
@@ -511,14 +431,14 @@ func (socket *Server) process(w http.ResponseWriter, r *http.Request) {
 
 		err = socket.decodeMessage(connection, message, messageFrame)
 		if err != nil {
-			socket.connError <- exception.New(err)
+			socket.onError(exception.New(err))
 			break
 		}
 
 	}
 
 	// close and clean
-	socket.connClose <- connection
+	socket.onClose(connection)
 
 }
 
@@ -620,7 +540,6 @@ func (socket *Server) GetRouter() *Router {
 	return socket.router
 }
 
-// Start Http
 func (socket *Server) Start() {
 
 	socket.Ready()

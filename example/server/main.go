@@ -11,6 +11,7 @@ import (
 	"github.com/Lemo-yxk/lemo/http"
 	server3 "github.com/Lemo-yxk/lemo/http/server"
 	"github.com/Lemo-yxk/lemo/tcp/server"
+	"github.com/Lemo-yxk/lemo/utils"
 	server2 "github.com/Lemo-yxk/lemo/websocket/server"
 )
 
@@ -25,10 +26,10 @@ func main() {
 	// 	console.Log(http.ListenAndServe(":12345", nil))
 	// }()
 
-	// run()
-	// utils.Signal.ListenKill().Done(func(sig os.Signal) {
-	// 	console.Info(sig)
-	// })
+	run()
+	utils.Signal.ListenKill().Done(func(sig os.Signal) {
+		console.Info(sig)
+	})
 
 	// var progress = utils.HttpClient.NewProgress()
 	// progress.Rate(0.01).OnProgress(func(p []byte, current int64, total int64) {

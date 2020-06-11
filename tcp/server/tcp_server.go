@@ -14,7 +14,6 @@ import (
 	"errors"
 	"net"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -73,7 +72,6 @@ type Server struct {
 	Host      string
 	Port      int
 	IP        string
-	AutoBind  bool
 	OnClose   func(conn *Socket)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
@@ -332,13 +330,6 @@ func (socket *Server) Start() {
 	netListen, err = net.Listen("tcp", socket.IP+":"+strconv.Itoa(socket.Port))
 
 	if err != nil {
-		if strings.HasSuffix(err.Error(), "address already in use") {
-			if socket.AutoBind {
-				socket.Port++
-				socket.Start()
-				return
-			}
-		}
 		panic(err)
 	}
 

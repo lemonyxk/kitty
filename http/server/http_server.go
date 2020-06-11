@@ -34,9 +34,6 @@ type Server struct {
 	// TLS KEY
 	KeyFile string
 
-	// AutoBind
-	AutoBind bool
-
 	OnOpen    func(stream *http2.Stream)
 	OnMessage func(stream *http2.Stream)
 	OnClose   func(stream *http2.Stream)
@@ -223,13 +220,6 @@ func (h *Server) Start() {
 	netListen, err = net.Listen("tcp", server.Addr)
 
 	if err != nil {
-		if strings.HasSuffix(err.Error(), "address already in use") {
-			if h.AutoBind {
-				h.Port++
-				h.Start()
-				return
-			}
-		}
 		panic(err)
 	}
 

@@ -104,7 +104,7 @@ func run() {
 
 	go httpServer.SetRouter(httpServerRouter).Start()
 
-	console.Info("start success")
+	console.FgBlue.Println("start success")
 
 	var tcpServer = &server.Server{
 		IP:   "127.0.0.1",

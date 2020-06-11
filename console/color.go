@@ -11,14 +11,18 @@
 package console
 
 import (
-	"fmt"
+	"sync"
 
-	"github.com/jedib0t/go-pretty/text"
+	color2 "github.com/fatih/color"
 )
 
+// Attribute defines a single SGR Code
 type Color int
 
-// Base colors -- attributes in reality
+var cache map[Color]*color2.Color
+var mux sync.RWMutex
+
+// Base attributes
 const (
 	Reset Color = iota
 	Bold
@@ -32,7 +36,7 @@ const (
 	CrossedOut
 )
 
-// Foreground colors
+// Foreground text colors
 const (
 	FgBlack Color = iota + 30
 	FgRed
@@ -44,7 +48,7 @@ const (
 	FgWhite
 )
 
-// Foreground Hi-Intensity colors
+// Foreground Hi-Intensity text colors
 const (
 	FgHiBlack Color = iota + 90
 	FgHiRed
@@ -56,7 +60,7 @@ const (
 	FgHiWhite
 )
 
-// Background colors
+// Background text colors
 const (
 	BgBlack Color = iota + 40
 	BgRed
@@ -68,7 +72,7 @@ const (
 	BgWhite
 )
 
-// Background Hi-Intensity colors
+// Background Hi-Intensity text colors
 const (
 	BgHiBlack Color = iota + 100
 	BgHiRed
@@ -80,10 +84,19 @@ const (
 	BgHiWhite
 )
 
+func getCache(color Color) *color2.Color {
+	mux.Lock()
+	defer mux.Unlock()
+	if c, ok := cache[color]; ok {
+		return c
+	}
+	return color2.New(color2.Attribute(color))
+}
+
 func (c Color) Println(v ...interface{}) {
-	Printf("%s", text.Color(c).Sprint(fmt.Sprintln(v...)))
+	_, _ = getCache(c).Println(v...)
 }
 
 func (c Color) Printf(format string, v ...interface{}) {
-	Printf("%s", text.Color(c).Sprintf(format, v...))
+	_, _ = getCache(c).Printf(format, v...)
 }

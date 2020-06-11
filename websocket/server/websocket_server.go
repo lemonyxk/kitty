@@ -596,6 +596,6 @@ func (socket *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go socket.process(w, r)
+	socket.process(w, r)
 	return
 }

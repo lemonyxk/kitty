@@ -1,8 +1,6 @@
 package main
 
 import (
-	"net/http/httputil"
-	"net/url"
 	"os"
 
 	"github.com/Lemo-yxk/lemo"
@@ -73,26 +71,28 @@ func run() {
 
 	httpServer.Use(func(next server3.Middle) server3.Middle {
 		return func(stream *http.Stream) {
-			if stream.Request.Header.Get("Upgrade") == "websocket" {
-				httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
-			} else {
-				console.Info(1, "start")
-				next(stream)
-				console.Info(1, "end")
-			}
+			// if stream.Request.Header.Get("Upgrade") == "websocket" {
+			// 	httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
+			// } else {
+			// 	console.Info(1, "start")
+			// 	next(stream)
+			// 	console.Info(1, "end")
+			// }
+			next(stream)
 		}
 	})
 
 	httpServer.Use(func(next server3.Middle) server3.Middle {
 		return func(stream *http.Stream) {
-			console.Info(2, "start")
+			// console.Info(2, "start")
+			// next(stream)
+			// console.Info(2, "end")
 			next(stream)
-			console.Info(2, "end")
 		}
 	})
 
 	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) exception.Error {
-		console.Info("handler")
+		// console.Info("handler")
 		return exception.New(stream.EndString("hello"))
 	})
 

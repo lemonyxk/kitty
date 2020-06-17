@@ -19,7 +19,7 @@ import (
 type Protocol interface {
 	Decode(message []byte) (version byte, messageType int, protoType int, route []byte, body []byte)
 	Encode(route []byte, body []byte, messageType int, protoType int) []byte
-	Reader() func(n int, buf []byte) ([]byte, error)
+	Reader() func(n int, buf []byte, fn func(bytes []byte)) error
 }
 
 type DefaultProtocol struct{}
@@ -51,28 +51,26 @@ func (Protocol *DefaultProtocol) Encode(route []byte, body []byte, messageType i
 	return nil
 }
 
-func (Protocol *DefaultProtocol) Reader() func(n int, buf []byte) ([]byte, error) {
+func (Protocol *DefaultProtocol) Reader() func(n int, buf []byte, fn func(bytes []byte)) error {
 
 	var singleMessageLen = 0
 
 	var message []byte
 
-	var res []byte
-
-	return func(n int, buf []byte) ([]byte, error) {
+	return func(n int, buf []byte, fn func(bytes []byte)) error {
 
 		message = append(message, buf[0:n]...)
 
 		// read continue
 		if len(message) < 8 {
-			return nil, nil
+			return nil
 		}
 
 		for {
 
 			// jump out and read continue
 			if len(message) < 8 {
-				return nil, nil
+				return nil
 			}
 
 			// just begin
@@ -82,7 +80,7 @@ func (Protocol *DefaultProtocol) Reader() func(n int, buf []byte) ([]byte, error
 				if !isHeaderInvalid(message) {
 					// message = message[0:0]
 					// singleMessageLen = 0
-					return nil, errors.New("invalid header")
+					return errors.New("invalid header")
 				}
 
 				singleMessageLen = getLen(message)
@@ -90,19 +88,17 @@ func (Protocol *DefaultProtocol) Reader() func(n int, buf []byte) ([]byte, error
 
 			// jump out and read continue
 			if len(message) < singleMessageLen {
-				return nil, nil
+				return nil
 			}
 
 			// a complete message
-			res = message[0:singleMessageLen]
+			fn(message[0:singleMessageLen])
 
 			// delete this message
 			message = message[singleMessageLen:]
 
 			// reset len
 			singleMessageLen = 0
-
-			return res, nil
 		}
 
 	}

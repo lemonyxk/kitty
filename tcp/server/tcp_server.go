@@ -402,18 +402,9 @@ func (socket *Server) process(conn net.Conn) {
 			break
 		}
 
-		message, err := reader(n, buffer)
-
-		if err != nil {
-			socket.onError(exception.New(err))
-			break
-		}
-
-		if message == nil {
-			continue
-		}
-
-		err = socket.decodeMessage(connection, message)
+		err = reader(n, buffer, func(bytes []byte) {
+			err = socket.decodeMessage(connection, bytes)
+		})
 
 		if err != nil {
 			socket.onError(exception.New(err))

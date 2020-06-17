@@ -261,18 +261,9 @@ func (client *Client) Connect() {
 			break
 		}
 
-		message, err := reader(n, buffer)
-
-		if err != nil {
-			client.OnError(exception.New(err))
-			break
-		}
-
-		if message == nil {
-			continue
-		}
-
-		err = client.decodeMessage(client, message)
+		err = reader(n, buffer, func(bytes []byte) {
+			err = client.decodeMessage(client, bytes)
+		})
 
 		if err != nil {
 			client.OnError(exception.New(err))

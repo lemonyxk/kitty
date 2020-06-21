@@ -9,24 +9,18 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
 	http2 "github.com/Lemo-yxk/lemo/http"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type Server struct {
 	Name string
 	// Host 服务Host
 	Host string
-	// IP
-	IP string
-	// Port 服务端口
-	Port int
 	// Protocol 协议
 	TSL bool
 	// TLS FILE
@@ -47,7 +41,9 @@ type Server struct {
 }
 
 func (h *Server) Ready() {
-
+	if h.Host == "" {
+		panic("Host must set")
+	}
 }
 
 type Middle func(*http2.Stream)
@@ -203,16 +199,7 @@ func (h *Server) Start() {
 
 	h.Ready()
 
-	if h.Host != "" {
-		var ip, port, err = utils.Addr.Parse(h.Host)
-		if err != nil {
-			panic(err)
-		}
-		h.IP = ip
-		h.Port = port
-	}
-
-	var server = http.Server{Addr: h.IP + ":" + strconv.Itoa(h.Port), Handler: h}
+	var server = http.Server{Addr: h.Host, Handler: h}
 
 	var err error
 	var netListen net.Listener

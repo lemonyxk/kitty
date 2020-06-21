@@ -27,14 +27,14 @@ func main() {
 
 func run() {
 
-	var client = &client2.Client{Host: "0.0.0.0", Port: 8888, Reconnect: true, AutoHeartBeat: true}
+	var client = &client2.Client{Host: "0.0.0.0:", Reconnect: true, AutoHeartBeat: true}
 
 	client.OnClose = func(c *client2.Client) {
-		console.Log("close")
+		console.Infof("close")
 	}
 
 	client.OnOpen = func(c *client2.Client) {
-		console.Log("open")
+		console.Infof("open")
 	}
 
 	client.OnMessage = func(c *client2.Client, messageType int, msg []byte) {
@@ -49,7 +49,7 @@ func run() {
 
 	router.Group("/hello").Handler(func(handler *client2.RouteHandler) {
 		handler.Route("/world").Handler(func(c *client2.Client, receive *lemo.Receive) exception.Error {
-			console.Log(string(receive.Body.Message))
+			console.Infof(string(receive.Body.Message))
 			return nil
 		})
 	})

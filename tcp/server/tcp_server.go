@@ -13,19 +13,17 @@ package server
 import (
 	"errors"
 	"net"
-	"strconv"
 	"sync"
 	"time"
 
 	"github.com/json-iterator/go"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/tcp"
-	"github.com/Lemo-yxk/lemo/utils"
-
-	"github.com/golang/protobuf/proto"
 )
 
 type Socket struct {
@@ -70,8 +68,6 @@ func (conn *Socket) Close() error {
 type Server struct {
 	Name      string
 	Host      string
-	Port      int
-	IP        string
 	OnClose   func(conn *Socket)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
@@ -179,6 +175,10 @@ func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) exception.Error {
 }
 
 func (socket *Server) Ready() {
+
+	if socket.Host == "" {
+		panic("Host must set")
+	}
 
 	if socket.HandshakeTimeout == 0 {
 		socket.HandshakeTimeout = 2
@@ -315,19 +315,10 @@ func (socket *Server) Start() {
 
 	socket.Ready()
 
-	if socket.Host != "" {
-		var ip, port, err = utils.Addr.Parse(socket.Host)
-		if err != nil {
-			panic(err)
-		}
-		socket.IP = ip
-		socket.Port = port
-	}
-
 	var err error
 	var netListen net.Listener
 
-	netListen, err = net.Listen("tcp", socket.IP+":"+strconv.Itoa(socket.Port))
+	netListen, err = net.Listen("tcp", socket.Host)
 
 	if err != nil {
 		panic(err)

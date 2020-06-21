@@ -12,7 +12,6 @@ package client
 
 import (
 	"net"
-	"strconv"
 	"sync"
 	"time"
 
@@ -23,14 +22,11 @@ import (
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/tcp"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type Client struct {
 	Name string
 	Host string
-	IP   string
-	Port int
 
 	Conn              net.Conn
 	AutoHeartBeat     bool
@@ -120,11 +116,7 @@ func (client *Client) reconnecting() {
 func (client *Client) Connect() {
 
 	if client.Host == "" {
-		client.Host = "127.0.0.1"
-	}
-
-	if client.Port == 0 {
-		client.Port = 1207
+		panic("Host must set")
 	}
 
 	if client.OnOpen == nil {
@@ -195,17 +187,8 @@ func (client *Client) Connect() {
 		}
 	}
 
-	if client.Host != "" {
-		var ip, port, err = utils.Addr.Parse(client.Host)
-		if err != nil {
-			panic(err)
-		}
-		client.IP = ip
-		client.Port = port
-	}
-
 	// 连接服务器
-	handler, err := net.DialTimeout("tcp", client.IP+":"+strconv.Itoa(client.Port), time.Duration(client.HandshakeTimeout)*time.Second)
+	handler, err := net.DialTimeout("tcp", client.Host, time.Duration(client.HandshakeTimeout)*time.Second)
 	if err != nil {
 		client.OnError(exception.New(err))
 		client.reconnecting()

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/utils"
 	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
@@ -85,10 +83,6 @@ type Server struct {
 	// Host 服务Host
 	Name string
 	Host string
-	// Port 服务端口
-	Port int
-	// IP
-	IP string
 	// Protocol 协议
 	TLS bool
 	// TLS FILE
@@ -293,6 +287,14 @@ func (socket *Server) onError(err exception.Error) {
 
 func (socket *Server) Ready() {
 
+	if socket.Path == "" {
+		socket.Path = "/"
+	}
+
+	if socket.Host == "" {
+		panic("Host must set")
+	}
+
 	if socket.HeartBeatTimeout == 0 {
 		socket.HeartBeatTimeout = 30
 	}
@@ -362,10 +364,6 @@ func (socket *Server) Ready() {
 				return nil
 			}
 		}
-	}
-
-	if socket.Path == "" {
-		socket.Path = "/"
 	}
 
 	socket.upgrade = websocket.Upgrader{
@@ -544,16 +542,7 @@ func (socket *Server) Start() {
 
 	socket.Ready()
 
-	if socket.Host != "" {
-		var ip, port, err = utils.Addr.Parse(socket.Host)
-		if err != nil {
-			panic(err)
-		}
-		socket.IP = ip
-		socket.Port = port
-	}
-
-	var server = http.Server{Addr: socket.IP + ":" + strconv.Itoa(socket.Port), Handler: socket}
+	var server = http.Server{Addr: socket.Host, Handler: socket}
 
 	var err error
 	var netListen net.Listener

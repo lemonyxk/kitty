@@ -3,7 +3,6 @@ package client
 import (
 	"net"
 	"net/http"
-	"strconv"
 	"sync"
 	"time"
 
@@ -11,7 +10,6 @@ import (
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/utils"
 	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
@@ -23,8 +21,6 @@ type Client struct {
 	Name   string
 	Scheme string
 	Host   string
-	IP     string
-	Port   int
 	Path   string
 	// Origin   http.Header
 
@@ -125,16 +121,12 @@ func (client *Client) reconnecting() {
 // Connect 连接服务器
 func (client *Client) Connect() {
 
-	if client.Host == "" {
-		client.Host = "127.0.0.1"
-	}
-
-	if client.Port == 0 {
-		client.Port = 1207
-	}
-
 	if client.Path == "" {
 		client.Path = "/"
+	}
+
+	if client.Host == "" {
+		panic("Host must set")
 	}
 
 	if client.OnOpen == nil {
@@ -211,17 +203,8 @@ func (client *Client) Connect() {
 		ReadBufferSize:   client.ReadBufferSize,
 	}
 
-	if client.Host != "" {
-		var ip, port, err = utils.Addr.Parse(client.Host)
-		if err != nil {
-			panic(err)
-		}
-		client.IP = ip
-		client.Port = port
-	}
-
 	// 连接服务器
-	handler, response, err := dialer.Dial(client.Scheme+"://"+client.IP+":"+strconv.Itoa(client.Port)+client.Path, nil)
+	handler, response, err := dialer.Dial(client.Scheme+"://"+client.Host+client.Path, nil)
 	if err != nil {
 		client.OnError(exception.New(err))
 		client.reconnecting()

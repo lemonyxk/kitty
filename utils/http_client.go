@@ -21,6 +21,7 @@ import (
 	"net/http"
 	url2 "net/url"
 	"os"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -48,6 +49,9 @@ var transport = http.Transport{
 	TLSHandshakeTimeout:   10 * time.Second,
 	ResponseHeaderTimeout: 15 * time.Second,
 	ExpectContinueTimeout: 2 * time.Second,
+	MaxIdleConns:          runtime.NumCPU() * 2,
+	MaxIdleConnsPerHost:   runtime.NumCPU() * 2,
+	MaxConnsPerHost:       runtime.NumCPU() * 2,
 }
 
 type writeProgress struct {

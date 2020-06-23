@@ -153,7 +153,7 @@ func packBin(route []byte, body []byte, protoType int) []byte {
 	data = append(data, byte(len(route)&0x00ff))
 
 	// 4 body len
-	data = append(data, byte(bl>>28&0x00ff))
+	data = append(data, byte(bl>>24&0x00ff))
 
 	// 5 body len
 	data = append(data, byte(bl>>16&0x00ff))

@@ -30,14 +30,14 @@ type Client struct {
 
 	Conn              net.Conn
 	AutoHeartBeat     bool
-	HeartBeatTimeout  int
-	HeartBeatInterval int
+	HeartBeatTimeout  time.Duration
+	HeartBeatInterval time.Duration
 	HeartBeat         func(c *Client) error
 	Reconnect         bool
-	ReconnectInterval int
+	ReconnectInterval time.Duration
 	ReadBufferSize    int
 	WriteBufferSize   int
-	HandshakeTimeout  int
+	HandshakeTimeout  time.Duration
 
 	// 消息处理
 	OnOpen    func(c *Client)
@@ -107,7 +107,7 @@ func (client *Client) Close() error {
 
 func (client *Client) reconnecting() {
 	if client.Reconnect == true {
-		time.AfterFunc(time.Duration(client.ReconnectInterval)*time.Second, func() {
+		time.AfterFunc(client.ReconnectInterval, func() {
 			client.Connect()
 		})
 	}
@@ -133,7 +133,7 @@ func (client *Client) Connect() {
 
 	// 握手
 	if client.HandshakeTimeout == 0 {
-		client.HandshakeTimeout = 2
+		client.HandshakeTimeout = 2 * time.Second
 	}
 
 	// 读出BUF大小
@@ -148,16 +148,16 @@ func (client *Client) Connect() {
 
 	// 定时心跳间隔
 	if client.HeartBeatInterval == 0 {
-		client.HeartBeatInterval = 15
+		client.HeartBeatInterval = 15 * time.Second
 	}
 
 	if client.HeartBeatTimeout == 0 {
-		client.HeartBeatTimeout = 30
+		client.HeartBeatTimeout = 30 * time.Second
 	}
 
 	// 自动重连间隔
 	if client.ReconnectInterval == 0 {
-		client.ReconnectInterval = 1
+		client.ReconnectInterval = time.Second
 	}
 
 	if client.Protocol == nil {
@@ -188,7 +188,7 @@ func (client *Client) Connect() {
 	}
 
 	// 连接服务器
-	handler, err := net.DialTimeout("tcp", client.Host, time.Duration(client.HandshakeTimeout)*time.Second)
+	handler, err := net.DialTimeout("tcp", client.Host, client.HandshakeTimeout)
 	if err != nil {
 		client.OnError(exception.New(err))
 		client.reconnecting()
@@ -216,7 +216,7 @@ func (client *Client) Connect() {
 	client.OnOpen(client)
 
 	// 定时器 心跳
-	ticker := time.NewTicker(time.Duration(client.HeartBeatInterval) * time.Second)
+	ticker := time.NewTicker(client.HeartBeatInterval)
 
 	// 如果有心跳设置
 	if client.AutoHeartBeat != true {

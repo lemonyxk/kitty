@@ -74,12 +74,12 @@ type Server struct {
 	OnError   func(err exception.Error)
 	OnSuccess func()
 
-	HeartBeatTimeout  int
-	HeartBeatInterval int
+	HeartBeatTimeout  time.Duration
+	HeartBeatInterval time.Duration
 	ReadBufferSize    int
 	WriteBufferSize   int
 	WaitQueueSize     int
-	HandshakeTimeout  int
+	HandshakeTimeout  time.Duration
 
 	PingHandler func(connection *Socket) func(appData string) error
 
@@ -181,15 +181,15 @@ func (socket *Server) Ready() {
 	}
 
 	if socket.HandshakeTimeout == 0 {
-		socket.HandshakeTimeout = 2
+		socket.HandshakeTimeout = 2 * time.Second
 	}
 
 	if socket.HeartBeatTimeout == 0 {
-		socket.HeartBeatTimeout = 30
+		socket.HeartBeatTimeout = 30 * time.Second
 	}
 
 	if socket.HeartBeatInterval == 0 {
-		socket.HeartBeatInterval = 15
+		socket.HeartBeatInterval = 15 * time.Second
 	}
 
 	if socket.ReadBufferSize == 0 {
@@ -231,7 +231,7 @@ func (socket *Server) Ready() {
 			return func(appData string) error {
 				// unnecessary
 				// err := Server.Push(connection.FD, PongMessage, nil)
-				return connection.Conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+				return connection.Conn.SetReadDeadline(time.Now().Add(socket.HeartBeatTimeout))
 			}
 		}
 	}
@@ -357,7 +357,7 @@ func (socket *Server) Shutdown() {
 func (socket *Server) process(conn net.Conn) {
 
 	// 超时时间
-	err := conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+	err := conn.SetReadDeadline(time.Now().Add(socket.HeartBeatTimeout))
 	if err != nil {
 		socket.onError(exception.New(err))
 		return

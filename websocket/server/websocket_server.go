@@ -96,9 +96,9 @@ type Server struct {
 	OnError   func(err exception.Error)
 	OnSuccess func()
 
-	HeartBeatTimeout  int
-	HeartBeatInterval int
-	HandshakeTimeout  int
+	HeartBeatTimeout  time.Duration
+	HeartBeatInterval time.Duration
+	HandshakeTimeout  time.Duration
 	ReadBufferSize    int
 	WriteBufferSize   int
 	WaitQueueSize     int
@@ -296,15 +296,15 @@ func (socket *Server) Ready() {
 	}
 
 	if socket.HeartBeatTimeout == 0 {
-		socket.HeartBeatTimeout = 30
+		socket.HeartBeatTimeout = 30 * time.Second
 	}
 
 	if socket.HeartBeatInterval == 0 {
-		socket.HeartBeatInterval = 15
+		socket.HeartBeatInterval = 15 * time.Second
 	}
 
 	if socket.HandshakeTimeout == 0 {
-		socket.HandshakeTimeout = 2
+		socket.HandshakeTimeout = 2 * time.Second
 	}
 
 	// must be 4096 or the memory will leak
@@ -353,7 +353,7 @@ func (socket *Server) Ready() {
 			return func(appData string) error {
 				// unnecessary
 				// err := Server.Push(connection.FD, BinData, socket.Protocol.Encode(nil, nil, PongData, BinData))
-				return connection.Conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+				return connection.Conn.SetReadDeadline(time.Now().Add(socket.HeartBeatTimeout))
 			}
 		}
 	}
@@ -367,7 +367,7 @@ func (socket *Server) Ready() {
 	}
 
 	socket.upgrade = websocket.Upgrader{
-		HandshakeTimeout: time.Duration(socket.HandshakeTimeout) * time.Second,
+		HandshakeTimeout: socket.HandshakeTimeout,
 		ReadBufferSize:   socket.ReadBufferSize,
 		WriteBufferSize:  socket.WriteBufferSize,
 		CheckOrigin:      socket.CheckOrigin,
@@ -388,7 +388,7 @@ func (socket *Server) process(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 超时时间
-	err = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+	err = conn.SetReadDeadline(time.Now().Add(socket.HeartBeatTimeout))
 	if err != nil {
 		socket.onError(exception.New(err))
 		return
@@ -424,7 +424,7 @@ func (socket *Server) process(w http.ResponseWriter, r *http.Request) {
 		// do not let it dead
 		// for web ping
 		if len(message) == 0 {
-			_ = conn.SetReadDeadline(time.Now().Add(time.Duration(socket.HeartBeatTimeout) * time.Second))
+			_ = conn.SetReadDeadline(time.Now().Add(socket.HeartBeatTimeout))
 		}
 
 		err = socket.decodeMessage(connection, message, messageFrame)

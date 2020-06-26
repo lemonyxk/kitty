@@ -10,6 +10,7 @@ import (
 
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/utils"
 	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
@@ -88,7 +89,7 @@ func (client *Client) JsonEmit(msg lemo.JsonPackage) exception.Error {
 	if err != nil {
 		return exception.New(err)
 	}
-	return client.Push(lemo.TextData, client.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
+	return client.Push(lemo.TextData, client.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
 func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
@@ -96,7 +97,7 @@ func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
 	if err != nil {
 		return exception.New(err)
 	}
-	return client.Push(lemo.BinData, client.Protocol.Encode([]byte(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
+	return client.Push(lemo.BinData, client.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
 }
 
 // Push 发送消息
@@ -297,7 +298,7 @@ func (client *Client) decodeMessage(conn *Client, messageFrame int, message []by
 
 	// on router
 	if client.router != nil {
-		client.middleware(client, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+		client.middleware(client, &lemo.ReceivePackage{MessageType: messageType, Event: utils.Conv.BytesToString(route), Message: body, ProtoType: protoType, Raw: message})
 	}
 
 	return nil

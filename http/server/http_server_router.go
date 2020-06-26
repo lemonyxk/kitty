@@ -21,6 +21,7 @@ import (
 	"github.com/Lemo-yxk/lemo/container/tire"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/http"
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type groupFunction func(handler *RouteHandler)
@@ -182,7 +183,7 @@ func (route *route) Handler(fn function) {
 
 	hba.Method = method
 
-	hba.Route = []byte(path)
+	hba.Route = utils.Conv.StringToBytes(path)
 
 	router.tire.Insert(path, hba)
 }
@@ -272,7 +273,7 @@ func (router *Router) getRoute(method string, path string) (*tire.Tire, []byte) 
 
 	path = router.formatPath(path)
 
-	var pathB = []byte(path)
+	var pathB = utils.Conv.StringToBytes(path)
 
 	var t = router.tire.GetValue(pathB)
 

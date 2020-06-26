@@ -24,6 +24,7 @@ import (
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/tcp"
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type Socket struct {
@@ -163,7 +164,7 @@ func (socket *Server) ProtoBufEmit(fd int64, msg lemo.ProtoBufPackage) exception
 	if err != nil {
 		return exception.New(err)
 	}
-	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
+	return socket.Push(fd, socket.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
 }
 
 func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) exception.Error {
@@ -171,7 +172,7 @@ func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) exception.Error {
 	if err != nil {
 		return exception.New(err)
 	}
-	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
+	return socket.Push(fd, socket.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
 func (socket *Server) Ready() {
@@ -432,7 +433,7 @@ func (socket *Server) decodeMessage(connection *Socket, message []byte) error {
 
 	// on router
 	if socket.router != nil {
-		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: utils.Conv.BytesToString(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 

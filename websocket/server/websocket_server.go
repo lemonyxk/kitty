@@ -14,6 +14,7 @@ import (
 	"github.com/Lemo-yxk/lemo"
 	"github.com/Lemo-yxk/lemo/console"
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/utils"
 	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
@@ -213,7 +214,7 @@ func (socket *Server) ProtoBufEmit(fd int64, msg lemo.ProtoBufPackage) exception
 	if err != nil {
 		return exception.New(err)
 	}
-	return socket.Push(fd, lemo.BinData, socket.Protocol.Encode([]byte(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
+	return socket.Push(fd, lemo.BinData, socket.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
 }
 
 func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) exception.Error {
@@ -221,7 +222,7 @@ func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) exception.Error {
 	if err != nil {
 		return exception.New(err)
 	}
-	return socket.Push(fd, lemo.TextData, socket.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
+	return socket.Push(fd, lemo.TextData, socket.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
 func (socket *Server) addConnect(conn *WebSocket) {
@@ -466,7 +467,7 @@ func (socket *Server) decodeMessage(connection *WebSocket, message []byte, messa
 
 	// on router
 	if socket.router != nil {
-		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: utils.Conv.BytesToString(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 

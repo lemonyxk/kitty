@@ -13,6 +13,8 @@ package tire
 import (
 	"fmt"
 	"strings"
+
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 const FH uint8 = 58
@@ -35,7 +37,7 @@ func (t *Tire) ParseParams(pathBytes []byte) []string {
 		return nil
 	}
 
-	var pathArray = strings.Split(string(pathBytes), "/")
+	var pathArray = strings.Split(utils.Conv.BytesToString(pathBytes), "/")
 
 	var res []string
 
@@ -65,7 +67,7 @@ func (t *Tire) Insert(path string, data interface{}) {
 		return
 	}
 
-	var pathBytes = []byte(path)
+	var pathBytes = utils.Conv.StringToBytes(path)
 
 	if pathBytes[0] != XG {
 		return
@@ -119,7 +121,7 @@ func (t *Tire) Insert(path string, data interface{}) {
 		}
 
 		if k != nil {
-			ka = append(ka, string(k))
+			ka = append(ka, utils.Conv.BytesToString(k))
 		}
 
 		var p *Tire

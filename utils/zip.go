@@ -78,7 +78,7 @@ func (z unzipFile) To(dst string) error {
 
 	_ = os.MkdirAll(absPath, 0755)
 
-	cf, err := zip2.OpenReader(z.src) // 读取zip文件
+	cf, err := zip2.OpenReader(z.src)
 	if err != nil {
 		return err
 	}

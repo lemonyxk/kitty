@@ -223,7 +223,7 @@ func (stream *Stream) EndJson(data interface{}) exception.Error {
 }
 
 func (stream *Stream) EndString(data string) exception.Error {
-	return exception.New(stream.Response.Write([]byte(data)))
+	return exception.New(stream.Response.Write(utils.Conv.StringToBytes(data)))
 }
 
 func (stream *Stream) EndBytes(data []byte) exception.Error {

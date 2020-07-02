@@ -22,18 +22,18 @@ type Files struct {
 	files map[string][]*multipart.FileHeader
 }
 
-func (f Files) All() map[string][]*multipart.FileHeader {
+func (f *Files) All() map[string][]*multipart.FileHeader {
 	return f.files
 }
 
-func (f Files) Get(fileName string) *multipart.FileHeader {
+func (f *Files) Get(fileName string) *multipart.FileHeader {
 	if file, ok := f.files[fileName]; ok {
 		return file[0]
 	}
 	return nil
 }
 
-func (f Files) GetAll(fileName string) []*multipart.FileHeader {
+func (f *Files) GetAll(fileName string) []*multipart.FileHeader {
 	if file, ok := f.files[fileName]; ok {
 		return file
 	}
@@ -79,13 +79,13 @@ type Json struct {
 	any jsoniter.Any
 }
 
-func (j Json) Reset(data interface{}) jsoniter.Any {
+func (j *Json) Reset(data interface{}) jsoniter.Any {
 	bts, _ := jsoniter.Marshal(data)
 	j.any = jsoniter.Get(bts)
 	return j.any
 }
 
-func (j Json) getAny() jsoniter.Any {
+func (j *Json) getAny() jsoniter.Any {
 	if j.any != nil {
 		return j.any
 	}
@@ -94,19 +94,19 @@ func (j Json) getAny() jsoniter.Any {
 }
 
 // GetByID 获取
-func (j Json) Iter() jsoniter.Any {
+func (j *Json) Iter() jsoniter.Any {
 	return j.getAny()
 }
 
-func (j Json) Has(key string) bool {
+func (j *Json) Has(key string) bool {
 	return j.getAny().Get(key).LastError() == nil
 }
 
-func (j Json) Empty(key string) bool {
+func (j *Json) Empty(key string) bool {
 	return j.getAny().Get(key).ToString() == ""
 }
 
-func (j Json) Get(path ...interface{}) Value {
+func (j *Json) Get(path ...interface{}) Value {
 	var res = j.getAny().Get(path...)
 	if res.LastError() != nil {
 		return Value{}
@@ -115,19 +115,19 @@ func (j Json) Get(path ...interface{}) Value {
 	return Value{v: &p}
 }
 
-func (j Json) Bytes() []byte {
+func (j *Json) Bytes() []byte {
 	return j.Bytes()
 }
 
-func (j Json) String() string {
+func (j *Json) String() string {
 	return j.getAny().ToString()
 }
 
-func (j Json) Path(path ...interface{}) jsoniter.Any {
+func (j *Json) Path(path ...interface{}) jsoniter.Any {
 	return j.getAny().Get(path...)
 }
 
-func (j Json) Array(path ...interface{}) Array {
+func (j *Json) Array(path ...interface{}) Array {
 	var result []jsoniter.Any
 	var val = j.getAny().Get(path...)
 	for i := 0; i < val.Size(); i++ {
@@ -168,10 +168,10 @@ type Stream struct {
 	Request  *http.Request
 	Params   lemo.Params
 	Context  lemo.Context
-	Query    Store
-	Form     Store
-	Json     Json
-	Files    Files
+	Query    *Store
+	Form     *Store
+	Json     *Json
+	Files    *Files
 
 	maxMemory     int64
 	hasParseQuery bool
@@ -260,7 +260,7 @@ func (stream *Stream) ClientIP() string {
 	return ""
 }
 
-func (stream *Stream) ParseJson() Json {
+func (stream *Stream) ParseJson() *Json {
 
 	if stream.hasParseJson {
 		return stream.Json
@@ -268,7 +268,7 @@ func (stream *Stream) ParseJson() Json {
 
 	stream.hasParseJson = true
 
-	var json = Json{}
+	var json = &Json{}
 
 	jsonBody, err := ioutil.ReadAll(stream.Request.Body)
 	if err != nil {
@@ -282,7 +282,7 @@ func (stream *Stream) ParseJson() Json {
 	return stream.Json
 }
 
-func (stream *Stream) ParseFiles() Files {
+func (stream *Stream) ParseFiles() *Files {
 
 	if stream.hasParseFiles {
 		return stream.Files
@@ -290,7 +290,7 @@ func (stream *Stream) ParseFiles() Files {
 
 	stream.hasParseFiles = true
 
-	var file = Files{}
+	var file = &Files{}
 
 	err := stream.Request.ParseMultipartForm(stream.maxMemory)
 	if err != nil {
@@ -306,7 +306,7 @@ func (stream *Stream) ParseFiles() Files {
 	return file
 }
 
-func (stream *Stream) ParseMultipart() Store {
+func (stream *Stream) ParseMultipart() *Store {
 
 	if stream.hasParseForm {
 		return stream.Form
@@ -314,7 +314,7 @@ func (stream *Stream) ParseMultipart() Store {
 
 	stream.hasParseForm = true
 
-	var form = Store{}
+	var form = &Store{}
 
 	err := stream.Request.ParseMultipartForm(stream.maxMemory)
 	if err != nil {
@@ -333,7 +333,7 @@ func (stream *Stream) ParseMultipart() Store {
 	return form
 }
 
-func (stream *Stream) ParseQuery() Store {
+func (stream *Stream) ParseQuery() *Store {
 
 	if stream.hasParseQuery {
 		return stream.Query
@@ -341,7 +341,7 @@ func (stream *Stream) ParseQuery() Store {
 
 	stream.hasParseQuery = true
 
-	var query = Store{}
+	var query = &Store{}
 
 	var params = stream.Request.URL.RawQuery
 
@@ -360,7 +360,7 @@ func (stream *Stream) ParseQuery() Store {
 	return query
 }
 
-func (stream *Stream) ParseForm() Store {
+func (stream *Stream) ParseForm() *Store {
 
 	if stream.hasParseForm {
 		return stream.Form
@@ -368,7 +368,7 @@ func (stream *Stream) ParseForm() Store {
 
 	stream.hasParseForm = true
 
-	var form = Store{}
+	var form = &Store{}
 
 	err := stream.Request.ParseForm()
 	if err != nil {
@@ -484,7 +484,7 @@ type Store struct {
 	values [][]string
 }
 
-func (store Store) Has(key string) bool {
+func (store *Store) Has(key string) bool {
 	for i := 0; i < len(store.keys); i++ {
 		if store.keys[i] == key {
 			return true
@@ -493,12 +493,12 @@ func (store Store) Has(key string) bool {
 	return false
 }
 
-func (store Store) Empty(key string) bool {
+func (store *Store) Empty(key string) bool {
 	var v = store.Get(key).v
 	return v == nil || *v == ""
 }
 
-func (store Store) Get(key string) Value {
+func (store *Store) Get(key string) Value {
 	var val = Value{}
 	for i := 0; i < len(store.keys); i++ {
 		if store.keys[i] == key {
@@ -509,7 +509,7 @@ func (store Store) Get(key string) Value {
 	return val
 }
 
-func (store Store) GetAll(key string) []string {
+func (store *Store) GetAll(key string) []string {
 	for i := 0; i < len(store.keys); i++ {
 		if store.keys[i] == key {
 			return store.values[i]
@@ -518,12 +518,12 @@ func (store Store) GetAll(key string) []string {
 	return nil
 }
 
-func (store Store) Add(key string, value string) {
+func (store *Store) Add(key string, value string) {
 	store.keys = append(store.keys, key)
 	store.values = append(store.values, []string{value})
 }
 
-func (store Store) Remove(key string) {
+func (store *Store) Remove(key string) {
 	var index = -1
 	for i := 0; i < len(store.keys); i++ {
 		if store.keys[i] == key {
@@ -538,11 +538,11 @@ func (store Store) Remove(key string) {
 	store.values = append(store.values[0:index], store.values[index+1:]...)
 }
 
-func (store Store) Keys() []string {
+func (store *Store) Keys() []string {
 	return store.keys
 }
 
-func (store Store) Values() []string {
+func (store *Store) Values() []string {
 	var res []string
 	for i := 0; i < len(store.values); i++ {
 		res = append(res, store.values[i][0])
@@ -550,11 +550,11 @@ func (store Store) Values() []string {
 	return res
 }
 
-func (store Store) AllValues() [][]string {
+func (store *Store) AllValues() [][]string {
 	return store.values
 }
 
-func (store Store) String() string {
+func (store *Store) String() string {
 
 	var buff bytes.Buffer
 

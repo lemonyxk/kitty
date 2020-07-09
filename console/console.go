@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Lemo-yxk/lemo/caller"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/utils"
 )
@@ -28,14 +27,24 @@ type Logger interface {
 	Debugf(string, ...interface{})
 }
 
+type Formatter interface {
+	Sprint(v ...interface{}) string
+	Sprintf(format string, v ...interface{}) string
+}
+
 var wr *writer
 
 type writer struct {
-	logger Logger
+	logger    Logger
+	formatter Formatter
 }
 
 func SetLogger(logger Logger) {
 	wr.logger = logger
+}
+
+func SetFormatter(formatter Formatter) {
+	wr.formatter = formatter
 }
 
 func SetFlags(v int) {
@@ -45,7 +54,9 @@ func SetFlags(v int) {
 func init() {
 	wr = &writer{}
 	DefaultLogger = NewDefaultLogger()
+	DefaultFormatter = NewDefaultFormatter()
 	SetLogger(DefaultLogger)
+	SetFormatter(DefaultFormatter)
 	SetFlags(STATUS | DATE | FILE)
 }
 
@@ -53,6 +64,22 @@ var DefaultLogger *defaultLogger
 
 func NewDefaultLogger() *defaultLogger {
 	return &defaultLogger{}
+}
+
+func NewDefaultFormatter() *defaultFormatter {
+	return &defaultFormatter{}
+}
+
+var DefaultFormatter *defaultFormatter
+
+type defaultFormatter struct{}
+
+func (f *defaultFormatter) Sprintf(format string, v ...interface{}) string {
+	return fmt.Sprintf(format, v...)
+}
+
+func (f *defaultFormatter) Sprint(v ...interface{}) string {
+	return fmt.Sprint(v...)
 }
 
 type defaultLogger struct {
@@ -76,7 +103,7 @@ func (log *defaultLogger) Errorf(format string, args ...interface{}) {
 		file, line = err.(exception.Error).File(), err.(exception.Error).Line()
 		t = err.(exception.Error).Time()
 	default:
-		file, line = caller.Caller(2)
+		file, line = utils.Stack.Caller(2)
 		t = time.Now()
 	}
 
@@ -115,7 +142,7 @@ func (log *defaultLogger) Warningf(format string, args ...interface{}) {
 
 	var flags []string
 
-	var file, line = caller.Caller(2)
+	var file, line = utils.Stack.Caller(2)
 
 	if flag&STATUS != 0 {
 		flags = append(flags, status)
@@ -149,7 +176,7 @@ func (log *defaultLogger) Infof(format string, args ...interface{}) {
 
 	var flags []string
 
-	var file, line = caller.Caller(2)
+	var file, line = utils.Stack.Caller(2)
 
 	if flag&STATUS != 0 {
 		flags = append(flags, status)
@@ -183,7 +210,7 @@ func (log *defaultLogger) Debugf(format string, args ...interface{}) {
 
 	var flags []string
 
-	var file, line = caller.Caller(2)
+	var file, line = utils.Stack.Caller(2)
 
 	if flag&STATUS != 0 {
 		flags = append(flags, status)

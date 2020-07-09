@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Lemo-yxk/structure/tire"
+
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/caller"
-	"github.com/Lemo-yxk/lemo/container/tire"
 	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/utils"
 )
@@ -111,7 +111,7 @@ func (route *route) Handler(fn function) {
 		panic("route path can not empty")
 	}
 
-	file, line := caller.Caller(1)
+	file, line := utils.Stack.Caller(1)
 
 	var router = route.group.router
 	var g = route.group

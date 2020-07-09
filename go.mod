@@ -1,8 +1,9 @@
 module github.com/Lemo-yxk/lemo
 
-go 1.14
+go 1.15
 
 require (
+	github.com/Lemo-yxk/structure v0.0.0-20200709123845-0515920c3dba
 	github.com/go-openapi/strfmt v0.19.5 // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/gorilla/websocket v1.4.2

@@ -16,7 +16,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/Lemo-yxk/lemo/caller"
+	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type exception struct {
@@ -185,13 +185,13 @@ func NewFormat(format string, v ...interface{}) Error {
 }
 
 func newErrorFromDeep(v interface{}, deep int) Error {
-	file, line := caller.Caller(deep)
+	file, line := utils.Stack.Caller(deep)
 	return newErrorWithFileAndLine(v, file, line)
 }
 
 func newStackErrorFromDeep(v interface{}, deep int) Error {
 	deep = 10 + deep*2
-	var file, line = caller.Stack(deep)
+	var file, line = utils.Stack.Stack(deep)
 	return newErrorWithFileAndLine(v, file, line)
 }
 

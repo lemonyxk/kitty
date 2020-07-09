@@ -21,7 +21,7 @@ import (
 var t2 http.Server
 
 func init() {
-	console.Log(exception.IsNil(t2))
+	console.Info(exception.IsNil(t2))
 }
 
 func BenchmarkStdAppLogs_normal_jsoniter(b *testing.B) {

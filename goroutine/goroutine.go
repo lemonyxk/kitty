@@ -8,25 +8,22 @@
 * @create: 2019-12-19 19:17
 **/
 
-package utils
+package goroutine
 
 import (
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/Lemo-yxk/lemo/caller"
-	"github.com/Lemo-yxk/lemo/container/queue"
+	"github.com/Lemo-yxk/structure/queue"
+
 	"github.com/Lemo-yxk/lemo/exception"
+	"github.com/Lemo-yxk/lemo/utils"
 )
-
-type goroutine int
-
-const Goroutine goroutine = iota
 
 var que = queue.NewBlockQueue()
 
-func (g goroutine) Run(fn func()) {
+func Run(fn func()) {
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
@@ -39,7 +36,7 @@ func (g goroutine) Run(fn func()) {
 				}
 
 				d = 10 + d*2
-				var file, line = caller.Stack(d)
+				var file, line = utils.Stack.Stack(d)
 
 				que.Push(exception.NewException(time.Now(), file, line, s))
 			}
@@ -48,7 +45,7 @@ func (g goroutine) Run(fn func()) {
 	}()
 }
 
-func (g goroutine) Watch(fn func(err exception.Error)) {
+func Watch(fn func(err exception.Error)) {
 	go func() {
 		for {
 			fn(que.Pop().(exception.Error))

@@ -5,10 +5,10 @@
 *
 * @author: lemo
 *
-* @create: 2019-11-28 17:27
+* @create: 2020-07-09 20:49
 **/
 
-package caller
+package utils
 
 import (
 	"os"
@@ -20,11 +20,15 @@ import (
 
 var absFilePath = false
 
-func SetAbsFilePath(v bool) {
+type stack int
+
+const Stack stack = iota
+
+func (s stack) SetAbsFilePath(v bool) {
 	absFilePath = v
 }
 
-func Caller(deep int) (string, int) {
+func (s stack) Caller(deep int) (string, int) {
 	_, file, line, ok := runtime.Caller(deep + 1)
 	if !ok {
 		return "", 0
@@ -44,7 +48,7 @@ func Caller(deep int) (string, int) {
 	return file, line
 }
 
-func Stack(deep int) (string, int) {
+func (s stack) Stack(deep int) (string, int) {
 	var list = strings.Split(string(debug.Stack()), "\n")
 	var info = strings.TrimSpace(list[deep])
 	var flInfo = strings.Split(strings.Split(info, " ")[0], ":")
@@ -53,7 +57,7 @@ func Stack(deep int) (string, int) {
 	return file, l
 }
 
-func GetFuncName() string {
+func (s stack) GetFuncName() string {
 	pc, _, _, _ := runtime.Caller(1)
 	return runtime.FuncForPC(pc).Name()
 }

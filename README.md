@@ -5,11 +5,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/http"
-	server3 "github.com/Lemo-yxk/lemo/http/server"
-	"github.com/Lemo-yxk/lemo/tcp/server"
-	server2 "github.com/Lemo-yxk/lemo/websocket/server"
+	"github.com/lemoyxk/lemo"
+	"github.com/lemoyxk/lemo/http"
+	server3 "github.com/lemoyxk/lemo/http/server"
+	"github.com/lemoyxk/lemo/tcp/server"
+	server2 "github.com/lemoyxk/lemo/websocket/server"
 )
 
 func main() {
@@ -23,7 +23,7 @@ func run() {
 	var webSocketServerRouter = &server2.Router{IgnoreCase: true}
 
 	webSocketServer.Use(func(next server2.Middle) server2.Middle {
-		return func(conn *server2.WebSocket, receive *lemo.ReceivePackage) {
+		return func(conn *server2.WebSocket, receive *kitty.ReceivePackage) {
 			next(conn, receive)
 		}
 	})
@@ -33,9 +33,9 @@ func run() {
 	}
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *server2.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server2.WebSocket, receive *lemo.Receive) error {
+		handler.Route("/world").Handler(func(conn *server2.WebSocket, receive *kitty.Receive) error {
 			log.Println(string(receive.Body.Message))
-			return conn.Json(lemo.JsonPackage{
+			return conn.Json(kitty.JsonPackage{
 				Event: "/hello/world",
 				Data:  "i am server",
 			})
@@ -98,7 +98,7 @@ func run() {
 	var tcpServerRouter = &server.Router{IgnoreCase: true}
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server.Socket, receive *lemo.Receive) error {
+		handler.Route("/world").Handler(func(conn *server.Socket, receive *kitty.Receive) error {
 			log.Println(string(receive.Body.Message))
 			return nil
 		})

@@ -8,7 +8,7 @@
 * @create: 2019-11-19 20:56
 **/
 
-package lemo
+package kitty
 
 import (
 	"github.com/golang/protobuf/proto"

@@ -13,7 +13,7 @@ import (
 
 	"github.com/json-iterator/go"
 
-	"github.com/Lemo-yxk/lemo"
+	"github.com/lemoyxk/lemo"
 )
 
 type Files struct {
@@ -164,8 +164,8 @@ type Stream struct {
 	// Server   *Server
 	Response http.ResponseWriter
 	Request  *http.Request
-	Params   lemo.Params
-	Context  lemo.Context
+	Params   kitty.Params
+	Context  kitty.Context
 	Query    *Store
 	Form     *Store
 	Json     *Json
@@ -242,7 +242,7 @@ func (stream *Stream) EndFile(fileName string, content interface{}) error {
 }
 
 func (stream *Stream) Host() string {
-	if host := stream.Request.Header.Get(lemo.Host); host != "" {
+	if host := stream.Request.Header.Get(kitty.Host); host != "" {
 		return host
 	}
 	return stream.Request.Host
@@ -250,11 +250,11 @@ func (stream *Stream) Host() string {
 
 func (stream *Stream) ClientIP() string {
 
-	if ip := strings.Split(stream.Request.Header.Get(lemo.XForwardedFor), ",")[0]; ip != "" {
+	if ip := strings.Split(stream.Request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
 		return ip
 	}
 
-	if ip := stream.Request.Header.Get(lemo.XRealIP); ip != "" {
+	if ip := stream.Request.Header.Get(kitty.XRealIP); ip != "" {
 		return ip
 	}
 

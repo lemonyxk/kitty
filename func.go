@@ -8,7 +8,7 @@
 * @create: 2020-07-11 00:34
 **/
 
-package lemo
+package kitty
 
 import (
 	"os"

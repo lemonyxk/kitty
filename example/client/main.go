@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Lemo-yxk/lemo"
-	client3 "github.com/Lemo-yxk/lemo/websocket/client"
+	kitty "github.com/lemoyxk/lemo"
+	client3 "github.com/lemoyxk/lemo/websocket/client"
 
-	client2 "github.com/Lemo-yxk/lemo/tcp/client"
+	client2 "github.com/lemoyxk/lemo/tcp/client"
 )
 
 func main() {
@@ -50,7 +50,7 @@ func run() {
 	var router = &client2.Router{IgnoreCase: true}
 
 	router.Group("/hello").Handler(func(handler *client2.RouteHandler) {
-		handler.Route("/world").Handler(func(c *client2.Client, receive *lemo.Receive) error {
+		handler.Route("/world").Handler(func(c *client2.Client, receive *kitty.Receive) error {
 			log.Println(string(receive.Body.Message))
 			return nil
 		})
@@ -59,7 +59,7 @@ func run() {
 	go func() {
 		var ticker = time.NewTicker(time.Second)
 		for range ticker.C {
-			_ = client.JsonEmit(lemo.JsonPackage{
+			_ = client.JsonEmit(kitty.JsonPackage{
 				Event: "/hello/world",
 				Data:  strings.Repeat("hello world!", 1),
 			})

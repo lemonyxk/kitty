@@ -20,15 +20,15 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/tcp"
+	"github.com/lemoyxk/lemo"
+	"github.com/lemoyxk/lemo/tcp"
 )
 
 type Socket struct {
 	FD      int64
 	Conn    net.Conn
 	Server  *Server
-	Context lemo.Context
+	Context kitty.Context
 	mux     sync.RWMutex
 }
 
@@ -51,11 +51,11 @@ func (conn *Socket) Emit(event []byte, body []byte, dataType int, protoType int)
 	return conn.Server.Emit(conn.FD, event, body, dataType, protoType)
 }
 
-func (conn *Socket) JsonEmit(msg lemo.JsonPackage) error {
+func (conn *Socket) JsonEmit(msg kitty.JsonPackage) error {
 	return conn.Server.JsonEmit(conn.FD, msg)
 }
 
-func (conn *Socket) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
+func (conn *Socket) ProtoBufEmit(msg kitty.ProtoBufPackage) error {
 	return conn.Server.ProtoBufEmit(conn.FD, msg)
 }
 
@@ -94,7 +94,7 @@ type Server struct {
 	shutdown    chan bool
 }
 
-type Middle func(conn *Socket, receive *lemo.ReceivePackage)
+type Middle func(conn *Socket, receive *kitty.ReceivePackage)
 
 func (socket *Server) LocalAddr() net.Addr {
 	return socket.netListen.Addr()
@@ -133,7 +133,7 @@ func (socket *Server) EmitAll(event []byte, body []byte, dataType int, protoType
 	return counter, success
 }
 
-func (socket *Server) JsonEmitAll(msg lemo.JsonPackage) (int, int) {
+func (socket *Server) JsonEmitAll(msg kitty.JsonPackage) (int, int) {
 	var counter = 0
 	var success = 0
 	for fd := range socket.connections {
@@ -145,7 +145,7 @@ func (socket *Server) JsonEmitAll(msg lemo.JsonPackage) (int, int) {
 	return counter, success
 }
 
-func (socket *Server) ProtoBufEmitAll(msg lemo.ProtoBufPackage) (int, int) {
+func (socket *Server) ProtoBufEmitAll(msg kitty.ProtoBufPackage) (int, int) {
 	var counter = 0
 	var success = 0
 	for fd := range socket.connections {
@@ -157,20 +157,20 @@ func (socket *Server) ProtoBufEmitAll(msg lemo.ProtoBufPackage) (int, int) {
 	return counter, success
 }
 
-func (socket *Server) ProtoBufEmit(fd int64, msg lemo.ProtoBufPackage) error {
+func (socket *Server) ProtoBufEmit(fd int64, msg kitty.ProtoBufPackage) error {
 	data, err := proto.Marshal(msg.Data)
 	if err != nil {
 		return err
 	}
-	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
+	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, kitty.BinData, kitty.ProtoBuf))
 }
 
-func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) error {
+func (socket *Server) JsonEmit(fd int64, msg kitty.JsonPackage) error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
 		return err
 	}
-	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
+	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, kitty.TextData, kitty.Json))
 }
 
 func (socket *Server) Ready() {
@@ -416,30 +416,30 @@ func (socket *Server) decodeMessage(connection *Socket, message []byte) error {
 	}
 
 	// check version
-	if version != lemo.Version {
+	if version != kitty.Version {
 		return nil
 	}
 
 	// Ping
-	if messageType == lemo.PingData {
+	if messageType == kitty.PingData {
 		return socket.PingHandler(connection)("")
 	}
 
 	// Pong
-	if messageType == lemo.PongData {
+	if messageType == kitty.PongData {
 		return socket.PongHandler(connection)("")
 	}
 
 	// on router
 	if socket.router != nil {
-		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+		socket.middleware(connection, &kitty.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 
 	return nil
 }
 
-func (socket *Server) middleware(conn *Socket, msg *lemo.ReceivePackage) {
+func (socket *Server) middleware(conn *Socket, msg *kitty.ReceivePackage) {
 	var next Middle = socket.handler
 	for i := len(socket.middle) - 1; i >= 0; i-- {
 		next = socket.middle[i](next)
@@ -447,7 +447,7 @@ func (socket *Server) middleware(conn *Socket, msg *lemo.ReceivePackage) {
 	next(conn, msg)
 }
 
-func (socket *Server) handler(conn *Socket, msg *lemo.ReceivePackage) {
+func (socket *Server) handler(conn *Socket, msg *kitty.ReceivePackage) {
 
 	var n, formatPath = socket.router.getRoute(msg.Event)
 	if n == nil {
@@ -459,10 +459,10 @@ func (socket *Server) handler(conn *Socket, msg *lemo.ReceivePackage) {
 
 	var nodeData = n.Data.(*node)
 
-	var receive = &lemo.Receive{}
+	var receive = &kitty.Receive{}
 	receive.Body = msg
 	receive.Context = nil
-	receive.Params = lemo.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
+	receive.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		ctx, err := nodeData.Before[i](conn, receive)

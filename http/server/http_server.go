@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Lemo-yxk/lemo"
-	http2 "github.com/Lemo-yxk/lemo/http"
+	kitty "github.com/lemoyxk/lemo"
+	http2 "github.com/lemoyxk/lemo/http"
 )
 
 type Server struct {
@@ -88,7 +88,7 @@ func (h *Server) handler(stream *http2.Stream) {
 		return
 	}
 
-	stream.Params = lemo.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
+	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
 	var nodeData = n.Data.(*node)
 

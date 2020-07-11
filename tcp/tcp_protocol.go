@@ -13,7 +13,7 @@ package tcp
 import (
 	"errors"
 
-	"github.com/Lemo-yxk/lemo"
+	"github.com/lemoyxk/lemo"
 )
 
 type Protocol interface {
@@ -38,14 +38,14 @@ func (Protocol *DefaultProtocol) Decode(message []byte) (version byte, messageTy
 
 func (Protocol *DefaultProtocol) Encode(route []byte, body []byte, messageType int, protoType int) []byte {
 	switch messageType {
-	case lemo.TextData:
+	case kitty.TextData:
 		return packText(route, body, protoType)
-	case lemo.BinData:
+	case kitty.BinData:
 		return packBin(route, body, protoType)
-	case lemo.PingData:
-		return []byte{lemo.Version, byte(lemo.PingData), byte(protoType), 0, 0, 0, 0, 0}
-	case lemo.PongData:
-		return []byte{lemo.Version, byte(lemo.PongData), byte(protoType), 0, 0, 0, 0, 0}
+	case kitty.PingData:
+		return []byte{kitty.Version, byte(kitty.PingData), byte(protoType), 0, 0, 0, 0, 0}
+	case kitty.PongData:
+		return []byte{kitty.Version, byte(kitty.PongData), byte(protoType), 0, 0, 0, 0, 0}
 	}
 
 	return nil
@@ -111,17 +111,17 @@ func isHeaderInvalid(message []byte) bool {
 	}
 
 	// version
-	if message[0] != lemo.Version {
+	if message[0] != kitty.Version {
 		return false
 	}
 
 	// message type
-	if message[1] != byte(lemo.TextData) && message[1] != byte(lemo.BinData) && message[1] != byte(lemo.PingData) && message[1] != byte(lemo.PongData) {
+	if message[1] != byte(kitty.TextData) && message[1] != byte(kitty.BinData) && message[1] != byte(kitty.PingData) && message[1] != byte(kitty.PongData) {
 		return false
 	}
 
 	// proto type
-	if message[2] != byte(lemo.Json) && message[2] != byte(lemo.ProtoBuf) && message[2] != byte(lemo.Text) {
+	if message[2] != byte(kitty.Json) && message[2] != byte(kitty.ProtoBuf) && message[2] != byte(kitty.Text) {
 		return false
 	}
 
@@ -134,7 +134,7 @@ func convert(message []byte) (a, b, c, d, e int) {
 
 func getLen(message []byte) int {
 	var a, b, c, d, e = convert(message[:8])
-	if message[1] == byte(lemo.TextData) {
+	if message[1] == byte(kitty.TextData) {
 		return a + (b | c<<7 | d<<14 | e<<21) + 8
 	} else {
 		return a + (b | c<<8 | d<<16 | e<<24) + 8
@@ -149,10 +149,10 @@ func packText(route []byte, body []byte, protoType int) []byte {
 	var data []byte
 
 	// 0 version
-	data = append(data, lemo.Version)
+	data = append(data, kitty.Version)
 
 	// 1 message type
-	data = append(data, byte(lemo.TextData))
+	data = append(data, byte(kitty.TextData))
 
 	// 2 proto type
 	data = append(data, byte(protoType))
@@ -187,10 +187,10 @@ func packBin(route []byte, body []byte, protoType int) []byte {
 	var data []byte
 
 	// 0 version
-	data = append(data, lemo.Version)
+	data = append(data, kitty.Version)
 
 	// 1 message type
-	data = append(data, byte(lemo.BinData))
+	data = append(data, byte(kitty.BinData))
 
 	// 2 proto type
 	data = append(data, byte(protoType))

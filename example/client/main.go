@@ -11,14 +11,14 @@
 package main
 
 import (
+	"log"
 	"strings"
 	"time"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/console"
-	"github.com/Lemo-yxk/lemo/exception"
+	client3 "github.com/Lemo-yxk/lemo/websocket/client"
+
 	client2 "github.com/Lemo-yxk/lemo/tcp/client"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 func main() {
@@ -27,40 +27,43 @@ func main() {
 
 func run() {
 
+	_ = client3.Client{}
+
 	var client = &client2.Client{Host: "0.0.0.0:", Reconnect: true, AutoHeartBeat: true}
 
 	client.OnClose = func(c *client2.Client) {
-		console.Infof("close")
+		log.Println("close")
 	}
 
 	client.OnOpen = func(c *client2.Client) {
-		console.Infof("open")
+		log.Println("open")
 	}
 
 	client.OnMessage = func(c *client2.Client, messageType int, msg []byte) {
-		// console.Log(string(msg))
+		// log.Println(string(msg))
 	}
 
-	client.OnError = func(err exception.Error) {
-		console.Error(err)
+	client.OnError = func(err error) {
+		log.Println(err)
 	}
 
 	var router = &client2.Router{IgnoreCase: true}
 
 	router.Group("/hello").Handler(func(handler *client2.RouteHandler) {
-		handler.Route("/world").Handler(func(c *client2.Client, receive *lemo.Receive) exception.Error {
-			console.Infof(string(receive.Body.Message))
+		handler.Route("/world").Handler(func(c *client2.Client, receive *lemo.Receive) error {
+			log.Println(string(receive.Body.Message))
 			return nil
 		})
 	})
 
 	go func() {
-		utils.Time.Ticker(time.Second, func() {
+		var ticker = time.NewTicker(time.Second)
+		for range ticker.C {
 			_ = client.JsonEmit(lemo.JsonPackage{
 				Event: "/hello/world",
 				Data:  strings.Repeat("hello world!", 1),
 			})
-		}).Start()
+		}
 	}()
 
 	go client.SetRouter(router).Connect()

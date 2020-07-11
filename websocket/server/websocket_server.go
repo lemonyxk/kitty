@@ -12,9 +12,6 @@ import (
 	"github.com/json-iterator/go"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/console"
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/utils"
 	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
@@ -55,23 +52,23 @@ func (conn *WebSocket) ClientIP() string {
 	return ""
 }
 
-func (conn *WebSocket) Push(messageType int, msg []byte) exception.Error {
+func (conn *WebSocket) Push(messageType int, msg []byte) error {
 	return conn.Server.Push(conn.FD, messageType, msg)
 }
 
-func (conn *WebSocket) Emit(event []byte, body []byte, dataType int, protoType int) exception.Error {
+func (conn *WebSocket) Emit(event []byte, body []byte, dataType int, protoType int) error {
 	return conn.Server.Emit(conn.FD, event, body, dataType, protoType)
 }
 
-func (conn *WebSocket) Json(msg lemo.JsonPackage) exception.Error {
+func (conn *WebSocket) Json(msg lemo.JsonPackage) error {
 	return conn.Server.Json(conn.FD, msg)
 }
 
-func (conn *WebSocket) JsonEmit(msg lemo.JsonPackage) exception.Error {
+func (conn *WebSocket) JsonEmit(msg lemo.JsonPackage) error {
 	return conn.Server.JsonEmit(conn.FD, msg)
 }
 
-func (conn *WebSocket) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
+func (conn *WebSocket) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
 	return conn.Server.ProtoBufEmit(conn.FD, msg)
 }
 
@@ -94,7 +91,7 @@ type Server struct {
 	OnClose   func(conn *WebSocket)
 	OnMessage func(conn *WebSocket, messageType int, msg []byte)
 	OnOpen    func(conn *WebSocket)
-	OnError   func(err exception.Error)
+	OnError   func(err error)
 	OnSuccess func()
 
 	HeartBeatTimeout  time.Duration
@@ -137,27 +134,27 @@ func (socket *Server) CheckPath(p1 string, p2 string) bool {
 	return p1 == p2
 }
 
-func (socket *Server) Push(fd int64, messageType int, msg []byte) exception.Error {
+func (socket *Server) Push(fd int64, messageType int, msg []byte) error {
 	var conn, ok = socket.GetConnection(fd)
 	if !ok {
-		return exception.New("client is close")
+		return errors.New("client is close")
 	}
 
 	conn.mux.Lock()
 	defer conn.mux.Unlock()
 
-	return exception.New(conn.Conn.WriteMessage(messageType, msg))
+	return conn.Conn.WriteMessage(messageType, msg)
 }
 
-func (socket *Server) Json(fd int64, msg lemo.JsonPackage) exception.Error {
+func (socket *Server) Json(fd int64, msg lemo.JsonPackage) error {
 	data, err := jsoniter.Marshal(lemo.JsonPackage{Event: msg.Event, Data: msg.Data})
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return exception.New(socket.Push(fd, lemo.TextData, data))
+	return socket.Push(fd, lemo.TextData, data)
 }
 
-func (socket *Server) Emit(fd int64, event []byte, body []byte, dataType int, protoType int) exception.Error {
+func (socket *Server) Emit(fd int64, event []byte, body []byte, dataType int, protoType int) error {
 	return socket.Push(fd, lemo.BinData, socket.Protocol.Encode(event, body, dataType, protoType))
 }
 
@@ -209,20 +206,20 @@ func (socket *Server) ProtoBufEmitAll(msg lemo.ProtoBufPackage) (int, int) {
 	return counter, success
 }
 
-func (socket *Server) ProtoBufEmit(fd int64, msg lemo.ProtoBufPackage) exception.Error {
+func (socket *Server) ProtoBufEmit(fd int64, msg lemo.ProtoBufPackage) error {
 	messageProtoBuf, err := proto.Marshal(msg.Data)
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return socket.Push(fd, lemo.BinData, socket.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
+	return socket.Push(fd, lemo.BinData, socket.Protocol.Encode([]byte(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
 }
 
-func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) exception.Error {
+func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return socket.Push(fd, lemo.TextData, socket.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.TextData, lemo.Json))
+	return socket.Push(fd, lemo.TextData, socket.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
 func (socket *Server) addConnect(conn *WebSocket) {
@@ -282,7 +279,7 @@ func (socket *Server) onClose(conn *WebSocket) {
 	socket.OnClose(conn)
 }
 
-func (socket *Server) onError(err exception.Error) {
+func (socket *Server) onError(err error) {
 	socket.OnError(err)
 }
 
@@ -329,19 +326,19 @@ func (socket *Server) Ready() {
 
 	if socket.OnOpen == nil {
 		socket.OnOpen = func(conn *WebSocket) {
-			console.Println(conn.FD, "is open")
+			println(conn.FD, "is open")
 		}
 	}
 
 	if socket.OnClose == nil {
 		socket.OnClose = func(conn *WebSocket) {
-			console.Println(conn.FD, "is close")
+			println(conn.FD, "is close")
 		}
 	}
 
 	if socket.OnError == nil {
-		socket.OnError = func(err exception.Error) {
-			console.Error(err)
+		socket.OnError = func(err error) {
+			println(err)
 		}
 	}
 
@@ -384,14 +381,14 @@ func (socket *Server) process(w http.ResponseWriter, r *http.Request) {
 
 	// 错误处理
 	if err != nil {
-		socket.onError(exception.New(err))
+		socket.onError(err)
 		return
 	}
 
 	// 超时时间
 	err = conn.SetReadDeadline(time.Now().Add(socket.HeartBeatTimeout))
 	if err != nil {
-		socket.onError(exception.New(err))
+		socket.onError(err)
 		return
 	}
 
@@ -430,7 +427,7 @@ func (socket *Server) process(w http.ResponseWriter, r *http.Request) {
 
 		err = socket.decodeMessage(connection, message, messageFrame)
 		if err != nil {
-			socket.onError(exception.New(err))
+			socket.onError(err)
 			break
 		}
 
@@ -467,7 +464,7 @@ func (socket *Server) decodeMessage(connection *WebSocket, message []byte, messa
 
 	// on router
 	if socket.router != nil {
-		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: utils.Conv.BytesToString(route), Message: body, ProtoType: protoType, Raw: message})
+		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 
@@ -487,7 +484,7 @@ func (socket *Server) handler(conn *WebSocket, msg *lemo.ReceivePackage) {
 	var n, formatPath = socket.router.getRoute(msg.Event)
 	if n == nil {
 		if socket.OnError != nil {
-			socket.OnError(exception.New(msg.Event + " " + "404 not found"))
+			socket.OnError(errors.New(msg.Event + " " + "404 not found"))
 		}
 		return
 	}
@@ -568,7 +565,9 @@ func (socket *Server) Start() {
 		err = server.Serve(netListen)
 	}
 
-	console.Exit(err)
+	if err != nil {
+		println(err)
+	}
 }
 
 func (socket *Server) Shutdown() {

@@ -11,11 +11,10 @@
 package main
 
 import (
-	"github.com/Lemo-yxk/lemo/console"
-	"github.com/Lemo-yxk/lemo/exception"
+	"log"
 )
 
-func Add(v ...interface{}) (interface{}, exception.Error) {
-	console.Log("hello plugin", v)
+func Add(v ...interface{}) (interface{}, error) {
+	log.Println("hello plugin", v)
 	return nil, nil
 }

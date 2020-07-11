@@ -14,8 +14,6 @@ import (
 	"github.com/json-iterator/go"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type Files struct {
@@ -184,7 +182,7 @@ func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
 	return &Stream{Response: w, Request: r}
 }
 
-func (stream *Stream) Forward(fn func(stream *Stream) exception.Error) exception.Error {
+func (stream *Stream) Forward(fn func(stream *Stream) error) error {
 	return fn(stream)
 }
 
@@ -202,11 +200,11 @@ type JsonFormat struct {
 	Msg    interface{} `json:"msg"`
 }
 
-func (stream *Stream) JsonFormat(status string, code int, msg interface{}) exception.Error {
-	return exception.New(stream.EndJson(JsonFormat{Status: status, Code: code, Msg: msg}))
+func (stream *Stream) JsonFormat(status string, code int, msg interface{}) error {
+	return stream.EndJson(JsonFormat{Status: status, Code: code, Msg: msg})
 }
 
-func (stream *Stream) End(data interface{}) exception.Error {
+func (stream *Stream) End(data interface{}) error {
 	switch data.(type) {
 	case []byte:
 		return stream.EndBytes(data.([]byte))
@@ -217,20 +215,27 @@ func (stream *Stream) End(data interface{}) exception.Error {
 	}
 }
 
-func (stream *Stream) EndJson(data interface{}) exception.Error {
+func (stream *Stream) EndJson(data interface{}) error {
 	stream.SetHeader("Content-Type", "application/json")
-	return exception.New(stream.Response.Write(utils.Json.Encode(data)))
+	bts, err := jsoniter.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = stream.Response.Write(bts)
+	return err
 }
 
-func (stream *Stream) EndString(data string) exception.Error {
-	return exception.New(stream.Response.Write(utils.Conv.StringToBytes(data)))
+func (stream *Stream) EndString(data string) error {
+	_, err := stream.Response.Write([]byte(data))
+	return err
 }
 
-func (stream *Stream) EndBytes(data []byte) exception.Error {
-	return exception.New(stream.Response.Write(data))
+func (stream *Stream) EndBytes(data []byte) error {
+	_, err := stream.Response.Write(data)
+	return err
 }
 
-func (stream *Stream) EndFile(fileName string, content interface{}) exception.Error {
+func (stream *Stream) EndFile(fileName string, content interface{}) error {
 	stream.SetHeader("Content-Type", "application/octet-stream")
 	stream.SetHeader("content-Disposition", "attachment;filename="+fileName)
 	return stream.End(content)

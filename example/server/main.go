@@ -1,15 +1,13 @@
 package main
 
 import (
+	"log"
 	"os"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/console"
-	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/http"
 	server3 "github.com/Lemo-yxk/lemo/http/server"
 	"github.com/Lemo-yxk/lemo/tcp/server"
-	"github.com/Lemo-yxk/lemo/utils"
 	server2 "github.com/Lemo-yxk/lemo/websocket/server"
 )
 
@@ -24,10 +22,10 @@ func main() {
 	// 	console.Log(http.ListenAndServe(":12345", nil))
 	// }()
 
-	run()
-	utils.Signal.ListenKill().Done(func(sig os.Signal) {
-		console.Info(sig)
-	})
+	// run()
+	// utils.Signal.ListenKill().Done(func(sig os.Signal) {
+	// 	console.Info(sig)
+	// })
 
 	// var progress = utils.HttpClient.NewProgress()
 	// progress.Rate(0.01).OnProgress(func(p []byte, current int64, total int64) {
@@ -35,6 +33,9 @@ func main() {
 	// })
 	//
 	// utils.HttpClient.Get("https://www.twle.cn/static/js/jquery.min.js").Progress(progress).Send()
+
+	// console.SetFormatter(console.NewJsonFormatter())
+
 }
 
 func run() {
@@ -50,12 +51,12 @@ func run() {
 	})
 
 	webSocketServer.OnMessage = func(conn *server2.WebSocket, messageType int, msg []byte) {
-		console.Info(len(msg))
+		log.Println(len(msg))
 	}
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *server2.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server2.WebSocket, receive *lemo.Receive) exception.Error {
-			console.Info(string(receive.Body.Message))
+		handler.Route("/world").Handler(func(conn *server2.WebSocket, receive *lemo.Receive) error {
+			log.Println(string(receive.Body.Message))
 			return conn.Json(lemo.JsonPackage{
 				Event: "/hello/world",
 				Data:  "i am server",
@@ -74,9 +75,9 @@ func run() {
 			// if stream.Request.Header.Get("Upgrade") == "websocket" {
 			// 	httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
 			// } else {
-			// 	console.Info(1, "start")
+			// 	log.Println(1, "start")
 			// 	next(stream)
-			// 	console.Info(1, "end")
+			// 	log.Println(1, "end")
 			// }
 			next(stream)
 		}
@@ -84,49 +85,49 @@ func run() {
 
 	httpServer.Use(func(next server3.Middle) server3.Middle {
 		return func(stream *http.Stream) {
-			// console.Info(2, "start")
+			// log.Println(2, "start")
 			// next(stream)
-			// console.Info(2, "end")
+			// log.Println(2, "end")
 			next(stream)
 		}
 	})
 
-	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) exception.Error {
-		// console.Info("handler")
-		return exception.New(stream.EndString("hello"))
+	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
+		// log.Println("handler")
+		return stream.EndString("hello")
 	})
 
 	httpServerRouter.Group("/hello").Handler(func(handler *server3.RouteHandler) {
-		handler.Get("/world").Handler(func(t *http.Stream) exception.Error {
+		handler.Get("/world").Handler(func(t *http.Stream) error {
 			return t.JsonFormat("SUCCESS", 200, os.Getpid())
 		})
 	})
 
 	httpServer.OnSuccess = func() {
-		console.Info(httpServer.LocalAddr())
+		log.Println(httpServer.LocalAddr())
 	}
 
 	go httpServer.SetRouter(httpServerRouter).Start()
 
-	console.FgBlue.Println("start success")
+	log.Println("start success")
 
 	var tcpServer = &server.Server{Host: "127.0.0.1:8888"}
 
 	tcpServer.OnMessage = func(conn *server.Socket, messageType int, msg []byte) {
-		console.Info(len(msg))
+		log.Println(len(msg))
 	}
 
 	var tcpServerRouter = &server.Router{IgnoreCase: true}
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server.Socket, receive *lemo.Receive) exception.Error {
-			console.Info(string(receive.Body.Message))
+		handler.Route("/world").Handler(func(conn *server.Socket, receive *lemo.Receive) error {
+			log.Println(string(receive.Body.Message))
 			return nil
 		})
 	})
 
 	tcpServer.OnSuccess = func() {
-		console.Info(tcpServer.LocalAddr())
+		log.Println(tcpServer.LocalAddr())
 	}
 
 	tcpServer.SetRouter(tcpServerRouter).Start()

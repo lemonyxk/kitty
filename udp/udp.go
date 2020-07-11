@@ -11,9 +11,8 @@
 package udp
 
 import (
+	"log"
 	"net"
-
-	"github.com/Lemo-yxk/lemo/console"
 )
 
 func Udp() {
@@ -39,11 +38,11 @@ func Udp() {
 
 		n, addr, err := udp.ReadFromUDP(buf)
 		if err != nil {
-			console.Error(err)
+			log.Println(err)
 			continue
 		}
 
-		console.Println(n, addr.String())
+		log.Println(n, addr.String())
 	}
 
 }

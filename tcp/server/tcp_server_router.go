@@ -17,17 +17,15 @@ import (
 	"github.com/Lemo-yxk/structure/tire"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type groupFunction func(handler *RouteHandler)
 
-type function func(conn *Socket, receive *lemo.Receive) exception.Error
+type function func(conn *Socket, receive *lemo.Receive) error
 
-type Before func(conn *Socket, receive *lemo.Receive) (lemo.Context, exception.Error)
+type Before func(conn *Socket, receive *lemo.Receive) (lemo.Context, error)
 
-type After func(conn *Socket, receive *lemo.Receive) exception.Error
+type After func(conn *Socket, receive *lemo.Receive) error
 
 type group struct {
 	path   string
@@ -111,7 +109,7 @@ func (route *route) Handler(fn function) {
 		panic("route path can not empty")
 	}
 
-	file, line := utils.Stack.Caller(1)
+	file, line := lemo.Caller(1)
 
 	var router = route.group.router
 	var g = route.group
@@ -151,7 +149,7 @@ func (route *route) Handler(fn function) {
 	sba.Before = append(sba.Before, router.globalBefore...)
 	sba.After = append(sba.After, router.globalAfter...)
 
-	sba.Route = utils.Conv.StringToBytes(path)
+	sba.Route = []byte(path)
 
 	router.tire.Insert(path, sba)
 
@@ -204,7 +202,7 @@ func (router *Router) getRoute(path string) (*tire.Tire, []byte) {
 
 	path = router.formatPath(path)
 
-	var pathB = utils.Conv.StringToBytes(path)
+	var pathB = []byte(path)
 
 	var t = router.tire.GetValue(pathB)
 

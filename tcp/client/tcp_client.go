@@ -11,6 +11,7 @@
 package client
 
 import (
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -20,9 +21,8 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/exception"
+
 	"github.com/Lemo-yxk/lemo/tcp"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type Client struct {
@@ -44,7 +44,7 @@ type Client struct {
 	OnOpen    func(c *Client)
 	OnClose   func(c *Client)
 	OnMessage func(c *Client, messageType int, msg []byte)
-	OnError   func(err exception.Error)
+	OnError   func(err error)
 	OnSuccess func()
 
 	Context lemo.Context
@@ -75,31 +75,32 @@ func (client *Client) Use(middle ...func(Middle) Middle) {
 }
 
 // Json 发送JSON字符
-func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) exception.Error {
+func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) error {
 	return client.Push(client.Protocol.Encode(event, body, dataType, protoType))
 }
 
-func (client *Client) JsonEmit(msg lemo.JsonPackage) exception.Error {
+func (client *Client) JsonEmit(msg lemo.JsonPackage) error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return client.Push(client.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.TextData, lemo.Json))
+	return client.Push(client.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
-func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
+func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
 	data, err := proto.Marshal(msg.Data)
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return client.Push(client.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
+	return client.Push(client.Protocol.Encode([]byte(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
 }
 
 // Push 发送消息
-func (client *Client) Push(message []byte) exception.Error {
+func (client *Client) Push(message []byte) error {
 	client.mux.Lock()
 	defer client.mux.Unlock()
-	return exception.New(client.Conn.Write(message))
+	_, err := client.Conn.Write(message)
+	return err
 }
 
 func (client *Client) Close() error {
@@ -191,7 +192,7 @@ func (client *Client) Connect() {
 	// 连接服务器
 	handler, err := net.DialTimeout("tcp", client.Host, client.HandshakeTimeout)
 	if err != nil {
-		client.OnError(exception.New(err))
+		client.OnError(err)
 		client.reconnecting()
 		return
 	}
@@ -227,7 +228,7 @@ func (client *Client) Connect() {
 	go func() {
 		for range ticker.C {
 			if err := client.HeartBeat(client); err != nil {
-				client.OnError(exception.New(err))
+				client.OnError(err)
 				_ = client.Close()
 				break
 			}
@@ -250,7 +251,7 @@ func (client *Client) Connect() {
 		})
 
 		if err != nil {
-			client.OnError(exception.New(err))
+			client.OnError(err)
 			break
 		}
 
@@ -291,7 +292,7 @@ func (client *Client) decodeMessage(connection *Client, message []byte) error {
 
 	// on router
 	if client.router != nil {
-		client.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: utils.Conv.BytesToString(route), Message: body, ProtoType: protoType, Raw: message})
+		client.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 	}
 
 	return nil
@@ -310,7 +311,7 @@ func (client *Client) handler(conn *Client, msg *lemo.ReceivePackage) {
 	var n, formatPath = client.router.getRoute(msg.Event)
 	if n == nil {
 		if client.OnError != nil {
-			client.OnError(exception.New(msg.Event + " " + "404 not found"))
+			client.OnError(errors.New(msg.Event + " " + "404 not found"))
 		}
 		return
 	}

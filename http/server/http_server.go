@@ -12,8 +12,6 @@ import (
 	"strings"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/console"
-	"github.com/Lemo-yxk/lemo/exception"
 	http2 "github.com/Lemo-yxk/lemo/http"
 )
 
@@ -31,7 +29,7 @@ type Server struct {
 	OnOpen    func(stream *http2.Stream)
 	OnMessage func(stream *http2.Stream)
 	OnClose   func(stream *http2.Stream)
-	OnError   func(stream *http2.Stream, err exception.Error)
+	OnError   func(stream *http2.Stream, err error)
 	OnSuccess func()
 
 	middle    []func(next Middle) Middle
@@ -80,7 +78,7 @@ func (h *Server) handler(stream *http2.Stream) {
 
 	if n == nil {
 		stream.Response.WriteHeader(http.StatusNotFound)
-		var err = exception.New(stream.Request.URL.Path + " " + "404 not found")
+		var err = errors.New(stream.Request.URL.Path + " " + "404 not found")
 		if h.OnError != nil {
 			h.OnError(stream, err)
 		}
@@ -224,7 +222,9 @@ func (h *Server) Start() {
 		err = server.Serve(netListen)
 	}
 
-	console.Exit(err)
+	if err != nil {
+		println(err)
+	}
 }
 
 func (h *Server) Shutdown() {

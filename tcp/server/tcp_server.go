@@ -21,10 +21,7 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/console"
-	"github.com/Lemo-yxk/lemo/exception"
 	"github.com/Lemo-yxk/lemo/tcp"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type Socket struct {
@@ -46,19 +43,19 @@ func (conn *Socket) ClientIP() string {
 	return ""
 }
 
-func (conn *Socket) Push(msg []byte) exception.Error {
+func (conn *Socket) Push(msg []byte) error {
 	return conn.Server.Push(conn.FD, msg)
 }
 
-func (conn *Socket) Emit(event []byte, body []byte, dataType int, protoType int) exception.Error {
+func (conn *Socket) Emit(event []byte, body []byte, dataType int, protoType int) error {
 	return conn.Server.Emit(conn.FD, event, body, dataType, protoType)
 }
 
-func (conn *Socket) JsonEmit(msg lemo.JsonPackage) exception.Error {
+func (conn *Socket) JsonEmit(msg lemo.JsonPackage) error {
 	return conn.Server.JsonEmit(conn.FD, msg)
 }
 
-func (conn *Socket) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
+func (conn *Socket) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
 	return conn.Server.ProtoBufEmit(conn.FD, msg)
 }
 
@@ -72,7 +69,7 @@ type Server struct {
 	OnClose   func(conn *Socket)
 	OnMessage func(conn *Socket, messageType int, msg []byte)
 	OnOpen    func(conn *Socket)
-	OnError   func(err exception.Error)
+	OnError   func(err error)
 	OnSuccess func()
 
 	HeartBeatTimeout  time.Duration
@@ -107,19 +104,20 @@ func (socket *Server) Use(middle ...func(Middle) Middle) {
 	socket.middle = append(socket.middle, middle...)
 }
 
-func (socket *Server) Push(fd int64, msg []byte) exception.Error {
+func (socket *Server) Push(fd int64, msg []byte) error {
 	var conn, ok = socket.GetConnection(fd)
 	if !ok {
-		return exception.New("client is close")
+		return errors.New("client is close")
 	}
 
 	conn.mux.Lock()
 	defer conn.mux.Unlock()
 
-	return exception.New(conn.Conn.Write(msg))
+	_, err := conn.Conn.Write(msg)
+	return err
 }
 
-func (socket *Server) Emit(fd int64, event []byte, body []byte, dataType int, protoType int) exception.Error {
+func (socket *Server) Emit(fd int64, event []byte, body []byte, dataType int, protoType int) error {
 	return socket.Push(fd, socket.Protocol.Encode(event, body, dataType, protoType))
 }
 
@@ -159,20 +157,20 @@ func (socket *Server) ProtoBufEmitAll(msg lemo.ProtoBufPackage) (int, int) {
 	return counter, success
 }
 
-func (socket *Server) ProtoBufEmit(fd int64, msg lemo.ProtoBufPackage) exception.Error {
+func (socket *Server) ProtoBufEmit(fd int64, msg lemo.ProtoBufPackage) error {
 	data, err := proto.Marshal(msg.Data)
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return socket.Push(fd, socket.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
+	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, lemo.BinData, lemo.ProtoBuf))
 }
 
-func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) exception.Error {
+func (socket *Server) JsonEmit(fd int64, msg lemo.JsonPackage) error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return socket.Push(fd, socket.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.TextData, lemo.Json))
+	return socket.Push(fd, socket.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
 func (socket *Server) Ready() {
@@ -207,19 +205,19 @@ func (socket *Server) Ready() {
 
 	if socket.OnOpen == nil {
 		socket.OnOpen = func(conn *Socket) {
-			console.Println(conn.FD, "is open")
+			println(conn.FD, "is open")
 		}
 	}
 
 	if socket.OnClose == nil {
 		socket.OnClose = func(conn *Socket) {
-			console.Println(conn.FD, "is close")
+			println(conn.FD, "is close")
 		}
 	}
 
 	if socket.OnError == nil {
-		socket.OnError = func(err exception.Error) {
-			console.Error(err)
+		socket.OnError = func(err error) {
+			println(err)
 		}
 	}
 
@@ -262,7 +260,7 @@ func (socket *Server) onClose(conn *Socket) {
 	socket.OnClose(conn)
 }
 
-func (socket *Server) onError(err exception.Error) {
+func (socket *Server) onError(err error) {
 	socket.OnError(err)
 }
 
@@ -336,7 +334,7 @@ func (socket *Server) Start() {
 		for {
 			conn, err := netListen.Accept()
 			if err != nil {
-				socket.onError(exception.New(err))
+				socket.onError(err)
 				continue
 			}
 
@@ -347,8 +345,9 @@ func (socket *Server) Start() {
 	<-socket.shutdown
 
 	err = netListen.Close()
-
-	console.Exit(err)
+	if err != nil {
+		println(err)
+	}
 }
 
 func (socket *Server) Shutdown() {
@@ -360,7 +359,7 @@ func (socket *Server) process(conn net.Conn) {
 	// 超时时间
 	err := conn.SetReadDeadline(time.Now().Add(socket.HeartBeatTimeout))
 	if err != nil {
-		socket.onError(exception.New(err))
+		socket.onError(err)
 		return
 	}
 
@@ -399,7 +398,7 @@ func (socket *Server) process(conn net.Conn) {
 		})
 
 		if err != nil {
-			socket.onError(exception.New(err))
+			socket.onError(err)
 			break
 		}
 
@@ -433,7 +432,7 @@ func (socket *Server) decodeMessage(connection *Socket, message []byte) error {
 
 	// on router
 	if socket.router != nil {
-		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: utils.Conv.BytesToString(route), Message: body, ProtoType: protoType, Raw: message})
+		socket.middleware(connection, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 		return nil
 	}
 
@@ -453,7 +452,7 @@ func (socket *Server) handler(conn *Socket, msg *lemo.ReceivePackage) {
 	var n, formatPath = socket.router.getRoute(msg.Event)
 	if n == nil {
 		if socket.OnError != nil {
-			socket.OnError(exception.New(msg.Event + " " + "404 not found"))
+			socket.OnError(errors.New(msg.Event + " " + "404 not found"))
 		}
 		return
 	}

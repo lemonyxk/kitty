@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"net"
 	"net/http"
 	"sync"
@@ -9,8 +10,7 @@ import (
 	"github.com/json-iterator/go"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/exception"
-	"github.com/Lemo-yxk/lemo/utils"
+
 	websocket2 "github.com/Lemo-yxk/lemo/websocket"
 
 	"github.com/golang/protobuf/proto"
@@ -42,7 +42,7 @@ type Client struct {
 	OnOpen    func(c *Client)
 	OnClose   func(c *Client)
 	OnMessage func(c *Client, messageType int, msg []byte)
-	OnError   func(err exception.Error)
+	OnError   func(err error)
 	OnSuccess func()
 
 	Context lemo.Context
@@ -72,39 +72,39 @@ func (client *Client) Use(middle ...func(Middle) Middle) {
 	client.middle = append(client.middle, middle...)
 }
 
-func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) exception.Error {
+func (client *Client) Emit(event []byte, body []byte, dataType int, protoType int) error {
 	return client.Push(dataType, client.Protocol.Encode(event, body, dataType, protoType))
 }
 
-func (client *Client) Json(msg lemo.JsonPackage) exception.Error {
+func (client *Client) Json(msg lemo.JsonPackage) error {
 	messageJson, err := jsoniter.Marshal(lemo.JsonPackage{Event: msg.Event, Data: msg.Data})
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return exception.New(client.Push(lemo.TextData, messageJson))
+	return client.Push(lemo.TextData, messageJson)
 }
 
-func (client *Client) JsonEmit(msg lemo.JsonPackage) exception.Error {
+func (client *Client) JsonEmit(msg lemo.JsonPackage) error {
 	data, err := jsoniter.Marshal(msg.Data)
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return client.Push(lemo.TextData, client.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), data, lemo.TextData, lemo.Json))
+	return client.Push(lemo.TextData, client.Protocol.Encode([]byte(msg.Event), data, lemo.TextData, lemo.Json))
 }
 
-func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) exception.Error {
+func (client *Client) ProtoBufEmit(msg lemo.ProtoBufPackage) error {
 	messageProtoBuf, err := proto.Marshal(msg.Data)
 	if err != nil {
-		return exception.New(err)
+		return err
 	}
-	return client.Push(lemo.BinData, client.Protocol.Encode(utils.Conv.StringToBytes(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
+	return client.Push(lemo.BinData, client.Protocol.Encode([]byte(msg.Event), messageProtoBuf, lemo.BinData, lemo.ProtoBuf))
 }
 
 // Push 发送消息
-func (client *Client) Push(messageType int, message []byte) exception.Error {
+func (client *Client) Push(messageType int, message []byte) error {
 	client.mux.Lock()
 	defer client.mux.Unlock()
-	return exception.New(client.Conn.WriteMessage(messageType, message))
+	return client.Conn.WriteMessage(messageType, message)
 }
 
 func (client *Client) Close() error {
@@ -207,7 +207,7 @@ func (client *Client) Connect() {
 	// 连接服务器
 	handler, response, err := dialer.Dial(client.Scheme+"://"+client.Host+client.Path, nil)
 	if err != nil {
-		client.OnError(exception.New(err))
+		client.OnError(err)
 		client.reconnecting()
 		return
 	}
@@ -241,7 +241,7 @@ func (client *Client) Connect() {
 	go func() {
 		for range ticker.C {
 			if err := client.HeartBeat(client); err != nil {
-				client.OnError(exception.New(err))
+				client.OnError(err)
 				_ = client.Close()
 				break
 			}
@@ -258,7 +258,7 @@ func (client *Client) Connect() {
 		err = client.decodeMessage(client, messageFrame, message)
 
 		if err != nil {
-			client.OnError(exception.New(err))
+			client.OnError(err)
 			break
 		}
 	}
@@ -298,7 +298,7 @@ func (client *Client) decodeMessage(conn *Client, messageFrame int, message []by
 
 	// on router
 	if client.router != nil {
-		client.middleware(client, &lemo.ReceivePackage{MessageType: messageType, Event: utils.Conv.BytesToString(route), Message: body, ProtoType: protoType, Raw: message})
+		client.middleware(client, &lemo.ReceivePackage{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
 	}
 
 	return nil
@@ -317,7 +317,7 @@ func (client *Client) handler(conn *Client, msg *lemo.ReceivePackage) {
 	var n, formatPath = client.router.getRoute(msg.Event)
 	if n == nil {
 		if client.OnError != nil {
-			client.OnError(exception.New(msg.Event + " " + "404 not found"))
+			client.OnError(errors.New(msg.Event + " " + "404 not found"))
 		}
 		return
 	}

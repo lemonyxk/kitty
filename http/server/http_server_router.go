@@ -19,18 +19,17 @@ import (
 	"github.com/Lemo-yxk/structure/tire"
 
 	"github.com/Lemo-yxk/lemo"
-	"github.com/Lemo-yxk/lemo/exception"
+
 	"github.com/Lemo-yxk/lemo/http"
-	"github.com/Lemo-yxk/lemo/utils"
 )
 
 type groupFunction func(handler *RouteHandler)
 
-type function func(stream *http.Stream) exception.Error
+type function func(stream *http.Stream) error
 
-type Before func(stream *http.Stream) (lemo.Context, exception.Error)
+type Before func(stream *http.Stream) (lemo.Context, error)
 
-type After func(stream *http.Stream) exception.Error
+type After func(stream *http.Stream) error
 
 type group struct {
 	path   string
@@ -138,7 +137,7 @@ func (route *route) Handler(fn function) {
 		panic("route path or method can not empty")
 	}
 
-	file, line := utils.Stack.Caller(1)
+	file, line := lemo.Caller(1)
 
 	var g = route.group
 
@@ -183,7 +182,7 @@ func (route *route) Handler(fn function) {
 
 	hba.Method = method
 
-	hba.Route = utils.Conv.StringToBytes(path)
+	hba.Route = []byte(path)
 
 	router.tire.Insert(path, hba)
 }
@@ -273,7 +272,7 @@ func (router *Router) getRoute(method string, path string) (*tire.Tire, []byte) 
 
 	path = router.formatPath(path)
 
-	var pathB = utils.Conv.StringToBytes(path)
+	var pathB = []byte(path)
 
 	var t = router.tire.GetValue(pathB)
 

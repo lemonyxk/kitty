@@ -13,7 +13,7 @@ package tcp
 import (
 	"errors"
 
-	"github.com/lemoyxk/lemo"
+	"github.com/lemoyxk/kitty"
 )
 
 type Protocol interface {

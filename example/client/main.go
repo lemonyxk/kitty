@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	kitty "github.com/lemoyxk/lemo"
-	client3 "github.com/lemoyxk/lemo/websocket/client"
+	kitty "github.com/lemoyxk/kitty"
+	client3 "github.com/lemoyxk/kitty/websocket/client"
 
-	client2 "github.com/lemoyxk/lemo/tcp/client"
+	client2 "github.com/lemoyxk/kitty/tcp/client"
 )
 
 func main() {

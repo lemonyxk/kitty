@@ -4,11 +4,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/lemoyxk/lemo"
-	"github.com/lemoyxk/lemo/http"
-	server3 "github.com/lemoyxk/lemo/http/server"
-	"github.com/lemoyxk/lemo/tcp/server"
-	server2 "github.com/lemoyxk/lemo/websocket/server"
+	"github.com/lemoyxk/kitty"
+	"github.com/lemoyxk/kitty/http"
+	server3 "github.com/lemoyxk/kitty/http/server"
+	"github.com/lemoyxk/kitty/tcp/server"
+	server2 "github.com/lemoyxk/kitty/websocket/server"
 )
 
 func main() {

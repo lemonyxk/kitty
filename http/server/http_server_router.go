@@ -18,9 +18,9 @@ import (
 
 	"github.com/lemoyxk/structure/tire"
 
-	"github.com/lemoyxk/lemo"
+	"github.com/lemoyxk/kitty"
 
-	"github.com/lemoyxk/lemo/http"
+	"github.com/lemoyxk/kitty/http"
 )
 
 type groupFunction func(handler *RouteHandler)

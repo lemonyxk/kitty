@@ -11,7 +11,7 @@
 package websocket
 
 import (
-	"github.com/lemoyxk/lemo"
+	"github.com/lemoyxk/kitty"
 )
 
 type Protocol interface {

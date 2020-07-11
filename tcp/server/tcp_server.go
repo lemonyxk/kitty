@@ -20,8 +20,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/lemoyxk/lemo"
-	"github.com/lemoyxk/lemo/tcp"
+	"github.com/lemoyxk/kitty"
+	"github.com/lemoyxk/kitty/tcp"
 )
 
 type Socket struct {

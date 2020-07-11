@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	kitty "github.com/lemoyxk/lemo"
-	http2 "github.com/lemoyxk/lemo/http"
+	kitty "github.com/lemoyxk/kitty"
+	http2 "github.com/lemoyxk/kitty/http"
 )
 
 type Server struct {

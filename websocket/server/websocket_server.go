@@ -11,8 +11,8 @@ import (
 
 	"github.com/json-iterator/go"
 
-	"github.com/lemoyxk/lemo"
-	websocket2 "github.com/lemoyxk/lemo/websocket"
+	"github.com/lemoyxk/kitty"
+	websocket2 "github.com/lemoyxk/kitty/websocket"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"

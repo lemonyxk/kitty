@@ -16,7 +16,7 @@ import (
 
 	"github.com/lemoyxk/structure/tire"
 
-	"github.com/lemoyxk/lemo"
+	"github.com/lemoyxk/kitty"
 )
 
 type groupFunction func(handler *RouteHandler)

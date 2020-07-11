@@ -13,7 +13,7 @@ import (
 
 	"github.com/json-iterator/go"
 
-	"github.com/lemoyxk/lemo"
+	"github.com/lemoyxk/kitty"
 )
 
 type Files struct {

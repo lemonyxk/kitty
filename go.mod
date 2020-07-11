@@ -1,4 +1,4 @@
-module github.com/lemoyxk/lemo
+module github.com/lemoyxk/kitty
 
 go 1.15
 

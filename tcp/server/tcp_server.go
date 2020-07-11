@@ -91,7 +91,6 @@ type Server struct {
 	router      *Router
 	middle      []func(Middle) Middle
 	netListen   net.Listener
-	shutdown    chan bool
 }
 
 type Middle func(conn *Socket, receive *kitty.ReceivePackage)
@@ -243,10 +242,7 @@ func (socket *Server) Ready() {
 		}
 	}
 
-	socket.shutdown = make(chan bool)
-
 	socket.connections = make(map[int64]*Socket)
-
 }
 
 func (socket *Server) onOpen(conn *Socket) {
@@ -330,28 +326,19 @@ func (socket *Server) Start() {
 		socket.OnSuccess()
 	}
 
-	go func() {
-		for {
-			conn, err := netListen.Accept()
-			if err != nil {
-				socket.onError(err)
-				continue
-			}
-
-			go socket.process(conn)
+	for {
+		conn, err := netListen.Accept()
+		if err != nil {
+			break
 		}
-	}()
 
-	<-socket.shutdown
-
-	err = netListen.Close()
-	if err != nil {
-		println(err)
+		go socket.process(conn)
 	}
+
 }
 
-func (socket *Server) Shutdown() {
-	socket.shutdown <- true
+func (socket *Server) Shutdown() error {
+	return socket.netListen.Close()
 }
 
 func (socket *Server) process(conn net.Conn) {

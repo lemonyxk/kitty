@@ -227,11 +227,8 @@ func (h *Server) Start() {
 	}
 }
 
-func (h *Server) Shutdown() {
-	err := h.server.Shutdown(context.Background())
-	if err != nil {
-		panic(err)
-	}
+func (h *Server) Shutdown() error {
+	return h.server.Shutdown(context.Background())
 }
 
 func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

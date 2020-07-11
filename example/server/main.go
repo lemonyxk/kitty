@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/http"
@@ -22,7 +23,8 @@ func main() {
 	// 	console.Log(http.ListenAndServe(":12345", nil))
 	// }()
 
-	// run()
+	run()
+	select {}
 	// utils.Signal.ListenKill().Done(func(sig os.Signal) {
 	// 	console.Info(sig)
 	// })
@@ -130,6 +132,10 @@ func run() {
 		log.Println(tcpServer.LocalAddr())
 	}
 
-	tcpServer.SetRouter(tcpServerRouter).Start()
+	go tcpServer.SetRouter(tcpServerRouter).Start()
+
+	time.AfterFunc(2*time.Second, func() {
+		log.Println(tcpServer.Shutdown())
+	})
 
 }

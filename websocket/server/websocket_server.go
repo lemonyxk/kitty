@@ -570,11 +570,8 @@ func (socket *Server) Start() {
 	}
 }
 
-func (socket *Server) Shutdown() {
-	err := socket.server.Shutdown(context.Background())
-	if err != nil {
-		panic(err)
-	}
+func (socket *Server) Shutdown() error {
+	return socket.server.Shutdown(context.Background())
 }
 
 func (socket *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

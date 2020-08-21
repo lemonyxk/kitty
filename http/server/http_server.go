@@ -38,52 +38,52 @@ type Server struct {
 	server    *http.Server
 }
 
-func (h *Server) Ready() {
-	if h.Host == "" {
+func (s *Server) Ready() {
+	if s.Host == "" {
 		panic("Host must set")
 	}
 }
 
 type Middle func(*http2.Stream)
 
-func (h *Server) LocalAddr() net.Addr {
-	return h.netListen.Addr()
+func (s *Server) LocalAddr() net.Addr {
+	return s.netListen.Addr()
 }
 
-func (h *Server) Use(middle ...func(next Middle) Middle) {
-	h.middle = append(h.middle, middle...)
+func (s *Server) Use(middle ...func(next Middle) Middle) {
+	s.middle = append(s.middle, middle...)
 }
 
-func (h *Server) process(w http.ResponseWriter, r *http.Request) {
+func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 	var stream = http2.NewStream(w, r)
-	h.middleware(stream)
+	s.middleware(stream)
 }
 
-func (h *Server) middleware(stream *http2.Stream) {
-	var next Middle = h.handler
-	for i := len(h.middle) - 1; i >= 0; i-- {
-		next = h.middle[i](next)
+func (s *Server) middleware(stream *http2.Stream) {
+	var next Middle = s.handler
+	for i := len(s.middle) - 1; i >= 0; i-- {
+		next = s.middle[i](next)
 	}
 	next(stream)
 }
 
-func (h *Server) handler(stream *http2.Stream) {
+func (s *Server) handler(stream *http2.Stream) {
 
-	if h.OnOpen != nil {
-		h.OnOpen(stream)
+	if s.OnOpen != nil {
+		s.OnOpen(stream)
 	}
 
 	// Get the router
-	n, formatPath := h.router.getRoute(stream.Request.Method, stream.Request.URL.Path)
+	n, formatPath := s.router.getRoute(stream.Request.Method, stream.Request.URL.Path)
 
 	if n == nil {
 		stream.Response.WriteHeader(http.StatusNotFound)
 		var err = errors.New(stream.Request.URL.Path + " " + "404 not found")
-		if h.OnError != nil {
-			h.OnError(stream, err)
+		if s.OnError != nil {
+			s.OnError(stream, err)
 		}
-		if h.OnClose != nil {
-			h.OnClose(stream)
+		if s.OnClose != nil {
+			s.OnClose(stream)
 		}
 		return
 	}
@@ -92,58 +92,54 @@ func (h *Server) handler(stream *http2.Stream) {
 
 	var nodeData = n.Data.(*node)
 
-	if h.OnMessage != nil {
-		h.OnMessage(stream)
+	if s.OnMessage != nil {
+		s.OnMessage(stream)
 	}
 
 	for i := 0; i < len(nodeData.Before); i++ {
-		ctx, err := nodeData.Before[i](stream)
-		if err != nil {
-			if h.OnError != nil {
-				h.OnError(stream, err)
+		if err := nodeData.Before[i](stream); err != nil {
+			if s.OnError != nil {
+				s.OnError(stream, err)
 			}
-			if h.OnClose != nil {
-				h.OnClose(stream)
+			if s.OnClose != nil {
+				s.OnClose(stream)
 			}
 			return
 		}
-		stream.Context = ctx
 	}
 
 	if nodeData.Function != nil {
-		err := nodeData.Function(stream)
-		if err != nil {
-			if h.OnError != nil {
-				h.OnError(stream, err)
+		if err := nodeData.Function(stream); err != nil {
+			if s.OnError != nil {
+				s.OnError(stream, err)
 			}
-			if h.OnClose != nil {
-				h.OnClose(stream)
+			if s.OnClose != nil {
+				s.OnClose(stream)
 			}
 			return
 		}
 	}
 
 	for i := 0; i < len(nodeData.After); i++ {
-		err := nodeData.After[i](stream)
-		if err != nil {
-			if h.OnError != nil {
-				h.OnError(stream, err)
+		if err := nodeData.After[i](stream); err != nil {
+			if s.OnError != nil {
+				s.OnError(stream, err)
 			}
-			if h.OnClose != nil {
-				h.OnClose(stream)
+			if s.OnClose != nil {
+				s.OnClose(stream)
 			}
 			return
 		}
 	}
 }
 
-func (h *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
+func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
-	if !strings.HasPrefix(r.URL.Path, h.router.prefixPath) {
+	if !strings.HasPrefix(r.URL.Path, s.router.prefixPath) {
 		return errors.New("not match")
 	}
 
-	var absFilePath = filepath.Join(h.router.staticPath, r.URL.Path[len(h.router.prefixPath):])
+	var absFilePath = filepath.Join(s.router.staticPath, r.URL.Path[len(s.router.prefixPath):])
 
 	var info, err = os.Stat(absFilePath)
 	if err != nil {
@@ -151,7 +147,7 @@ func (h *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if info.IsDir() {
-		absFilePath = filepath.Join(absFilePath, h.router.defaultIndex)
+		absFilePath = filepath.Join(absFilePath, s.router.defaultIndex)
 		if _, err := os.Stat(absFilePath); err != nil {
 			return errors.New("staticPath is not a file")
 		}
@@ -183,21 +179,21 @@ func (h *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 }
 
-func (h *Server) SetRouter(router *Router) *Server {
-	h.router = router
-	return h
+func (s *Server) SetRouter(router *Router) *Server {
+	s.router = router
+	return s
 }
 
-func (h *Server) GetRouter() *Router {
-	return h.router
+func (s *Server) GetRouter() *Router {
+	return s.router
 }
 
 // Start Http
-func (h *Server) Start() {
+func (s *Server) Start() {
 
-	h.Ready()
+	s.Ready()
 
-	var server = http.Server{Addr: h.Host, Handler: h}
+	var server = http.Server{Addr: s.Host, Handler: s}
 
 	var err error
 	var netListen net.Listener
@@ -208,16 +204,16 @@ func (h *Server) Start() {
 		panic(err)
 	}
 
-	h.netListen = netListen
-	h.server = &server
+	s.netListen = netListen
+	s.server = &server
 
 	// start success
-	if h.OnSuccess != nil {
-		h.OnSuccess()
+	if s.OnSuccess != nil {
+		s.OnSuccess()
 	}
 
-	if h.TSL {
-		err = server.ServeTLS(netListen, h.CertFile, h.KeyFile)
+	if s.TSL {
+		err = server.ServeTLS(netListen, s.CertFile, s.KeyFile)
 	} else {
 		err = server.Serve(netListen)
 	}
@@ -227,26 +223,26 @@ func (h *Server) Start() {
 	}
 }
 
-func (h *Server) Shutdown() error {
-	return h.server.Shutdown(context.Background())
+func (s *Server) Shutdown() error {
+	return s.server.Shutdown(context.Background())
 }
 
-func (h *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// router not exists
-	if h.router == nil {
+	if s.router == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// static file
-	if h.router.staticPath != "" && r.Method == http.MethodGet {
-		err := h.staticHandler(w, r)
+	if s.router.staticPath != "" && r.Method == http.MethodGet {
+		err := s.staticHandler(w, r)
 		if err == nil {
 			return
 		}
 	}
 
-	h.process(w, r)
+	s.process(w, r)
 	return
 }

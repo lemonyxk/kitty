@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	kitty "github.com/lemoyxk/kitty"
-	client3 "github.com/lemoyxk/kitty/websocket/client"
+	"github.com/lemoyxk/kitty/socket"
+	client3 "github.com/lemoyxk/kitty/socket/websocket/client"
 
-	client2 "github.com/lemoyxk/kitty/tcp/client"
+	client2 "github.com/lemoyxk/kitty/socket/tcp/client"
 )
 
 func main() {
@@ -50,8 +50,8 @@ func run() {
 	var router = &client2.Router{IgnoreCase: true}
 
 	router.Group("/hello").Handler(func(handler *client2.RouteHandler) {
-		handler.Route("/world").Handler(func(c *client2.Client, receive *kitty.Receive) error {
-			log.Println(string(receive.Body.Message))
+		handler.Route("/world").Handler(func(c *client2.Client, stream *socket.Stream) error {
+			log.Println(string(stream.Message))
 			return nil
 		})
 	})
@@ -59,7 +59,7 @@ func run() {
 	go func() {
 		var ticker = time.NewTicker(time.Second)
 		for range ticker.C {
-			_ = client.JsonEmit(kitty.JsonPackage{
+			_ = client.JsonEmit(socket.JsonPackage{
 				Event: "/hello/world",
 				Data:  strings.Repeat("hello world!", 1),
 			})

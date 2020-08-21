@@ -11,7 +11,7 @@
 package websocket
 
 import (
-	"github.com/lemoyxk/kitty"
+	"github.com/lemoyxk/kitty/socket"
 )
 
 type Protocol interface {
@@ -22,12 +22,12 @@ type Protocol interface {
 
 type DefaultProtocol struct{}
 
-func (Protocol *DefaultProtocol) Decode(message []byte) (version byte, messageType int, protoType int, route []byte, body []byte) {
+func (p *DefaultProtocol) Decode(message []byte) (version byte, messageType int, protoType int, route []byte, body []byte) {
 	if !isHeaderInvalid(message) {
 		route, body := parseMessage(message)
 
 		if len(route) != 0 {
-			return kitty.Version, kitty.Text, kitty.Json, route, body
+			return socket.Version, socket.Text, socket.Json, route, body
 		}
 		return 0, 0, 0, nil, nil
 	}
@@ -39,22 +39,22 @@ func (Protocol *DefaultProtocol) Decode(message []byte) (version byte, messageTy
 	return message[0], int(message[1]), int(message[2]), message[8 : 8+message[3]], message[8+message[3]:]
 }
 
-func (Protocol *DefaultProtocol) Encode(route []byte, body []byte, messageType int, protoType int) []byte {
+func (p *DefaultProtocol) Encode(route []byte, body []byte, messageType int, protoType int) []byte {
 	switch messageType {
-	case kitty.TextData:
+	case socket.TextData:
 		return packText(route, body, protoType)
-	case kitty.BinData:
+	case socket.BinData:
 		return packBin(route, body, protoType)
-	case kitty.PingData:
-		return []byte{kitty.Version, byte(kitty.PingData), byte(protoType), 0, 0, 0, 0, 0}
-	case kitty.PongData:
-		return []byte{kitty.Version, byte(kitty.PongData), byte(protoType), 0, 0, 0, 0, 0}
+	case socket.PingData:
+		return []byte{socket.Version, byte(socket.PingData), byte(protoType), 0, 0, 0, 0, 0}
+	case socket.PongData:
+		return []byte{socket.Version, byte(socket.PongData), byte(protoType), 0, 0, 0, 0, 0}
 	}
 
 	return nil
 }
 
-func (Protocol *DefaultProtocol) Read() {
+func (p *DefaultProtocol) Read() {
 
 }
 
@@ -65,17 +65,17 @@ func isHeaderInvalid(message []byte) bool {
 	}
 
 	// version
-	if message[0] != kitty.Version {
+	if message[0] != socket.Version {
 		return false
 	}
 
 	// message type
-	if message[1] != byte(kitty.TextData) && message[1] != byte(kitty.BinData) && message[1] != byte(kitty.PingData) && message[1] != byte(kitty.PongData) {
+	if message[1] != byte(socket.TextData) && message[1] != byte(socket.BinData) && message[1] != byte(socket.PingData) && message[1] != byte(socket.PongData) {
 		return false
 	}
 
 	// proto type
-	if message[2] != byte(kitty.Json) && message[2] != byte(kitty.ProtoBuf) && message[2] != byte(kitty.Text) {
+	if message[2] != byte(socket.Json) && message[2] != byte(socket.ProtoBuf) && message[2] != byte(socket.Text) {
 		return false
 	}
 
@@ -88,7 +88,7 @@ func convert(message []byte) (a, b, c, d, e int) {
 
 func getLen(message []byte) int {
 	var a, b, c, d, e = convert(message[:8])
-	if message[1] == byte(kitty.TextData) {
+	if message[1] == byte(socket.TextData) {
 		return a + (b | c<<7 | d<<14 | e<<21) + 8
 	} else {
 		return a + (b | c<<8 | d<<16 | e<<24) + 8
@@ -103,10 +103,10 @@ func packText(route []byte, body []byte, protoType int) []byte {
 	var data []byte
 
 	// 0 version
-	data = append(data, kitty.Version)
+	data = append(data, socket.Version)
 
 	// 1 message type
-	data = append(data, byte(kitty.TextData))
+	data = append(data, byte(socket.TextData))
 
 	// 2 proto type
 	data = append(data, byte(protoType))
@@ -141,10 +141,10 @@ func packBin(route []byte, body []byte, protoType int) []byte {
 	var data []byte
 
 	// 0 version
-	data = append(data, kitty.Version)
+	data = append(data, socket.Version)
 
 	// 1 message type
-	data = append(data, byte(kitty.BinData))
+	data = append(data, byte(socket.BinData))
 
 	// 2 proto type
 	data = append(data, byte(protoType))

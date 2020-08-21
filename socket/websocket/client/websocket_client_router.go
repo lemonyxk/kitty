@@ -1,35 +1,22 @@
-/**
-* @program: lemo
-*
-* @description:
-*
-* @author: lemo
-*
-* @create: 2019-11-25 11:29
-**/
-
-package server
+package client
 
 import (
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/lemoyxk/structure/tire"
 
 	"github.com/lemoyxk/kitty"
-
-	"github.com/lemoyxk/kitty/http"
+	"github.com/lemoyxk/kitty/socket"
 )
 
 type groupFunction func(handler *RouteHandler)
 
-type function func(stream *http.Stream) error
+type function func(client *Client, stream *socket.Stream) error
 
-type Before func(stream *http.Stream) error
+type Before func(client *Client, stream *socket.Stream) error
 
-type After func(stream *http.Stream) error
+type After func(client *Client, stream *socket.Stream) error
 
 type group struct {
 	path   string
@@ -61,39 +48,15 @@ type RouteHandler struct {
 	group *group
 }
 
-func (rh *RouteHandler) Route(method string, path string) *route {
-	return &route{path: path, method: method, group: rh.group}
-}
-
-func (rh *RouteHandler) Get(path string) *route {
-	return rh.Route("GET", path)
-}
-
-func (rh *RouteHandler) Post(path string) *route {
-	return rh.Route("POST", path)
-}
-
-func (rh *RouteHandler) Delete(path string) *route {
-	return rh.Route("DELETE", path)
-}
-
-func (rh *RouteHandler) Put(path string) *route {
-	return rh.Route("PUT", path)
-}
-
-func (rh *RouteHandler) Patch(path string) *route {
-	return rh.Route("PATCH", path)
-}
-
-func (rh *RouteHandler) Option(path string) *route {
-	return rh.Route("OPTION", path)
+func (rh *RouteHandler) Route(path string) *route {
+	return &route{path: path, group: rh.group}
 }
 
 type route struct {
 	path        string
-	method      string
 	before      []Before
 	after       []After
+	socket      *Client
 	passBefore  bool
 	forceBefore bool
 	passAfter   bool
@@ -133,17 +96,14 @@ func (r *route) ForceAfter() *route {
 
 func (r *route) Handler(fn function) {
 
-	if r.path == "" || r.method == "" {
-		panic("route path or method can not empty")
+	if r.path == "" {
+		panic("route path can not empty")
 	}
 
 	file, line := kitty.Caller(1)
 
-	var g = r.group
-
 	var router = r.group.router
-
-	var method = strings.ToUpper(r.method)
+	var g = r.group
 
 	if g == nil {
 		g = new(group)
@@ -155,44 +115,40 @@ func (r *route) Handler(fn function) {
 		router.tire = new(tire.Tire)
 	}
 
-	var hba = &node{}
+	var wba = &node{}
 
-	hba.Info = file + ":" + strconv.Itoa(line)
+	wba.Info = file + ":" + strconv.Itoa(line)
 
-	hba.Function = fn
+	wba.Function = fn
 
-	hba.Before = append(g.before, r.before...)
+	wba.Before = append(g.before, r.before...)
 	if r.passBefore {
-		hba.Before = nil
+		wba.Before = nil
 	}
 	if r.forceBefore {
-		hba.Before = r.before
+		wba.Before = r.before
 	}
 
-	hba.After = append(g.after, r.after...)
+	wba.After = append(g.after, r.after...)
 	if r.passAfter {
-		hba.After = nil
+		wba.After = nil
 	}
 	if r.forceAfter {
-		hba.After = r.after
+		wba.After = r.after
 	}
 
-	hba.Before = append(hba.Before, router.globalBefore...)
-	hba.After = append(hba.After, router.globalAfter...)
+	wba.Before = append(wba.Before, router.globalBefore...)
+	wba.After = append(wba.After, router.globalAfter...)
 
-	hba.Method = method
+	wba.Route = []byte(path)
 
-	hba.Route = []byte(path)
+	router.tire.Insert(path, wba)
 
-	router.tire.Insert(path, hba)
 }
 
 type Router struct {
-	IgnoreCase   bool
 	tire         *tire.Tire
-	prefixPath   string
-	staticPath   string
-	defaultIndex string
+	IgnoreCase   bool
 	globalAfter  []After
 	globalBefore []Before
 }
@@ -214,39 +170,6 @@ func (r *Router) GetAllRouters() []*node {
 	return res
 }
 
-func (r *Router) SetDefaultIndex(index string) {
-	r.defaultIndex = index
-}
-
-func (r *Router) SetStaticPath(prefixPath string, staticPath string) {
-
-	if prefixPath == "" {
-		panic("prefixPath can not be empty")
-	}
-
-	if staticPath == "" {
-		panic("staticPath can not be empty")
-	}
-
-	absStaticPath, err := filepath.Abs(staticPath)
-	if err != nil {
-		panic(err)
-	}
-
-	info, err := os.Stat(absStaticPath)
-	if err != nil {
-		panic(err)
-	}
-
-	if !info.IsDir() {
-		panic("staticPath is not a dir")
-	}
-
-	r.prefixPath = prefixPath
-	r.staticPath = absStaticPath
-	r.defaultIndex = "index.html"
-}
-
 func (r *Router) Group(path ...string) *group {
 
 	var group = new(group)
@@ -258,17 +181,15 @@ func (r *Router) Group(path ...string) *group {
 	return group
 }
 
-func (r *Router) Route(method string, path string) *route {
-	return (&RouteHandler{group: r.Group("")}).Route(method, path)
+func (r *Router) Route(path string) *route {
+	return (&RouteHandler{group: r.Group("")}).Route(path)
 }
 
-func (r *Router) getRoute(method string, path string) (*tire.Tire, []byte) {
+func (r *Router) getRoute(path string) (*tire.Tire, []byte) {
 
 	if r.tire == nil {
 		return nil, nil
 	}
-
-	method = strings.ToUpper(method)
 
 	path = r.formatPath(path)
 
@@ -277,10 +198,6 @@ func (r *Router) getRoute(method string, path string) (*tire.Tire, []byte) {
 	var t = r.tire.GetValue(pathB)
 
 	if t == nil {
-		return nil, nil
-	}
-
-	if t.Data.(*node).Method != method {
 		return nil, nil
 	}
 
@@ -297,7 +214,6 @@ func (r *Router) formatPath(path string) string {
 type node struct {
 	Info     string
 	Route    []byte
-	Method   string
 	Function function
 	Before   []Before
 	After    []After

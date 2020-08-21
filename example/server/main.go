@@ -5,11 +5,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/http"
 	server3 "github.com/lemoyxk/kitty/http/server"
-	"github.com/lemoyxk/kitty/tcp/server"
-	server2 "github.com/lemoyxk/kitty/websocket/server"
+	"github.com/lemoyxk/kitty/socket"
+	"github.com/lemoyxk/kitty/socket/tcp/server"
+	server2 "github.com/lemoyxk/kitty/socket/websocket/server"
 )
 
 func main() {
@@ -47,19 +47,19 @@ func run() {
 	var webSocketServerRouter = &server2.Router{IgnoreCase: true}
 
 	webSocketServer.Use(func(next server2.Middle) server2.Middle {
-		return func(conn *server2.WebSocket, receive *kitty.ReceivePackage) {
-			next(conn, receive)
+		return func(conn *server2.Conn, stream *socket.Stream) {
+			next(conn, stream)
 		}
 	})
 
-	webSocketServer.OnMessage = func(conn *server2.WebSocket, messageType int, msg []byte) {
+	webSocketServer.OnMessage = func(conn *server2.Conn, messageType int, msg []byte) {
 		log.Println(len(msg))
 	}
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *server2.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server2.WebSocket, receive *kitty.Receive) error {
-			log.Println(string(receive.Body.Message))
-			return conn.Json(kitty.JsonPackage{
+		handler.Route("/world").Handler(func(conn *server2.Conn, stream *socket.Stream) error {
+			log.Println(string(stream.Message))
+			return conn.Json(socket.JsonPackage{
 				Event: "/hello/world",
 				Data:  "i am server",
 			})
@@ -72,31 +72,31 @@ func run() {
 
 	var httpServerRouter = &server3.Router{}
 
-	httpServer.Use(func(next server3.Middle) server3.Middle {
-		return func(stream *http.Stream) {
-			// if stream.Request.Header.Get("Upgrade") == "websocket" {
-			// 	httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
-			// } else {
-			// 	log.Println(1, "start")
-			// 	next(stream)
-			// 	log.Println(1, "end")
-			// }
-			next(stream)
-		}
-	})
-
-	httpServer.Use(func(next server3.Middle) server3.Middle {
-		return func(stream *http.Stream) {
-			// log.Println(2, "start")
-			// next(stream)
-			// log.Println(2, "end")
-			next(stream)
-		}
-	})
+	// httpServer.Use(func(next server3.Middle) server3.Middle {
+	// 	return func(stream *http.Stream) {
+	// 		// if stream.Request.Header.Get("Upgrade") == "websocket" {
+	// 		// 	httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
+	// 		// } else {
+	// 		// 	log.Println(1, "start")
+	// 		// 	next(stream)
+	// 		// 	log.Println(1, "end")
+	// 		// }
+	// 		next(stream)
+	// 	}
+	// })
+	//
+	// httpServer.Use(func(next server3.Middle) server3.Middle {
+	// 	return func(stream *http.Stream) {
+	// 		// log.Println(2, "start")
+	// 		// next(stream)
+	// 		// log.Println(2, "end")
+	// 		next(stream)
+	// 	}
+	// })
 
 	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
 		// log.Println("handler")
-		return stream.EndString("hello")
+		return stream.EndString("hello world!")
 	})
 
 	httpServerRouter.Group("/hello").Handler(func(handler *server3.RouteHandler) {
@@ -115,15 +115,15 @@ func run() {
 
 	var tcpServer = &server.Server{Host: "127.0.0.1:8888"}
 
-	tcpServer.OnMessage = func(conn *server.Socket, messageType int, msg []byte) {
+	tcpServer.OnMessage = func(conn *server.Conn, messageType int, msg []byte) {
 		log.Println(len(msg))
 	}
 
 	var tcpServerRouter = &server.Router{IgnoreCase: true}
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server.Socket, receive *kitty.Receive) error {
-			log.Println(string(receive.Body.Message))
+		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
+			log.Println(string(stream.Message))
 			return nil
 		})
 	})

@@ -1,0 +1,581 @@
+package server
+
+import (
+	"context"
+	"errors"
+	"net"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/json-iterator/go"
+
+	"github.com/lemoyxk/kitty"
+	"github.com/lemoyxk/kitty/socket"
+	websocket2 "github.com/lemoyxk/kitty/socket/websocket"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/websocket"
+)
+
+type Conn struct {
+	FD       int64
+	Conn     *websocket.Conn
+	Server   *Server
+	Response http.ResponseWriter
+	Request  *http.Request
+	mux      sync.Mutex
+}
+
+func (c *Conn) Host() string {
+	if host := c.Request.Header.Get(kitty.Host); host != "" {
+		return host
+	}
+	return c.Request.Host
+}
+
+func (c *Conn) ClientIP() string {
+
+	if ip := strings.Split(c.Request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
+		return ip
+	}
+
+	if ip := c.Request.Header.Get(kitty.XRealIP); ip != "" {
+		return ip
+	}
+
+	if ip, _, err := net.SplitHostPort(c.Request.RemoteAddr); err == nil {
+		return ip
+	}
+
+	return ""
+}
+
+func (c *Conn) Push(messageType int, msg []byte) error {
+	return c.Server.Push(c.FD, messageType, msg)
+}
+
+func (c *Conn) Emit(event []byte, body []byte, dataType int, protoType int) error {
+	return c.Server.Emit(c.FD, event, body, dataType, protoType)
+}
+
+func (c *Conn) Json(msg socket.JsonPackage) error {
+	return c.Server.Json(c.FD, msg)
+}
+
+func (c *Conn) JsonEmit(msg socket.JsonPackage) error {
+	return c.Server.JsonEmit(c.FD, msg)
+}
+
+func (c *Conn) ProtoBufEmit(msg socket.ProtoBufPackage) error {
+	return c.Server.ProtoBufEmit(c.FD, msg)
+}
+
+func (c *Conn) Close() error {
+	return c.Conn.Close()
+}
+
+type Server struct {
+
+	// Host 服务Host
+	Name string
+	Host string
+	// Protocol 协议
+	TLS bool
+	// TLS FILE
+	CertFile string
+	// TLS KEY
+	KeyFile string
+
+	OnClose   func(conn *Conn)
+	OnMessage func(conn *Conn, messageType int, msg []byte)
+	OnOpen    func(conn *Conn)
+	OnError   func(err error)
+	OnSuccess func()
+
+	HeartBeatTimeout  time.Duration
+	HeartBeatInterval time.Duration
+	HandshakeTimeout  time.Duration
+	ReadBufferSize    int
+	WriteBufferSize   int
+	WaitQueueSize     int
+	CheckOrigin       func(r *http.Request) bool
+	Path              string
+
+	PingHandler func(conn *Conn) func(appData string) error
+
+	PongHandler func(conn *Conn) func(appData string) error
+
+	Protocol websocket2.Protocol
+
+	upgrade websocket.Upgrader
+
+	fd          int64
+	connections map[int64]*Conn
+	mux         sync.RWMutex
+	router      *Router
+	middle      []func(next Middle) Middle
+	server      *http.Server
+	netListen   net.Listener
+}
+
+type Middle func(conn *Conn, stream *socket.Stream)
+
+func (s *Server) LocalAddr() net.Addr {
+	return s.netListen.Addr()
+}
+
+func (s *Server) Use(middle ...func(next Middle) Middle) {
+	s.middle = append(s.middle, middle...)
+}
+
+func (s *Server) CheckPath(p1 string, p2 string) bool {
+	return p1 == p2
+}
+
+func (s *Server) Push(fd int64, messageType int, msg []byte) error {
+	var conn, ok = s.GetConnection(fd)
+	if !ok {
+		return errors.New("client is close")
+	}
+
+	conn.mux.Lock()
+	defer conn.mux.Unlock()
+
+	return conn.Conn.WriteMessage(messageType, msg)
+}
+
+func (s *Server) Json(fd int64, msg socket.JsonPackage) error {
+	data, err := jsoniter.Marshal(socket.JsonPackage{Event: msg.Event, Data: msg.Data})
+	if err != nil {
+		return err
+	}
+	return s.Push(fd, socket.TextData, data)
+}
+
+func (s *Server) Emit(fd int64, event []byte, body []byte, dataType int, protoType int) error {
+	return s.Push(fd, socket.BinData, s.Protocol.Encode(event, body, dataType, protoType))
+}
+
+func (s *Server) EmitAll(event []byte, body []byte, dataType int, protoType int) (int, int) {
+	var counter = 0
+	var success = 0
+	for fd := range s.connections {
+		counter++
+		if s.Emit(fd, event, body, dataType, protoType) == nil {
+			success++
+		}
+	}
+	return counter, success
+}
+
+func (s *Server) JsonAll(msg socket.JsonPackage) (int, int) {
+	var counter = 0
+	var success = 0
+	for fd := range s.connections {
+		counter++
+		if s.Json(fd, msg) == nil {
+			success++
+		}
+	}
+	return counter, success
+}
+
+func (s *Server) JsonEmitAll(msg socket.JsonPackage) (int, int) {
+	var counter = 0
+	var success = 0
+	for fd := range s.connections {
+		counter++
+		if s.JsonEmit(fd, msg) == nil {
+			success++
+		}
+	}
+	return counter, success
+}
+
+func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPackage) (int, int) {
+	var counter = 0
+	var success = 0
+	for fd := range s.connections {
+		counter++
+		if s.ProtoBufEmit(fd, msg) == nil {
+			success++
+		}
+	}
+	return counter, success
+}
+
+func (s *Server) ProtoBufEmit(fd int64, msg socket.ProtoBufPackage) error {
+	messageProtoBuf, err := proto.Marshal(msg.Data)
+	if err != nil {
+		return err
+	}
+	return s.Push(fd, socket.BinData, s.Protocol.Encode([]byte(msg.Event), messageProtoBuf, socket.BinData, socket.ProtoBuf))
+}
+
+func (s *Server) JsonEmit(fd int64, msg socket.JsonPackage) error {
+	data, err := jsoniter.Marshal(msg.Data)
+	if err != nil {
+		return err
+	}
+	return s.Push(fd, socket.TextData, s.Protocol.Encode([]byte(msg.Event), data, socket.TextData, socket.Json))
+}
+
+func (s *Server) addConnect(conn *Conn) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.fd++
+	s.connections[s.fd] = conn
+	conn.FD = s.fd
+}
+
+func (s *Server) delConnect(conn *Conn) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	delete(s.connections, conn.FD)
+}
+
+func (s *Server) GetConnections() chan *Conn {
+	var ch = make(chan *Conn, 1)
+	go func() {
+		for _, conn := range s.connections {
+			ch <- conn
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+func (s *Server) GetConnection(fd int64) (*Conn, bool) {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	conn, ok := s.connections[fd]
+	return conn, ok
+}
+
+func (s *Server) GetConnectionsCount() int {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	return len(s.connections)
+}
+
+func (s *Server) Close(fd int64) error {
+	conn, ok := s.GetConnection(fd)
+	if !ok {
+		return errors.New("fd not found")
+	}
+	return conn.Close()
+}
+
+func (s *Server) onOpen(conn *Conn) {
+	s.addConnect(conn)
+	s.OnOpen(conn)
+}
+
+func (s *Server) onClose(conn *Conn) {
+	_ = conn.Conn.Close()
+	s.delConnect(conn)
+	s.OnClose(conn)
+}
+
+func (s *Server) onError(err error) {
+	s.OnError(err)
+}
+
+func (s *Server) Ready() {
+
+	if s.Path == "" {
+		s.Path = "/"
+	}
+
+	if s.Host == "" {
+		panic("Host must set")
+	}
+
+	if s.HeartBeatTimeout == 0 {
+		s.HeartBeatTimeout = 30 * time.Second
+	}
+
+	if s.HeartBeatInterval == 0 {
+		s.HeartBeatInterval = 15 * time.Second
+	}
+
+	if s.HandshakeTimeout == 0 {
+		s.HandshakeTimeout = 2 * time.Second
+	}
+
+	// must be 4096 or the memory will leak
+	if s.ReadBufferSize == 0 {
+		s.ReadBufferSize = 1024
+	}
+	// must be 4096 or the memory will leak
+	if s.WriteBufferSize == 0 {
+		s.WriteBufferSize = 1024
+	}
+
+	if s.WaitQueueSize == 0 {
+		s.WaitQueueSize = 1024
+	}
+
+	if s.CheckOrigin == nil {
+		s.CheckOrigin = func(r *http.Request) bool {
+			return true
+		}
+	}
+
+	if s.OnOpen == nil {
+		s.OnOpen = func(conn *Conn) {
+			println(conn.FD, "is open")
+		}
+	}
+
+	if s.OnClose == nil {
+		s.OnClose = func(conn *Conn) {
+			println(conn.FD, "is close")
+		}
+	}
+
+	if s.OnError == nil {
+		s.OnError = func(err error) {
+			println(err)
+		}
+	}
+
+	if s.Protocol == nil {
+		s.Protocol = &websocket2.DefaultProtocol{}
+	}
+
+	if s.PingHandler == nil {
+		s.PingHandler = func(connection *Conn) func(appData string) error {
+			return func(appData string) error {
+				// unnecessary
+				// err := Server.Push(connection.FD, BinData, socket.Protocol.Encode(nil, nil, PongData, BinData))
+				return connection.Conn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
+			}
+		}
+	}
+
+	if s.PongHandler == nil {
+		s.PongHandler = func(connection *Conn) func(appData string) error {
+			return func(appData string) error {
+				return nil
+			}
+		}
+	}
+
+	s.upgrade = websocket.Upgrader{
+		HandshakeTimeout: s.HandshakeTimeout,
+		ReadBufferSize:   s.ReadBufferSize,
+		WriteBufferSize:  s.WriteBufferSize,
+		CheckOrigin:      s.CheckOrigin,
+	}
+
+	s.connections = make(map[int64]*Conn)
+}
+
+func (s *Server) process(w http.ResponseWriter, r *http.Request) {
+
+	// 升级协议
+	netConn, err := s.upgrade.Upgrade(w, r, nil)
+
+	// 错误处理
+	if err != nil {
+		s.onError(err)
+		return
+	}
+
+	// 超时时间
+	err = netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
+	if err != nil {
+		s.onError(err)
+		return
+	}
+
+	var conn = &Conn{
+		FD:       0,
+		Conn:     netConn,
+		Server:   s,
+		Response: w,
+		Request:  r,
+	}
+
+	// 设置PING处理函数
+	netConn.SetPingHandler(s.PingHandler(conn))
+
+	// 设置PONG处理函数
+	netConn.SetPongHandler(s.PongHandler(conn))
+
+	// 打开连接 记录
+	s.onOpen(conn)
+
+	// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
+	for {
+
+		// read message
+		messageFrame, message, err := netConn.ReadMessage()
+		// close
+		if err != nil {
+			break
+		}
+
+		// do not let it dead
+		// for web ping
+		if len(message) == 0 {
+			_ = netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
+		}
+
+		err = s.decodeMessage(conn, message, messageFrame)
+		if err != nil {
+			s.onError(err)
+			break
+		}
+
+	}
+
+	// close and clean
+	s.onClose(conn)
+
+}
+
+func (s *Server) decodeMessage(conn *Conn, message []byte, messageFrame int) error {
+
+	// unpack
+	version, messageType, protoType, route, body := s.Protocol.Decode(message)
+
+	if s.OnMessage != nil {
+		s.OnMessage(conn, messageFrame, message)
+	}
+
+	// check version
+	if version != socket.Version {
+		return nil
+	}
+
+	// Ping
+	if messageType == socket.PingData {
+		return s.PingHandler(conn)("")
+	}
+
+	// Pong
+	if messageType == socket.PongData {
+		return s.PongHandler(conn)("")
+	}
+
+	// on router
+	if s.router != nil {
+		s.middleware(conn, &socket.Stream{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
+		return nil
+	}
+
+	return nil
+}
+
+func (s *Server) middleware(conn *Conn, stream *socket.Stream) {
+	var next Middle = s.handler
+	for i := len(s.middle) - 1; i >= 0; i-- {
+		next = s.middle[i](next)
+	}
+	next(conn, stream)
+}
+
+func (s *Server) handler(conn *Conn, stream *socket.Stream) {
+
+	var n, formatPath = s.router.getRoute(stream.Event)
+	if n == nil {
+		if s.OnError != nil {
+			s.OnError(errors.New(stream.Event + " " + "404 not found"))
+		}
+		return
+	}
+
+	var nodeData = n.Data.(*node)
+
+	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
+
+	for i := 0; i < len(nodeData.Before); i++ {
+		if err := nodeData.Before[i](conn, stream); err != nil {
+			if s.OnError != nil {
+				s.OnError(err)
+			}
+			return
+		}
+	}
+
+	err := nodeData.Function(conn, stream)
+	if err != nil {
+		if s.OnError != nil {
+			s.OnError(err)
+		}
+		return
+	}
+
+	for i := 0; i < len(nodeData.After); i++ {
+		if err := nodeData.After[i](conn, stream); err != nil {
+			if s.OnError != nil {
+				s.OnError(err)
+			}
+			return
+		}
+	}
+
+}
+
+func (s *Server) SetRouter(router *Router) *Server {
+	s.router = router
+	return s
+}
+
+func (s *Server) GetRouter() *Router {
+	return s.router
+}
+
+func (s *Server) Start() {
+
+	s.Ready()
+
+	var server = http.Server{Addr: s.Host, Handler: s}
+
+	var err error
+	var netListen net.Listener
+
+	netListen, err = net.Listen("tcp", server.Addr)
+
+	if err != nil {
+		panic(err)
+	}
+
+	s.netListen = netListen
+	s.server = &server
+
+	// start success
+	if s.OnSuccess != nil {
+		s.OnSuccess()
+	}
+
+	if s.TLS {
+		err = server.ServeTLS(netListen, s.CertFile, s.KeyFile)
+	} else {
+		err = server.Serve(netListen)
+	}
+
+	if err != nil {
+		println(err)
+	}
+}
+
+func (s *Server) Shutdown() error {
+	return s.server.Shutdown(context.Background())
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	// Match the websocket router
+	if r.Method != http.MethodGet || !s.CheckPath(r.URL.Path, s.Path) {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	s.process(w, r)
+	return
+}

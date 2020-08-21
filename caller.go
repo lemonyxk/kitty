@@ -1,11 +1,11 @@
 /**
-* @program: lemo
+* @program: kitty
 *
 * @description:
 *
 * @author: lemo
 *
-* @create: 2020-07-11 00:34
+* @create: 2020-07-19 18:11
 **/
 
 package kitty
@@ -13,8 +13,6 @@ package kitty
 import (
 	"os"
 	"runtime"
-	"runtime/debug"
-	"strconv"
 	"strings"
 )
 
@@ -36,13 +34,4 @@ func Caller(deep int) (string, int) {
 	}
 
 	return file, line
-}
-
-func Stack(deep int) (string, int) {
-	var list = strings.Split(string(debug.Stack()), "\n")
-	var info = strings.TrimSpace(list[deep])
-	var flInfo = strings.Split(strings.Split(info, " ")[0], ":")
-	var file, line = flInfo[0], flInfo[1]
-	var l, _ = strconv.Atoi(line)
-	return file, l
 }

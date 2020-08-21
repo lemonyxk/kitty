@@ -8,10 +8,12 @@
 * @create: 2019-11-19 20:56
 **/
 
-package kitty
+package socket
 
 import (
 	"github.com/golang/protobuf/proto"
+
+	"github.com/lemoyxk/kitty"
 )
 
 // 0 version
@@ -40,24 +42,15 @@ const (
 	ProtoBuf int = 3
 )
 
-const (
-	XForwardedFor = "X-Forwarded-For"
-	XRealIP       = "X-Real-IP"
-	Host          = "Host"
-)
-
-type Receive struct {
-	Context Context
-	Params  Params
-	Body    *ReceivePackage
-}
-
-type ReceivePackage struct {
+type Stream struct {
 	MessageType int
+	ProtoType   int
 	Event       string
 	Message     []byte
-	ProtoType   int
 	Raw         []byte
+
+	Context kitty.Context
+	Params  kitty.Params
 }
 
 type JsonPackage struct {
@@ -74,24 +67,4 @@ type PushPackage struct {
 	Type int
 	FD   uint32
 	Data []byte
-}
-
-type M map[string]interface{}
-
-type A []interface{}
-
-type Context interface{}
-
-type Params struct {
-	Keys   []string
-	Values []string
-}
-
-func (ps Params) ByName(name string) string {
-	for i := 0; i < len(ps.Keys); i++ {
-		if ps.Keys[i] == name {
-			return ps.Values[i]
-		}
-	}
-	return ""
 }

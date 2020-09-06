@@ -109,6 +109,8 @@ func run() {
 		log.Println(httpServer.LocalAddr())
 	}
 
+	httpServerRouter.SetStaticPath("/", "./example/server/public")
+
 	go httpServer.SetRouter(httpServerRouter).Start()
 
 	log.Println("start success")

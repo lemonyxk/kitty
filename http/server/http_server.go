@@ -20,7 +20,7 @@ type Server struct {
 	// Host 服务Host
 	Host string
 	// Protocol 协议
-	TSL bool
+	TLS bool
 	// TLS FILE
 	CertFile string
 	// TLS KEY
@@ -212,7 +212,7 @@ func (s *Server) Start() {
 		s.OnSuccess()
 	}
 
-	if s.TSL {
+	if s.TLS {
 		err = server.ServeTLS(netListen, s.CertFile, s.KeyFile)
 	} else {
 		err = server.Serve(netListen)

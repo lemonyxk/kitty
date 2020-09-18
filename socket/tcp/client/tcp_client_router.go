@@ -35,11 +35,6 @@ type group struct {
 	router *Router
 }
 
-func (g *group) Route(path string) *group {
-	g.path = path
-	return g
-}
-
 func (g *group) Before(before ...Before) *group {
 	g.before = append(g.before, before...)
 	return g
@@ -48,6 +43,10 @@ func (g *group) Before(before ...Before) *group {
 func (g *group) After(after ...After) *group {
 	g.after = append(g.after, after...)
 	return g
+}
+
+func (g *group) Remove(path string) {
+	g.router.tire.Delete(g.path + path)
 }
 
 func (g *group) Handler(fn groupFunction) {
@@ -60,6 +59,10 @@ type RouteHandler struct {
 
 func (rh *RouteHandler) Route(path string) *route {
 	return &route{path: path, group: rh.group}
+}
+
+func (rh *RouteHandler) Remove(path string) {
+	rh.group.router.tire.Delete(rh.group.path + path)
 }
 
 type route struct {
@@ -183,11 +186,15 @@ func (r *Router) Group(path ...string) *group {
 
 	var group = new(group)
 
-	group.Route(strings.Join(path, ""))
+	group.path = strings.Join(path, "")
 
 	group.router = r
 
 	return group
+}
+
+func (r *Router) Remove(path ...string) {
+	r.tire.Delete(strings.Join(path, ""))
 }
 
 func (r *Router) Route(path string) *route {

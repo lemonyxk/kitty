@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -146,6 +147,7 @@ func (s *Server) Push(fd int64, messageType int, msg []byte) error {
 	return conn.Conn.WriteMessage(messageType, msg)
 }
 
+// MY Mistake
 func (s *Server) Json(fd int64, msg socket.JsonPackage) error {
 	data, err := jsoniter.Marshal(socket.JsonPackage{Event: msg.Event, Data: msg.Data})
 	if err != nil {
@@ -170,6 +172,7 @@ func (s *Server) EmitAll(event []byte, body []byte, dataType int, protoType int)
 	return counter, success
 }
 
+// MY Mistake
 func (s *Server) JsonAll(msg socket.JsonPackage) (int, int) {
 	var counter = 0
 	var success = 0
@@ -560,7 +563,7 @@ func (s *Server) Start() {
 	}
 
 	if err != nil {
-		println(err)
+		fmt.Printf("%+v\n", err)
 	}
 }
 

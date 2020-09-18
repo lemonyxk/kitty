@@ -1,13 +1,3 @@
-/**
-* @program: lemo
-*
-* @description:
-*
-* @author: lemo
-*
-* @create: 2019-10-16 16:10
-**/
-
 package client
 
 import (
@@ -41,7 +31,6 @@ type Client struct {
 	WriteBufferSize   int
 	HandshakeTimeout  time.Duration
 
-	// 消息处理
 	OnOpen    func(client *Client)
 	OnClose   func(client *Client)
 	OnMessage func(client *Client, messageType int, msg []byte)
@@ -49,14 +38,39 @@ type Client struct {
 	OnSuccess func()
 
 	PingHandler func(client *Client) func(appData string) error
-
 	PongHandler func(client *Client) func(appData string) error
 
 	Protocol tcp.Protocol
 
-	router *Router
-	middle []func(Middle) Middle
-	mux    sync.RWMutex
+	AsyncTimeout time.Duration
+
+	router     *Router
+	middle     []func(Middle) Middle
+	mux        sync.RWMutex
+	asyncEvent *asyncEvent
+}
+
+type asyncEvent struct {
+	data map[string]chan *socket.Stream
+	mux  sync.RWMutex
+}
+
+func (a *asyncEvent) get(event string) chan *socket.Stream {
+	a.mux.RLock()
+	defer a.mux.RUnlock()
+	return a.data[event]
+}
+
+func (a *asyncEvent) set(event string, ch chan *socket.Stream) {
+	a.mux.Lock()
+	defer a.mux.Unlock()
+	a.data[event] = ch
+}
+
+func (a *asyncEvent) delete(event string) {
+	a.mux.Lock()
+	defer a.mux.Unlock()
+	delete(a.data, event)
 }
 
 type Middle func(client *Client, stream *socket.Stream)
@@ -73,7 +87,66 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 	c.middle = append(c.middle, middle...)
 }
 
-// Json 发送JSON字符
+func (c *Client) initAsyncEvent() {
+	if c.asyncEvent == nil {
+		c.asyncEvent = &asyncEvent{data: make(map[string]chan *socket.Stream)}
+	}
+}
+
+func (c *Client) AsyncEmit(event []byte, body []byte, dataType int, protoType int) (*socket.Stream, error) {
+	c.initAsyncEvent()
+	defer c.asyncEvent.delete(string(event))
+	var ch = make(chan *socket.Stream)
+	c.asyncEvent.set(string(event), ch)
+	err := c.Emit(event, body, dataType, protoType)
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case stream := <-ch:
+		return stream, err
+	case <-time.After(c.AsyncTimeout):
+		return nil, errors.New("timeout")
+	}
+}
+
+func (c *Client) AsyncJsonEmit(msg socket.JsonPackage) (*socket.Stream, error) {
+	c.initAsyncEvent()
+	defer c.asyncEvent.delete(msg.Event)
+	var ch = make(chan *socket.Stream)
+	c.asyncEvent.set(msg.Event, ch)
+	err := c.JsonEmit(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case stream := <-ch:
+		return stream, err
+	case <-time.After(c.AsyncTimeout):
+		return nil, errors.New("timeout")
+	}
+}
+
+func (c *Client) AsyncProtoBufEmit(msg socket.ProtoBufPackage) (*socket.Stream, error) {
+	c.initAsyncEvent()
+	defer c.asyncEvent.delete(msg.Event)
+	var ch = make(chan *socket.Stream)
+	c.asyncEvent.set(msg.Event, ch)
+	err := c.ProtoBufEmit(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case stream := <-ch:
+		return stream, err
+	case <-time.After(c.AsyncTimeout):
+		return nil, errors.New("timeout")
+	}
+}
+
 func (c *Client) Emit(event []byte, body []byte, dataType int, protoType int) error {
 	return c.Push(c.Protocol.Encode(event, body, dataType, protoType))
 }
@@ -94,7 +167,6 @@ func (c *Client) ProtoBufEmit(msg socket.ProtoBufPackage) error {
 	return c.Push(c.Protocol.Encode([]byte(msg.Event), data, socket.BinData, socket.ProtoBuf))
 }
 
-// Push 发送消息
 func (c *Client) Push(message []byte) error {
 	c.mux.Lock()
 	defer c.mux.Unlock()
@@ -163,6 +235,10 @@ func (c *Client) Connect() {
 
 	if c.Protocol == nil {
 		c.Protocol = &tcp.DefaultProtocol{}
+	}
+
+	if c.AsyncTimeout == 0 {
+		c.AsyncTimeout = time.Second * 3
 	}
 
 	// heartbeat function
@@ -306,6 +382,14 @@ func (c *Client) middleware(conn *Client, stream *socket.Stream) {
 }
 
 func (c *Client) handler(conn *Client, stream *socket.Stream) {
+
+	if c.asyncEvent != nil {
+		var ch = c.asyncEvent.get(stream.Event)
+		if ch != nil {
+			ch <- stream
+			return
+		}
+	}
 
 	var n, formatPath = c.router.getRoute(stream.Event)
 	if n == nil {

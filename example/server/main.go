@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"time"
 
 	"github.com/lemoyxk/kitty/http"
 	server3 "github.com/lemoyxk/kitty/http/server"
@@ -136,8 +135,8 @@ func run() {
 
 	go tcpServer.SetRouter(tcpServerRouter).Start()
 
-	time.AfterFunc(2*time.Second, func() {
-		log.Println(tcpServer.Shutdown())
-	})
+	// time.AfterFunc(2*time.Second, func() {
+	// 	log.Println(tcpServer.Shutdown())
+	// })
 
 }

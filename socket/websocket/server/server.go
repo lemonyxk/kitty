@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,63 +18,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
-
-type Conn struct {
-	FD       int64
-	Conn     *websocket.Conn
-	Server   *Server
-	Response http.ResponseWriter
-	Request  *http.Request
-	mux      sync.Mutex
-}
-
-func (c *Conn) Host() string {
-	if host := c.Request.Header.Get(kitty.Host); host != "" {
-		return host
-	}
-	return c.Request.Host
-}
-
-func (c *Conn) ClientIP() string {
-
-	if ip := strings.Split(c.Request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
-		return ip
-	}
-
-	if ip := c.Request.Header.Get(kitty.XRealIP); ip != "" {
-		return ip
-	}
-
-	if ip, _, err := net.SplitHostPort(c.Request.RemoteAddr); err == nil {
-		return ip
-	}
-
-	return ""
-}
-
-func (c *Conn) Push(messageType int, msg []byte) error {
-	return c.Server.Push(c.FD, messageType, msg)
-}
-
-func (c *Conn) Emit(event []byte, body []byte, dataType int, protoType int) error {
-	return c.Server.Emit(c.FD, event, body, dataType, protoType)
-}
-
-func (c *Conn) Json(msg socket.JsonPackage) error {
-	return c.Server.Json(c.FD, msg)
-}
-
-func (c *Conn) JsonEmit(msg socket.JsonPackage) error {
-	return c.Server.JsonEmit(c.FD, msg)
-}
-
-func (c *Conn) ProtoBufEmit(msg socket.ProtoBufPackage) error {
-	return c.Server.ProtoBufEmit(c.FD, msg)
-}
-
-func (c *Conn) Close() error {
-	return c.Conn.Close()
-}
 
 type Server struct {
 
@@ -90,17 +32,17 @@ type Server struct {
 	KeyFile string
 
 	OnClose   func(conn *Conn)
-	OnMessage func(conn *Conn, messageType int, msg []byte)
+	OnMessage func(conn *Conn, msg []byte)
 	OnOpen    func(conn *Conn)
 	OnError   func(err error)
 	OnSuccess func()
+	OnUnknown func(conn *Conn, message []byte, next Middle)
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
 	HandshakeTimeout  time.Duration
 	ReadBufferSize    int
 	WriteBufferSize   int
-	WaitQueueSize     int
 	CheckOrigin       func(r *http.Request) bool
 	Path              string
 
@@ -135,7 +77,7 @@ func (s *Server) CheckPath(p1 string, p2 string) bool {
 	return p1 == p2
 }
 
-func (s *Server) Push(fd int64, messageType int, msg []byte) error {
+func (s *Server) Push(fd int64, msg []byte) error {
 	var conn, ok = s.GetConnection(fd)
 	if !ok {
 		return errors.New("client is close")
@@ -144,60 +86,55 @@ func (s *Server) Push(fd int64, messageType int, msg []byte) error {
 	conn.mux.Lock()
 	defer conn.mux.Unlock()
 
-	return conn.Conn.WriteMessage(messageType, msg)
+	_, err := conn.Write(msg)
+	return err
 }
 
-// MY Mistake
-func (s *Server) Json(fd int64, msg socket.JsonPackage) error {
-	data, err := jsoniter.Marshal(socket.JsonPackage{Event: msg.Event, Data: msg.Data})
+func (s *Server) Emit(fd int64, pack socket.Pack) error {
+	return s.Push(fd, s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), pack.Data))
+}
+
+func (s *Server) EmitAll(pack socket.Pack) (int, int) {
+	var counter = 0
+	var success = 0
+	for fd := range s.connections {
+		counter++
+		if s.Emit(fd, pack) == nil {
+			success++
+		}
+	}
+	return counter, success
+}
+
+func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
+	data, err := jsoniter.Marshal(pack.Data)
 	if err != nil {
 		return err
 	}
-	return s.Push(fd, socket.TextData, data)
+	return s.Push(fd, s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
 }
 
-func (s *Server) Emit(fd int64, event []byte, body []byte, dataType int, protoType int) error {
-	return s.Push(fd, socket.BinData, s.Protocol.Encode(event, body, dataType, protoType))
-}
-
-func (s *Server) EmitAll(event []byte, body []byte, dataType int, protoType int) (int, int) {
+func (s *Server) JsonEmitAll(pack socket.JsonPack) (int, int) {
 	var counter = 0
 	var success = 0
 	for fd := range s.connections {
 		counter++
-		if s.Emit(fd, event, body, dataType, protoType) == nil {
+		if s.JsonEmit(fd, pack) == nil {
 			success++
 		}
 	}
 	return counter, success
 }
 
-// MY Mistake
-func (s *Server) JsonAll(msg socket.JsonPackage) (int, int) {
-	var counter = 0
-	var success = 0
-	for fd := range s.connections {
-		counter++
-		if s.Json(fd, msg) == nil {
-			success++
-		}
+func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
+	data, err := proto.Marshal(pack.Data)
+	if err != nil {
+		return err
 	}
-	return counter, success
+	return s.Push(fd, s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
 }
 
-func (s *Server) JsonEmitAll(msg socket.JsonPackage) (int, int) {
-	var counter = 0
-	var success = 0
-	for fd := range s.connections {
-		counter++
-		if s.JsonEmit(fd, msg) == nil {
-			success++
-		}
-	}
-	return counter, success
-}
-
-func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPackage) (int, int) {
+func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
 	var counter = 0
 	var success = 0
 	for fd := range s.connections {
@@ -207,22 +144,6 @@ func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPackage) (int, int) {
 		}
 	}
 	return counter, success
-}
-
-func (s *Server) ProtoBufEmit(fd int64, msg socket.ProtoBufPackage) error {
-	messageProtoBuf, err := proto.Marshal(msg.Data)
-	if err != nil {
-		return err
-	}
-	return s.Push(fd, socket.BinData, s.Protocol.Encode([]byte(msg.Event), messageProtoBuf, socket.BinData, socket.ProtoBuf))
-}
-
-func (s *Server) JsonEmit(fd int64, msg socket.JsonPackage) error {
-	data, err := jsoniter.Marshal(msg.Data)
-	if err != nil {
-		return err
-	}
-	return s.Push(fd, socket.TextData, s.Protocol.Encode([]byte(msg.Event), data, socket.TextData, socket.Json))
 }
 
 func (s *Server) addConnect(conn *Conn) {
@@ -277,7 +198,7 @@ func (s *Server) onOpen(conn *Conn) {
 }
 
 func (s *Server) onClose(conn *Conn) {
-	_ = conn.Conn.Close()
+	_ = conn.Close()
 	s.delConnect(conn)
 	s.OnClose(conn)
 }
@@ -315,10 +236,6 @@ func (s *Server) Ready() {
 	// must be 4096 or the memory will leak
 	if s.WriteBufferSize == 0 {
 		s.WriteBufferSize = 1024
-	}
-
-	if s.WaitQueueSize == 0 {
-		s.WaitQueueSize = 1024
 	}
 
 	if s.CheckOrigin == nil {
@@ -416,7 +333,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 	for {
 
 		// read message
-		messageFrame, message, err := netConn.ReadMessage()
+		_, message, err := netConn.ReadMessage()
 		// close
 		if err != nil {
 			break
@@ -428,7 +345,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 			_ = netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
 		}
 
-		err = s.decodeMessage(conn, message, messageFrame)
+		err = s.decodeMessage(conn, message)
 		if err != nil {
 			s.onError(err)
 			break
@@ -441,17 +358,19 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (s *Server) decodeMessage(conn *Conn, message []byte, messageFrame int) error {
+func (s *Server) decodeMessage(conn *Conn, message []byte) error {
 
 	// unpack
-	version, messageType, protoType, route, body := s.Protocol.Decode(message)
+	messageType, id, route, body := s.Protocol.Decode(message)
 
 	if s.OnMessage != nil {
-		s.OnMessage(conn, messageFrame, message)
+		s.OnMessage(conn, message)
 	}
 
-	// check version
-	if version != socket.Version {
+	if messageType == socket.Unknown {
+		if s.OnUnknown != nil {
+			s.OnUnknown(conn, message, s.middleware)
+		}
 		return nil
 	}
 
@@ -466,10 +385,7 @@ func (s *Server) decodeMessage(conn *Conn, message []byte, messageFrame int) err
 	}
 
 	// on router
-	if s.router != nil {
-		s.middleware(conn, &socket.Stream{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
-		return nil
-	}
+	s.middleware(conn, &socket.Stream{Pack: socket.Pack{Event: string(route), Data: body, ID: id}})
 
 	return nil
 }
@@ -483,6 +399,13 @@ func (s *Server) middleware(conn *Conn, stream *socket.Stream) {
 }
 
 func (s *Server) handler(conn *Conn, stream *socket.Stream) {
+
+	if s.router == nil {
+		if s.OnError != nil {
+			s.OnError(errors.New(stream.Event + " " + "404 not found"))
+		}
+		return
+	}
 
 	var n, formatPath = s.router.getRoute(stream.Event)
 	if n == nil {

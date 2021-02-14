@@ -18,50 +18,50 @@ import (
 
 	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
-	"github.com/lemoyxk/kitty/socket/tcp/server"
+	"github.com/lemoyxk/kitty/socket/udp/server"
 )
 
 var stop = make(chan bool)
 
-var mux sync.WaitGroup
+var mux = new(sync.WaitGroup)
 
 func shutdown() {
 	stop <- true
 }
 
-var webSocketServer *server.Server
+var udpServer *server.Server
 
-var webSocketServerRouter *server.Router
+var udpServerRouter *server.Router
 
 var client *Client
 
 var clientRouter *Router
 
-var host = "127.0.0.1:8667"
+var host = "127.0.0.1:8668"
 
 func initServer(fn func()) {
 
 	// create server
-	webSocketServer = &server.Server{Host: host}
+	udpServer = &server.Server{Host: host}
 
 	// event
-	webSocketServer.OnOpen = func(conn *server.Conn) {}
-	webSocketServer.OnClose = func(conn *server.Conn) {}
-	webSocketServer.OnError = func(err error) {}
-	webSocketServer.OnMessage = func(conn *server.Conn, msg []byte) {}
+	udpServer.OnOpen = func(conn *server.Conn) {}
+	udpServer.OnClose = func(conn *server.Conn) {}
+	udpServer.OnError = func(err error) {}
+	udpServer.OnMessage = func(conn *server.Conn, msg []byte) {}
 
 	// middleware
-	webSocketServer.Use(func(next server.Middle) server.Middle {
+	udpServer.Use(func(next server.Middle) server.Middle {
 		return func(conn *server.Conn, stream *socket.Stream) {
 			next(conn, stream)
 		}
 	})
 
 	// create router
-	webSocketServerRouter = &server.Router{IgnoreCase: true}
+	udpServerRouter = &server.Router{IgnoreCase: true}
 
 	// set group route
-	webSocketServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
+	udpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
 		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
 			return conn.JsonEmit(socket.JsonPack{
 				Event: "/hello/world",
@@ -71,9 +71,9 @@ func initServer(fn func()) {
 		})
 	})
 
-	go webSocketServer.SetRouter(webSocketServerRouter).Start()
+	go udpServer.SetRouter(udpServerRouter).Start()
 
-	webSocketServer.OnSuccess = func() {
+	udpServer.OnSuccess = func() {
 		fn()
 	}
 }
@@ -128,7 +128,7 @@ func TestMain(t *testing.M) {
 	<-stop
 
 	_ = client.Close()
-	_ = webSocketServer.Shutdown()
+	_ = udpServer.Shutdown()
 }
 
 //
@@ -167,7 +167,6 @@ func Test_Client(t *testing.T) {
 			Data:  strings.Repeat("hello world!", 1),
 			ID:    id,
 		})
-
 	}
 
 	go func() {

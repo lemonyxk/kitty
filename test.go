@@ -26,10 +26,7 @@ func NewAssertEqual(t *testing.T) func(condition bool, args ...interface{}) {
 
 func AssertEqual(t *testing.T, condition bool, args ...interface{}) {
 	if !condition {
-		// t.Fatal(args...)
-		t.Fail()
-		file, line := Caller(1)
-		fmt.Printf("%s:%d %s", file, line, fmt.Sprintln(args...))
+		t.Fatal(args...)
 	}
 }
 

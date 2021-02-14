@@ -27,44 +27,44 @@ import (
 
 const (
 	// Version
-	Version byte = 'V'
+	// Version byte = 'V'
 
 	// message type
-	Unknown  int = 0
-	TextData int = 1
-	BinData  int = 2
-	PingData int = 9
-	PongData int = 10
+	Unknown byte = 0
+	// TextData int = 1
+	BinData   byte = 2
+	OpenData  byte = 3
+	CloseData byte = 4
+	PingData  byte = 9
+	PongData  byte = 10
 
 	// proto type
-	Text     int = 1
-	Json     int = 2
-	ProtoBuf int = 3
+	// Text     int = 1
+	// Json     int = 2
+	// ProtoBuf int = 3
 )
 
+type Pack struct {
+	Event string
+	Data  []byte
+	ID    uint32
+}
+
 type Stream struct {
-	MessageType int
-	ProtoType   int
-	Event       string
-	Message     []byte
-	Raw         []byte
+	Pack
 
 	Context kitty.Context
 	Params  kitty.Params
 }
 
-type JsonPackage struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
+type JsonPack struct {
+	Event string
+	Data  interface{}
+	ID    uint32
 }
 
-type ProtoBufPackage struct {
+type ProtoBufPack struct {
 	Event string
 	Data  proto.Message
-}
-
-type PushPackage struct {
-	Type int
-	FD   uint32
-	Data []byte
+	ID    uint32
 }

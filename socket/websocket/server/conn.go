@@ -1,0 +1,80 @@
+/**
+* @program: kitty
+*
+* @description:
+*
+* @author: lemo
+*
+* @create: 2021-02-11 16:19
+**/
+
+package server
+
+import (
+	"net"
+	"net/http"
+	"strings"
+	"sync"
+
+	"github.com/gorilla/websocket"
+
+	"github.com/lemoyxk/kitty"
+	"github.com/lemoyxk/kitty/socket"
+)
+
+type Conn struct {
+	FD       int64
+	Conn     *websocket.Conn
+	Server   *Server
+	Response http.ResponseWriter
+	Request  *http.Request
+	mux      sync.Mutex
+}
+
+func (c *Conn) Host() string {
+	if host := c.Request.Header.Get(kitty.Host); host != "" {
+		return host
+	}
+	return c.Request.Host
+}
+
+func (c *Conn) ClientIP() string {
+
+	if ip := strings.Split(c.Request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
+		return ip
+	}
+
+	if ip := c.Request.Header.Get(kitty.XRealIP); ip != "" {
+		return ip
+	}
+
+	if ip, _, err := net.SplitHostPort(c.Request.RemoteAddr); err == nil {
+		return ip
+	}
+
+	return ""
+}
+
+func (c *Conn) Push(msg []byte) error {
+	return c.Server.Push(c.FD, msg)
+}
+
+func (c *Conn) Emit(pack socket.Pack) error {
+	return c.Server.Emit(c.FD, pack)
+}
+
+func (c *Conn) JsonEmit(msg socket.JsonPack) error {
+	return c.Server.JsonEmit(c.FD, msg)
+}
+
+func (c *Conn) ProtoBufEmit(msg socket.ProtoBufPack) error {
+	return c.Server.ProtoBufEmit(c.FD, msg)
+}
+
+func (c *Conn) Close() error {
+	return c.Conn.Close()
+}
+
+func (c *Conn) Write(msg []byte) (int, error) {
+	return len(msg), c.Conn.WriteMessage(int(socket.BinData), msg)
+}

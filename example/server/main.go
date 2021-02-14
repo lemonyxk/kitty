@@ -51,14 +51,14 @@ func run() {
 		}
 	})
 
-	webSocketServer.OnMessage = func(conn *server2.Conn, messageType int, msg []byte) {
-		log.Println(len(msg))
+	webSocketServer.OnMessage = func(conn *server2.Conn, msg []byte) {
+		log.Println(string(msg))
 	}
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *server2.RouteHandler) {
 		handler.Route("/world").Handler(func(conn *server2.Conn, stream *socket.Stream) error {
-			log.Println(string(stream.Message))
-			return conn.Json(socket.JsonPackage{
+			log.Println(string(stream.Data))
+			return conn.JsonEmit(socket.JsonPack{
 				Event: "/hello/world",
 				Data:  "i am server",
 			})
@@ -116,15 +116,15 @@ func run() {
 
 	var tcpServer = &server.Server{Host: "127.0.0.1:8888"}
 
-	tcpServer.OnMessage = func(conn *server.Conn, messageType int, msg []byte) {
-		log.Println(len(msg))
+	tcpServer.OnMessage = func(conn *server.Conn, msg []byte) {
+		log.Println(string(msg))
 	}
 
 	var tcpServerRouter = &server.Router{IgnoreCase: true}
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
 		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
-			log.Println(string(stream.Message))
+			log.Println(string(stream.Data))
 			return nil
 		})
 	})

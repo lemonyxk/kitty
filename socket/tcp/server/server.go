@@ -25,59 +25,20 @@ import (
 	"github.com/lemoyxk/kitty/socket/tcp"
 )
 
-type Conn struct {
-	FD     int64
-	Conn   net.Conn
-	Server *Server
-	mux    sync.RWMutex
-}
-
-func (c *Conn) Host() string {
-	return c.Conn.RemoteAddr().String()
-}
-
-func (c *Conn) ClientIP() string {
-	if ip, _, err := net.SplitHostPort(c.Conn.RemoteAddr().String()); err == nil {
-		return ip
-	}
-	return ""
-}
-
-func (c *Conn) Push(msg []byte) error {
-	return c.Server.Push(c.FD, msg)
-}
-
-func (c *Conn) Emit(event []byte, body []byte, dataType int, protoType int) error {
-	return c.Server.Emit(c.FD, event, body, dataType, protoType)
-}
-
-func (c *Conn) JsonEmit(msg socket.JsonPackage) error {
-	return c.Server.JsonEmit(c.FD, msg)
-}
-
-func (c *Conn) ProtoBufEmit(msg socket.ProtoBufPackage) error {
-	return c.Server.ProtoBufEmit(c.FD, msg)
-}
-
-func (c *Conn) Close() error {
-	return c.Conn.Close()
-}
-
 type Server struct {
 	Name      string
 	Host      string
 	OnClose   func(conn *Conn)
-	OnMessage func(conn *Conn, messageType int, msg []byte)
+	OnMessage func(conn *Conn, msg []byte)
 	OnOpen    func(conn *Conn)
 	OnError   func(err error)
 	OnSuccess func()
+	OnUnknown func(conn *Conn, message []byte, next Middle)
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
 	ReadBufferSize    int
 	WriteBufferSize   int
-	WaitQueueSize     int
-	HandshakeTimeout  time.Duration
 
 	PingHandler func(conn *Conn) func(appData string) error
 
@@ -112,27 +73,35 @@ func (s *Server) Push(fd int64, msg []byte) error {
 	conn.mux.Lock()
 	defer conn.mux.Unlock()
 
-	_, err := conn.Conn.Write(msg)
+	_, err := conn.Write(msg)
 	return err
 }
 
-func (s *Server) Emit(fd int64, event []byte, body []byte, dataType int, protoType int) error {
-	return s.Push(fd, s.Protocol.Encode(event, body, dataType, protoType))
+func (s *Server) Emit(fd int64, pack socket.Pack) error {
+	return s.Push(fd, s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), pack.Data))
 }
 
-func (s *Server) EmitAll(event []byte, body []byte, dataType int, protoType int) (int, int) {
+func (s *Server) EmitAll(pack socket.Pack) (int, int) {
 	var counter = 0
 	var success = 0
 	for fd := range s.connections {
 		counter++
-		if s.Emit(fd, event, body, dataType, protoType) == nil {
+		if s.Emit(fd, pack) == nil {
 			success++
 		}
 	}
 	return counter, success
 }
 
-func (s *Server) JsonEmitAll(msg socket.JsonPackage) (int, int) {
+func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
+	data, err := jsoniter.Marshal(pack.Data)
+	if err != nil {
+		return err
+	}
+	return s.Push(fd, s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
+}
+
+func (s *Server) JsonEmitAll(msg socket.JsonPack) (int, int) {
 	var counter = 0
 	var success = 0
 	for fd := range s.connections {
@@ -144,7 +113,15 @@ func (s *Server) JsonEmitAll(msg socket.JsonPackage) (int, int) {
 	return counter, success
 }
 
-func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPackage) (int, int) {
+func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
+	data, err := proto.Marshal(pack.Data)
+	if err != nil {
+		return err
+	}
+	return s.Push(fd, s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
+}
+
+func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
 	var counter = 0
 	var success = 0
 	for fd := range s.connections {
@@ -156,30 +133,10 @@ func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPackage) (int, int) {
 	return counter, success
 }
 
-func (s *Server) ProtoBufEmit(fd int64, msg socket.ProtoBufPackage) error {
-	data, err := proto.Marshal(msg.Data)
-	if err != nil {
-		return err
-	}
-	return s.Push(fd, s.Protocol.Encode([]byte(msg.Event), data, socket.BinData, socket.ProtoBuf))
-}
-
-func (s *Server) JsonEmit(fd int64, msg socket.JsonPackage) error {
-	data, err := jsoniter.Marshal(msg.Data)
-	if err != nil {
-		return err
-	}
-	return s.Push(fd, s.Protocol.Encode([]byte(msg.Event), data, socket.TextData, socket.Json))
-}
-
 func (s *Server) Ready() {
 
 	if s.Host == "" {
 		panic("Host must set")
-	}
-
-	if s.HandshakeTimeout == 0 {
-		s.HandshakeTimeout = 2 * time.Second
 	}
 
 	if s.HeartBeatTimeout == 0 {
@@ -196,10 +153,6 @@ func (s *Server) Ready() {
 
 	if s.WriteBufferSize == 0 {
 		s.WriteBufferSize = 1024
-	}
-
-	if s.WaitQueueSize == 0 {
-		s.WaitQueueSize = 1024
 	}
 
 	if s.OnOpen == nil {
@@ -251,7 +204,7 @@ func (s *Server) onOpen(conn *Conn) {
 }
 
 func (s *Server) onClose(conn *Conn) {
-	_ = conn.Conn.Close()
+	_ = conn.Close()
 	s.delConnect(conn)
 	s.OnClose(conn)
 }
@@ -396,14 +349,16 @@ func (s *Server) process(netConn net.Conn) {
 
 func (s *Server) decodeMessage(conn *Conn, message []byte) error {
 	// unpack
-	version, messageType, protoType, route, body := s.Protocol.Decode(message)
+	messageType, id, route, body := s.Protocol.Decode(message)
 
 	if s.OnMessage != nil {
-		s.OnMessage(conn, messageType, message)
+		s.OnMessage(conn, message)
 	}
 
-	// check version
-	if version != socket.Version {
+	if messageType == socket.Unknown {
+		if s.OnUnknown != nil {
+			s.OnUnknown(conn, message, s.middleware)
+		}
 		return nil
 	}
 
@@ -418,10 +373,7 @@ func (s *Server) decodeMessage(conn *Conn, message []byte) error {
 	}
 
 	// on router
-	if s.router != nil {
-		s.middleware(conn, &socket.Stream{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
-		return nil
-	}
+	s.middleware(conn, &socket.Stream{Pack: socket.Pack{Event: string(route), Data: body, ID: id}})
 
 	return nil
 }
@@ -435,6 +387,13 @@ func (s *Server) middleware(conn *Conn, stream *socket.Stream) {
 }
 
 func (s *Server) handler(conn *Conn, stream *socket.Stream) {
+
+	if s.router == nil {
+		if s.OnError != nil {
+			s.OnError(errors.New(stream.Event + " " + "404 not found"))
+		}
+		return
+	}
 
 	var n, formatPath = s.router.getRoute(stream.Event)
 	if n == nil {

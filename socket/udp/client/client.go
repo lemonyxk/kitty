@@ -1,19 +1,28 @@
+/**
+* @program: kitty
+*
+* @description:
+*
+* @author: lemo
+*
+* @create: 2021-02-13 17:40
+**/
+
 package client
 
 import (
 	"errors"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 
-	"github.com/json-iterator/go"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/json-iterator/go"
 
 	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
-
-	"github.com/lemoyxk/kitty/socket/tcp"
+	"github.com/lemoyxk/kitty/socket/udp"
 )
 
 type Client struct {
@@ -29,48 +38,23 @@ type Client struct {
 	ReconnectInterval time.Duration
 	ReadBufferSize    int
 	WriteBufferSize   int
-	HandshakeTimeout  time.Duration
+	DailTimeout       time.Duration
 
 	OnOpen    func(client *Client)
 	OnClose   func(client *Client)
-	OnMessage func(client *Client, messageType int, msg []byte)
+	OnMessage func(client *Client, msg []byte)
 	OnError   func(err error)
 	OnSuccess func()
+	OnUnknown func(client *Client, message []byte, next Middle)
 
 	PingHandler func(client *Client) func(appData string) error
 	PongHandler func(client *Client) func(appData string) error
 
-	Protocol tcp.Protocol
+	Protocol udp.Protocol
 
-	AsyncTimeout time.Duration
-
-	router     *Router
-	middle     []func(Middle) Middle
-	mux        sync.RWMutex
-	asyncEvent *asyncEvent
-}
-
-type asyncEvent struct {
-	data map[string]chan *socket.Stream
-	mux  sync.RWMutex
-}
-
-func (a *asyncEvent) get(event string) chan *socket.Stream {
-	a.mux.RLock()
-	defer a.mux.RUnlock()
-	return a.data[event]
-}
-
-func (a *asyncEvent) set(event string, ch chan *socket.Stream) {
-	a.mux.Lock()
-	defer a.mux.Unlock()
-	a.data[event] = ch
-}
-
-func (a *asyncEvent) delete(event string) {
-	a.mux.Lock()
-	defer a.mux.Unlock()
-	delete(a.data, event)
+	router *Router
+	middle []func(Middle) Middle
+	mux    sync.RWMutex
 }
 
 type Middle func(client *Client, stream *socket.Stream)
@@ -87,87 +71,30 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 	c.middle = append(c.middle, middle...)
 }
 
-func (c *Client) initAsyncEvent() {
-	if c.asyncEvent == nil {
-		c.asyncEvent = &asyncEvent{data: make(map[string]chan *socket.Stream)}
-	}
+func (c *Client) Emit(pack socket.Pack) error {
+	return c.Push(c.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), pack.Data))
 }
 
-func (c *Client) AsyncEmit(event []byte, body []byte, dataType int, protoType int) (*socket.Stream, error) {
-	c.initAsyncEvent()
-	defer c.asyncEvent.delete(string(event))
-	var ch = make(chan *socket.Stream)
-	c.asyncEvent.set(string(event), ch)
-	err := c.Emit(event, body, dataType, protoType)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case stream := <-ch:
-		return stream, err
-	case <-time.After(c.AsyncTimeout):
-		return nil, errors.New("timeout")
-	}
-}
-
-func (c *Client) AsyncJsonEmit(msg socket.JsonPackage) (*socket.Stream, error) {
-	c.initAsyncEvent()
-	defer c.asyncEvent.delete(msg.Event)
-	var ch = make(chan *socket.Stream)
-	c.asyncEvent.set(msg.Event, ch)
-	err := c.JsonEmit(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case stream := <-ch:
-		return stream, err
-	case <-time.After(c.AsyncTimeout):
-		return nil, errors.New("timeout")
-	}
-}
-
-func (c *Client) AsyncProtoBufEmit(msg socket.ProtoBufPackage) (*socket.Stream, error) {
-	c.initAsyncEvent()
-	defer c.asyncEvent.delete(msg.Event)
-	var ch = make(chan *socket.Stream)
-	c.asyncEvent.set(msg.Event, ch)
-	err := c.ProtoBufEmit(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case stream := <-ch:
-		return stream, err
-	case <-time.After(c.AsyncTimeout):
-		return nil, errors.New("timeout")
-	}
-}
-
-func (c *Client) Emit(event []byte, body []byte, dataType int, protoType int) error {
-	return c.Push(c.Protocol.Encode(event, body, dataType, protoType))
-}
-
-func (c *Client) JsonEmit(msg socket.JsonPackage) error {
-	data, err := jsoniter.Marshal(msg.Data)
+func (c *Client) JsonEmit(pack socket.JsonPack) error {
+	data, err := jsoniter.Marshal(pack.Data)
 	if err != nil {
 		return err
 	}
-	return c.Push(c.Protocol.Encode([]byte(msg.Event), data, socket.TextData, socket.Json))
+	return c.Push(c.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
 }
 
-func (c *Client) ProtoBufEmit(msg socket.ProtoBufPackage) error {
-	data, err := proto.Marshal(msg.Data)
+func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
+	data, err := proto.Marshal(pack.Data)
 	if err != nil {
 		return err
 	}
-	return c.Push(c.Protocol.Encode([]byte(msg.Event), data, socket.BinData, socket.ProtoBuf))
+	return c.Push(c.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
 }
 
 func (c *Client) Push(message []byte) error {
+	if len(message) > c.ReadBufferSize+udp.HeadLen {
+		return errors.New("max length is " + strconv.Itoa(c.ReadBufferSize) + "but now is " + strconv.Itoa(len(message)))
+	}
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	_, err := c.Conn.Write(message)
@@ -175,6 +102,7 @@ func (c *Client) Push(message []byte) error {
 }
 
 func (c *Client) Close() error {
+	_, _ = c.Conn.Write(udp.CloseMessage)
 	return c.Conn.Close()
 }
 
@@ -204,19 +132,16 @@ func (c *Client) Connect() {
 		panic("OnError must set")
 	}
 
-	// 握手
-	if c.HandshakeTimeout == 0 {
-		c.HandshakeTimeout = 2 * time.Second
+	if c.DailTimeout == 0 {
+		c.DailTimeout = 2 * time.Second
 	}
 
-	// 读出BUF大小
 	if c.ReadBufferSize == 0 {
-		c.ReadBufferSize = 1024
+		c.ReadBufferSize = 512
 	}
 
-	// 读出BUF大小
 	if c.WriteBufferSize == 0 {
-		c.WriteBufferSize = 1024
+		c.WriteBufferSize = 512
 	}
 
 	// 定时心跳间隔
@@ -234,17 +159,13 @@ func (c *Client) Connect() {
 	}
 
 	if c.Protocol == nil {
-		c.Protocol = &tcp.DefaultProtocol{}
-	}
-
-	if c.AsyncTimeout == 0 {
-		c.AsyncTimeout = time.Second * 3
+		c.Protocol = &udp.DefaultProtocol{}
 	}
 
 	// heartbeat function
 	if c.HeartBeat == nil {
 		c.HeartBeat = func(client *Client) error {
-			return client.Push(client.Protocol.Encode(nil, nil, socket.PingData, socket.BinData))
+			return client.Push(client.Protocol.Encode(socket.PingData, 0, nil, nil))
 		}
 	}
 
@@ -265,24 +186,49 @@ func (c *Client) Connect() {
 	}
 
 	// 连接服务器
-	handler, err := net.DialTimeout("tcp", c.Host, c.HandshakeTimeout)
+	addr, err := net.ResolveUDPAddr("udp", c.Host)
+	if err != nil {
+		panic(err)
+	}
+
+	handler, err := net.DialUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0}, addr)
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()
 		return
 	}
 
-	err = handler.(*net.TCPConn).SetReadBuffer(c.ReadBufferSize)
-	if err != nil {
-		panic(err)
-	}
-
-	err = handler.(*net.TCPConn).SetWriteBuffer(c.WriteBufferSize)
-	if err != nil {
-		panic(err)
-	}
-
 	c.Conn = handler
+
+	// send open message
+	_, err = handler.Write(udp.OpenMessage)
+	if err != nil {
+		c.OnError(err)
+		c.reconnecting()
+		return
+	}
+
+	var tick = time.AfterFunc(c.DailTimeout, func() {
+		// handler.ReadFromUDP will read failed
+		// then trigger reconnecting
+		_ = c.Close()
+	})
+
+	var msg = make([]byte, c.ReadBufferSize+udp.HeadLen)
+	_, _, err = handler.ReadFromUDP(msg)
+	if err != nil {
+		c.OnError(err)
+		c.reconnecting()
+		return
+	}
+
+	if msg[2] != socket.OpenData {
+		c.OnError(err)
+		c.reconnecting()
+		return
+	}
+
+	tick.Stop()
 
 	// start success
 	if c.OnSuccess != nil {
@@ -310,9 +256,9 @@ func (c *Client) Connect() {
 		}
 	}()
 
-	var reader = c.Protocol.Reader()
+	// var reader = c.Protocol.Reader()
 
-	var buffer = make([]byte, c.ReadBufferSize)
+	var buffer = make([]byte, c.ReadBufferSize+udp.HeadLen)
 
 	for {
 		n, err := c.Conn.Read(buffer)
@@ -321,15 +267,14 @@ func (c *Client) Connect() {
 			break
 		}
 
-		err = reader(n, buffer, func(bytes []byte) {
-			err = c.decodeMessage(bytes)
-		})
+		err = c.process(buffer[:n])
 
 		if err != nil {
-			c.OnError(err)
+			if err.Error() != "close" {
+				c.OnError(err)
+			}
 			break
 		}
-
 	}
 
 	// 关闭定时器
@@ -342,16 +287,32 @@ func (c *Client) Connect() {
 	c.reconnecting()
 }
 
+func (c *Client) process(message []byte) error {
+
+	switch message[2] {
+	case socket.BinData, socket.PingData, socket.PongData:
+		return c.decodeMessage(message)
+	case socket.OpenData:
+		return nil
+	case socket.CloseData:
+		return errors.New("close")
+	default:
+		return nil
+	}
+}
+
 func (c *Client) decodeMessage(message []byte) error {
 	// unpack
-	version, messageType, protoType, route, body := c.Protocol.Decode(message)
+	messageType, id, route, body := c.Protocol.Decode(message)
 
 	if c.OnMessage != nil {
-		c.OnMessage(c, messageType, message)
+		c.OnMessage(c, message)
 	}
 
-	// check version
-	if version != socket.Version {
+	if messageType == socket.Unknown {
+		if c.OnUnknown != nil {
+			c.OnUnknown(c, message, c.middleware)
+		}
 		return nil
 	}
 
@@ -366,9 +327,7 @@ func (c *Client) decodeMessage(message []byte) error {
 	}
 
 	// on router
-	if c.router != nil {
-		c.middleware(c, &socket.Stream{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
-	}
+	c.middleware(c, &socket.Stream{Pack: socket.Pack{Event: string(route), Data: body, ID: id}})
 
 	return nil
 }
@@ -383,12 +342,11 @@ func (c *Client) middleware(conn *Client, stream *socket.Stream) {
 
 func (c *Client) handler(conn *Client, stream *socket.Stream) {
 
-	if c.asyncEvent != nil {
-		var ch = c.asyncEvent.get(stream.Event)
-		if ch != nil {
-			ch <- stream
-			return
+	if c.router == nil {
+		if c.OnError != nil {
+			c.OnError(errors.New(stream.Event + " " + "404 not found"))
 		}
+		return
 	}
 
 	var n, formatPath = c.router.getRoute(stream.Event)

@@ -12,8 +12,6 @@ package main
 
 import (
 	"log"
-	"strings"
-	"time"
 
 	"github.com/lemoyxk/kitty/socket"
 	client3 "github.com/lemoyxk/kitty/socket/websocket/client"
@@ -47,22 +45,22 @@ func run() {
 
 	router.Group("/hello").Handler(func(handler *client3.RouteHandler) {
 		handler.Route("/world").Handler(func(c *client3.Client, stream *socket.Stream) error {
-			log.Println(string(stream.Message))
+			log.Println(string(stream.Data))
 			return nil
 		})
 	})
 
-	go func() {
-		var ticker = time.NewTicker(time.Second)
-		for range ticker.C {
-			stream, err := client.AsyncJson(socket.JsonPackage{
-				Event: "/hello/world",
-				Data:  strings.Repeat("hello world!", 1),
-			})
-
-			log.Println(string(stream.Message), err)
-		}
-	}()
+	// go func() {
+	// 	var ticker = time.NewTicker(time.Second)
+	// 	for range ticker.C {
+	// 		stream, err := client.AsyncJson(socket.JsonPackage{
+	// 			Event: "/hello/world",
+	// 			Data:  strings.Repeat("hello world!", 1),
+	// 		})
+	//
+	// 		log.Println(string(stream.Message), err)
+	// 	}
+	// }()
 
 	go client.SetRouter(router).Connect()
 

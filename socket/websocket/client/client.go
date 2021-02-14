@@ -41,41 +41,16 @@ type Client struct {
 	OnMessage func(client *Client, messageType int, msg []byte)
 	OnError   func(err error)
 	OnSuccess func()
+	OnUnknown func(conn *Client, message []byte, next Middle)
 
 	PingHandler func(client *Client) func(appData string) error
 	PongHandler func(client *Client) func(appData string) error
 
 	Protocol websocket2.Protocol
 
-	AsyncTimeout time.Duration
-
-	mux        sync.RWMutex
-	router     *Router
-	middle     []func(Middle) Middle
-	asyncEvent *asyncEvent
-}
-
-type asyncEvent struct {
-	data map[string]chan *socket.Stream
-	mux  sync.RWMutex
-}
-
-func (a *asyncEvent) get(event string) chan *socket.Stream {
-	a.mux.RLock()
-	defer a.mux.RUnlock()
-	return a.data[event]
-}
-
-func (a *asyncEvent) set(event string, ch chan *socket.Stream) {
-	a.mux.Lock()
-	defer a.mux.Unlock()
-	a.data[event] = ch
-}
-
-func (a *asyncEvent) delete(event string) {
-	a.mux.Lock()
-	defer a.mux.Unlock()
-	delete(a.data, event)
+	mux    sync.RWMutex
+	router *Router
+	middle []func(Middle) Middle
 }
 
 type Middle func(client *Client, stream *socket.Stream)
@@ -92,118 +67,30 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 	c.middle = append(c.middle, middle...)
 }
 
-func (c *Client) initAsyncEvent() {
-	if c.asyncEvent == nil {
-		c.asyncEvent = &asyncEvent{data: make(map[string]chan *socket.Stream)}
-	}
+func (c *Client) Emit(pack socket.Pack) error {
+	return c.Push(c.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), pack.Data))
 }
 
-// MY Mistake
-func (c *Client) AsyncJson(msg socket.JsonPackage) (*socket.Stream, error) {
-	c.initAsyncEvent()
-	defer c.asyncEvent.delete(msg.Event)
-	var ch = make(chan *socket.Stream)
-	c.asyncEvent.set(msg.Event, ch)
-	err := c.Json(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case stream := <-ch:
-		return stream, err
-	case <-time.After(c.AsyncTimeout):
-		return nil, errors.New("timeout")
-	}
-}
-
-func (c *Client) AsyncEmit(event []byte, body []byte, dataType int, protoType int) (*socket.Stream, error) {
-	c.initAsyncEvent()
-	defer c.asyncEvent.delete(string(event))
-	var ch = make(chan *socket.Stream)
-	c.asyncEvent.set(string(event), ch)
-	err := c.Emit(event, body, dataType, protoType)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case stream := <-ch:
-		return stream, err
-	case <-time.After(c.AsyncTimeout):
-		return nil, errors.New("timeout")
-	}
-}
-
-func (c *Client) AsyncJsonEmit(msg socket.JsonPackage) (*socket.Stream, error) {
-	c.initAsyncEvent()
-	defer c.asyncEvent.delete(msg.Event)
-	var ch = make(chan *socket.Stream)
-	c.asyncEvent.set(msg.Event, ch)
-	err := c.JsonEmit(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case stream := <-ch:
-		return stream, err
-	case <-time.After(c.AsyncTimeout):
-		return nil, errors.New("timeout")
-	}
-}
-
-func (c *Client) AsyncProtoBufEmit(msg socket.ProtoBufPackage) (*socket.Stream, error) {
-	c.initAsyncEvent()
-	defer c.asyncEvent.delete(msg.Event)
-	var ch = make(chan *socket.Stream)
-	c.asyncEvent.set(msg.Event, ch)
-	err := c.ProtoBufEmit(msg)
-	if err != nil {
-		return nil, err
-	}
-
-	select {
-	case stream := <-ch:
-		return stream, err
-	case <-time.After(c.AsyncTimeout):
-		return nil, errors.New("timeout")
-	}
-}
-
-func (c *Client) Emit(event []byte, body []byte, dataType int, protoType int) error {
-	return c.Push(dataType, c.Protocol.Encode(event, body, dataType, protoType))
-}
-
-// MY Mistake
-func (c *Client) Json(msg socket.JsonPackage) error {
-	messageJson, err := jsoniter.Marshal(socket.JsonPackage{Event: msg.Event, Data: msg.Data})
+func (c *Client) JsonEmit(pack socket.JsonPack) error {
+	data, err := jsoniter.Marshal(pack.Data)
 	if err != nil {
 		return err
 	}
-	return c.Push(socket.TextData, messageJson)
+	return c.Push(c.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
 }
 
-func (c *Client) JsonEmit(msg socket.JsonPackage) error {
-	data, err := jsoniter.Marshal(msg.Data)
+func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
+	data, err := proto.Marshal(pack.Data)
 	if err != nil {
 		return err
 	}
-	return c.Push(socket.TextData, c.Protocol.Encode([]byte(msg.Event), data, socket.TextData, socket.Json))
+	return c.Push(c.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
 }
 
-func (c *Client) ProtoBufEmit(msg socket.ProtoBufPackage) error {
-	messageProtoBuf, err := proto.Marshal(msg.Data)
-	if err != nil {
-		return err
-	}
-	return c.Push(socket.BinData, c.Protocol.Encode([]byte(msg.Event), messageProtoBuf, socket.BinData, socket.ProtoBuf))
-}
-
-func (c *Client) Push(messageType int, message []byte) error {
+func (c *Client) Push(message []byte) error {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	return c.Conn.WriteMessage(messageType, message)
+	return c.Conn.WriteMessage(int(socket.BinData), message)
 }
 
 func (c *Client) Close() error {
@@ -274,14 +161,10 @@ func (c *Client) Connect() {
 		c.Protocol = &websocket2.DefaultProtocol{}
 	}
 
-	if c.AsyncTimeout == 0 {
-		c.AsyncTimeout = time.Second * 3
-	}
-
 	// heartbeat function
 	if c.HeartBeat == nil {
 		c.HeartBeat = func(client *Client) error {
-			return client.Push(socket.BinData, client.Protocol.Encode(nil, nil, socket.PingData, socket.BinData))
+			return client.Push(client.Protocol.Encode(socket.PingData, 0, nil, nil))
 		}
 	}
 
@@ -378,14 +261,16 @@ func (c *Client) Connect() {
 
 func (c *Client) decodeMessage(messageFrame int, message []byte) error {
 	// unpack
-	version, messageType, protoType, route, body := c.Protocol.Decode(message)
+	messageType, id, route, body := c.Protocol.Decode(message)
 
 	if c.OnMessage != nil {
 		c.OnMessage(c, messageFrame, message)
 	}
 
-	// check version
-	if version != socket.Version {
+	if messageType == socket.Unknown {
+		if c.OnUnknown != nil {
+			c.OnUnknown(c, message, c.middleware)
+		}
 		return nil
 	}
 
@@ -400,9 +285,7 @@ func (c *Client) decodeMessage(messageFrame int, message []byte) error {
 	}
 
 	// on router
-	if c.router != nil {
-		c.middleware(c, &socket.Stream{MessageType: messageType, Event: string(route), Message: body, ProtoType: protoType, Raw: message})
-	}
+	c.middleware(c, &socket.Stream{Pack: socket.Pack{Event: string(route), Data: body, ID: id}})
 
 	return nil
 }
@@ -417,12 +300,11 @@ func (c *Client) middleware(conn *Client, stream *socket.Stream) {
 
 func (c *Client) handler(conn *Client, stream *socket.Stream) {
 
-	if c.asyncEvent != nil {
-		var ch = c.asyncEvent.get(stream.Event)
-		if ch != nil {
-			ch <- stream
-			return
+	if c.router == nil {
+		if c.OnError != nil {
+			c.OnError(errors.New(stream.Event + " " + "404 not found"))
 		}
+		return
 	}
 
 	var n, formatPath = c.router.getRoute(stream.Event)

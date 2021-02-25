@@ -279,10 +279,20 @@ func (s *Server) Start() {
 		panic(err)
 	}
 
-	netListen, err = net.ListenUDP("udp", addr)
+	if addr.IP.IsMulticast() {
+		netListen, err = net.ListenMulticastUDP("udp", nil, addr)
+	} else {
+		netListen, err = net.ListenUDP("udp", addr)
+	}
+
 	if err != nil {
 		panic(err)
 	}
+
+	// netListen, err = net.ListenUDP("udp", addr)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	s.netListen = netListen
 

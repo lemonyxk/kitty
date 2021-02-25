@@ -29,7 +29,7 @@ type Client struct {
 	Name string
 	Host string
 
-	Conn              net.Conn
+	Conn              *net.UDPConn
 	AutoHeartBeat     bool
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
@@ -55,6 +55,7 @@ type Client struct {
 	router *Router
 	middle []func(Middle) Middle
 	mux    sync.RWMutex
+	addr   *net.UDPAddr
 }
 
 type Middle func(client *Client, stream *socket.Stream)
@@ -64,7 +65,7 @@ func (c *Client) LocalAddr() net.Addr {
 }
 
 func (c *Client) RemoteAddr() net.Addr {
-	return c.Conn.RemoteAddr()
+	return c.addr
 }
 
 func (c *Client) Use(middle ...func(Middle) Middle) {
@@ -97,12 +98,12 @@ func (c *Client) Push(message []byte) error {
 	}
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	_, err := c.Conn.Write(message)
+	_, err := c.Conn.WriteToUDP(message, c.addr)
 	return err
 }
 
 func (c *Client) Close() error {
-	_, _ = c.Conn.Write(udp.CloseMessage)
+	_, _ = c.Conn.WriteToUDP(udp.CloseMessage, c.addr)
 	return c.Conn.Close()
 }
 
@@ -191,17 +192,27 @@ func (c *Client) Connect() {
 		panic(err)
 	}
 
-	handler, err := net.DialUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0}, addr)
+	c.addr = addr
+
+	// more useful
+	handler, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()
 		return
 	}
 
+	// handler, err := net.DialUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0}, addr)
+	// if err != nil {
+	// 	c.OnError(err)
+	// 	c.reconnecting()
+	// 	return
+	// }
+
 	c.Conn = handler
 
 	// send open message
-	_, err = handler.Write(udp.OpenMessage)
+	_, err = c.Conn.WriteToUDP(udp.OpenMessage, c.addr)
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()
@@ -215,7 +226,7 @@ func (c *Client) Connect() {
 	})
 
 	var msg = make([]byte, c.ReadBufferSize+udp.HeadLen)
-	_, _, err = handler.ReadFromUDP(msg)
+	_, _, err = c.Conn.ReadFromUDP(msg)
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()

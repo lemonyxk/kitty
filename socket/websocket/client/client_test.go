@@ -136,19 +136,19 @@ func TestMain(t *testing.M) {
 	initClient(clientFn)
 
 	go func() {
-		for {
-			if sucServer && sucClient {
-				t.Run()
-				break
-			}
-		}
+		<-stop
 
+		_ = client.Close()
+		_ = webSocketServer.Shutdown()
 	}()
 
-	<-stop
+	for {
+		if sucServer && sucClient {
+			t.Run()
+			break
+		}
+	}
 
-	_ = client.Close()
-	_ = webSocketServer.Shutdown()
 }
 
 // func Test_Client_Async(t *testing.T) {

@@ -29,9 +29,9 @@ func shutdown() {
 	stop <- true
 }
 
-var webSocketServer *server.Server
+var tcpServer *server.Server
 
-var webSocketServerRouter *server.Router
+var tcpServerRouter *server.Router
 
 var client *Client
 
@@ -42,26 +42,26 @@ var host = "127.0.0.1:8667"
 func initServer(fn func()) {
 
 	// create server
-	webSocketServer = &server.Server{Host: host}
+	tcpServer = &server.Server{Host: host}
 
 	// event
-	webSocketServer.OnOpen = func(conn *server.Conn) {}
-	webSocketServer.OnClose = func(conn *server.Conn) {}
-	webSocketServer.OnError = func(err error) {}
-	webSocketServer.OnMessage = func(conn *server.Conn, msg []byte) {}
+	tcpServer.OnOpen = func(conn *server.Conn) {}
+	tcpServer.OnClose = func(conn *server.Conn) {}
+	tcpServer.OnError = func(err error) {}
+	tcpServer.OnMessage = func(conn *server.Conn, msg []byte) {}
 
 	// middleware
-	webSocketServer.Use(func(next server.Middle) server.Middle {
+	tcpServer.Use(func(next server.Middle) server.Middle {
 		return func(conn *server.Conn, stream *socket.Stream) {
 			next(conn, stream)
 		}
 	})
 
 	// create router
-	webSocketServerRouter = &server.Router{IgnoreCase: true}
+	tcpServerRouter = &server.Router{IgnoreCase: true}
 
 	// set group route
-	webSocketServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
+	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
 		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
 			return conn.JsonEmit(socket.JsonPack{
 				Event: "/hello/world",
@@ -71,9 +71,9 @@ func initServer(fn func()) {
 		})
 	})
 
-	go webSocketServer.SetRouter(webSocketServerRouter).Start()
+	go tcpServer.SetRouter(tcpServerRouter).Start()
 
-	webSocketServer.OnSuccess = func() {
+	tcpServer.OnSuccess = func() {
 		fn()
 	}
 }
@@ -116,19 +116,19 @@ func TestMain(t *testing.M) {
 	initClient(clientFn)
 
 	go func() {
-		for {
-			if sucServer && sucClient {
-				t.Run()
-				break
-			}
-		}
+		<-stop
 
+		_ = client.Close()
+		_ = tcpServer.Shutdown()
 	}()
 
-	<-stop
+	for {
+		if sucServer && sucClient {
+			t.Run()
+			break
+		}
+	}
 
-	_ = client.Close()
-	_ = webSocketServer.Shutdown()
 }
 
 //

@@ -116,19 +116,21 @@ func TestMain(t *testing.M) {
 	initClient(clientFn)
 
 	go func() {
-		for {
-			if sucServer && sucClient {
-				t.Run()
-				break
-			}
-		}
+
+		<-stop
+
+		_ = client.Close()
+		_ = udpServer.Shutdown()
 
 	}()
 
-	<-stop
+	for {
+		if sucServer && sucClient {
+			t.Run()
+			break
+		}
+	}
 
-	_ = client.Close()
-	_ = udpServer.Shutdown()
 }
 
 //

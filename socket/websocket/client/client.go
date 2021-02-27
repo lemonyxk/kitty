@@ -99,9 +99,8 @@ func (c *Client) Close() error {
 
 func (c *Client) reconnecting() {
 	if c.Reconnect == true {
-		time.AfterFunc(c.ReconnectInterval, func() {
-			c.Connect()
-		})
+		time.Sleep(c.ReconnectInterval)
+		c.Connect()
 	}
 }
 

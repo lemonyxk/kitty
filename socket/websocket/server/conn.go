@@ -23,6 +23,7 @@ import (
 )
 
 type Conn struct {
+	Name     string
 	FD       int64
 	Conn     *websocket.Conn
 	Server   *Server

@@ -22,6 +22,7 @@ import (
 )
 
 type Conn struct {
+	Name   string
 	FD     int64
 	Conn   *net.UDPAddr
 	Server *Server

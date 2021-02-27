@@ -18,6 +18,7 @@ import (
 )
 
 type Conn struct {
+	Name   string
 	FD     int64
 	Conn   net.Conn
 	Server *Server

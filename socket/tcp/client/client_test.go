@@ -147,7 +147,7 @@ func TestMain(t *testing.M) {
 
 func Test_Client(t *testing.T) {
 
-	var id uint32 = 123456789
+	var id int64 = 123456789
 
 	var count = 10000
 

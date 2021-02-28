@@ -155,7 +155,7 @@ func client() {
 					err := client.Emit(socket.Pack{
 						Event: "/hello/world",
 						Data:  []byte(strings.Repeat("i", 123)),
-						ID:    uint32(i),
+						ID:    int64(i),
 					})
 					if err != nil {
 						log.Println(err)

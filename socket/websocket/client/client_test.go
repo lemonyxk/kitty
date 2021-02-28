@@ -26,7 +26,7 @@ import (
 type JsonPack struct {
 	Event string      `json:"event"`
 	Data  interface{} `json:"data"`
-	ID    uint32      `json:"id"`
+	ID    int64       `json:"id"`
 }
 
 var stop = make(chan bool)
@@ -68,7 +68,7 @@ func initServer(fn func()) {
 	// handle unknown proto
 	webSocketServer.OnUnknown = func(conn *server.Conn, message []byte, next server.Middle) {
 		var j = jsoniter.Get(message)
-		var id = j.Get("id").ToUint32()
+		var id = j.Get("id").ToInt64()
 		var route = j.Get("event").ToString()
 		var data = j.Get("data").ToString()
 		if route == "" {
@@ -166,14 +166,14 @@ func TestMain(t *testing.M) {
 
 func Test_Client(t *testing.T) {
 
-	var id uint32 = 123456
+	var id int64 = 123456
 
 	var count = 10000
 
 	// handle unknown proto
 	client.OnUnknown = func(conn *Client, message []byte, next Middle) {
 		var j = jsoniter.Get(message)
-		var id = j.Get("id").ToUint32()
+		var id = j.Get("id").ToInt64()
 		var route = j.Get("event").ToString()
 		var data = j.Get("data").ToString()
 		if route == "" {

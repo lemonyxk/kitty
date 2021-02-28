@@ -47,7 +47,7 @@ const (
 type Pack struct {
 	Event string
 	Data  []byte
-	ID    uint32
+	ID    int64
 }
 
 type Stream struct {
@@ -60,11 +60,11 @@ type Stream struct {
 type JsonPack struct {
 	Event string
 	Data  interface{}
-	ID    uint32
+	ID    int64
 }
 
 type ProtoBufPack struct {
 	Event string
 	Data  proto.Message
-	ID    uint32
+	ID    int64
 }

@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/json-iterator/go"
@@ -223,30 +224,46 @@ func (c *Client) Connect() {
 		ticker.Stop()
 	}
 
+	var hadStop int32 = 0
+	var stopCh = make(chan struct{})
+
 	go func() {
 		for range ticker.C {
 			if err := c.HeartBeat(c); err != nil {
 				c.OnError(err)
 				_ = c.Close()
+				if atomic.AddInt32(&hadStop, 1) == 1 {
+					stopCh <- struct{}{}
+				}
 				break
 			}
 		}
 	}()
 
-	for {
-		messageFrame, message, err := c.Conn.ReadMessage()
-		// close error
-		if err != nil {
-			break
-		}
+	go func() {
+		for {
+			messageFrame, message, err := c.Conn.ReadMessage()
+			// close error
+			if err != nil {
+				if atomic.AddInt32(&hadStop, 1) == 1 {
+					stopCh <- struct{}{}
+				}
+				break
+			}
 
-		err = c.decodeMessage(messageFrame, message)
+			err = c.decodeMessage(messageFrame, message)
 
-		if err != nil {
-			c.OnError(err)
-			break
+			if err != nil {
+				c.OnError(err)
+				if atomic.AddInt32(&hadStop, 1) == 1 {
+					stopCh <- struct{}{}
+				}
+				break
+			}
 		}
-	}
+	}()
+
+	<-stopCh
 
 	// 关闭定时器
 	ticker.Stop()

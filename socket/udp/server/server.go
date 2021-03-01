@@ -184,7 +184,7 @@ func (s *Server) Ready() {
 		s.PingHandler = func(connection *Conn) func(appData string) error {
 			return func(appData string) error {
 				connection.tick.Reset(s.HeartBeatTimeout)
-				return nil
+				return connection.Push(connection.Server.Protocol.Encode(socket.PongData, 0, nil, nil))
 			}
 		}
 	}

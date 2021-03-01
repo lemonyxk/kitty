@@ -12,6 +12,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/lemoyxk/kitty/socket"
 	client3 "github.com/lemoyxk/kitty/socket/websocket/client"
@@ -23,7 +24,14 @@ func main() {
 
 func run() {
 
-	var client = &client3.Client{Scheme: "ws", Host: "127.0.0.1:8667", Reconnect: true, AutoHeartBeat: true}
+	var client = &client3.Client{
+		Scheme:            "ws",
+		Host:              "127.0.0.1:8667",
+		Reconnect:         true,
+		AutoHeartBeat:     true,
+		HeartBeatTimeout:  time.Second * 2,
+		HeartBeatInterval: time.Second,
+	}
 
 	client.OnClose = func(c *client3.Client) {
 		log.Println("close")

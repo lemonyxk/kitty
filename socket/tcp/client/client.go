@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/json-iterator/go"
@@ -152,29 +151,6 @@ func (c *Client) Connect() {
 		c.Protocol = &tcp.DefaultProtocol{}
 	}
 
-	// heartbeat function
-	if c.HeartBeat == nil {
-		c.HeartBeat = func(client *Client) error {
-			return client.Push(client.Protocol.Encode(socket.PingData, 0, nil, nil))
-		}
-	}
-
-	if c.PingHandler == nil {
-		c.PingHandler = func(connection *Client) func(appData string) error {
-			return func(appData string) error {
-				return nil
-			}
-		}
-	}
-
-	if c.PongHandler == nil {
-		c.PongHandler = func(connection *Client) func(appData string) error {
-			return func(appData string) error {
-				return nil
-			}
-		}
-	}
-
 	// 连接服务器
 	handler, err := net.DialTimeout("tcp", c.Host, c.DailTimeout)
 	if err != nil {
@@ -195,6 +171,72 @@ func (c *Client) Connect() {
 
 	c.Conn = handler
 
+	var stopCh = make(chan struct{})
+	var isStop = false
+
+	// 定时器 心跳
+	ticker := time.NewTicker(c.HeartBeatInterval)
+	cancelTicker := make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := c.HeartBeat(c); err != nil {
+					c.OnError(err)
+				}
+			case <-cancelTicker:
+				return
+			}
+		}
+	}()
+
+	// 如果有心跳设置
+	if c.AutoHeartBeat != true {
+		ticker.Stop()
+	}
+
+	// PONG
+	pongTicker := time.NewTimer(c.HeartBeatTimeout)
+	cancelPongTicker := make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-pongTicker.C:
+				if !isStop {
+					stopCh <- struct{}{}
+				}
+			case <-cancelPongTicker:
+				return
+			}
+		}
+	}()
+
+	// heartbeat function
+	if c.HeartBeat == nil {
+		c.HeartBeat = func(client *Client) error {
+			return client.Push(client.Protocol.Encode(socket.PingData, 0, nil, nil))
+		}
+	}
+
+	if c.PingHandler == nil {
+		c.PingHandler = func(connection *Client) func(appData string) error {
+			return func(appData string) error {
+				return nil
+			}
+		}
+	}
+
+	if c.PongHandler == nil {
+		c.PongHandler = func(connection *Client) func(appData string) error {
+			return func(appData string) error {
+				pongTicker.Reset(c.HeartBeatTimeout)
+				return nil
+			}
+		}
+	}
+
 	// start success
 	if c.OnSuccess != nil {
 		c.OnSuccess()
@@ -202,30 +244,6 @@ func (c *Client) Connect() {
 
 	// 连接成功
 	c.OnOpen(c)
-
-	// 定时器 心跳
-	ticker := time.NewTicker(c.HeartBeatInterval)
-
-	// 如果有心跳设置
-	if c.AutoHeartBeat != true {
-		ticker.Stop()
-	}
-
-	var hadStop int32 = 0
-	var stopCh = make(chan struct{})
-
-	go func() {
-		for range ticker.C {
-			if err := c.HeartBeat(c); err != nil {
-				c.OnError(err)
-				_ = c.Close()
-				if atomic.AddInt32(&hadStop, 1) == 1 {
-					stopCh <- struct{}{}
-				}
-				break
-			}
-		}
-	}()
 
 	var reader = c.Protocol.Reader()
 
@@ -236,7 +254,7 @@ func (c *Client) Connect() {
 			n, err := c.Conn.Read(buffer)
 			// close error
 			if err != nil {
-				if atomic.AddInt32(&hadStop, 1) == 1 {
+				if !isStop {
 					stopCh <- struct{}{}
 				}
 				break
@@ -248,7 +266,7 @@ func (c *Client) Connect() {
 
 			if err != nil {
 				c.OnError(err)
-				if atomic.AddInt32(&hadStop, 1) == 1 {
+				if !isStop {
 					stopCh <- struct{}{}
 				}
 				break
@@ -258,6 +276,10 @@ func (c *Client) Connect() {
 	}()
 
 	<-stopCh
+
+	isStop = true
+	cancelTicker <- struct{}{}
+	cancelPongTicker <- struct{}{}
 
 	// 关闭定时器
 	ticker.Stop()

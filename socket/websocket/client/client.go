@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/json-iterator/go"
@@ -161,6 +160,66 @@ func (c *Client) Connect() {
 		c.Protocol = &websocket2.DefaultProtocol{}
 	}
 
+	var dialer = websocket.Dialer{
+		HandshakeTimeout: c.HandshakeTimeout,
+		WriteBufferSize:  c.WriteBufferSize,
+		ReadBufferSize:   c.ReadBufferSize,
+	}
+
+	// 连接服务器
+	handler, response, err := dialer.Dial(c.Scheme+"://"+c.Host+c.Path, nil)
+	if err != nil {
+		c.OnError(err)
+		c.reconnecting()
+		return
+	}
+
+	c.Response = response
+
+	c.Conn = handler
+
+	var stopCh = make(chan struct{})
+	var isStop = false
+
+	// 定时器 心跳
+	ticker := time.NewTicker(c.HeartBeatInterval)
+	cancelTicker := make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := c.HeartBeat(c); err != nil {
+					c.OnError(err)
+				}
+			case <-cancelTicker:
+				return
+			}
+		}
+	}()
+
+	// 如果有心跳设置
+	if c.AutoHeartBeat != true {
+		ticker.Stop()
+	}
+
+	// PONG
+	pongTicker := time.NewTimer(c.HeartBeatTimeout)
+	cancelPongTicker := make(chan struct{})
+
+	go func() {
+		for {
+			select {
+			case <-pongTicker.C:
+				if !isStop {
+					stopCh <- struct{}{}
+				}
+			case <-cancelPongTicker:
+				return
+			}
+		}
+	}()
+
 	// heartbeat function
 	if c.HeartBeat == nil {
 		c.HeartBeat = func(client *Client) error {
@@ -179,23 +238,10 @@ func (c *Client) Connect() {
 	if c.PongHandler == nil {
 		c.PongHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
+				pongTicker.Reset(c.HeartBeatTimeout)
 				return nil
 			}
 		}
-	}
-
-	var dialer = websocket.Dialer{
-		HandshakeTimeout: c.HandshakeTimeout,
-		WriteBufferSize:  c.WriteBufferSize,
-		ReadBufferSize:   c.ReadBufferSize,
-	}
-
-	// 连接服务器
-	handler, response, err := dialer.Dial(c.Scheme+"://"+c.Host+c.Path, nil)
-	if err != nil {
-		c.OnError(err)
-		c.reconnecting()
-		return
 	}
 
 	// 设置PING处理函数
@@ -203,10 +249,6 @@ func (c *Client) Connect() {
 
 	// 设置PONG处理函数
 	handler.SetPongHandler(c.PongHandler(c))
-
-	c.Response = response
-
-	c.Conn = handler
 
 	// start success
 	if c.OnSuccess != nil {
@@ -216,36 +258,12 @@ func (c *Client) Connect() {
 	// 连接成功
 	c.OnOpen(c)
 
-	// 定时器 心跳
-	ticker := time.NewTicker(c.HeartBeatInterval)
-
-	// 如果有心跳设置
-	if c.AutoHeartBeat != true {
-		ticker.Stop()
-	}
-
-	var hadStop int32 = 0
-	var stopCh = make(chan struct{})
-
-	go func() {
-		for range ticker.C {
-			if err := c.HeartBeat(c); err != nil {
-				c.OnError(err)
-				_ = c.Close()
-				if atomic.AddInt32(&hadStop, 1) == 1 {
-					stopCh <- struct{}{}
-				}
-				break
-			}
-		}
-	}()
-
 	go func() {
 		for {
 			messageFrame, message, err := c.Conn.ReadMessage()
 			// close error
 			if err != nil {
-				if atomic.AddInt32(&hadStop, 1) == 1 {
+				if !isStop {
 					stopCh <- struct{}{}
 				}
 				break
@@ -255,7 +273,7 @@ func (c *Client) Connect() {
 
 			if err != nil {
 				c.OnError(err)
-				if atomic.AddInt32(&hadStop, 1) == 1 {
+				if !isStop {
 					stopCh <- struct{}{}
 				}
 				break
@@ -265,6 +283,10 @@ func (c *Client) Connect() {
 
 	<-stopCh
 
+	isStop = true
+	cancelTicker <- struct{}{}
+	cancelPongTicker <- struct{}{}
+
 	// 关闭定时器
 	ticker.Stop()
 	// 关闭连接
@@ -273,6 +295,7 @@ func (c *Client) Connect() {
 	c.OnClose(c)
 	// 触发重连设置
 	c.reconnecting()
+
 }
 
 func (c *Client) decodeMessage(messageFrame int, message []byte) error {

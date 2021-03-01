@@ -177,9 +177,10 @@ func (s *Server) Ready() {
 	if s.PingHandler == nil {
 		s.PingHandler = func(connection *Conn) func(appData string) error {
 			return func(appData string) error {
-				// unnecessary
-				// err := Server.Push(connection.FD, PongMessage, nil)
-				return connection.Conn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
+				// back pong
+				var err = connection.Push(connection.Server.Protocol.Encode(socket.PongData, 0, nil, nil))
+				err = connection.Conn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
+				return err
 			}
 		}
 	}

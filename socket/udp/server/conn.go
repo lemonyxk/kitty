@@ -10,6 +10,7 @@
 
 package server
 
+import "C"
 import (
 	"errors"
 	"net"
@@ -60,7 +61,7 @@ func (c *Conn) ProtoBufEmit(msg socket.ProtoBufPack) error {
 }
 
 func (c *Conn) Close() error {
-	_, err := c.Server.netListen.WriteToUDP(udp.CloseMessage, c.Conn)
+	_, err := c.Write(udp.CloseMessage)
 	return err
 }
 
@@ -68,5 +69,20 @@ func (c *Conn) Write(msg []byte) (int, error) {
 	if len(msg) > c.Server.ReadBufferSize+udp.HeadLen {
 		return 0, errors.New("max length is " + strconv.Itoa(c.Server.ReadBufferSize) + "but now is " + strconv.Itoa(len(msg)))
 	}
+
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
 	return c.Server.netListen.WriteToUDP(msg, c.Conn)
+}
+
+func (c *Conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
+	if len(msg) > c.Server.ReadBufferSize+udp.HeadLen {
+		return 0, errors.New("max length is " + strconv.Itoa(c.Server.ReadBufferSize) + "but now is " + strconv.Itoa(len(msg)))
+	}
+
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
+	return c.Server.netListen.WriteToUDP(msg, addr)
 }

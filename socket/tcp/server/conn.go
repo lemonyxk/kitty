@@ -57,5 +57,8 @@ func (c *Conn) Close() error {
 }
 
 func (c *Conn) Write(msg []byte) (int, error) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
 	return c.Conn.Write(msg)
 }

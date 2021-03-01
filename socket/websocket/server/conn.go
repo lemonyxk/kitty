@@ -77,5 +77,8 @@ func (c *Conn) Close() error {
 }
 
 func (c *Conn) Write(msg []byte) (int, error) {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
 	return len(msg), c.Conn.WriteMessage(int(socket.BinData), msg)
 }

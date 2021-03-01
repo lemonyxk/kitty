@@ -103,8 +103,18 @@ func (c *Client) Push(message []byte) error {
 	return err
 }
 
+func (c *Client) WriteToUDP(message []byte, addr *net.UDPAddr) error {
+	if len(message) > c.ReadBufferSize+udp.HeadLen {
+		return errors.New("max length is " + strconv.Itoa(c.ReadBufferSize) + "but now is " + strconv.Itoa(len(message)))
+	}
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	_, err := c.Conn.WriteToUDP(message, addr)
+	return err
+}
+
 func (c *Client) Close() error {
-	_, _ = c.Conn.WriteToUDP(udp.CloseMessage, c.addr)
+	_ = c.Push(udp.CloseMessage)
 	return c.Conn.Close()
 }
 
@@ -212,7 +222,7 @@ func (c *Client) Connect() {
 	c.Conn = handler
 
 	// send open message
-	_, err = c.Conn.WriteToUDP(udp.OpenMessage, c.addr)
+	err = c.Push(udp.OpenMessage)
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()

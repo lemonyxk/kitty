@@ -72,9 +72,6 @@ func (s *Server) Push(fd int64, msg []byte) error {
 		return errors.New("client is close")
 	}
 
-	conn.mux.Lock()
-	defer conn.mux.Unlock()
-
 	_, err := conn.Write(msg)
 	return err
 }

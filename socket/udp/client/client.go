@@ -52,10 +52,16 @@ type Client struct {
 
 	Protocol udp.Protocol
 
-	router *Router
-	middle []func(Middle) Middle
-	mux    sync.RWMutex
-	addr   *net.UDPAddr
+	router                *Router
+	middle                []func(Middle) Middle
+	mux                   sync.RWMutex
+	addr                  *net.UDPAddr
+	stopCh                chan struct{}
+	isStop                bool
+	heartbeatTicker       *time.Ticker
+	cancelHeartbeatTicker chan struct{}
+	pongTicker            *time.Timer
+	cancelPongTicker      chan struct{}
 }
 
 type Middle func(client *Client, stream *socket.Stream)
@@ -220,47 +226,16 @@ func (c *Client) Connect() {
 
 	tick.Stop()
 
-	var stopCh = make(chan struct{})
-	var isStop = false
+	c.stopCh = make(chan struct{})
+	c.isStop = false
 
 	// 定时器 心跳
-	ticker := time.NewTicker(c.HeartBeatInterval)
-	cancelTicker := make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				if err := c.HeartBeat(c); err != nil {
-					c.OnError(err)
-				}
-			case <-cancelTicker:
-				return
-			}
-		}
-	}()
-
-	// 如果有心跳设置
-	if c.AutoHeartBeat != true {
-		ticker.Stop()
-	}
+	c.heartbeatTicker = time.NewTicker(c.HeartBeatInterval)
+	c.cancelHeartbeatTicker = make(chan struct{})
 
 	// PONG
-	pongTicker := time.NewTimer(c.HeartBeatTimeout)
-	cancelPongTicker := make(chan struct{})
-
-	go func() {
-		for {
-			select {
-			case <-pongTicker.C:
-				if !isStop {
-					stopCh <- struct{}{}
-				}
-			case <-cancelPongTicker:
-				return
-			}
-		}
-	}()
+	c.pongTicker = time.NewTimer(c.HeartBeatTimeout)
+	c.cancelPongTicker = make(chan struct{})
 
 	// heartbeat function
 	if c.HeartBeat == nil {
@@ -280,11 +255,42 @@ func (c *Client) Connect() {
 	if c.PongHandler == nil {
 		c.PongHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
-				pongTicker.Reset(c.HeartBeatTimeout)
+				c.pongTicker.Reset(c.HeartBeatTimeout)
 				return nil
 			}
 		}
 	}
+
+	go func() {
+		for {
+			select {
+			case <-c.heartbeatTicker.C:
+				if err := c.HeartBeat(c); err != nil {
+					c.OnError(err)
+				}
+			case <-c.cancelHeartbeatTicker:
+				return
+			}
+		}
+	}()
+
+	// 如果有心跳设置
+	if c.AutoHeartBeat != true {
+		c.heartbeatTicker.Stop()
+	}
+
+	go func() {
+		for {
+			select {
+			case <-c.pongTicker.C:
+				if !c.isStop {
+					c.stopCh <- struct{}{}
+				}
+			case <-c.cancelPongTicker:
+				return
+			}
+		}
+	}()
 
 	// start success
 	if c.OnSuccess != nil {
@@ -301,8 +307,8 @@ func (c *Client) Connect() {
 			n, err := c.Conn.Read(buffer)
 			// close error
 			if err != nil {
-				if !isStop {
-					stopCh <- struct{}{}
+				if !c.isStop {
+					c.stopCh <- struct{}{}
 				}
 				break
 			}
@@ -313,22 +319,22 @@ func (c *Client) Connect() {
 				if err.Error() != "close" {
 					c.OnError(err)
 				}
-				if !isStop {
-					stopCh <- struct{}{}
+				if !c.isStop {
+					c.stopCh <- struct{}{}
 				}
 				break
 			}
 		}
 	}()
 
-	<-stopCh
+	<-c.stopCh
 
-	isStop = true
-	cancelTicker <- struct{}{}
-	cancelPongTicker <- struct{}{}
+	c.isStop = true
+	c.cancelHeartbeatTicker <- struct{}{}
+	c.cancelPongTicker <- struct{}{}
 
 	// 关闭定时器
-	ticker.Stop()
+	c.heartbeatTicker.Stop()
 	// 关闭连接
 	_ = c.Close()
 	// 触发回调

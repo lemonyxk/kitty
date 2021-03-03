@@ -36,6 +36,9 @@ func (g *group) After(after ...After) *group {
 }
 
 func (g *group) Remove(path string) {
+	if g.router.tire == nil {
+		return
+	}
 	var dp = g.path + path
 	if g.router.IgnoreCase {
 		dp = strings.ToLower(dp)
@@ -56,6 +59,9 @@ func (rh *RouteHandler) Route(path string) *route {
 }
 
 func (rh *RouteHandler) Remove(path string) {
+	if rh.group.router.tire == nil {
+		return
+	}
 	var dp = rh.group.path + path
 	if rh.group.router.IgnoreCase {
 		dp = strings.ToLower(dp)
@@ -193,6 +199,9 @@ func (r *Router) Group(path ...string) *group {
 }
 
 func (r *Router) Remove(path ...string) {
+	if r.tire == nil {
+		return
+	}
 	var dp = strings.Join(path, "")
 	if r.IgnoreCase {
 		dp = strings.ToLower(dp)

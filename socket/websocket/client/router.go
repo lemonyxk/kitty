@@ -36,7 +36,11 @@ func (g *group) After(after ...After) *group {
 }
 
 func (g *group) Remove(path string) {
-	g.router.tire.Delete(g.path + path)
+	var dp = g.path + path
+	if g.router.IgnoreCase {
+		dp = strings.ToLower(dp)
+	}
+	g.router.tire.Delete(dp)
 }
 
 func (g *group) Handler(fn groupFunction) {
@@ -52,7 +56,11 @@ func (rh *RouteHandler) Route(path string) *route {
 }
 
 func (rh *RouteHandler) Remove(path string) {
-	rh.group.router.tire.Delete(rh.group.path + path)
+	var dp = rh.group.path + path
+	if rh.group.router.IgnoreCase {
+		dp = strings.ToLower(dp)
+	}
+	rh.group.router.tire.Delete(dp)
 }
 
 type route struct {
@@ -185,7 +193,11 @@ func (r *Router) Group(path ...string) *group {
 }
 
 func (r *Router) Remove(path ...string) {
-	r.tire.Delete(strings.Join(path, ""))
+	var dp = strings.Join(path, "")
+	if r.IgnoreCase {
+		dp = strings.ToLower(dp)
+	}
+	r.tire.Delete(dp)
 }
 
 func (r *Router) Route(path string) *route {

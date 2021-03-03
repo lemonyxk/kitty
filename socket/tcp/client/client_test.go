@@ -71,6 +71,14 @@ func initServer(fn func()) {
 		})
 	})
 
+	tcpServerRouter.Route("/async").Handler(func(conn *server.Conn, stream *socket.Stream) error {
+		return conn.JsonEmit(socket.JsonPack{
+			Event: "/async",
+			Data:  "async test",
+			ID:    stream.ID,
+		})
+	})
+
 	go tcpServer.SetRouter(tcpServerRouter).Start()
 
 	tcpServer.OnSuccess = func() {
@@ -131,25 +139,24 @@ func TestMain(t *testing.M) {
 
 }
 
-//
-// func Test_Client_Async(t *testing.T) {
-// 	stream, err := client.AsyncJsonEmit(socket.JsonPackage{
-// 		Event: "/hello/world",
-// 		Data:  strings.Repeat("hello world!", 1),
-// 	})
-//
-// 	kitty.AssertEqual(t, err == nil, err)
-//
-// 	kitty.AssertEqual(t, stream != nil, "stream is nil")
-//
-// 	kitty.AssertEqual(t, string(stream.Message) == `"i am server"`, "stream is nil")
-// }
+func Test_Client_Async(t *testing.T) {
+	stream, err := client.Async().JsonEmit(socket.JsonPack{
+		Event: "/async",
+		Data:  strings.Repeat("hello world!", 1),
+	})
+
+	kitty.AssertEqual(t, err == nil, err)
+
+	kitty.AssertEqual(t, stream != nil, "stream is nil")
+
+	kitty.AssertEqual(t, string(stream.Data) == `"async test"`, "stream is nil")
+}
 
 func Test_Client(t *testing.T) {
 
 	var id int64 = 123456789
 
-	var count = 10000
+	var count = 1
 
 	clientRouter.Group("/hello").Handler(func(handler *RouteHandler) {
 		handler.Route("/world").Handler(func(c *Client, stream *socket.Stream) error {

@@ -34,14 +34,15 @@ type Client struct {
 	ReconnectInterval time.Duration
 	WriteBufferSize   int
 	ReadBufferSize    int
-	HandshakeTimeout  time.Duration
+	DailTimeout       time.Duration
 
-	OnOpen    func(client *Client)
-	OnClose   func(client *Client)
-	OnMessage func(client *Client, messageType int, msg []byte)
-	OnError   func(err error)
-	OnSuccess func()
-	OnUnknown func(conn *Client, message []byte, next Middle)
+	OnOpen         func(client *Client)
+	OnClose        func(client *Client)
+	OnMessage      func(client *Client, messageType int, msg []byte)
+	OnError        func(err error)
+	OnSuccess      func()
+	OnReconnecting func()
+	OnUnknown      func(conn *Client, message []byte, next Middle)
 
 	PingHandler func(client *Client) func(appData string) error
 	PongHandler func(client *Client) func(appData string) error
@@ -106,6 +107,9 @@ func (c *Client) Close() error {
 func (c *Client) reconnecting() {
 	if c.Reconnect == true {
 		time.Sleep(c.ReconnectInterval)
+		if c.OnReconnecting != nil {
+			c.OnReconnecting()
+		}
 		c.Connect()
 	}
 }
@@ -134,8 +138,8 @@ func (c *Client) Connect() {
 	}
 
 	// 握手
-	if c.HandshakeTimeout == 0 {
-		c.HandshakeTimeout = 2 * time.Second
+	if c.DailTimeout == 0 {
+		c.DailTimeout = 2 * time.Second
 	}
 
 	// 写入BUF大小
@@ -167,7 +171,7 @@ func (c *Client) Connect() {
 	}
 
 	var dialer = websocket.Dialer{
-		HandshakeTimeout: c.HandshakeTimeout,
+		HandshakeTimeout: c.DailTimeout,
 		WriteBufferSize:  c.WriteBufferSize,
 		ReadBufferSize:   c.ReadBufferSize,
 	}

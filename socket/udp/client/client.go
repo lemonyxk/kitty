@@ -40,12 +40,13 @@ type Client struct {
 	WriteBufferSize   int
 	DailTimeout       time.Duration
 
-	OnOpen    func(client *Client)
-	OnClose   func(client *Client)
-	OnMessage func(client *Client, msg []byte)
-	OnError   func(err error)
-	OnSuccess func()
-	OnUnknown func(client *Client, message []byte, next Middle)
+	OnOpen         func(client *Client)
+	OnClose        func(client *Client)
+	OnMessage      func(client *Client, msg []byte)
+	OnError        func(err error)
+	OnSuccess      func()
+	OnReconnecting func()
+	OnUnknown      func(client *Client, message []byte, next Middle)
 
 	PingHandler func(client *Client) func(appData string) error
 	PongHandler func(client *Client) func(appData string) error
@@ -126,6 +127,9 @@ func (c *Client) Close() error {
 func (c *Client) reconnecting() {
 	if c.Reconnect == true {
 		time.Sleep(c.ReconnectInterval)
+		if c.OnReconnecting != nil {
+			c.OnReconnecting()
+		}
 		c.Connect()
 	}
 }

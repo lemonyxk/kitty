@@ -91,6 +91,14 @@ func initServer(fn func()) {
 		})
 	})
 
+	webSocketServerRouter.Route("/async").Handler(func(conn *server.Conn, stream *socket.Stream) error {
+		return ServerJson(conn, JsonPack{
+			Event: "/async",
+			Data:  "async test",
+			ID:    stream.ID,
+		})
+	})
+
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
 
 	webSocketServer.OnSuccess = func() {
@@ -107,6 +115,18 @@ func initClient(fn func()) {
 	client.OnOpen = func(c *Client) {}
 	client.OnError = func(err error) {}
 	client.OnMessage = func(c *Client, messageType int, msg []byte) {}
+
+	// handle unknown proto
+	client.OnUnknown = func(conn *Client, message []byte, next Middle) {
+		var j = jsoniter.Get(message)
+		var id = j.Get("id").ToInt64()
+		var route = j.Get("event").ToString()
+		var data = j.Get("data").ToString()
+		if route == "" {
+			return
+		}
+		next(conn, &socket.Stream{Pack: socket.Pack{Event: route, Data: []byte(data), ID: id}})
+	}
 
 	// create router
 	clientRouter = &Router{IgnoreCase: true}
@@ -151,36 +171,24 @@ func TestMain(t *testing.M) {
 
 }
 
-// func Test_Client_Async(t *testing.T) {
-// 	stream, err := client.AsyncJson(socket.JsonPackage{
-// 		Event: "/hello/world",
-// 		Data:  strings.Repeat("hello world!", 1),
-// 	})
-//
-// 	kitty.AssertEqual(t, err == nil, err)
-//
-// 	kitty.AssertEqual(t, stream != nil, "stream is nil")
-//
-// 	kitty.AssertEqual(t, string(stream.Message) == `"i am server"`)
-// }
+func Test_Client_Async(t *testing.T) {
+	stream, err := client.Async().JsonEmit(socket.JsonPack{
+		Event: "/async",
+		Data:  strings.Repeat("hello world!", 1),
+	})
+
+	kitty.AssertEqual(t, err == nil, err)
+
+	kitty.AssertEqual(t, stream != nil, "stream is nil")
+
+	kitty.AssertEqual(t, string(stream.Data) == "async test", "stream is nil")
+}
 
 func Test_Client(t *testing.T) {
 
 	var id int64 = 123456
 
 	var count = 10000
-
-	// handle unknown proto
-	client.OnUnknown = func(conn *Client, message []byte, next Middle) {
-		var j = jsoniter.Get(message)
-		var id = j.Get("id").ToInt64()
-		var route = j.Get("event").ToString()
-		var data = j.Get("data").ToString()
-		if route == "" {
-			return
-		}
-		next(conn, &socket.Stream{Pack: socket.Pack{Event: route, Data: []byte(data), ID: id}})
-	}
 
 	clientRouter.Group("/hello").Handler(func(handler *RouteHandler) {
 		handler.Route("/world").Handler(func(c *Client, stream *socket.Stream) error {

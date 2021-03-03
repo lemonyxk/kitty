@@ -71,6 +71,14 @@ func initServer(fn func()) {
 		})
 	})
 
+	udpServerRouter.Route("/async").Handler(func(conn *server.Conn, stream *socket.Stream) error {
+		return conn.JsonEmit(socket.JsonPack{
+			Event: "/async",
+			Data:  "async test",
+			ID:    stream.ID,
+		})
+	})
+
 	go udpServer.SetRouter(udpServerRouter).Start()
 
 	udpServer.OnSuccess = func() {
@@ -133,19 +141,18 @@ func TestMain(t *testing.M) {
 
 }
 
-//
-// func Test_Client_Async(t *testing.T) {
-// 	stream, err := client.AsyncJsonEmit(socket.JsonPackage{
-// 		Event: "/hello/world",
-// 		Data:  strings.Repeat("hello world!", 1),
-// 	})
-//
-// 	kitty.AssertEqual(t, err == nil, err)
-//
-// 	kitty.AssertEqual(t, stream != nil, "stream is nil")
-//
-// 	kitty.AssertEqual(t, string(stream.Message) == `"i am server"`, "stream is nil")
-// }
+func Test_Client_Async(t *testing.T) {
+	stream, err := client.Async().JsonEmit(socket.JsonPack{
+		Event: "/async",
+		Data:  strings.Repeat("hello world!", 1),
+	})
+
+	kitty.AssertEqual(t, err == nil, err)
+
+	kitty.AssertEqual(t, stream != nil, "stream is nil")
+
+	kitty.AssertEqual(t, string(stream.Data) == `"async test"`, "stream is nil")
+}
 
 func Test_Client(t *testing.T) {
 

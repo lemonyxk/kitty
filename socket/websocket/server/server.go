@@ -255,7 +255,7 @@ func (s *Server) Ready() {
 
 	if s.OnError == nil {
 		s.OnError = func(err error) {
-			println(err)
+			println(err.Error())
 		}
 	}
 

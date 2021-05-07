@@ -176,13 +176,13 @@ func (r *Router) SetGlobalAfter(after ...After) {
 
 func (r *Router) Group(path ...string) *group {
 
-	var group = new(group)
+	var g = new(group)
 
-	group.path = strings.Join(path, "")
+	g.path = strings.Join(path, "")
 
-	group.router = r
+	g.router = r
 
-	return group
+	return g
 }
 
 func (r *Router) Remove(path ...string) {

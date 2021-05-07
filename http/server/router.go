@@ -256,13 +256,13 @@ func (r *Router) SetStaticPath(prefixPath string, staticPath string) {
 
 func (r *Router) Group(path ...string) *group {
 
-	var group = new(group)
+	var g = new(group)
 
-	group.path = strings.Join(path, "")
+	g.path = strings.Join(path, "")
 
-	group.router = r
+	g.router = r
 
-	return group
+	return g
 }
 
 func (r *Router) Route(method string, path string) *route {

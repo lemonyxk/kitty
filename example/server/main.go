@@ -95,6 +95,17 @@ func run() {
 
 	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
 		// log.Println("handler")
+		stream.AutoParse()
+
+		var t struct {
+			Name []byte   `json:"name"`
+			Addr [][]byte `json:"addr"`
+		}
+
+		stream.Query.Struct(&t)
+
+		log.Printf("%+v", t)
+
 		return stream.EndString("hello world!")
 	})
 

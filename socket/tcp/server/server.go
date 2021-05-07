@@ -166,7 +166,7 @@ func (s *Server) Ready() {
 
 	if s.OnError == nil {
 		s.OnError = func(err error) {
-			println(err)
+			println(err.Error())
 		}
 	}
 
@@ -305,6 +305,7 @@ func (s *Server) process(netConn net.Conn) {
 	if err != nil {
 		panic(err)
 	}
+
 	err = netConn.(*net.TCPConn).SetWriteBuffer(s.WriteBufferSize)
 	if err != nil {
 		panic(err)

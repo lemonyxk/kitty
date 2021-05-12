@@ -353,16 +353,14 @@ func (s *Stream) ParseJson() *Json {
 
 	s.hasParseJson = true
 
-	var json = &Json{}
+	s.Json = &Json{}
 
 	jsonBody, err := ioutil.ReadAll(s.Request.Body)
 	if err != nil {
-		return json
+		return s.Json
 	}
 
-	json.any = jsoniter.Get(jsonBody)
-
-	s.Json = json
+	s.Json.any = jsoniter.Get(jsonBody)
 
 	return s.Json
 }
@@ -375,20 +373,18 @@ func (s *Stream) ParseFiles() *Files {
 
 	s.hasParseFiles = true
 
-	var file = &Files{}
+	s.Files = &Files{}
 
 	err := s.Request.ParseMultipartForm(s.maxMemory)
 	if err != nil {
-		return file
+		return s.Files
 	}
 
 	var data = s.Request.MultipartForm.File
 
-	file.files = data
+	s.Files.files = data
 
-	s.Files = file
-
-	return file
+	return s.Files
 }
 
 func (s *Stream) ParseMultipart() *Store {
@@ -399,23 +395,21 @@ func (s *Stream) ParseMultipart() *Store {
 
 	s.hasParseForm = true
 
-	var form = &Store{}
+	s.Form = &Store{}
 
 	err := s.Request.ParseMultipartForm(s.maxMemory)
 	if err != nil {
-		return form
+		return s.Form
 	}
 
 	var parse = s.Request.MultipartForm.Value
 
 	for k, v := range parse {
-		form.keys = append(form.keys, k)
-		form.values = append(form.values, v)
+		s.Form.keys = append(s.Form.keys, k)
+		s.Form.values = append(s.Form.values, v)
 	}
 
-	s.Form = form
-
-	return form
+	return s.Form
 }
 
 func (s *Stream) ParseQuery() *Store {
@@ -426,23 +420,21 @@ func (s *Stream) ParseQuery() *Store {
 
 	s.hasParseQuery = true
 
-	var query = &Store{}
+	s.Query = &Store{}
 
 	var params = s.Request.URL.RawQuery
 
 	parse, err := url.ParseQuery(params)
 	if err != nil {
-		return query
+		return s.Query
 	}
 
 	for k, v := range parse {
-		query.keys = append(query.keys, k)
-		query.values = append(query.values, v)
+		s.Query.keys = append(s.Query.keys, k)
+		s.Query.values = append(s.Query.values, v)
 	}
 
-	s.Query = query
-
-	return query
+	return s.Query
 }
 
 func (s *Stream) ParseForm() *Store {
@@ -453,23 +445,21 @@ func (s *Stream) ParseForm() *Store {
 
 	s.hasParseForm = true
 
-	var form = &Store{}
+	s.Form = &Store{}
 
 	err := s.Request.ParseForm()
 	if err != nil {
-		return form
+		return s.Form
 	}
 
 	var parse = s.Request.PostForm
 
 	for k, v := range parse {
-		form.keys = append(form.keys, k)
-		form.values = append(form.values, v)
+		s.Form.keys = append(s.Form.keys, k)
+		s.Form.values = append(s.Form.values, v)
 	}
 
-	s.Form = form
-
-	return form
+	return s.Form
 }
 
 func (s *Stream) AutoParse() {

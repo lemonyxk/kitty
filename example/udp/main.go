@@ -98,7 +98,7 @@ func client() {
 	// 		}
 	//
 	// 		for j := 0; j < 2000; j++ {
-	// 			var bts = protocol.Encode(socket.BinData, uint32(i*10+j+1), []byte("/hello/world"), []byte("xixi"))
+	// 			var bts = protocol.Encode(socket.Bin, uint32(i*10+j+1), []byte("/hello/world"), []byte("xixi"))
 	// 			_, err = conn.Write(bts)
 	// 			if err != nil {
 	// 				log.Println(err)

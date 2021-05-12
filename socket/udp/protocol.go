@@ -48,11 +48,11 @@ func (p *DefaultProtocol) Decode(message []byte) (messageType byte, id int64, ro
 
 func (p *DefaultProtocol) Encode(messageType byte, id int64, route []byte, body []byte) []byte {
 	switch messageType {
-	case socket.BinData:
+	case socket.Bin:
 		return packBin(id, route, body)
-	case socket.PingData:
+	case socket.Ping:
 		return PingMessage
-	case socket.PongData:
+	case socket.Pong:
 		return PongMessage
 	}
 	return nil
@@ -128,11 +128,11 @@ func isHeaderInvalid(message []byte) bool {
 	}
 
 	// message type
-	if message[2] != socket.BinData &&
-		message[2] != socket.PingData &&
-		message[2] != socket.PongData &&
-		message[2] != socket.OpenData &&
-		message[2] != socket.CloseData {
+	if message[2] != socket.Bin &&
+		message[2] != socket.Ping &&
+		message[2] != socket.Pong &&
+		message[2] != socket.Open &&
+		message[2] != socket.Close {
 		return false
 	}
 
@@ -167,7 +167,7 @@ func packBin(id int64, route []byte, body []byte) []byte {
 	data[1] = 0
 
 	// 2 message type
-	data[2] = socket.BinData
+	data[2] = socket.Bin
 
 	// 3 route len
 	data[3] = byte(rl)

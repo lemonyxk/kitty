@@ -77,18 +77,18 @@ func (s *Server) CheckPath(p1 string, p2 string) bool {
 	return p1 == p2
 }
 
-func (s *Server) Push(fd int64, messageType int, msg []byte) error {
+func (s *Server) Push(fd int64, msg []byte) error {
 	var conn, ok = s.GetConnection(fd)
 	if !ok {
 		return errors.New("client is close")
 	}
 
-	_, err := conn.Write(messageType, msg)
+	_, err := conn.Write(int(socket.Bin), msg)
 	return err
 }
 
 func (s *Server) Emit(fd int64, pack socket.Pack) error {
-	return s.Push(fd, int(socket.BinData), s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), pack.Data))
+	return s.Push(fd, s.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), pack.Data))
 }
 
 func (s *Server) EmitAll(pack socket.Pack) (int, int) {
@@ -108,7 +108,7 @@ func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return s.Push(fd, int(socket.BinData), s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
+	return s.Push(fd, s.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
 }
 
 func (s *Server) JsonEmitAll(pack socket.JsonPack) (int, int) {
@@ -128,7 +128,7 @@ func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return s.Push(fd, int(socket.BinData), s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
+	return s.Push(fd, s.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
 }
 
 func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
@@ -267,7 +267,7 @@ func (s *Server) Ready() {
 		s.PingHandler = func(connection *Conn) func(appData string) error {
 			return func(appData string) error {
 				// back pong
-				var err = connection.Push(int(socket.BinData), connection.Server.Protocol.Encode(socket.PongData, 0, nil, nil))
+				var err = connection.Push(connection.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
 				err = connection.Conn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
 				return err
 			}
@@ -373,12 +373,12 @@ func (s *Server) decodeMessage(conn *Conn, message []byte) error {
 	}
 
 	// Ping
-	if messageType == socket.PingData {
+	if messageType == socket.Ping {
 		return s.PingHandler(conn)("")
 	}
 
 	// Pong
-	if messageType == socket.PongData {
+	if messageType == socket.Pong {
 		return s.PongHandler(conn)("")
 	}
 

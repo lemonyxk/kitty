@@ -75,7 +75,7 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 }
 
 func (c *Client) Emit(pack socket.Pack) error {
-	return c.Push(c.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), pack.Data))
+	return c.Push(c.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), pack.Data))
 }
 
 func (c *Client) JsonEmit(pack socket.JsonPack) error {
@@ -83,7 +83,7 @@ func (c *Client) JsonEmit(pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return c.Push(c.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
+	return c.Push(c.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
 }
 
 func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
@@ -91,13 +91,13 @@ func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return c.Push(c.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
+	return c.Push(c.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
 }
 
 func (c *Client) Push(message []byte) error {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	return c.Conn.WriteMessage(int(socket.BinData), message)
+	return c.Conn.WriteMessage(int(socket.Bin), message)
 }
 
 func (c *Client) Close() error {
@@ -202,7 +202,7 @@ func (c *Client) Connect() {
 	// heartbeat function
 	if c.HeartBeat == nil {
 		c.HeartBeat = func(client *Client) error {
-			return client.Push(client.Protocol.Encode(socket.PingData, 0, nil, nil))
+			return client.Push(client.Protocol.Encode(socket.Ping, 0, nil, nil))
 		}
 	}
 
@@ -324,12 +324,12 @@ func (c *Client) decodeMessage(messageFrame int, message []byte) error {
 	}
 
 	// Ping
-	if messageType == socket.PingData {
+	if messageType == socket.Ping {
 		return c.PingHandler(c)("")
 	}
 
 	// Pong
-	if messageType == socket.PongData {
+	if messageType == socket.Pong {
 		return c.PongHandler(c)("")
 	}
 

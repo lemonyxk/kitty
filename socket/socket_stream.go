@@ -31,12 +31,12 @@ const (
 
 	// message type
 	Unknown byte = 0
-	// TextData int = 1
-	BinData   byte = 2
-	OpenData  byte = 3
-	CloseData byte = 4
-	PingData  byte = 9
-	PongData  byte = 10
+	Text    int  = 1
+	Bin     byte = 2
+	Open    byte = 3
+	Close   byte = 4
+	Ping    byte = 9
+	Pong    byte = 10
 
 	// proto type
 	// Text     int = 1

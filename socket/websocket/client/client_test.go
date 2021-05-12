@@ -234,5 +234,5 @@ func ServerJson(conn *server.Conn, pack JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return conn.Server.Push(conn.FD, int(socket.BinData), data)
+	return conn.Server.Push(conn.FD, data)
 }

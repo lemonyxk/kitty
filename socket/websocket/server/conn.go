@@ -56,8 +56,8 @@ func (c *Conn) ClientIP() string {
 	return ""
 }
 
-func (c *Conn) Push(messageType int, msg []byte) error {
-	return c.Server.Push(c.FD, messageType, msg)
+func (c *Conn) Push(msg []byte) error {
+	return c.Server.Push(c.FD, msg)
 }
 
 func (c *Conn) Emit(pack socket.Pack) error {

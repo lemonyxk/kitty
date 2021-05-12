@@ -77,7 +77,7 @@ func (s *Server) Push(fd int64, msg []byte) error {
 }
 
 func (s *Server) Emit(fd int64, pack socket.Pack) error {
-	return s.Push(fd, s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), pack.Data))
+	return s.Push(fd, s.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), pack.Data))
 }
 
 func (s *Server) EmitAll(pack socket.Pack) (int, int) {
@@ -97,7 +97,7 @@ func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return s.Push(fd, s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
+	return s.Push(fd, s.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
 }
 
 func (s *Server) JsonEmitAll(msg socket.JsonPack) (int, int) {
@@ -117,7 +117,7 @@ func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return s.Push(fd, s.Protocol.Encode(socket.BinData, pack.ID, []byte(pack.Event), data))
+	return s.Push(fd, s.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
 }
 
 func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
@@ -184,7 +184,7 @@ func (s *Server) Ready() {
 		s.PingHandler = func(connection *Conn) func(appData string) error {
 			return func(appData string) error {
 				connection.tick.Reset(s.HeartBeatTimeout)
-				return connection.Push(connection.Server.Protocol.Encode(socket.PongData, 0, nil, nil))
+				return connection.Push(connection.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
 			}
 		}
 	}
@@ -330,12 +330,12 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 	conn, ok := s.connections[fd]
 
 	switch message[2] {
-	case socket.BinData, socket.PingData, socket.PongData:
+	case socket.Bin, socket.Ping, socket.Pong:
 		if !ok {
 			return
 		}
 		conn.accept <- message
-	case socket.OpenData:
+	case socket.Open:
 		if ok {
 			return
 		}
@@ -382,7 +382,7 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 			s.OnError(err)
 		}
 
-	case socket.CloseData:
+	case socket.Close:
 		if !ok {
 			return
 		}
@@ -409,12 +409,12 @@ func (s *Server) decodeMessage(conn *Conn, message []byte) error {
 	}
 
 	// Ping
-	if messageType == socket.PingData {
+	if messageType == socket.Ping {
 		return s.PingHandler(conn)("")
 	}
 
 	// Pong
-	if messageType == socket.PongData {
+	if messageType == socket.Pong {
 		return s.PongHandler(conn)("")
 	}
 

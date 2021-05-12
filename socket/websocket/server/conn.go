@@ -56,8 +56,8 @@ func (c *Conn) ClientIP() string {
 	return ""
 }
 
-func (c *Conn) Push(msg []byte) error {
-	return c.Server.Push(c.FD, msg)
+func (c *Conn) Push(messageType int, msg []byte) error {
+	return c.Server.Push(c.FD, messageType, msg)
 }
 
 func (c *Conn) Emit(pack socket.Pack) error {
@@ -76,9 +76,9 @@ func (c *Conn) Close() error {
 	return c.Conn.Close()
 }
 
-func (c *Conn) Write(msg []byte) (int, error) {
+func (c *Conn) Write(messageType int, msg []byte) (int, error) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	return len(msg), c.Conn.WriteMessage(int(socket.BinData), msg)
+	return len(msg), c.Conn.WriteMessage(messageType, msg)
 }

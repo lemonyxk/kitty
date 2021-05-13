@@ -55,6 +55,7 @@ type Stream struct {
 
 	Context kitty.Context
 	Params  kitty.Params
+	Logger  kitty.Logger
 }
 
 type JsonPack struct {

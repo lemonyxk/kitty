@@ -45,12 +45,12 @@ var client *Client
 
 var clientRouter *Router
 
-var host = "127.0.0.1:8669"
+var addr = "127.0.0.1:8669"
 
 func initServer(fn func()) {
 
 	// create server
-	webSocketServer = &server.Server{Host: host, Path: "/"}
+	webSocketServer = &server.Server{Addr: addr, Path: "/"}
 
 	// event
 	webSocketServer.OnOpen = func(conn *server.Conn) {}
@@ -108,7 +108,7 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	client = &Client{Scheme: "ws", Host: host, Reconnect: true, AutoHeartBeat: true}
+	client = &Client{Scheme: "ws", Addr: addr, Reconnect: true, AutoHeartBeat: true}
 
 	// event
 	client.OnClose = func(c *Client) {}

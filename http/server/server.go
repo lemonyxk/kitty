@@ -18,7 +18,7 @@ import (
 type Server struct {
 	Name string
 	// Host 服务Host
-	Host string
+	Addr string
 	// Protocol 协议
 	TLS bool
 	// TLS FILE
@@ -39,8 +39,8 @@ type Server struct {
 }
 
 func (s *Server) Ready() {
-	if s.Host == "" {
-		panic("Host must set")
+	if s.Addr == "" {
+		panic("Addr must set")
 	}
 }
 
@@ -193,7 +193,7 @@ func (s *Server) Start() {
 
 	s.Ready()
 
-	var server = http.Server{Addr: s.Host, Handler: s}
+	var server = http.Server{Addr: s.Addr, Handler: s}
 
 	var err error
 	var netListen net.Listener

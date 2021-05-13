@@ -27,7 +27,7 @@ import (
 
 type Client struct {
 	Name string
-	Host string
+	Addr string
 
 	Conn              *net.UDPConn
 	AutoHeartBeat     bool
@@ -136,8 +136,8 @@ func (c *Client) reconnecting() {
 
 func (c *Client) Connect() {
 
-	if c.Host == "" {
-		panic("Host must set")
+	if c.Addr == "" {
+		panic("Addr must set")
 	}
 
 	if c.OnOpen == nil {
@@ -183,7 +183,7 @@ func (c *Client) Connect() {
 	}
 
 	// 连接服务器
-	addr, err := net.ResolveUDPAddr("udp", c.Host)
+	addr, err := net.ResolveUDPAddr("udp", c.Addr)
 	if err != nil {
 		panic(err)
 	}

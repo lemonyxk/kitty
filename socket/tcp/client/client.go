@@ -18,7 +18,7 @@ import (
 
 type Client struct {
 	Name string
-	Host string
+	Addr string
 
 	Conn              net.Conn
 	AutoHeartBeat     bool
@@ -112,8 +112,8 @@ func (c *Client) reconnecting() {
 
 func (c *Client) Connect() {
 
-	if c.Host == "" {
-		panic("Host must set")
+	if c.Addr == "" {
+		panic("Addr must set")
 	}
 
 	if c.OnOpen == nil {
@@ -162,7 +162,7 @@ func (c *Client) Connect() {
 	}
 
 	// 连接服务器
-	handler, err := net.DialTimeout("tcp", c.Host, c.DailTimeout)
+	handler, err := net.DialTimeout("tcp", c.Addr, c.DailTimeout)
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()

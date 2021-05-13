@@ -25,7 +25,7 @@ func main() {
 
 	log.SetFlags(log.Lshortfile | log.Ldate)
 
-	var udpServer = &server.Server{Host: "127.0.0.1:5000", HeartBeatTimeout: time.Second * 30}
+	var udpServer = &server.Server{Addr: "127.0.0.1:5000", HeartBeatTimeout: time.Second * 30}
 
 	udpServer.OnMessage = func(conn *server.Conn, msg []byte) {
 		// log.Println("ONMESSAGE:", string(msg))
@@ -131,7 +131,7 @@ func client() {
 
 		var index = i
 		var client = &client2.Client{
-			Host:        "127.0.0.1:5000",
+			Addr:        "127.0.0.1:5000",
 			DailTimeout: 50 * time.Second,
 			// Reconnect: true, AutoHeartBeat: true, HeartBeatInterval: time.Second,
 		}

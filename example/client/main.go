@@ -26,7 +26,7 @@ func run() {
 
 	var client = &client3.Client{
 		Scheme:            "ws",
-		Host:              "127.0.0.1:8667",
+		Addr:              "127.0.0.1:8667",
 		Reconnect:         true,
 		AutoHeartBeat:     true,
 		HeartBeatTimeout:  time.Second * 2,

@@ -23,7 +23,8 @@ type Server struct {
 
 	// Host 服务Host
 	Name string
-	Host string
+	Addr string
+	Path string
 	// Protocol 协议
 	TLS bool
 	// TLS FILE
@@ -44,13 +45,10 @@ type Server struct {
 	ReadBufferSize    int
 	WriteBufferSize   int
 	CheckOrigin       func(r *http.Request) bool
-	Path              string
 
 	PingHandler func(conn *Conn) func(appData string) error
-
 	PongHandler func(conn *Conn) func(appData string) error
-
-	Protocol websocket2.Protocol
+	Protocol    websocket2.Protocol
 
 	upgrade websocket.Upgrader
 
@@ -210,8 +208,8 @@ func (s *Server) Ready() {
 		s.Path = "/"
 	}
 
-	if s.Host == "" {
-		panic("Host must set")
+	if s.Addr == "" {
+		panic("Addr must set")
 	}
 
 	if s.HeartBeatTimeout == 0 {
@@ -226,11 +224,11 @@ func (s *Server) Ready() {
 		s.HandshakeTimeout = 2 * time.Second
 	}
 
-	// must be 4096 or the memory will leak
+	// suggest 4096
 	if s.ReadBufferSize == 0 {
 		s.ReadBufferSize = 1024
 	}
-	// must be 4096 or the memory will leak
+	// suggest 4096
 	if s.WriteBufferSize == 0 {
 		s.WriteBufferSize = 1024
 	}
@@ -458,7 +456,7 @@ func (s *Server) Start() {
 
 	s.Ready()
 
-	var server = http.Server{Addr: s.Host, Handler: s}
+	var server = http.Server{Addr: s.Addr, Handler: s}
 
 	var err error
 	var netListen net.Listener

@@ -21,7 +21,7 @@ import (
 type Client struct {
 	Name   string
 	Scheme string
-	Host   string
+	Addr   string
 	Path   string
 
 	Conn              *websocket.Conn
@@ -121,8 +121,12 @@ func (c *Client) Connect() {
 		c.Path = "/"
 	}
 
-	if c.Host == "" {
-		panic("Host must set")
+	if c.Scheme == "" {
+		c.Scheme = "ws"
+	}
+
+	if c.Addr == "" {
+		panic("Addr must set")
 	}
 
 	if c.OnOpen == nil {
@@ -177,7 +181,7 @@ func (c *Client) Connect() {
 	}
 
 	// 连接服务器
-	handler, response, err := dialer.Dial(c.Scheme+"://"+c.Host+c.Path, nil)
+	handler, response, err := dialer.Dial(c.Scheme+"://"+c.Addr+c.Path, nil)
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()

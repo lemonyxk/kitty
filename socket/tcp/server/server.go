@@ -26,8 +26,9 @@ import (
 )
 
 type Server struct {
-	Name      string
-	Host      string
+	Name string
+	Addr string
+
 	OnClose   func(conn *Conn)
 	OnMessage func(conn *Conn, msg []byte)
 	OnOpen    func(conn *Conn)
@@ -39,12 +40,9 @@ type Server struct {
 	HeartBeatInterval time.Duration
 	ReadBufferSize    int
 	WriteBufferSize   int
-
-	PingHandler func(conn *Conn) func(appData string) error
-
-	PongHandler func(conn *Conn) func(appData string) error
-
-	Protocol tcp.Protocol
+	PingHandler       func(conn *Conn) func(appData string) error
+	PongHandler       func(conn *Conn) func(appData string) error
+	Protocol          tcp.Protocol
 
 	fd          int64
 	connections map[int64]*Conn
@@ -132,8 +130,8 @@ func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
 
 func (s *Server) Ready() {
 
-	if s.Host == "" {
-		panic("Host must set")
+	if s.Addr == "" {
+		panic("Addr must set")
 	}
 
 	if s.HeartBeatTimeout == 0 {
@@ -264,7 +262,7 @@ func (s *Server) Start() {
 	var err error
 	var netListen net.Listener
 
-	netListen, err = net.Listen("tcp", s.Host)
+	netListen, err = net.Listen("tcp", s.Addr)
 
 	if err != nil {
 		panic(err)

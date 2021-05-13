@@ -41,7 +41,7 @@ func main() {
 
 func run() {
 
-	var webSocketServer = &server2.Server{Host: "127.0.0.1:8667", Path: "/"}
+	var webSocketServer = &server2.Server{Addr: "127.0.0.1:8667", Path: "/"}
 
 	var webSocketServerRouter = &server2.Router{IgnoreCase: true}
 
@@ -67,7 +67,7 @@ func run() {
 
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
 
-	var httpServer = server3.Server{Host: "127.0.0.1:8666"}
+	var httpServer = server3.Server{Addr: "127.0.0.1:8666"}
 
 	var httpServerRouter = &server3.Router{}
 
@@ -125,7 +125,7 @@ func run() {
 
 	log.Println("start success")
 
-	var tcpServer = &server.Server{Host: "127.0.0.1:8888"}
+	var tcpServer = &server.Server{Addr: "127.0.0.1:8888"}
 
 	tcpServer.OnMessage = func(conn *server.Conn, msg []byte) {
 		log.Println(string(msg))

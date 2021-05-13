@@ -25,8 +25,9 @@ import (
 )
 
 type Server struct {
-	Name      string
-	Host      string
+	Name string
+	Addr string
+
 	OnClose   func(conn *Conn)
 	OnMessage func(conn *Conn, msg []byte)
 	OnOpen    func(conn *Conn)
@@ -41,10 +42,8 @@ type Server struct {
 	HandshakeTimeout  time.Duration
 
 	PingHandler func(conn *Conn) func(appData string) error
-
 	PongHandler func(conn *Conn) func(appData string) error
-
-	Protocol udp.Protocol
+	Protocol    udp.Protocol
 
 	fd          int64
 	connections map[int64]*Conn
@@ -134,8 +133,8 @@ func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
 
 func (s *Server) Ready() {
 
-	if s.Host == "" {
-		panic("Host must set")
+	if s.Addr == "" {
+		panic("Addr must set")
 	}
 
 	if s.HandshakeTimeout == 0 {
@@ -271,7 +270,7 @@ func (s *Server) Start() {
 	var err error
 	var netListen *net.UDPConn
 
-	addr, err := net.ResolveUDPAddr("udp", s.Host)
+	addr, err := net.ResolveUDPAddr("udp", s.Addr)
 	if err != nil {
 		panic(err)
 	}

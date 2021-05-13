@@ -42,7 +42,7 @@ var host = "127.0.0.1:8668"
 func initServer(fn func()) {
 
 	// create server
-	udpServer = &server.Server{Host: host}
+	udpServer = &server.Server{Addr: host}
 
 	// event
 	udpServer.OnOpen = func(conn *server.Conn) {}
@@ -88,7 +88,7 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	client = &Client{Host: host, Reconnect: true, AutoHeartBeat: true}
+	client = &Client{Addr: host, Reconnect: true, AutoHeartBeat: true}
 
 	// event
 	client.OnClose = func(c *Client) {}

@@ -8,7 +8,7 @@
 * @create: 2019-10-05 14:19
 **/
 
-package server
+package client
 
 import (
 	http3 "net/http"
@@ -17,18 +17,20 @@ import (
 
 	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/http"
+	"github.com/lemoyxk/kitty/http/server"
+	"github.com/stretchr/testify/assert"
 )
 
-var httpServer *Server
+var httpServer *server.Server
 
 var ts *httptest.Server
 
 func TestMain(t *testing.M) {
 
-	httpServer = &Server{}
+	httpServer = &server.Server{}
 	ts = httptest.NewServer(httpServer)
 
-	httpServer.Use(func(next Middle) Middle {
+	httpServer.Use(func(next server.Middle) server.Middle {
 		return func(stream *http.Stream) {
 			stream.AutoParse()
 			next(stream)
@@ -40,39 +42,44 @@ func TestMain(t *testing.M) {
 
 func Test_Method_Get(t *testing.T) {
 
-	var httpServerRouter = &Router{}
+	var httpServerRouter = &server.Router{}
 
 	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
-		kitty.AssertEqual(t, stream.Query.First("a").String() == "1")
+		assert.True(t, stream.Query.First("a").String() == "1")
 		return stream.EndString("hello world!")
 	})
 
 	httpServer.SetRouter(httpServerRouter)
-	kitty.AssertEqual(t, kitty.TestGet(ts.URL+"/hello", kitty.M{"a": 1}).Data == "hello world!")
+
+	var res = Get(ts.URL + "/hello").Query(kitty.M{"a": 1}).Send()
+	assert.True(t, res.String() == "hello world!")
 }
 
 func Test_Method_Post(t *testing.T) {
 
-	var httpServerRouter = &Router{}
+	var httpServerRouter = &server.Router{}
 
 	httpServerRouter.Route("POST", "/hello").Handler(func(stream *http.Stream) error {
-		kitty.AssertEqual(t, stream.Form.First("a").String() == "2")
+		assert.True(t, stream.Form.First("a").String() == "2")
 		return stream.End("hello group!")
 	})
 
 	httpServer.SetRouter(httpServerRouter)
 
-	kitty.AssertEqual(t, kitty.TestPost(ts.URL+"/hello", kitty.M{"a": 2}).Data == "hello group!")
+	var res = Post(ts.URL + "/hello").Form(kitty.M{"a": 2}).Send()
+
+	assert.True(t, res.String() == "hello group!")
 }
 
 func Test_Method_NotFound(t *testing.T) {
-	kitty.AssertEqual(t, kitty.TestPost(ts.URL+"/not-found", nil).Response.StatusCode == http3.StatusNotFound)
+	var res = Post(ts.URL + "/not-found").Form(kitty.M{"a": 2}).Send()
+	assert.True(t, res.Response().StatusCode == http3.StatusNotFound)
 }
 
 func Test_Static_File(t *testing.T) {
-	var httpServerRouter = &Router{}
+	var httpServerRouter = &server.Router{}
 	httpServerRouter.SetStaticPath("/", "../../example/server/public")
 	httpServer.SetRouter(httpServerRouter)
-	kitty.AssertEqual(t, len(kitty.TestGet(ts.URL+"/1.png", nil).Data) == 2853516)
-	kitty.AssertEqual(t, kitty.TestGet(ts.URL+"/test.txt", nil).Data == "hello static!")
+	assert.True(t, len(Get(ts.URL+"/1.png").Query().Send().Bytes()) == 2853516)
+	assert.True(t, Get(ts.URL+"/test.txt").Query().Send().String() == "hello static!")
 }

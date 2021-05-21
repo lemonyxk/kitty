@@ -11,7 +11,12 @@
 package kitty
 
 const (
-	XForwardedFor = "X-Forwarded-For"
-	XRealIP       = "X-Real-IP"
-	Host          = "Host"
+	XForwardedFor             = "X-Forwarded-For"
+	XRealIP                   = "X-Real-IP"
+	Host                      = "Host"
+	ApplicationFormUrlencoded = "application/x-www-form-urlencoded"
+	ApplicationJson           = "application/json"
+	MultipartFormData         = "multipart/form-data"
+	ContentType               = "Content-Type"
+	ContentLength             = "Content-Length"
 )

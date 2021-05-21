@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
+	"github.com/stretchr/testify/assert"
 
-	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
 	"github.com/lemoyxk/kitty/socket/websocket/server"
 )
@@ -177,11 +177,11 @@ func Test_Client_Async(t *testing.T) {
 		Data:  strings.Repeat("hello world!", 1),
 	})
 
-	kitty.AssertEqual(t, err == nil, err)
+	assert.True(t, err == nil, err)
 
-	kitty.AssertEqual(t, stream != nil, "stream is nil")
+	assert.True(t, stream != nil, "stream is nil")
 
-	kitty.AssertEqual(t, string(stream.Data) == "async test", "stream is nil")
+	assert.True(t, string(stream.Data) == "async test", "stream is nil")
 }
 
 func Test_Client(t *testing.T) {
@@ -190,11 +190,13 @@ func Test_Client(t *testing.T) {
 
 	var count = 10000
 
+	var flag = true
+
 	clientRouter.Group("/hello").Handler(func(handler *RouteHandler) {
 		handler.Route("/world").Handler(func(c *Client, stream *socket.Stream) error {
 			defer mux.Add(-1)
-			kitty.AssertEqual(t, string(stream.Data) == "i am server", "stream is nil")
-			kitty.AssertEqual(t, stream.ID == id, "id not match", stream.ID)
+			assert.True(t, string(stream.Data) == "i am server", "stream is nil")
+			assert.True(t, stream.ID == id, "id not match", stream.ID)
 			return nil
 		})
 	})
@@ -211,10 +213,14 @@ func Test_Client(t *testing.T) {
 	go func() {
 		<-time.After(3 * time.Second)
 		mux.Done()
-		t.Fatal("timeout")
+		flag = false
 	}()
 
 	mux.Wait()
+
+	if !flag {
+		t.Fatal("timeout")
+	}
 }
 
 func Test_Shutdown(t *testing.T) {

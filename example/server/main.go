@@ -3,8 +3,11 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
+	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/http"
+	"github.com/lemoyxk/kitty/http/client"
 	server3 "github.com/lemoyxk/kitty/http/server"
 	"github.com/lemoyxk/kitty/socket"
 	"github.com/lemoyxk/kitty/socket/tcp/server"
@@ -111,6 +114,18 @@ func run() {
 
 	httpServerRouter.Group("/hello").Handler(func(handler *server3.RouteHandler) {
 		handler.Get("/world").Handler(func(t *http.Stream) error {
+			return t.JsonFormat("SUCCESS", 200, os.Getpid())
+		})
+	})
+
+	time.AfterFunc(time.Second, func() {
+		client.Post("http://127.0.0.1:8666/x/x").Json(kitty.M{"a": 1}).Send()
+	})
+
+	httpServerRouter.Group("/x").Handler(func(handler *server3.RouteHandler) {
+		handler.Post("/x").Handler(func(t *http.Stream) error {
+			t.AutoParse()
+			log.Println(t.Json.String())
 			return t.JsonFormat("SUCCESS", 200, os.Getpid())
 		})
 	})

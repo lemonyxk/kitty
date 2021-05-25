@@ -33,17 +33,17 @@ func getRequest(method string, url string, info *info) (*http.Request, context.C
 	var contentType = strings.ToLower(getContentType(info))
 	switch contentType {
 	case kitty.ApplicationFormUrlencoded:
-		return getPostFormUrlencoded(method, url, info)
+		return doPostFormUrlencoded(method, url, info)
 	case kitty.ApplicationJson:
-		return getPostJson(method, url, info)
+		return doPostJson(method, url, info)
 	case kitty.MultipartFormData:
-		return getPostFormData(method, url, info)
+		return doPostFormData(method, url, info)
 	default:
 		return doUrl(method, url, info)
 	}
 }
 
-func getPostFormData(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doPostFormData(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	if info.body == nil {
 		info.body = []map[string]interface{}{}
 	}
@@ -102,7 +102,7 @@ func getPostFormData(method string, url string, info *info) (*http.Request, cont
 	return request, cancel, err
 }
 
-func getPostJson(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doPostJson(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([]interface{})
 	if !ok {
 		return nil, nil, errors.New("application/json body must be interface")
@@ -111,7 +111,7 @@ func getPostJson(method string, url string, info *info) (*http.Request, context.
 	var jsonBody []byte
 
 	for i := 0; i < len(body); i++ {
-		b, err := jsoniter.Marshal(info.body)
+		b, err := jsoniter.Marshal(body[i])
 		if err != nil {
 			return nil, nil, err
 		}
@@ -127,7 +127,7 @@ func getPostJson(method string, url string, info *info) (*http.Request, context.
 	return request, cancel, err
 }
 
-func getPostFormUrlencoded(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doPostFormUrlencoded(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	if info.body == nil {
 		info.body = []map[string]interface{}{}
 	}

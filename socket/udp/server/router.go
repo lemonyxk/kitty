@@ -14,9 +14,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lemoyxk/caller"
 	"github.com/lemoyxk/structure/tire"
 
-	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
 )
 
@@ -113,7 +113,7 @@ func (r *route) Handler(fn function) {
 		panic("route path can not empty")
 	}
 
-	file, line := kitty.Caller(1)
+	file, line := caller.Deep(2)
 
 	var router = r.group.router
 	var g = r.group

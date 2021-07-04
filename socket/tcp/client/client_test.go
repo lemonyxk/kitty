@@ -88,7 +88,7 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	client = &Client{Addr: host, Reconnect: true, AutoHeartBeat: true}
+	client = &Client{Addr: host, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
 
 	// event
 	client.OnClose = func(c *Client) {}

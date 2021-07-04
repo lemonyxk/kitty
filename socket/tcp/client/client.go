@@ -6,9 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/json-iterator/go"
-
 	"github.com/golang/protobuf/proto"
+	"github.com/json-iterator/go"
 
 	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
@@ -20,12 +19,12 @@ type Client struct {
 	Name string
 	Addr string
 
-	Conn              net.Conn
-	AutoHeartBeat     bool
+	Conn net.Conn
+	// AutoHeartBeat     bool
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
 	HeartBeat         func(c *Client) error
-	Reconnect         bool
+	// Reconnect         bool
 	ReconnectInterval time.Duration
 	ReadBufferSize    int
 	WriteBufferSize   int
@@ -51,8 +50,8 @@ type Client struct {
 	stopCh                chan struct{}
 	heartbeatTicker       *time.Ticker
 	cancelHeartbeatTicker chan struct{}
-	pongTicker            *time.Timer
-	cancelPongTicker      chan struct{}
+	pongTimer             *time.Timer
+	cancelPongTimer       chan struct{}
 }
 
 type Middle func(client *Client, stream *socket.Stream)
@@ -101,7 +100,7 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) reconnecting() {
-	if c.Reconnect == true {
+	if c.ReconnectInterval != 0 {
 		time.Sleep(c.ReconnectInterval)
 		if c.OnReconnecting != nil {
 			c.OnReconnecting()
@@ -143,19 +142,20 @@ func (c *Client) Connect() {
 		c.WriteBufferSize = 1024
 	}
 
-	// 定时心跳间隔
-	if c.HeartBeatInterval == 0 {
-		c.HeartBeatInterval = 15 * time.Second
-	}
-
-	if c.HeartBeatTimeout == 0 {
-		c.HeartBeatTimeout = 30 * time.Second
-	}
-
-	// 自动重连间隔
-	if c.ReconnectInterval == 0 {
-		c.ReconnectInterval = time.Second
-	}
+	// // 定时心跳间隔
+	// if c.HeartBeatInterval == 0 {
+	// 	c.HeartBeatInterval = 15 * time.Second
+	// }
+	//
+	// // 服务器返回PONG超时
+	// if c.HeartBeatTimeout == 0 {
+	// 	c.HeartBeatTimeout = 30 * time.Second
+	// }
+	//
+	// // 自动重连间隔
+	// if c.ReconnectInterval == 0 {
+	// 	c.ReconnectInterval = time.Second
+	// }
 
 	if c.Protocol == nil {
 		c.Protocol = &tcp.DefaultProtocol{}
@@ -189,8 +189,8 @@ func (c *Client) Connect() {
 	c.cancelHeartbeatTicker = make(chan struct{})
 
 	// PONG
-	c.pongTicker = time.NewTimer(c.HeartBeatTimeout)
-	c.cancelPongTicker = make(chan struct{})
+	c.pongTimer = time.NewTimer(c.HeartBeatTimeout)
+	c.cancelPongTimer = make(chan struct{})
 
 	// heartbeat function
 	if c.HeartBeat == nil {
@@ -200,9 +200,9 @@ func (c *Client) Connect() {
 	}
 
 	if c.PingHandler == nil {
-		c.PingHandler = func(connection *Client) func(appData string) error {
+		c.PingHandler = func(client *Client) func(appData string) error {
 			return func(appData string) error {
-				return nil
+				return client.Push(client.Protocol.Encode(socket.Pong, 0, nil, nil))
 			}
 		}
 	}
@@ -210,7 +210,7 @@ func (c *Client) Connect() {
 	if c.PongHandler == nil {
 		c.PongHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
-				c.pongTicker.Reset(c.HeartBeatTimeout)
+				c.pongTimer.Reset(c.HeartBeatTimeout)
 				return nil
 			}
 		}
@@ -230,22 +230,26 @@ func (c *Client) Connect() {
 	}()
 
 	// 如果有心跳设置
-	if c.AutoHeartBeat != true {
+	if c.HeartBeatInterval == 0 {
 		c.heartbeatTicker.Stop()
 	}
 
 	go func() {
 		for {
 			select {
-			case <-c.pongTicker.C:
+			case <-c.pongTimer.C:
 				if !c.isStop {
 					c.stopCh <- struct{}{}
 				}
-			case <-c.cancelPongTicker:
+			case <-c.cancelPongTimer:
 				return
 			}
 		}
 	}()
+
+	if c.HeartBeatTimeout == 0 {
+		c.pongTimer.Stop()
+	}
 
 	// start success
 	if c.OnSuccess != nil {
@@ -289,7 +293,7 @@ func (c *Client) Connect() {
 
 	c.isStop = true
 	c.cancelHeartbeatTicker <- struct{}{}
-	c.cancelPongTicker <- struct{}{}
+	c.cancelPongTimer <- struct{}{}
 
 	// 关闭定时器
 	c.heartbeatTicker.Stop()

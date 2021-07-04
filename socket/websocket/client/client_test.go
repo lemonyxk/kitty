@@ -108,7 +108,7 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	client = &Client{Scheme: "ws", Addr: addr, Reconnect: true, AutoHeartBeat: true}
+	client = &Client{Scheme: "ws", Addr: addr, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
 
 	// event
 	client.OnClose = func(c *Client) {}

@@ -210,10 +210,17 @@ func (c *Client) Connect() {
 	if c.PongHandler == nil {
 		c.PongHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
-				c.pongTimer.Reset(c.HeartBeatTimeout)
+				if c.HeartBeatTimeout != 0 {
+					c.pongTimer.Reset(c.HeartBeatTimeout)
+				}
 				return nil
 			}
 		}
+	}
+
+	// 如果有心跳设置
+	if c.HeartBeatInterval == 0 {
+		c.heartbeatTicker.Stop()
 	}
 
 	go func() {
@@ -229,9 +236,8 @@ func (c *Client) Connect() {
 		}
 	}()
 
-	// 如果有心跳设置
-	if c.HeartBeatInterval == 0 {
-		c.heartbeatTicker.Stop()
+	if c.HeartBeatTimeout == 0 {
+		c.pongTimer.Stop()
 	}
 
 	go func() {
@@ -246,10 +252,6 @@ func (c *Client) Connect() {
 			}
 		}
 	}()
-
-	if c.HeartBeatTimeout == 0 {
-		c.pongTimer.Stop()
-	}
 
 	// start success
 	if c.OnSuccess != nil {

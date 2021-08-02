@@ -15,7 +15,7 @@ import (
 )
 
 func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
-	return &Stream{Response: w, Request: r}
+	return &Stream{Response: w, Request: r, Query: &Store{}, Form: &Store{}, Json: &Json{}, Files: &Files{}}
 }
 
 type Stream struct {
@@ -123,8 +123,6 @@ func (s *Stream) ParseJson() *Json {
 
 	s.hasParseJson = true
 
-	s.Json = &Json{}
-
 	jsonBody, err := ioutil.ReadAll(s.Request.Body)
 	if err != nil {
 		return s.Json
@@ -142,8 +140,6 @@ func (s *Stream) ParseFiles() *Files {
 	}
 
 	s.hasParseFiles = true
-
-	s.Files = &Files{}
 
 	err := s.Request.ParseMultipartForm(s.maxMemory)
 	if err != nil {
@@ -164,8 +160,6 @@ func (s *Stream) ParseMultipart() *Store {
 	}
 
 	s.hasParseForm = true
-
-	s.Form = &Store{}
 
 	err := s.Request.ParseMultipartForm(s.maxMemory)
 	if err != nil {
@@ -189,8 +183,6 @@ func (s *Stream) ParseQuery() *Store {
 	}
 
 	s.hasParseQuery = true
-
-	s.Query = &Store{}
 
 	var params = s.Request.URL.RawQuery
 

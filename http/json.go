@@ -14,11 +14,13 @@ import "github.com/json-iterator/go"
 
 type Json struct {
 	any jsoniter.Any
+	bts []byte
 }
 
 func (j *Json) Reset(data interface{}) jsoniter.Any {
 	bts, _ := jsoniter.Marshal(data)
 	j.any = jsoniter.Get(bts)
+	j.bts = bts
 	return j.any
 }
 
@@ -52,7 +54,7 @@ func (j *Json) Get(path ...interface{}) Value {
 }
 
 func (j *Json) Bytes() []byte {
-	return j.Bytes()
+	return j.bts
 }
 
 func (j *Json) String() string {

@@ -129,6 +129,7 @@ func (s *Stream) ParseJson() *Json {
 	}
 
 	s.Json.any = jsoniter.Get(jsonBody)
+	s.Json.bts = jsonBody
 
 	return s.Json
 }

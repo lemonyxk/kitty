@@ -225,14 +225,14 @@ func getContentType(info *info) string {
 
 var hMux sync.Mutex
 
-func send(info *info, req *http.Request, cancel context.CancelFunc) *request {
+func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 
 	hMux.Lock()
 	defer hMux.Unlock()
 	defer cancel()
 
 	if req == nil {
-		return &request{err: errors.New("invalid request")}
+		return &Req{err: errors.New("invalid request")}
 	}
 
 	for i := 0; i < len(info.headerKey); i++ {
@@ -272,7 +272,7 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *request {
 
 	response, err := defaultClient.Do(req)
 	if err != nil {
-		return &request{err: err}
+		return &Req{err: err}
 	}
 	defer func() { _ = response.Body.Close() }()
 
@@ -288,14 +288,14 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *request {
 
 		dataBytes, err = ioutil.ReadAll(io.TeeReader(response.Body, writer))
 		if err != nil {
-			return &request{err: err}
+			return &Req{err: err}
 		}
 	} else {
 		dataBytes, err = ioutil.ReadAll(response.Body)
 		if err != nil {
-			return &request{err: err}
+			return &Req{err: err}
 		}
 	}
 
-	return &request{code: response.StatusCode, data: dataBytes, response: response}
+	return &Req{code: response.StatusCode, data: dataBytes, req: response}
 }

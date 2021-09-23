@@ -23,9 +23,9 @@ type params struct {
 	cancel context.CancelFunc
 }
 
-func (p *params) Send() *request {
+func (p *params) Send() *Req {
 	if p.err != nil {
-		return &request{err: p.err}
+		return &Req{err: p.err}
 	}
 	return send(p.info, p.req, p.cancel)
 }

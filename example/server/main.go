@@ -70,7 +70,7 @@ func run() {
 
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
 
-	var httpServer = server3.Server{Addr: "127.0.0.1:8666"}
+	var httpServer = server3.Server{Addr: "127.0.0.1:8666", TLS: true, CertFile: "/Users/lemo/test/go/localhost+2.pem", KeyFile: "/Users/lemo/test/go/localhost+2-key.pem"}
 
 	var httpServerRouter = &server3.Router{}
 

@@ -126,7 +126,7 @@ func (r *route) Handler(fn function) {
 		panic("route path can not empty")
 	}
 
-	file, line := caller.Deep(2)
+	ci := caller.Deep(2)
 
 	var router = r.group.router
 	var g = r.group
@@ -143,7 +143,7 @@ func (r *route) Handler(fn function) {
 
 	var cba = &node{}
 
-	cba.Info = file + ":" + strconv.Itoa(line)
+	cba.Info = ci.File + ":" + strconv.Itoa(ci.Line)
 
 	cba.Function = fn
 

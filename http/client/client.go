@@ -13,15 +13,15 @@ package client
 import (
 	"net/http"
 
-	"github.com/lemoyxk/kitty"
+	"github.com/lemoyxk/kitty/kitty"
 )
 
-type client struct {
+type Client struct {
 	method string
 	url    string
 }
 
-func (h *client) Post(url string) *info {
+func (h *Client) Post(url string) *info {
 	h.method = http.MethodPost
 	h.url = url
 	var info = &info{handler: h}
@@ -29,14 +29,14 @@ func (h *client) Post(url string) *info {
 	return info
 }
 
-func (h *client) Get(url string) *info {
+func (h *Client) Get(url string) *info {
 	h.method = http.MethodGet
 	h.url = url
 	var info = &info{handler: h}
 	return info
 }
 
-func (h *client) Head(url string) *info {
+func (h *Client) Head(url string) *info {
 	h.method = http.MethodHead
 	h.url = url
 	var info = &info{handler: h}

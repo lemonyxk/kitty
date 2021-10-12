@@ -16,16 +16,16 @@ import (
 	url2 "net/url"
 	"time"
 
-	"github.com/lemoyxk/kitty"
+	"github.com/lemoyxk/kitty/kitty"
 )
 
 type info struct {
-	handler         *client
+	handler         *Client
 	headerKey       []string
 	headerValue     []string
 	cookies         []*http.Cookie
 	body            interface{}
-	progress        *progress
+	progress        *Progress
 	userName        string
 	passWord        string
 	clientTimeout   time.Duration
@@ -33,7 +33,7 @@ type info struct {
 	dialerKeepAlive time.Duration
 }
 
-func (h *info) Progress(progress *progress) *info {
+func (h *info) Progress(progress *Progress) *info {
 	h.progress = progress
 	return h
 }

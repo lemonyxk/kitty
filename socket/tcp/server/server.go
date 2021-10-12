@@ -18,17 +18,13 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
+	"github.com/lemoyxk/kitty/kitty"
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
 	"github.com/lemoyxk/kitty/socket/tcp"
 )
-
-func NewTcpServer(addr string) *Server {
-	return &Server{Addr: addr}
-}
 
 type Server struct {
 	Name string

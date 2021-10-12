@@ -10,13 +10,8 @@ import (
 	"strings"
 
 	"github.com/json-iterator/go"
-
-	"github.com/lemoyxk/kitty"
+	kitty2 "github.com/lemoyxk/kitty/kitty"
 )
-
-func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
-	return &Stream{Response: w, Request: r, Query: &Store{}, Form: &Store{}, Json: &Json{}, Files: &Files{}}
-}
 
 type Stream struct {
 	// Server   *Server
@@ -27,9 +22,9 @@ type Stream struct {
 	Json     *Json
 	Files    *Files
 
-	Params  kitty.Params
-	Context kitty.Context
-	Logger  kitty.Logger
+	Params  kitty2.Params
+	Context kitty2.Context
+	Logger  kitty2.Logger
 
 	maxMemory     int64
 	hasParseQuery bool
@@ -92,7 +87,7 @@ func (s *Stream) EndFile(fileName string, content interface{}) error {
 }
 
 func (s *Stream) Host() string {
-	if host := s.Request.Header.Get(kitty.Host); host != "" {
+	if host := s.Request.Header.Get(kitty2.Host); host != "" {
 		return host
 	}
 	return s.Request.Host
@@ -100,11 +95,11 @@ func (s *Stream) Host() string {
 
 func (s *Stream) ClientIP() string {
 
-	if ip := strings.Split(s.Request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
+	if ip := strings.Split(s.Request.Header.Get(kitty2.XForwardedFor), ",")[0]; ip != "" {
 		return ip
 	}
 
-	if ip := s.Request.Header.Get(kitty.XRealIP); ip != "" {
+	if ip := s.Request.Header.Get(kitty2.XRealIP); ip != "" {
 		return ip
 	}
 

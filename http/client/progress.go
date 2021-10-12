@@ -10,7 +10,7 @@
 
 package client
 
-type writeProgress struct {
+type writer struct {
 	total      int64
 	current    int64
 	onProgress func(p []byte, current int64, total int64)
@@ -18,7 +18,7 @@ type writeProgress struct {
 	rate       int64
 }
 
-func (w *writeProgress) Write(p []byte) (int, error) {
+func (w *writer) Write(p []byte) (int, error) {
 	n := len(p)
 	w.current += int64(n)
 
@@ -36,13 +36,13 @@ func (w *writeProgress) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-type progress struct {
+type Progress struct {
 	rate     int64
 	progress func(p []byte, current int64, total int64)
 }
 
 // Rate 0.01 - 100
-func (p *progress) Rate(rate float64) *progress {
+func (p *Progress) Rate(rate float64) *Progress {
 	if rate < 0.01 || rate > 100 {
 		rate = 1
 	}
@@ -50,7 +50,7 @@ func (p *progress) Rate(rate float64) *progress {
 	return p
 }
 
-func (p *progress) OnProgress(fn func(p []byte, current int64, total int64)) *progress {
+func (p *Progress) OnProgress(fn func(p []byte, current int64, total int64)) *Progress {
 	p.progress = fn
 	return p
 }

@@ -19,15 +19,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
+	"github.com/lemoyxk/kitty/kitty"
 
-	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
 	"github.com/lemoyxk/kitty/socket/udp"
 )
-
-func NewUdpServer(addr string) *Server {
-	return &Server{Addr: addr}
-}
 
 type Server struct {
 	Name string

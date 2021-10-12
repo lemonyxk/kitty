@@ -17,8 +17,8 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/lemoyxk/kitty/kitty"
 
-	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
 )
 

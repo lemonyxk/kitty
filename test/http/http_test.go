@@ -8,7 +8,7 @@
 * @create: 2019-10-05 14:19
 **/
 
-package client
+package http
 
 import (
 	http3 "net/http"
@@ -17,7 +17,9 @@ import (
 
 	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/http"
+	"github.com/lemoyxk/kitty/http/client"
 	"github.com/lemoyxk/kitty/http/server"
+	kitty2 "github.com/lemoyxk/kitty/kitty"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +29,7 @@ var ts *httptest.Server
 
 func TestMain(t *testing.M) {
 
-	httpServer = server.NewHttpServer("127.0.0.1:12345")
+	httpServer = kitty.NewHttpServer("127.0.0.1:12345")
 	ts = httptest.NewServer(httpServer)
 
 	httpServer.Use(func(next server.Middle) server.Middle {
@@ -51,7 +53,7 @@ func Test_Method_Get(t *testing.T) {
 
 	httpServer.SetRouter(httpServerRouter)
 
-	var res = Get(ts.URL + "/hello").Query(kitty.M{"a": 1}).Send()
+	var res = client.Get(ts.URL + "/hello").Query(kitty2.M{"a": 1}).Send()
 	assert.True(t, res.String() == "hello world!")
 }
 
@@ -66,13 +68,13 @@ func Test_Method_Post(t *testing.T) {
 
 	httpServer.SetRouter(httpServerRouter)
 
-	var res = Post(ts.URL + "/hello").Form(kitty.M{"a": 2}).Send()
+	var res = client.Post(ts.URL + "/hello").Form(kitty2.M{"a": 2}).Send()
 
 	assert.True(t, res.String() == "hello group!")
 }
 
 func Test_Method_NotFound(t *testing.T) {
-	var res = Post(ts.URL + "/not-found").Form(kitty.M{"a": 2}).Send()
+	var res = client.Post(ts.URL + "/not-found").Form(kitty2.M{"a": 2}).Send()
 	assert.True(t, res.Response().StatusCode == http3.StatusNotFound)
 }
 
@@ -80,6 +82,6 @@ func Test_Static_File(t *testing.T) {
 	var httpServerRouter = &server.Router{}
 	httpServerRouter.SetStaticPath("/", "../../example/server/public")
 	httpServer.SetRouter(httpServerRouter)
-	assert.True(t, len(Get(ts.URL+"/1.png").Query().Send().Bytes()) == 2853516)
-	assert.True(t, Get(ts.URL+"/test.txt").Query().Send().String() == "hello static!")
+	assert.True(t, len(client.Get(ts.URL+"/1.png").Query().Send().Bytes()) == 2853516)
+	assert.True(t, client.Get(ts.URL+"/test.txt").Query().Send().String() == "hello static!")
 }

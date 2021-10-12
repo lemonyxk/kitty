@@ -12,13 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	kitty "github.com/lemoyxk/kitty"
 	http2 "github.com/lemoyxk/kitty/http"
+	"github.com/lemoyxk/kitty/kitty"
 )
-
-func NewHttpServer(addr string) *Server {
-	return &Server{Addr: addr}
-}
 
 type Server struct {
 	Name string
@@ -60,7 +56,7 @@ func (s *Server) Use(middle ...func(next Middle) Middle) {
 }
 
 func (s *Server) process(w http.ResponseWriter, r *http.Request) {
-	var stream = http2.NewStream(w, r)
+	var stream = &http2.Stream{Response: w, Request: r, Query: &http2.Store{}, Form: &http2.Store{}, Json: &http2.Json{}, Files: &http2.Files{}}
 	s.middleware(stream)
 }
 

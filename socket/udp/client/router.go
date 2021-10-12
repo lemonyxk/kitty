@@ -172,10 +172,6 @@ func (r *route) Handler(fn function) {
 
 }
 
-func NewUdpClientRouter() *Router {
-	return &Router{}
-}
-
 type Router struct {
 	StrictMode   bool
 	tire         *tire.Tire

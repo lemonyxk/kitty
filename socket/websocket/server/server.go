@@ -10,18 +10,14 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
+	"github.com/lemoyxk/kitty/kitty"
 
-	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
 	websocket2 "github.com/lemoyxk/kitty/socket/websocket"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 )
-
-func NewWebSocketServer(addr string) *Server {
-	return &Server{Addr: addr}
-}
 
 type Server struct {
 	// Host 服务Host

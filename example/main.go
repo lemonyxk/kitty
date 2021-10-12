@@ -1,63 +1,41 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
 
+	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/http"
 	"github.com/lemoyxk/kitty/http/client"
 	server3 "github.com/lemoyxk/kitty/http/server"
 	"github.com/lemoyxk/kitty/socket"
-	client2 "github.com/lemoyxk/kitty/socket/tcp/client"
 	"github.com/lemoyxk/kitty/socket/tcp/server"
-	client3 "github.com/lemoyxk/kitty/socket/udp/client"
 	server4 "github.com/lemoyxk/kitty/socket/udp/server"
-	client4 "github.com/lemoyxk/kitty/socket/websocket/client"
 	server2 "github.com/lemoyxk/kitty/socket/websocket/server"
 )
 
 func main() {
-
-	// utils.Process.Fork(run, 1)
-	//
-	// go func() {
-	// 	http.HandleFunc("/reload", func(writer http.ResponseWriter, request *http.Request) {
-	// 		utils.Process.Reload()
-	// 	})
-	// 	console.Log(http.ListenAndServe(":12345", nil))
-	// }()
 
 	runHttpServer()
 	runWebSocketServer()
 	runTcpServer()
 	runUdpServer()
 
+	runHttpClientWithProcess()
 	runHttpClient()
 	runTcpClient()
 	runUdpClient()
 	runWebSocketClient()
 
 	select {}
-	// utils.Signal.ListenKill().Done(func(sig os.Signal) {
-	// 	console.Info(sig)
-	// })
-
-	// var progress = utils.HttpClient.NewProgress()
-	// progress.Rate(0.01).OnProgress(func(p []byte, current int64, total int64) {
-	// 	console.OneLine("Downloading... %d %d B complete", current, total)
-	// })
-	//
-	// utils.HttpClient.Get("https://www.twle.cn/static/js/jquery.min.js").Progress(progress).Send()
-
-	// console.SetFormatter(console.NewJsonFormatter())
-
 }
 
 func runTcpServer() {
-	var tcpServer = server.NewTcpServer("127.0.0.1:8888")
+	var tcpServer = kitty.NewTcpServer("127.0.0.1:8888")
 
-	var tcpServerRouter = &server.Router{StrictMode: true}
+	var tcpServerRouter = kitty.NewTcpServerRouter()
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
 		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
@@ -74,9 +52,9 @@ func runTcpServer() {
 }
 
 func runWebSocketServer() {
-	var webSocketServer = server2.NewWebSocketServer("127.0.0.1:8667")
+	var webSocketServer = kitty.NewWebSocketServer("127.0.0.1:8667")
 
-	var webSocketServerRouter = &server2.Router{StrictMode: true}
+	var webSocketServerRouter = kitty.NewWebSocketServerRouter()
 
 	webSocketServerRouter.Group("/hello").Handler(func(handler *server2.RouteHandler) {
 		handler.Route("/world").Handler(func(conn *server2.Conn, stream *socket.Stream) error {
@@ -93,9 +71,9 @@ func runWebSocketServer() {
 }
 
 func runUdpServer() {
-	var udpServer = server4.NewUdpServer("127.0.0.1:5000")
+	var udpServer = kitty.NewUdpServer("127.0.0.1:5000")
 
-	var udpServerRouter = server4.NewUdpServerRouter()
+	var udpServerRouter = kitty.NewUdpServerRouter()
 
 	udpServerRouter.Group("/hello").Handler(func(handler *server4.RouteHandler) {
 		handler.Route("/world").Handler(func(conn *server4.Conn, stream *socket.Stream) error {
@@ -112,14 +90,20 @@ func runUdpServer() {
 }
 
 func runHttpServer() {
-	var httpServer = server3.NewHttpServer("127.0.0.1:8666")
+	var httpServer = kitty.NewHttpServer("127.0.0.1:8666")
 	httpServer.CertFile = "/Users/lemo/test/go/localhost+2.pem"
 	httpServer.KeyFile = "/Users/lemo/test/go/localhost+2-key.pem"
 
-	var httpServerRouter = &server3.Router{}
+	var httpServerRouter = kitty.NewHttpServerRouter()
+
+	httpServer.Use(func(next server3.Middle) server3.Middle {
+		return func(stream *http.Stream) {
+			stream.AutoParse()
+			next(stream)
+		}
+	})
 
 	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
-		stream.AutoParse()
 		return stream.EndString("hello world!")
 	})
 
@@ -133,9 +117,23 @@ func runHttpServer() {
 		log.Println(httpServer.LocalAddr())
 	}
 
-	httpServerRouter.SetStaticPath("/", "./example/server/public")
+	httpServerRouter.SetStaticPath("/", "./example/public")
 
 	go httpServer.SetRouter(httpServerRouter).Start()
+}
+
+func runHttpClientWithProcess() {
+	time.AfterFunc(time.Second, func() {
+		var progress = kitty.NewHttpClientProgress()
+		progress.Rate(0.01).OnProgress(func(p []byte, current int64, total int64) {
+			fmt.Printf("\rDownloading... %d %d B complete", current, total)
+			if current == total {
+				fmt.Println()
+			}
+		})
+
+		client.Get("https://code.jquery.com/jquery-3.6.0.js").Progress(progress).Query().Send()
+	})
 }
 
 func runHttpClient() {
@@ -149,24 +147,24 @@ func runHttpClient() {
 
 func runTcpClient() {
 	time.AfterFunc(time.Second, func() {
-		var tcpClient = client2.NewTcpClient("127.0.0.1:8888")
-		var clientRouter = client2.NewTcpClientRouter()
-		go tcpClient.SetRouter(clientRouter).Connect()
+		var tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
+		var clientRouter = kitty.NewTcpClientRouter()
+		tcpClient.SetRouter(clientRouter).Connect()
 	})
 }
 
 func runUdpClient() {
 	time.AfterFunc(time.Second, func() {
-		var udpClient = client3.NewUdpClient("127.0.0.1:5000")
-		var clientRouter = client3.NewUdpClientRouter()
-		go udpClient.SetRouter(clientRouter).Connect()
+		var udpClient = kitty.NewUdpClient("127.0.0.1:5000")
+		var clientRouter = kitty.NewUdpClientRouter()
+		udpClient.SetRouter(clientRouter).Connect()
 	})
 }
 
 func runWebSocketClient() {
 	time.AfterFunc(time.Second, func() {
-		var webSocketClient = client4.NewWebSocketClient("ws://127.0.0.1:8667")
-		var clientRouter = client4.NewWebSocketClientRouter()
-		go webSocketClient.SetRouter(clientRouter).Connect()
+		var webSocketClient = kitty.NewWebSocketClient("ws://127.0.0.1:8667")
+		var clientRouter = kitty.NewWebSocketClientRouter()
+		webSocketClient.SetRouter(clientRouter).Connect()
 	})
 }

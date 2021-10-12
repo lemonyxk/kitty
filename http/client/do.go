@@ -26,7 +26,7 @@ import (
 	"sync"
 
 	"github.com/json-iterator/go"
-	"github.com/lemoyxk/kitty"
+	"github.com/lemoyxk/kitty/kitty"
 )
 
 func getRequest(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
@@ -263,6 +263,8 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 		defaultTransport.DisableCompression = true
 	}
 
+	// TODO
+	// need opt for goroutine
 	defer func() {
 		defaultClient.Timeout = clientTimeout
 		defaultDialer.KeepAlive = dialerKeepAlive
@@ -280,7 +282,7 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 
 	if info.progress != nil {
 		var total, _ = strconv.ParseInt(response.Header.Get(kitty.ContentLength), 10, 64)
-		var writer = &writeProgress{
+		var writer = &writer{
 			total:      total,
 			onProgress: info.progress.progress,
 			rate:       info.progress.rate,

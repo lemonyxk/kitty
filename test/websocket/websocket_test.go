@@ -8,7 +8,7 @@
 * @create: 2020-09-18 16:40
 **/
 
-package client
+package websocket
 
 import (
 	"strings"
@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
+	"github.com/lemoyxk/kitty"
+	"github.com/lemoyxk/kitty/socket/websocket/client"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/lemoyxk/kitty/socket"
@@ -41,16 +43,16 @@ var webSocketServer *server.Server
 
 var webSocketServerRouter *server.Router
 
-var webSocketClient *Client
+var webSocketClient *client.Client
 
-var clientRouter *Router
+var clientRouter *client.Router
 
 var addr = "127.0.0.1:8669"
 
 func initServer(fn func()) {
 
 	// create server
-	webSocketServer = server.NewWebSocketServer(addr)
+	webSocketServer = kitty.NewWebSocketServer(addr)
 
 	// event
 	webSocketServer.OnOpen = func(conn *server.Conn) {}
@@ -78,7 +80,7 @@ func initServer(fn func()) {
 	}
 
 	// create router
-	webSocketServerRouter = server.NewWebSocketServerRouter()
+	webSocketServerRouter = kitty.NewWebSocketServerRouter()
 
 	// set group route
 	webSocketServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
@@ -108,18 +110,18 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	webSocketClient = NewWebSocketClient("ws://" + addr)
+	webSocketClient = kitty.NewWebSocketClient("ws://" + addr)
 	webSocketClient.ReconnectInterval = time.Second
 	webSocketClient.HeartBeatInterval = time.Second
 
 	// event
-	webSocketClient.OnClose = func(c *Client) {}
-	webSocketClient.OnOpen = func(c *Client) {}
+	webSocketClient.OnClose = func(c *client.Client) {}
+	webSocketClient.OnOpen = func(c *client.Client) {}
 	webSocketClient.OnError = func(err error) {}
-	webSocketClient.OnMessage = func(c *Client, messageType int, msg []byte) {}
+	webSocketClient.OnMessage = func(c *client.Client, messageType int, msg []byte) {}
 
 	// handle unknown proto
-	webSocketClient.OnUnknown = func(conn *Client, message []byte, next Middle) {
+	webSocketClient.OnUnknown = func(conn *client.Client, message []byte, next client.Middle) {
 		var j = jsoniter.Get(message)
 		var id = j.Get("id").ToInt64()
 		var route = j.Get("event").ToString()
@@ -131,7 +133,7 @@ func initClient(fn func()) {
 	}
 
 	// create router
-	clientRouter = NewWebSocketClientRouter()
+	clientRouter = kitty.NewWebSocketClientRouter()
 
 	go webSocketClient.SetRouter(clientRouter).Connect()
 
@@ -194,8 +196,8 @@ func Test_Client(t *testing.T) {
 
 	var flag = true
 
-	clientRouter.Group("/hello").Handler(func(handler *RouteHandler) {
-		handler.Route("/world").Handler(func(c *Client, stream *socket.Stream) error {
+	clientRouter.Group("/hello").Handler(func(handler *client.RouteHandler) {
+		handler.Route("/world").Handler(func(c *client.Client, stream *socket.Stream) error {
 			defer mux.Add(-1)
 			assert.True(t, string(stream.Data) == "i am server", "stream is nil")
 			assert.True(t, stream.ID == id, "id not match", stream.ID)
@@ -229,7 +231,7 @@ func Test_Shutdown(t *testing.T) {
 	shutdown()
 }
 
-func ClientJson(c *Client, pack JsonPack) error {
+func ClientJson(c *client.Client, pack JsonPack) error {
 	data, err := jsoniter.Marshal(pack)
 	if err != nil {
 		return err

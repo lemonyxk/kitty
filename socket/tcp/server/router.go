@@ -159,10 +159,6 @@ func (r *route) Handler(fn function) {
 
 }
 
-func NewTcpServerRouter() *Router {
-	return &Router{}
-}
-
 type Router struct {
 	tire         *tire.Tire
 	StrictMode   bool

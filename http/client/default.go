@@ -19,6 +19,7 @@ import (
 
 const dialerTimeout = 30 * time.Second
 const dialerKeepAlive = 30 * time.Second
+
 const clientTimeout = 15 * time.Second
 
 var defaultDialer = net.Dialer{

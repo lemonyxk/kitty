@@ -8,7 +8,7 @@
 * @create: 2020-09-18 16:40
 **/
 
-package client
+package tcp
 
 import (
 	"strings"
@@ -16,7 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/socket"
+	"github.com/lemoyxk/kitty/socket/tcp/client"
 	"github.com/lemoyxk/kitty/socket/tcp/server"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,16 +35,16 @@ var tcpServer *server.Server
 
 var tcpServerRouter *server.Router
 
-var tcpClient *Client
+var tcpClient *client.Client
 
-var clientRouter *Router
+var clientRouter *client.Router
 
 var addr = "127.0.0.1:8667"
 
 func initServer(fn func()) {
 
 	// create server
-	tcpServer = server.NewTcpServer(addr)
+	tcpServer = kitty.NewTcpServer(addr)
 
 	// event
 	tcpServer.OnOpen = func(conn *server.Conn) {}
@@ -88,18 +90,18 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	tcpClient = NewTcpClient(addr)
+	tcpClient = kitty.NewTcpClient(addr)
 	tcpClient.ReconnectInterval = time.Second
 	tcpClient.HeartBeatInterval = time.Second
 
 	// event
-	tcpClient.OnClose = func(c *Client) {}
-	tcpClient.OnOpen = func(c *Client) {}
+	tcpClient.OnClose = func(c *client.Client) {}
+	tcpClient.OnOpen = func(c *client.Client) {}
 	tcpClient.OnError = func(err error) {}
-	tcpClient.OnMessage = func(client *Client, msg []byte) {}
+	tcpClient.OnMessage = func(client *client.Client, msg []byte) {}
 
 	// create router
-	clientRouter = &Router{StrictMode: true}
+	clientRouter = &client.Router{StrictMode: true}
 
 	go tcpClient.SetRouter(clientRouter).Connect()
 
@@ -162,8 +164,8 @@ func Test_Client(t *testing.T) {
 
 	var flag = true
 
-	clientRouter.Group("/hello").Handler(func(handler *RouteHandler) {
-		handler.Route("/world").Handler(func(c *Client, stream *socket.Stream) error {
+	clientRouter.Group("/hello").Handler(func(handler *client.RouteHandler) {
+		handler.Route("/world").Handler(func(c *client.Client, stream *socket.Stream) error {
 			defer mux.Add(-1)
 			assert.True(t, string(stream.Data) == `"i am server"`, "stream is nil")
 			assert.True(t, stream.ID == id, "id not match", stream.ID)

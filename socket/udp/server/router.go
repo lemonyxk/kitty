@@ -161,7 +161,7 @@ func (r *route) Handler(fn function) {
 
 type Router struct {
 	tire         *tire.Tire
-	IgnoreCase   bool
+	StrictMode   bool
 	globalAfter  []After
 	globalBefore []Before
 }
@@ -222,7 +222,7 @@ func (r *Router) getRoute(path string) (*tire.Tire, []byte) {
 }
 
 func (r *Router) formatPath(path string) string {
-	if r.IgnoreCase {
+	if !r.StrictMode {
 		path = strings.ToLower(path)
 	}
 	return path

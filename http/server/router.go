@@ -190,7 +190,7 @@ func (r *route) Handler(fn function) {
 }
 
 type Router struct {
-	IgnoreCase   bool
+	StrictMode   bool
 	tire         *tire.Tire
 	prefixPath   string
 	staticPath   string
@@ -294,7 +294,7 @@ func (r *Router) getRoute(method string, path string) (*tire.Tire, []byte) {
 }
 
 func (r *Router) formatPath(path string) string {
-	if r.IgnoreCase {
+	if !r.StrictMode {
 		path = strings.ToLower(path)
 	}
 	return path

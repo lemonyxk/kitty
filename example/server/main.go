@@ -46,7 +46,7 @@ func run() {
 
 	var webSocketServer = &server2.Server{Addr: "127.0.0.1:8667", Path: "/"}
 
-	var webSocketServerRouter = &server2.Router{IgnoreCase: true}
+	var webSocketServerRouter = &server2.Router{StrictMode: true}
 
 	webSocketServer.Use(func(next server2.Middle) server2.Middle {
 		return func(conn *server2.Conn, stream *socket.Stream) {
@@ -146,7 +146,7 @@ func run() {
 		log.Println(string(msg))
 	}
 
-	var tcpServerRouter = &server.Router{IgnoreCase: true}
+	var tcpServerRouter = &server.Router{StrictMode: true}
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
 		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {

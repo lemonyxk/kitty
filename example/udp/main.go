@@ -39,7 +39,7 @@ func main() {
 		log.Println(err)
 	}
 
-	var udpServerRouter = &server.Router{IgnoreCase: true}
+	var udpServerRouter = &server.Router{StrictMode: true}
 
 	var res uint32 = 0
 
@@ -165,7 +165,7 @@ func client() {
 			}()
 		}
 
-		var router = &client2.Router{IgnoreCase: true}
+		var router = &client2.Router{StrictMode: true}
 
 		router.Group("/hello").Handler(func(handler *client2.RouteHandler) {
 			handler.Route("/world").Handler(func(client *client2.Client, stream *socket.Stream) error {

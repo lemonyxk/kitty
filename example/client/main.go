@@ -47,7 +47,7 @@ func run() {
 		log.Println(err)
 	}
 
-	var router = &client3.Router{IgnoreCase: true}
+	var router = &client3.Router{StrictMode: true}
 
 	router.Group("/hello").Handler(func(handler *client3.RouteHandler) {
 		handler.Route("/world").Handler(func(c *client3.Client, stream *socket.Stream) error {

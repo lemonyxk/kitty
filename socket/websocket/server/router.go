@@ -151,7 +151,7 @@ func (r *route) Handler(fn function) {
 
 type Router struct {
 	tire         *tire.Tire
-	IgnoreCase   bool
+	StrictMode   bool
 	globalAfter  []After
 	globalBefore []Before
 }
@@ -166,13 +166,13 @@ func (r *Router) SetGlobalAfter(after ...After) {
 
 func (r *Router) Group(path ...string) *group {
 
-	var group = new(group)
+	var g = new(group)
 
-	group.path = strings.Join(path, "")
+	g.path = strings.Join(path, "")
 
-	group.router = r
+	g.router = r
 
-	return group
+	return g
 }
 
 func (r *Router) Remove(path ...string) {
@@ -212,7 +212,7 @@ func (r *Router) getRoute(path string) (*tire.Tire, []byte) {
 }
 
 func (r *Router) formatPath(path string) string {
-	if r.IgnoreCase {
+	if !r.StrictMode {
 		path = strings.ToLower(path)
 	}
 	return path

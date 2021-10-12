@@ -33,7 +33,7 @@ var tcpServer *server.Server
 
 var tcpServerRouter *server.Router
 
-var client *Client
+var tcpClient *Client
 
 var clientRouter *Router
 
@@ -58,7 +58,7 @@ func initServer(fn func()) {
 	})
 
 	// create router
-	tcpServerRouter = &server.Router{IgnoreCase: true}
+	tcpServerRouter = &server.Router{StrictMode: true}
 
 	// set group route
 	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
@@ -88,20 +88,20 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	client = &Client{Addr: host, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
+	tcpClient = &Client{Addr: host, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
 
 	// event
-	client.OnClose = func(c *Client) {}
-	client.OnOpen = func(c *Client) {}
-	client.OnError = func(err error) {}
-	client.OnMessage = func(client *Client, msg []byte) {}
+	tcpClient.OnClose = func(c *Client) {}
+	tcpClient.OnOpen = func(c *Client) {}
+	tcpClient.OnError = func(err error) {}
+	tcpClient.OnMessage = func(client *Client, msg []byte) {}
 
 	// create router
-	clientRouter = &Router{IgnoreCase: true}
+	clientRouter = &Router{StrictMode: true}
 
-	go client.SetRouter(clientRouter).Connect()
+	go tcpClient.SetRouter(clientRouter).Connect()
 
-	client.OnSuccess = func() {
+	tcpClient.OnSuccess = func() {
 		fn()
 	}
 }
@@ -126,7 +126,7 @@ func TestMain(t *testing.M) {
 	go func() {
 		<-stop
 
-		_ = client.Close()
+		_ = tcpClient.Close()
 		_ = tcpServer.Shutdown()
 	}()
 
@@ -140,7 +140,7 @@ func TestMain(t *testing.M) {
 }
 
 func Test_Client_Async(t *testing.T) {
-	stream, err := client.Async().JsonEmit(socket.JsonPack{
+	stream, err := tcpClient.Async().JsonEmit(socket.JsonPack{
 		Event: "/async",
 		Data:  strings.Repeat("hello world!", 1),
 	})
@@ -171,7 +171,7 @@ func Test_Client(t *testing.T) {
 
 	for i := 0; i < count; i++ {
 		mux.Add(1)
-		_ = client.JsonEmit(socket.JsonPack{
+		_ = tcpClient.JsonEmit(socket.JsonPack{
 			Event: "/hello/world",
 			Data:  strings.Repeat("hello world!", 1),
 			ID:    id,

@@ -33,7 +33,7 @@ var udpServer *server.Server
 
 var udpServerRouter *server.Router
 
-var client *Client
+var udpClient *Client
 
 var clientRouter *Router
 
@@ -58,7 +58,7 @@ func initServer(fn func()) {
 	})
 
 	// create router
-	udpServerRouter = &server.Router{IgnoreCase: true}
+	udpServerRouter = &server.Router{StrictMode: true}
 
 	// set group route
 	udpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
@@ -88,20 +88,20 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	client = &Client{Addr: host, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
+	udpClient = &Client{Addr: host, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
 
 	// event
-	client.OnClose = func(c *Client) {}
-	client.OnOpen = func(c *Client) {}
-	client.OnError = func(err error) {}
-	client.OnMessage = func(client *Client, msg []byte) {}
+	udpClient.OnClose = func(c *Client) {}
+	udpClient.OnOpen = func(c *Client) {}
+	udpClient.OnError = func(err error) {}
+	udpClient.OnMessage = func(client *Client, msg []byte) {}
 
 	// create router
-	clientRouter = &Router{IgnoreCase: true}
+	clientRouter = &Router{StrictMode: true}
 
-	go client.SetRouter(clientRouter).Connect()
+	go udpClient.SetRouter(clientRouter).Connect()
 
-	client.OnSuccess = func() {
+	udpClient.OnSuccess = func() {
 		fn()
 	}
 }
@@ -127,7 +127,7 @@ func TestMain(t *testing.M) {
 
 		<-stop
 
-		_ = client.Close()
+		_ = udpClient.Close()
 		_ = udpServer.Shutdown()
 
 	}()
@@ -142,7 +142,7 @@ func TestMain(t *testing.M) {
 }
 
 func Test_Client_Async(t *testing.T) {
-	stream, err := client.Async().JsonEmit(socket.JsonPack{
+	stream, err := udpClient.Async().JsonEmit(socket.JsonPack{
 		Event: "/async",
 		Data:  strings.Repeat("hello world!", 1),
 	})
@@ -173,7 +173,7 @@ func Test_Client(t *testing.T) {
 
 	for i := 0; i < count; i++ {
 		mux.Add(1)
-		_ = client.JsonEmit(socket.JsonPack{
+		_ = udpClient.JsonEmit(socket.JsonPack{
 			Event: "/hello/world",
 			Data:  strings.Repeat("hello world!", 1),
 			ID:    id,

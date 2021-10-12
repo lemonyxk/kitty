@@ -40,7 +40,7 @@ func (g *group) Remove(path string) {
 		return
 	}
 	var dp = g.path + path
-	if g.router.IgnoreCase {
+	if g.router.StrictMode {
 		dp = strings.ToLower(dp)
 	}
 	g.router.tire.Delete(dp)
@@ -63,7 +63,7 @@ func (rh *RouteHandler) Remove(path string) {
 		return
 	}
 	var dp = rh.group.path + path
-	if rh.group.router.IgnoreCase {
+	if rh.group.router.StrictMode {
 		dp = strings.ToLower(dp)
 	}
 	rh.group.router.tire.Delete(dp)
@@ -165,7 +165,7 @@ func (r *route) Handler(fn function) {
 
 type Router struct {
 	tire         *tire.Tire
-	IgnoreCase   bool
+	StrictMode   bool
 	globalAfter  []After
 	globalBefore []Before
 }
@@ -189,13 +189,13 @@ func (r *Router) GetAllRouters() []*node {
 
 func (r *Router) Group(path ...string) *group {
 
-	var group = new(group)
+	var g = new(group)
 
-	group.path = strings.Join(path, "")
+	g.path = strings.Join(path, "")
 
-	group.router = r
+	g.router = r
 
-	return group
+	return g
 }
 
 func (r *Router) Remove(path ...string) {
@@ -203,7 +203,7 @@ func (r *Router) Remove(path ...string) {
 		return
 	}
 	var dp = strings.Join(path, "")
-	if r.IgnoreCase {
+	if !r.StrictMode {
 		dp = strings.ToLower(dp)
 	}
 	r.tire.Delete(dp)
@@ -233,7 +233,7 @@ func (r *Router) getRoute(path string) (*tire.Tire, []byte) {
 }
 
 func (r *Router) formatPath(path string) string {
-	if r.IgnoreCase {
+	if !r.StrictMode {
 		path = strings.ToLower(path)
 	}
 	return path

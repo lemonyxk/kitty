@@ -10,8 +10,6 @@
 
 package client
 
-import "net/http"
-
 func NewProgress() *progress {
 	return &progress{}
 }
@@ -21,16 +19,16 @@ func New() *client {
 }
 
 func Post(url string) *info {
-	var info = &client{method: http.MethodPost, url: url}
-	return info.Post(url)
+	var c = &client{}
+	return c.Post(url)
 }
 
 func Get(url string) *info {
-	var info = &client{method: http.MethodGet, url: url}
-	return info.Get(url)
+	var c = &client{}
+	return c.Get(url)
 }
 
 func Head(url string) *info {
-	var info = &client{method: http.MethodHead, url: url}
-	return info.Head(url)
+	var c = &client{}
+	return c.Head(url)
 }

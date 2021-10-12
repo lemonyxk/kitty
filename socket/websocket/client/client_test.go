@@ -41,7 +41,7 @@ var webSocketServer *server.Server
 
 var webSocketServerRouter *server.Router
 
-var client *Client
+var webSocketClient *Client
 
 var clientRouter *Router
 
@@ -78,7 +78,7 @@ func initServer(fn func()) {
 	}
 
 	// create router
-	webSocketServerRouter = &server.Router{IgnoreCase: true}
+	webSocketServerRouter = &server.Router{StrictMode: true}
 
 	// set group route
 	webSocketServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
@@ -108,16 +108,16 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	client = &Client{Scheme: "ws", Addr: addr, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
+	webSocketClient = &Client{Scheme: "ws", Addr: addr, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
 
 	// event
-	client.OnClose = func(c *Client) {}
-	client.OnOpen = func(c *Client) {}
-	client.OnError = func(err error) {}
-	client.OnMessage = func(c *Client, messageType int, msg []byte) {}
+	webSocketClient.OnClose = func(c *Client) {}
+	webSocketClient.OnOpen = func(c *Client) {}
+	webSocketClient.OnError = func(err error) {}
+	webSocketClient.OnMessage = func(c *Client, messageType int, msg []byte) {}
 
 	// handle unknown proto
-	client.OnUnknown = func(conn *Client, message []byte, next Middle) {
+	webSocketClient.OnUnknown = func(conn *Client, message []byte, next Middle) {
 		var j = jsoniter.Get(message)
 		var id = j.Get("id").ToInt64()
 		var route = j.Get("event").ToString()
@@ -129,11 +129,11 @@ func initClient(fn func()) {
 	}
 
 	// create router
-	clientRouter = &Router{IgnoreCase: true}
+	clientRouter = &Router{StrictMode: true}
 
-	go client.SetRouter(clientRouter).Connect()
+	go webSocketClient.SetRouter(clientRouter).Connect()
 
-	client.OnSuccess = func() {
+	webSocketClient.OnSuccess = func() {
 		fn()
 	}
 }
@@ -158,7 +158,7 @@ func TestMain(t *testing.M) {
 	go func() {
 		<-stop
 
-		_ = client.Close()
+		_ = webSocketClient.Close()
 		_ = webSocketServer.Shutdown()
 	}()
 
@@ -172,7 +172,7 @@ func TestMain(t *testing.M) {
 }
 
 func Test_Client_Async(t *testing.T) {
-	stream, err := client.Async().JsonEmit(socket.JsonPack{
+	stream, err := webSocketClient.Async().JsonEmit(socket.JsonPack{
 		Event: "/async",
 		Data:  strings.Repeat("hello world!", 1),
 	})
@@ -203,7 +203,7 @@ func Test_Client(t *testing.T) {
 
 	for i := 0; i < count; i++ {
 		mux.Add(1)
-		_ = ClientJson(client, JsonPack{
+		_ = ClientJson(webSocketClient, JsonPack{
 			Event: "/hello/world",
 			Data:  strings.Repeat("hello world!", 1),
 			ID:    id,

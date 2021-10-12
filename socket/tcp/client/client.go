@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -15,20 +16,24 @@ import (
 	"github.com/lemoyxk/kitty/socket/tcp"
 )
 
+func NewTcpClient(addr string) *Client {
+	return &Client{Addr: addr}
+}
+
 type Client struct {
 	Name string
 	Addr string
 
 	Conn net.Conn
-	// AutoHeartBeat     bool
+
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
-	HeartBeat         func(c *Client) error
-	// Reconnect         bool
 	ReconnectInterval time.Duration
-	ReadBufferSize    int
-	WriteBufferSize   int
-	DailTimeout       time.Duration
+	HeartBeat         func(c *Client) error
+
+	ReadBufferSize  int
+	WriteBufferSize int
+	DailTimeout     time.Duration
 
 	OnOpen         func(client *Client)
 	OnClose        func(client *Client)
@@ -116,15 +121,21 @@ func (c *Client) Connect() {
 	}
 
 	if c.OnOpen == nil {
-		panic("OnOpen must set")
+		c.OnOpen = func(client *Client) {
+			fmt.Println("tcp client: connect success")
+		}
 	}
 
 	if c.OnClose == nil {
-		panic("OnClose must set")
+		c.OnClose = func(client *Client) {
+			fmt.Println("tcp client: connection close")
+		}
 	}
 
 	if c.OnError == nil {
-		panic("OnError must set")
+		c.OnError = func(err error) {
+			fmt.Println("tcp client:", err)
+		}
 	}
 
 	// 握手
@@ -142,20 +153,20 @@ func (c *Client) Connect() {
 		c.WriteBufferSize = 1024
 	}
 
-	// // 定时心跳间隔
-	// if c.HeartBeatInterval == 0 {
-	// 	c.HeartBeatInterval = 15 * time.Second
-	// }
-	//
-	// // 服务器返回PONG超时
-	// if c.HeartBeatTimeout == 0 {
-	// 	c.HeartBeatTimeout = 30 * time.Second
-	// }
-	//
-	// // 自动重连间隔
-	// if c.ReconnectInterval == 0 {
-	// 	c.ReconnectInterval = time.Second
-	// }
+	// 定时心跳间隔
+	if c.HeartBeatInterval == 0 {
+		c.HeartBeatInterval = 3 * time.Second
+	}
+
+	// 服务器返回PONG超时
+	if c.HeartBeatTimeout == 0 {
+		c.HeartBeatTimeout = 6 * time.Second
+	}
+
+	// 自动重连间隔
+	if c.ReconnectInterval == 0 {
+		c.ReconnectInterval = time.Second
+	}
 
 	if c.Protocol == nil {
 		c.Protocol = &tcp.DefaultProtocol{}
@@ -164,6 +175,7 @@ func (c *Client) Connect() {
 	// 连接服务器
 	handler, err := net.DialTimeout("tcp", c.Addr, c.DailTimeout)
 	if err != nil {
+		fmt.Println(err)
 		c.OnError(err)
 		c.reconnecting()
 		return
@@ -392,7 +404,6 @@ func (c *Client) handler(conn *Client, stream *socket.Stream) {
 			return
 		}
 	}
-
 }
 
 func (c *Client) SetRouter(router *Router) *Client {

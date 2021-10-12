@@ -14,7 +14,7 @@ func NewProgress() *progress {
 	return &progress{}
 }
 
-func New() *client {
+func NewHttpClient() *client {
 	return &client{}
 }
 

@@ -24,12 +24,9 @@ func main() {
 
 func run() {
 
-	var client = &client3.Client{
-		Scheme:            "ws",
-		Addr:              "127.0.0.1:8667",
-		HeartBeatTimeout:  time.Second * 2,
-		HeartBeatInterval: time.Second,
-	}
+	var client = client3.NewWebSocketClient("ws://127.0.0.1:8667")
+	client.HeartBeatTimeout = time.Second * 2
+	client.HeartBeatInterval = time.Second
 
 	client.OnClose = func(c *client3.Client) {
 		log.Println("close")

@@ -12,6 +12,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -23,6 +24,10 @@ import (
 	"github.com/lemoyxk/kitty/socket"
 	"github.com/lemoyxk/kitty/socket/udp"
 )
+
+func NewUdpServer(addr string) *Server {
+	return &Server{Addr: addr}
+}
 
 type Server struct {
 	Name string
@@ -37,9 +42,10 @@ type Server struct {
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
-	ReadBufferSize    int
-	WriteBufferSize   int
 	HandshakeTimeout  time.Duration
+
+	ReadBufferSize  int
+	WriteBufferSize int
 
 	PingHandler func(conn *Conn) func(appData string) error
 	PongHandler func(conn *Conn) func(appData string) error
@@ -142,11 +148,11 @@ func (s *Server) Ready() {
 	}
 
 	if s.HeartBeatTimeout == 0 {
-		s.HeartBeatTimeout = 30 * time.Second
+		s.HeartBeatTimeout = 6 * time.Second
 	}
 
 	if s.HeartBeatInterval == 0 {
-		s.HeartBeatInterval = 15 * time.Second
+		s.HeartBeatInterval = 3 * time.Second
 	}
 
 	if s.ReadBufferSize == 0 {
@@ -159,19 +165,19 @@ func (s *Server) Ready() {
 
 	if s.OnOpen == nil {
 		s.OnOpen = func(conn *Conn) {
-			println(conn.FD, "is open")
+			fmt.Println("udp server:", conn.FD, "is open")
 		}
 	}
 
 	if s.OnClose == nil {
 		s.OnClose = func(conn *Conn) {
-			println(conn.FD, "is close")
+			fmt.Println("udp server:", conn.FD, "is close")
 		}
 	}
 
 	if s.OnError == nil {
 		s.OnError = func(err error) {
-			println(err.Error())
+			fmt.Println("udp server:", err)
 		}
 	}
 
@@ -285,11 +291,6 @@ func (s *Server) Start() {
 		panic(err)
 	}
 
-	// netListen, err = net.ListenUDP("udp", addr)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	s.netListen = netListen
 
 	// start success
@@ -389,7 +390,6 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 	default:
 		return
 	}
-
 }
 
 func (s *Server) decodeMessage(conn *Conn, message []byte) error {
@@ -477,7 +477,6 @@ func (s *Server) handler(conn *Conn, stream *socket.Stream) {
 			return
 		}
 	}
-
 }
 
 func (s *Server) SetRouter(router *Router) *Server {

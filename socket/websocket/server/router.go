@@ -149,6 +149,10 @@ func (r *route) Handler(fn function) {
 
 }
 
+func NewWebSocketServerRouter() *Router {
+	return &Router{}
+}
+
 type Router struct {
 	tire         *tire.Tire
 	StrictMode   bool

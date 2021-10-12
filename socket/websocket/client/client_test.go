@@ -50,7 +50,7 @@ var addr = "127.0.0.1:8669"
 func initServer(fn func()) {
 
 	// create server
-	webSocketServer = &server.Server{Addr: addr, Path: "/"}
+	webSocketServer = server.NewWebSocketServer(addr)
 
 	// event
 	webSocketServer.OnOpen = func(conn *server.Conn) {}
@@ -78,7 +78,7 @@ func initServer(fn func()) {
 	}
 
 	// create router
-	webSocketServerRouter = &server.Router{StrictMode: true}
+	webSocketServerRouter = server.NewWebSocketServerRouter()
 
 	// set group route
 	webSocketServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
@@ -108,7 +108,9 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	webSocketClient = &Client{Scheme: "ws", Addr: addr, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
+	webSocketClient = NewWebSocketClient("ws://" + addr)
+	webSocketClient.ReconnectInterval = time.Second
+	webSocketClient.HeartBeatInterval = time.Second
 
 	// event
 	webSocketClient.OnClose = func(c *Client) {}
@@ -129,7 +131,7 @@ func initClient(fn func()) {
 	}
 
 	// create router
-	clientRouter = &Router{StrictMode: true}
+	clientRouter = NewWebSocketClientRouter()
 
 	go webSocketClient.SetRouter(clientRouter).Connect()
 

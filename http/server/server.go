@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"mime"
 	"net"
@@ -14,6 +15,10 @@ import (
 	kitty "github.com/lemoyxk/kitty"
 	http2 "github.com/lemoyxk/kitty/http"
 )
+
+func NewHttpServer(addr string) *Server {
+	return &Server{Addr: addr}
+}
 
 type Server struct {
 	Name string
@@ -219,7 +224,7 @@ func (s *Server) Start() {
 	}
 
 	if err != nil {
-		println(err)
+		fmt.Println(err)
 	}
 }
 

@@ -27,7 +27,7 @@ var ts *httptest.Server
 
 func TestMain(t *testing.M) {
 
-	httpServer = &server.Server{}
+	httpServer = server.NewHttpServer("127.0.0.1:12345")
 	ts = httptest.NewServer(httpServer)
 
 	httpServer.Use(func(next server.Middle) server.Middle {

@@ -10,11 +10,6 @@
 
 package main
 
-import (
-	"log"
-)
-
 func Add(v ...interface{}) (interface{}, error) {
-	log.Println("hello plugin", v)
 	return nil, nil
 }

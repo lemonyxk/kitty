@@ -12,6 +12,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -24,6 +25,10 @@ import (
 	"github.com/lemoyxk/kitty/socket"
 	"github.com/lemoyxk/kitty/socket/tcp"
 )
+
+func NewTcpServer(addr string) *Server {
+	return &Server{Addr: addr}
+}
 
 type Server struct {
 	Name string
@@ -38,11 +43,13 @@ type Server struct {
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
-	ReadBufferSize    int
-	WriteBufferSize   int
-	PingHandler       func(conn *Conn) func(appData string) error
-	PongHandler       func(conn *Conn) func(appData string) error
-	Protocol          tcp.Protocol
+
+	ReadBufferSize  int
+	WriteBufferSize int
+
+	PingHandler func(conn *Conn) func(appData string) error
+	PongHandler func(conn *Conn) func(appData string) error
+	Protocol    tcp.Protocol
 
 	fd          int64
 	connections map[int64]*Conn
@@ -135,11 +142,11 @@ func (s *Server) Ready() {
 	}
 
 	if s.HeartBeatTimeout == 0 {
-		s.HeartBeatTimeout = 30 * time.Second
+		s.HeartBeatTimeout = 6 * time.Second
 	}
 
 	if s.HeartBeatInterval == 0 {
-		s.HeartBeatInterval = 15 * time.Second
+		s.HeartBeatInterval = 3 * time.Second
 	}
 
 	if s.ReadBufferSize == 0 {
@@ -152,19 +159,19 @@ func (s *Server) Ready() {
 
 	if s.OnOpen == nil {
 		s.OnOpen = func(conn *Conn) {
-			println(conn.FD, "is open")
+			fmt.Println("tcp server:", conn.FD, "is open")
 		}
 	}
 
 	if s.OnClose == nil {
 		s.OnClose = func(conn *Conn) {
-			println(conn.FD, "is close")
+			fmt.Println("tcp server:", conn.FD, "is close")
 		}
 	}
 
 	if s.OnError == nil {
 		s.OnError = func(err error) {
-			println(err.Error())
+			fmt.Println("tcp server:", err)
 		}
 	}
 
@@ -283,7 +290,6 @@ func (s *Server) Start() {
 
 		go s.process(conn)
 	}
-
 }
 
 func (s *Server) Shutdown() error {
@@ -429,7 +435,6 @@ func (s *Server) handler(conn *Conn, stream *socket.Stream) {
 			return
 		}
 	}
-
 }
 
 func (s *Server) SetRouter(router *Router) *Server {

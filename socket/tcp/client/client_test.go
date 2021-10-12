@@ -37,12 +37,12 @@ var tcpClient *Client
 
 var clientRouter *Router
 
-var host = "127.0.0.1:8667"
+var addr = "127.0.0.1:8667"
 
 func initServer(fn func()) {
 
 	// create server
-	tcpServer = &server.Server{Addr: host}
+	tcpServer = server.NewTcpServer(addr)
 
 	// event
 	tcpServer.OnOpen = func(conn *server.Conn) {}
@@ -88,7 +88,9 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	tcpClient = &Client{Addr: host, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
+	tcpClient = NewTcpClient(addr)
+	tcpClient.ReconnectInterval = time.Second
+	tcpClient.HeartBeatInterval = time.Second
 
 	// event
 	tcpClient.OnClose = func(c *Client) {}

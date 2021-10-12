@@ -37,12 +37,12 @@ var udpClient *Client
 
 var clientRouter *Router
 
-var host = "127.0.0.1:8668"
+var addr = "127.0.0.1:8668"
 
 func initServer(fn func()) {
 
 	// create server
-	udpServer = &server.Server{Addr: host}
+	udpServer = server.NewUdpServer(addr)
 
 	// event
 	udpServer.OnOpen = func(conn *server.Conn) {}
@@ -88,7 +88,9 @@ func initServer(fn func()) {
 
 func initClient(fn func()) {
 	// create client
-	udpClient = &Client{Addr: host, ReconnectInterval: time.Second, HeartBeatInterval: time.Second}
+	udpClient = NewUdpClient(addr)
+	udpClient.ReconnectInterval = time.Second
+	udpClient.HeartBeatInterval = time.Second
 
 	// event
 	udpClient.OnClose = func(c *Client) {}

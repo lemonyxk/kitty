@@ -25,10 +25,10 @@ func main() {
 
 	log.SetFlags(log.Lshortfile | log.Ldate)
 
-	var udpServer = &server.Server{Addr: "127.0.0.1:5000", HeartBeatTimeout: time.Second * 30}
+	var udpServer = server.NewUdpServer("127.0.0.1:5000")
 
 	udpServer.OnMessage = func(conn *server.Conn, msg []byte) {
-		// log.Println("ONMESSAGE:", string(msg))
+
 	}
 
 	udpServer.OnOpen = func(conn *server.Conn) {
@@ -130,11 +130,7 @@ func client() {
 	for i := 0; i < 1; i++ {
 
 		var index = i
-		var client = &client2.Client{
-			Addr:        "127.0.0.1:5000",
-			DailTimeout: 50 * time.Second,
-			// Reconnect: true, AutoHeartBeat: true, HeartBeatInterval: time.Second,
-		}
+		var client = client2.NewUdpClient("127.0.0.1:5000")
 
 		client.OnOpen = func(client *client2.Client) {
 			log.Println("client open", index)

@@ -19,12 +19,14 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type Server struct {
+func NewWebSocketServer(addr string) *Server {
+	return &Server{Addr: addr}
+}
 
+type Server struct {
 	// Host 服务Host
 	Name string
 	Addr string
-	Path string
 	// Protocol 协议
 	TLS bool
 	// TLS FILE
@@ -42,9 +44,10 @@ type Server struct {
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
 	HandshakeTimeout  time.Duration
-	ReadBufferSize    int
-	WriteBufferSize   int
-	CheckOrigin       func(r *http.Request) bool
+
+	ReadBufferSize  int
+	WriteBufferSize int
+	CheckOrigin     func(r *http.Request) bool
 
 	PingHandler func(conn *Conn) func(appData string) error
 	PongHandler func(conn *Conn) func(appData string) error
@@ -69,10 +72,6 @@ func (s *Server) LocalAddr() net.Addr {
 
 func (s *Server) Use(middle ...func(next Middle) Middle) {
 	s.middle = append(s.middle, middle...)
-}
-
-func (s *Server) CheckPath(p1 string, p2 string) bool {
-	return p1 == p2
 }
 
 func (s *Server) Push(fd int64, msg []byte) error {
@@ -204,20 +203,16 @@ func (s *Server) onError(err error) {
 
 func (s *Server) Ready() {
 
-	if s.Path == "" {
-		s.Path = "/"
-	}
-
 	if s.Addr == "" {
 		panic("Addr must set")
 	}
 
 	if s.HeartBeatTimeout == 0 {
-		s.HeartBeatTimeout = 30 * time.Second
+		s.HeartBeatTimeout = 6 * time.Second
 	}
 
 	if s.HeartBeatInterval == 0 {
-		s.HeartBeatInterval = 15 * time.Second
+		s.HeartBeatInterval = 3 * time.Second
 	}
 
 	if s.HandshakeTimeout == 0 {
@@ -241,19 +236,19 @@ func (s *Server) Ready() {
 
 	if s.OnOpen == nil {
 		s.OnOpen = func(conn *Conn) {
-			println(conn.FD, "is open")
+			fmt.Println("webSocket server:", conn.FD, "is open")
 		}
 	}
 
 	if s.OnClose == nil {
 		s.OnClose = func(conn *Conn) {
-			println(conn.FD, "is close")
+			fmt.Println("webSocket server:", conn.FD, "is close")
 		}
 	}
 
 	if s.OnError == nil {
 		s.OnError = func(err error) {
-			println(err.Error())
+			fmt.Println("webSocket server:", err)
 		}
 	}
 
@@ -440,7 +435,6 @@ func (s *Server) handler(conn *Conn, stream *socket.Stream) {
 			return
 		}
 	}
-
 }
 
 func (s *Server) SetRouter(router *Router) *Server {
@@ -482,7 +476,7 @@ func (s *Server) Start() {
 	}
 
 	if err != nil {
-		fmt.Printf("%+v\n", err)
+		fmt.Println(err)
 	}
 }
 
@@ -492,8 +486,8 @@ func (s *Server) Shutdown() error {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	// Match the websocket router
-	if r.Method != http.MethodGet || !s.CheckPath(r.URL.Path, s.Path) {
+	// Match the webSocket router
+	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

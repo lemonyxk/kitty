@@ -23,7 +23,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/json-iterator/go"
 	"github.com/lemoyxk/kitty/kitty"
@@ -223,12 +222,8 @@ func getContentType(info *info) string {
 	return ""
 }
 
-var hMux sync.Mutex
-
 func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 
-	hMux.Lock()
-	defer hMux.Unlock()
 	defer cancel()
 
 	if req == nil {
@@ -263,8 +258,8 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 		defaultTransport.DisableCompression = true
 	}
 
-	// TODO
-	// need opt for goroutine
+	// NOT SAFE FOR GOROUTINE IF YOU SET TIMEOUT OR KEEPALIVE OR PROXY OR PROGRESS
+	// MAKE SURE ONE BY ONE
 	defer func() {
 		defaultClient.Timeout = clientTimeout
 		defaultDialer.KeepAlive = dialerKeepAlive

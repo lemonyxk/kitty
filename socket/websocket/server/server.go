@@ -20,8 +20,8 @@ import (
 )
 
 type Server struct {
-	// Host 服务Host
 	Name string
+	// Host 服务Host
 	Addr string
 	// Protocol 协议
 	TLS bool
@@ -30,9 +30,9 @@ type Server struct {
 	// TLS KEY
 	KeyFile string
 
-	OnClose   func(conn *Conn)
-	OnMessage func(conn *Conn, msg []byte)
 	OnOpen    func(conn *Conn)
+	OnMessage func(conn *Conn, msg []byte)
+	OnClose   func(conn *Conn)
 	OnError   func(err error)
 	OnSuccess func()
 	OnUnknown func(conn *Conn, message []byte, next Middle)

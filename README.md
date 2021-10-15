@@ -1,78 +1,118 @@
 ```go
+
 package main
 
 import (
+	"embed"
+	_ "embed"
+	"fmt"
 	"log"
+	http2 "net/http"
 	"os"
+	"time"
 
 	"github.com/lemoyxk/kitty"
 	"github.com/lemoyxk/kitty/http"
+	"github.com/lemoyxk/kitty/http/client"
 	server3 "github.com/lemoyxk/kitty/http/server"
-	"github.com/lemoyxk/kitty/tcp/server"
-	server2 "github.com/lemoyxk/kitty/websocket/server"
+	"github.com/lemoyxk/kitty/socket"
+	"github.com/lemoyxk/kitty/socket/tcp/server"
+	server4 "github.com/lemoyxk/kitty/socket/udp/server"
+	server2 "github.com/lemoyxk/kitty/socket/websocket/server"
 )
 
+//go:embed public/**
+var fileSystem embed.FS
+
 func main() {
-	run()
+
+	runHttpServer()
+	runWebSocketServer()
+	runTcpServer()
+	runUdpServer()
+
+	runHttpClientWithProcess()
+	runHttpClient()
+	runTcpClient()
+	runUdpClient()
+	runWebSocketClient()
+
+	select {}
 }
 
-func run() {
+func runTcpServer() {
+	var tcpServer = kitty.NewTcpServer("127.0.0.1:8888")
 
-	var webSocketServer = &server2.Server{Host: "127.0.0.1:8667", Path: "/"}
+	var tcpServerRouter = kitty.NewTcpServerRouter()
 
-	var webSocketServerRouter = &server2.Router{StrictMode: true}
-
-	webSocketServer.Use(func(next server2.Middle) server2.Middle {
-		return func(conn *server2.WebSocket, receive *kitty.ReceivePackage) {
-			next(conn, receive)
-		}
-	})
-
-	webSocketServer.OnMessage = func(conn *server2.WebSocket, messageType int, msg []byte) {
-		log.Println(len(msg))
-	}
-
-	webSocketServerRouter.Group("/hello").Handler(func(handler *server2.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server2.WebSocket, receive *kitty.Receive) error {
-			log.Println(string(receive.Body.Message))
-			return conn.Json(kitty.JsonPackage{
-				Event: "/hello/world",
-				Data:  "i am server",
-			})
+	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
+		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
+			log.Println(string(stream.Data))
+			return nil
 		})
 	})
 
-	go webSocketServer.SetRouter(webSocketServerRouter).Start()
+	tcpServer.OnSuccess = func() {
+		log.Println(tcpServer.LocalAddr())
+	}
 
-	var httpServer = server3.Server{Host: "127.0.0.1:8666"}
+	go tcpServer.SetRouter(tcpServerRouter).Start()
+}
 
-	var httpServerRouter = &server3.Router{}
+func runWebSocketServer() {
+	var webSocketServer = kitty.NewWebSocketServer("127.0.0.1:8667")
 
-	httpServer.Use(func(next server3.Middle) server3.Middle {
-		return func(stream *http.Stream) {
-			// if stream.Request.Header.Get("Upgrade") == "websocket" {
-			// 	httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "0.0.0.0:8667"}).ServeHTTP(stream.Response, stream.Request)
-			// } else {
-			// 	log.Println(1, "start")
-			// 	next(stream)
-			// 	log.Println(1, "end")
-			// }
-			next(stream)
-		}
+	var webSocketServerRouter = kitty.NewWebSocketServerRouter()
+
+	webSocketServerRouter.Group("/hello").Handler(func(handler *server2.RouteHandler) {
+		handler.Route("/world").Handler(func(conn *server2.Conn, stream *socket.Stream) error {
+			log.Println(string(stream.Data))
+			return nil
+		})
 	})
 
+	webSocketServer.OnSuccess = func() {
+		log.Println(webSocketServer.LocalAddr())
+	}
+
+	go webSocketServer.SetRouter(webSocketServerRouter).Start()
+}
+
+func runUdpServer() {
+	var udpServer = kitty.NewUdpServer("127.0.0.1:5000")
+
+	var udpServerRouter = kitty.NewUdpServerRouter()
+
+	udpServerRouter.Group("/hello").Handler(func(handler *server4.RouteHandler) {
+		handler.Route("/world").Handler(func(conn *server4.Conn, stream *socket.Stream) error {
+			log.Println(string(stream.Data))
+			return nil
+		})
+	})
+
+	udpServer.OnSuccess = func() {
+		log.Println(udpServer.LocalAddr())
+	}
+
+	go udpServer.SetRouter(udpServerRouter).Start()
+}
+
+func runHttpServer() {
+	var httpServer = kitty.NewHttpServer("127.0.0.1:8666")
+	httpServer.CertFile = "/Users/lemo/test/go/localhost+2.pem"
+	httpServer.KeyFile = "/Users/lemo/test/go/localhost+2-key.pem"
+
+	var httpServerRouter = kitty.NewHttpServerRouter()
+
 	httpServer.Use(func(next server3.Middle) server3.Middle {
 		return func(stream *http.Stream) {
-			// log.Println(2, "start")
-			// next(stream)
-			// log.Println(2, "end")
+			stream.AutoParse()
 			next(stream)
 		}
 	})
 
 	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
-		// log.Println("handler")
-		return stream.EndString("hello")
+		return stream.EndString("hello world!")
 	})
 
 	httpServerRouter.Group("/hello").Handler(func(handler *server3.RouteHandler) {
@@ -85,33 +125,61 @@ func run() {
 		log.Println(httpServer.LocalAddr())
 	}
 
+	// httpServerRouter.SetStaticPath("/", "", http2.Dir("./example/public"))
+
+	httpServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
+	httpServerRouter.SetDefaultIndex("index.html", "index.htm")
+	httpServerRouter.SetOpenDir(true)
+
 	go httpServer.SetRouter(httpServerRouter).Start()
-
-	log.Println("start success")
-
-	var tcpServer = &server.Server{Host: "127.0.0.1:8888"}
-
-	tcpServer.OnMessage = func(conn *server.Socket, messageType int, msg []byte) {
-		log.Println(len(msg))
-	}
-
-	var tcpServerRouter = &server.Router{StrictMode: true}
-
-	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server.Socket, receive *kitty.Receive) error {
-			log.Println(string(receive.Body.Message))
-			return nil
-		})
-	})
-
-	tcpServer.OnSuccess = func() {
-		log.Println(tcpServer.LocalAddr())
-	}
-
-	tcpServer.SetRouter(tcpServerRouter).Start()
-
 }
 
+func runHttpClientWithProcess() {
+	time.AfterFunc(time.Second, func() {
+		var progress = kitty.NewHttpClientProgress()
+		progress.Rate(0.01).OnProgress(func(p []byte, current int64, total int64) {
+			fmt.Printf("\rDownloading... %d %d B complete", current, total)
+			if current == total {
+				fmt.Println()
+			}
+		})
 
+		client.Get("https://code.jquery.com/jquery-3.6.0.js").Progress(progress).Query().Send()
+		// client.Get("https://127.0.0.1:8666/1.png").Progress(progress).Query().Send()
+	})
+}
+
+func runHttpClient() {
+	time.AfterFunc(time.Second, func() {
+		var res = client.Get("http://127.0.0.1:8666/hello").Query().Send()
+		if res.LastError() == nil {
+			log.Println("http OK!")
+		}
+	})
+}
+
+func runTcpClient() {
+	time.AfterFunc(time.Second, func() {
+		var tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
+		var clientRouter = kitty.NewTcpClientRouter()
+		tcpClient.SetRouter(clientRouter).Connect()
+	})
+}
+
+func runUdpClient() {
+	time.AfterFunc(time.Second, func() {
+		var udpClient = kitty.NewUdpClient("127.0.0.1:5000")
+		var clientRouter = kitty.NewUdpClientRouter()
+		udpClient.SetRouter(clientRouter).Connect()
+	})
+}
+
+func runWebSocketClient() {
+	time.AfterFunc(time.Second, func() {
+		var webSocketClient = kitty.NewWebSocketClient("ws://127.0.0.1:8667")
+		var clientRouter = kitty.NewWebSocketClientRouter()
+		webSocketClient.SetRouter(clientRouter).Connect()
+	})
+}
 
 ```

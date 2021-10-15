@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -8,8 +9,8 @@ import (
 	"mime"
 	"net"
 	"net/http"
-	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	http2 "github.com/lemoyxk/kitty/http"
@@ -20,8 +21,6 @@ type Server struct {
 	Name string
 	// Host 服务Host
 	Addr string
-	// Protocol 协议
-	TLS bool
 	// TLS FILE
 	CertFile string
 	// TLS KEY
@@ -134,50 +133,116 @@ func (s *Server) handler(stream *http2.Stream) {
 	}
 }
 
-func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
+func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !strings.HasPrefix(r.URL.Path, s.router.prefixPath) {
-		return errors.New("not match")
+		return
 	}
 
-	var absFilePath = filepath.Join(s.router.staticPath, r.URL.Path[len(s.router.prefixPath):])
+	if s.router.fileSystem == nil {
+		return
+	}
 
-	var info, err = os.Stat(absFilePath)
+	var openPath = r.URL.Path[len(s.router.prefixPath):]
+
+	openPath = filepath.Join(s.router.fixPath, openPath)
+
+	var file, err = s.router.fileSystem.Open(openPath)
 	if err != nil {
-		return err
+		return
+	}
+
+	info, err := file.Stat()
+	if err != nil {
+		return
 	}
 
 	if info.IsDir() {
-		absFilePath = filepath.Join(absFilePath, s.router.defaultIndex)
-		if _, err := os.Stat(absFilePath); err != nil {
-			return errors.New("staticPath is not a file")
+
+		var findDefault = false
+
+		if len(s.router.defaultIndex) > 0 {
+
+			for i := 0; i < len(s.router.defaultIndex); i++ {
+				if s.router.defaultIndex[i] == "" {
+					continue
+				}
+
+				var otp = filepath.Join(openPath, s.router.defaultIndex[i])
+				var of, err = s.router.fileSystem.Open(otp)
+				if err != nil {
+					continue
+				}
+				if _, err := of.Stat(); err != nil {
+					continue
+				} else {
+					openPath = otp
+					file = of
+					findDefault = true
+					break
+				}
+			}
+		}
+
+		if !findDefault && s.router.openDir {
+
+			dir, err := file.Readdir(0)
+			if err != nil {
+				return
+			}
+
+			var bts bytes.Buffer
+
+			bts.WriteString(`
+				<!DOCTYPE html>
+				<html lang="en">
+				<head>
+				    <meta charset="UTF-8">
+				    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+				    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+				    <title>kitty-server</title>
+				</head>
+				<body>
+			`)
+
+			for i := 0; i < len(dir); i++ {
+				bts.WriteString(`<a href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a><br/>`)
+			}
+
+			bts.WriteString(`<a href="` + filepath.Dir(r.URL.Path) + `">` + ".." + `</a>`)
+
+			bts.WriteString(`				    
+				</body>
+				</html>
+			`)
+
+			w.Header().Set("Content-Type", "text/html")
+			w.Header().Set("Content-Length", strconv.Itoa(bts.Len()))
+			_, err = w.Write(bts.Bytes())
+			if err != nil {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+
+			return
 		}
 	}
 
-	// has found
-	var contentType = mime.TypeByExtension(filepath.Ext(absFilePath))
+	var contentType = mime.TypeByExtension(filepath.Ext(info.Name()))
 
-	f, err := os.Open(absFilePath)
+	bts, err := ioutil.ReadAll(file)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
-		return nil
-	}
-
-	bts, err := ioutil.ReadAll(f)
-	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
-		return nil
+		return
 	}
 
 	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(bts)))
 	_, err = w.Write(bts)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
-		return nil
+		return
 	}
-
-	return nil
-
 }
 
 func (s *Server) SetRouter(router *Router) *Server {
@@ -213,7 +278,7 @@ func (s *Server) Start() {
 		s.OnSuccess()
 	}
 
-	if s.TLS {
+	if s.KeyFile != "" && s.CertFile != "" {
 		err = server.ServeTLS(netListen, s.CertFile, s.KeyFile)
 	} else {
 		err = server.Serve(netListen)
@@ -237,11 +302,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// static file
-	if s.router.staticPath != "" && r.Method == http.MethodGet {
-		err := s.staticHandler(w, r)
-		if err == nil {
-			return
-		}
+	if s.router.fileSystem != nil && r.Method == http.MethodGet {
+		s.staticHandler(w, r)
+		return
 	}
 
 	s.process(w, r)

@@ -1,8 +1,11 @@
 package main
 
 import (
+	"embed"
+	_ "embed"
 	"fmt"
 	"log"
+	http2 "net/http"
 	"os"
 	"time"
 
@@ -15,6 +18,9 @@ import (
 	server4 "github.com/lemoyxk/kitty/socket/udp/server"
 	server2 "github.com/lemoyxk/kitty/socket/websocket/server"
 )
+
+//go:embed public/**
+var fileSystem embed.FS
 
 func main() {
 
@@ -117,7 +123,11 @@ func runHttpServer() {
 		log.Println(httpServer.LocalAddr())
 	}
 
-	httpServerRouter.SetStaticPath("/", "./example/public")
+	// httpServerRouter.SetStaticPath("/", "", http2.Dir("./example/public"))
+
+	httpServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
+	httpServerRouter.SetDefaultIndex("index.html", "index.htm")
+	httpServerRouter.SetOpenDir(true)
 
 	go httpServer.SetRouter(httpServerRouter).Start()
 }
@@ -133,6 +143,7 @@ func runHttpClientWithProcess() {
 		})
 
 		client.Get("https://code.jquery.com/jquery-3.6.0.js").Progress(progress).Query().Send()
+		// client.Get("https://127.0.0.1:8666/1.png").Progress(progress).Query().Send()
 	})
 }
 

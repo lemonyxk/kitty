@@ -11,8 +11,7 @@
 package server
 
 import (
-	"os"
-	"path/filepath"
+	http2 "net/http"
 	"strconv"
 	"strings"
 
@@ -193,10 +192,12 @@ type Router struct {
 	StrictMode   bool
 	tire         *tire.Tire
 	prefixPath   string
-	staticPath   string
-	defaultIndex string
+	fixPath      string
+	fileSystem   http2.FileSystem
+	defaultIndex []string
 	globalAfter  []After
 	globalBefore []Before
+	openDir      bool
 }
 
 func (r *Router) SetGlobalBefore(before ...Before) {
@@ -220,37 +221,29 @@ func (r *Router) GetAllRouters() []*node {
 	return res
 }
 
-func (r *Router) SetDefaultIndex(index string) {
+func (r *Router) SetDefaultIndex(index ...string) {
 	r.defaultIndex = index
 }
 
-func (r *Router) SetStaticPath(prefixPath string, staticPath string) {
+func (r *Router) SetOpenDir(openDir bool) {
+	r.openDir = openDir
+}
+
+func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem http2.FileSystem) {
 
 	if prefixPath == "" {
 		panic("prefixPath can not be empty")
 	}
 
-	if staticPath == "" {
-		panic("staticPath can not be empty")
-	}
-
-	absStaticPath, err := filepath.Abs(staticPath)
-	if err != nil {
-		panic(err)
-	}
-
-	info, err := os.Stat(absStaticPath)
-	if err != nil {
-		panic(err)
-	}
-
-	if !info.IsDir() {
-		panic("staticPath is not a dir")
+	if fileSystem == nil {
+		panic("fileSystem can not be empty")
 	}
 
 	r.prefixPath = prefixPath
-	r.staticPath = absStaticPath
-	r.defaultIndex = "index.html"
+	r.fileSystem = fileSystem
+	r.fixPath = fixPath
+	r.openDir = false
+	r.defaultIndex = []string{"index.html"}
 }
 
 func (r *Router) Group(path ...string) *group {

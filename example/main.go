@@ -15,6 +15,7 @@ import (
 	server3 "github.com/lemoyxk/kitty/http/server"
 	"github.com/lemoyxk/kitty/socket"
 	"github.com/lemoyxk/kitty/socket/tcp/server"
+	udpClient2 "github.com/lemoyxk/kitty/socket/udp/client"
 	server4 "github.com/lemoyxk/kitty/socket/udp/server"
 	server2 "github.com/lemoyxk/kitty/socket/websocket/server"
 )
@@ -168,7 +169,14 @@ func runUdpClient() {
 	time.AfterFunc(time.Second, func() {
 		var udpClient = kitty.NewUdpClient("127.0.0.1:5000")
 		var clientRouter = kitty.NewUdpClientRouter()
-		udpClient.SetRouter(clientRouter).Connect()
+
+		udpClient.OnOpen = func(client *udpClient2.Client) {
+			log.Println(client.RemoteAddr())
+		}
+
+		go udpClient.SetRouter(clientRouter).Connect()
+
+		select {}
 	})
 }
 

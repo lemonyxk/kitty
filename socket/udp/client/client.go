@@ -15,7 +15,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -30,7 +29,7 @@ type Client struct {
 	Name string
 	Addr string
 
-	Conn *net.UDPConn
+	Conn *Conn
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
@@ -56,7 +55,6 @@ type Client struct {
 
 	router                *Router
 	middle                []func(Middle) Middle
-	mux                   sync.RWMutex
 	addr                  *net.UDPAddr
 	stopCh                chan struct{}
 	isStop                bool
@@ -73,7 +71,7 @@ func (c *Client) LocalAddr() net.Addr {
 }
 
 func (c *Client) RemoteAddr() net.Addr {
-	return c.addr
+	return c.Conn.RemoteAddr()
 }
 
 func (c *Client) Use(middle ...func(Middle) Middle) {
@@ -104,24 +102,17 @@ func (c *Client) Push(message []byte) error {
 	if len(message) > c.ReadBufferSize+udp.HeadLen {
 		return errors.New("max length is " + strconv.Itoa(c.ReadBufferSize) + "but now is " + strconv.Itoa(len(message)))
 	}
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	_, err := c.Conn.WriteToUDP(message, c.addr)
-	return err
+	return c.Conn.Write(message)
 }
 
-func (c *Client) WriteToUDP(message []byte, addr *net.UDPAddr) error {
+func (c *Client) PushAddr(message []byte, addr *net.UDPAddr) error {
 	if len(message) > c.ReadBufferSize+udp.HeadLen {
 		return errors.New("max length is " + strconv.Itoa(c.ReadBufferSize) + "but now is " + strconv.Itoa(len(message)))
 	}
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	_, err := c.Conn.WriteToUDP(message, addr)
-	return err
+	return c.Conn.WriteToAddr(message, addr)
 }
 
 func (c *Client) Close() error {
-	_ = c.Push(udp.CloseMessage)
 	return c.Conn.Close()
 }
 
@@ -207,7 +198,7 @@ func (c *Client) Connect() {
 		return
 	}
 
-	c.Conn = handler
+	c.Conn = &Conn{Addr: addr, Conn: handler}
 
 	// send open message
 	err = c.Push(udp.OpenMessage)
@@ -224,7 +215,7 @@ func (c *Client) Connect() {
 	})
 
 	var msg = make([]byte, c.ReadBufferSize+udp.HeadLen)
-	_, _, err = c.Conn.ReadFromUDP(msg)
+	_, _, err = c.Conn.Read(msg)
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()
@@ -257,10 +248,11 @@ func (c *Client) Connect() {
 		}
 	}
 
+	// no answer
 	if c.PingHandler == nil {
 		c.PingHandler = func(client *Client) func(appData string) error {
 			return func(appData string) error {
-				return client.Push(client.Protocol.Encode(socket.Pong, 0, nil, nil))
+				return nil
 			}
 		}
 	}
@@ -268,6 +260,7 @@ func (c *Client) Connect() {
 	if c.PongHandler == nil {
 		c.PongHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
+				c.Conn.LastPong = time.Now()
 				if c.HeartBeatTimeout != 0 {
 					c.pongTimer.Reset(c.HeartBeatTimeout)
 				}
@@ -323,7 +316,7 @@ func (c *Client) Connect() {
 
 	go func() {
 		for {
-			n, err := c.Conn.Read(buffer)
+			n, _, err := c.Conn.Read(buffer)
 			// close error
 			if err != nil {
 				if !c.isStop {

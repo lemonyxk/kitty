@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/json-iterator/go"
@@ -23,7 +22,7 @@ type Client struct {
 	Name string
 	Addr string
 
-	Conn     *websocket.Conn
+	Conn     *Conn
 	Response *http.Response
 
 	HeartBeatTimeout  time.Duration
@@ -48,7 +47,6 @@ type Client struct {
 
 	Protocol websocket2.Protocol
 
-	mux                   sync.RWMutex
 	router                *Router
 	middle                []func(Middle) Middle
 	stopCh                chan struct{}
@@ -94,9 +92,7 @@ func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
 }
 
 func (c *Client) Push(message []byte) error {
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	return c.Conn.WriteMessage(int(socket.Bin), message)
+	return c.Conn.Write(message)
 }
 
 func (c *Client) Close() error {
@@ -189,7 +185,7 @@ func (c *Client) Connect() {
 
 	c.Response = response
 
-	c.Conn = handler
+	c.Conn = &Conn{Conn: handler}
 
 	c.stopCh = make(chan struct{})
 	c.isStop = false
@@ -209,10 +205,11 @@ func (c *Client) Connect() {
 		}
 	}
 
+	// no answer
 	if c.PingHandler == nil {
 		c.PingHandler = func(client *Client) func(appData string) error {
 			return func(appData string) error {
-				return client.Push(client.Protocol.Encode(socket.Pong, 0, nil, nil))
+				return nil
 			}
 		}
 	}
@@ -220,6 +217,7 @@ func (c *Client) Connect() {
 	if c.PongHandler == nil {
 		c.PongHandler = func(connection *Client) func(appData string) error {
 			return func(appData string) error {
+				c.Conn.LastPong = time.Now()
 				if c.HeartBeatTimeout != 0 {
 					c.pongTimer.Reset(c.HeartBeatTimeout)
 				}
@@ -279,7 +277,7 @@ func (c *Client) Connect() {
 
 	go func() {
 		for {
-			messageFrame, message, err := c.Conn.ReadMessage()
+			messageFrame, message, err := c.Conn.Read()
 			// close error
 			if err != nil {
 				if !c.isStop {

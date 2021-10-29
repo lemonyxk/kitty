@@ -178,14 +178,16 @@ func (s *Server) Ready() {
 	if s.PingHandler == nil {
 		s.PingHandler = func(connection *Conn) func(appData string) error {
 			return func(appData string) error {
-				// back pong
-				var err = connection.Push(connection.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
-				err = connection.Conn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
+				var t = time.Now()
+				connection.LastPing = t
+				var err = connection.Conn.SetReadDeadline(t.Add(s.HeartBeatTimeout))
+				err = connection.Push(connection.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
 				return err
 			}
 		}
 	}
 
+	// no answer
 	if s.PongHandler == nil {
 		s.PongHandler = func(connection *Conn) func(appData string) error {
 			return func(appData string) error {

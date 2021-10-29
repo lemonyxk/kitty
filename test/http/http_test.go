@@ -80,7 +80,7 @@ func Test_Method_NotFound(t *testing.T) {
 
 func Test_Static_File(t *testing.T) {
 	var httpServerRouter = &server.Router{}
-	httpServerRouter.SetStaticPath("/", "../../example/server/public")
+	httpServerRouter.SetStaticPath("/", "", http3.Dir("../../example/public"))
 	httpServer.SetRouter(httpServerRouter)
 	assert.True(t, len(client.Get(ts.URL+"/1.png").Query().Send().Bytes()) == 2853516)
 	assert.True(t, client.Get(ts.URL+"/test.txt").Query().Send().String() == "hello static!")

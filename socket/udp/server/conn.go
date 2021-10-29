@@ -23,14 +23,15 @@ import (
 )
 
 type Conn struct {
-	Name   string
-	FD     int64
-	Conn   *net.UDPAddr
-	Server *Server
-	mux    sync.RWMutex
-	tick   *time.Timer
-	accept chan []byte
-	close  chan struct{}
+	Name     string
+	FD       int64
+	Conn     *net.UDPAddr
+	Server   *Server
+	LastPing time.Time
+	mux      sync.RWMutex
+	tick     *time.Timer
+	accept   chan []byte
+	close    chan struct{}
 }
 
 func (c *Conn) Host() string {

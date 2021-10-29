@@ -175,7 +175,7 @@ func TestMain(t *testing.M) {
 
 }
 
-func Test_Client_Async(t *testing.T) {
+func Test_WS_Client_Async(t *testing.T) {
 	stream, err := webSocketClient.Async().JsonEmit(socket.JsonPack{
 		Event: "/async",
 		Data:  strings.Repeat("hello world!", 1),
@@ -188,7 +188,7 @@ func Test_Client_Async(t *testing.T) {
 	assert.True(t, string(stream.Data) == "async test", "stream is nil")
 }
 
-func Test_Client(t *testing.T) {
+func Test_WS_Client(t *testing.T) {
 
 	var id int64 = 123456
 
@@ -227,7 +227,7 @@ func Test_Client(t *testing.T) {
 	}
 }
 
-func Test_Shutdown(t *testing.T) {
+func Test_WS_Shutdown(t *testing.T) {
 	shutdown()
 }
 

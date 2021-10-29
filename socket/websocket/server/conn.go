@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/lemoyxk/kitty/kitty"
@@ -26,6 +27,7 @@ type Conn struct {
 	Name     string
 	FD       int64
 	Conn     *websocket.Conn
+	LastPing time.Time
 	Server   *Server
 	Response http.ResponseWriter
 	Request  *http.Request

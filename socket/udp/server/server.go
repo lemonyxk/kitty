@@ -184,12 +184,15 @@ func (s *Server) Ready() {
 	if s.PingHandler == nil {
 		s.PingHandler = func(connection *Conn) func(appData string) error {
 			return func(appData string) error {
+				var t = time.Now()
+				connection.LastPing = t
 				connection.tick.Reset(s.HeartBeatTimeout)
 				return connection.Push(connection.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
 			}
 		}
 	}
 
+	// no answer
 	if s.PongHandler == nil {
 		s.PongHandler = func(connection *Conn) func(appData string) error {
 			return func(appData string) error {

@@ -13,16 +13,18 @@ package server
 import (
 	"net"
 	"sync"
+	"time"
 
 	"github.com/lemoyxk/kitty/socket"
 )
 
 type Conn struct {
-	Name   string
-	FD     int64
-	Conn   net.Conn
-	Server *Server
-	mux    sync.RWMutex
+	Name     string
+	FD       int64
+	Conn     net.Conn
+	Server   *Server
+	LastPing time.Time
+	mux      sync.RWMutex
 }
 
 func (c *Conn) Host() string {

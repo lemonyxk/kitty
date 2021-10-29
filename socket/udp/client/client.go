@@ -198,7 +198,7 @@ func (c *Client) Connect() {
 		return
 	}
 
-	c.Conn = &Conn{Addr: addr, Conn: handler}
+	c.Conn = &Conn{Addr: addr, Conn: handler, LastPong: time.Now()}
 
 	// send open message
 	err = c.Push(udp.OpenMessage)

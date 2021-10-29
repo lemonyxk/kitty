@@ -340,11 +340,12 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 		}
 
 		var conn = &Conn{
-			FD:     0,
-			Conn:   addr,
-			Server: s,
-			accept: make(chan []byte, 128),
-			close:  make(chan struct{}),
+			FD:       0,
+			Conn:     addr,
+			Server:   s,
+			LastPing: time.Now(),
+			accept:   make(chan []byte, 128),
+			close:    make(chan struct{}),
 		}
 
 		conn.tick = time.NewTimer(s.HeartBeatTimeout)

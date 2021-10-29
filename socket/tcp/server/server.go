@@ -314,9 +314,10 @@ func (s *Server) process(netConn net.Conn) {
 	}
 
 	var conn = &Conn{
-		FD:     0,
-		Conn:   netConn,
-		Server: s,
+		FD:       0,
+		Conn:     netConn,
+		Server:   s,
+		LastPing: time.Now(),
 	}
 
 	s.onOpen(conn)

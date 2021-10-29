@@ -182,7 +182,7 @@ func (c *Client) Connect() {
 		panic(err)
 	}
 
-	c.Conn = &Conn{Conn: handler}
+	c.Conn = &Conn{Conn: handler, LastPong: time.Now()}
 
 	c.stopCh = make(chan struct{})
 	c.isStop = false

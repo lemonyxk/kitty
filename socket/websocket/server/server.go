@@ -305,6 +305,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		Server:   s,
 		Response: w,
 		Request:  r,
+		LastPing: time.Now(),
 	}
 
 	// 设置PING处理函数
@@ -329,7 +330,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		// do not let it dead
 		// for web ping
 		if len(message) == 0 {
-			_ = netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
+			_ = s.PingHandler(conn)("")
 		}
 
 		err = s.decodeMessage(conn, message)

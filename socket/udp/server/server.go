@@ -187,7 +187,7 @@ func (s *Server) Ready() {
 				var t = time.Now()
 				connection.LastPing = t
 				connection.tick.Reset(s.HeartBeatTimeout)
-				return connection.Push(connection.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
+				return connection.Pong()
 			}
 		}
 	}

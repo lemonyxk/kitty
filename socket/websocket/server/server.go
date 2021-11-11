@@ -256,7 +256,7 @@ func (s *Server) Ready() {
 				var t = time.Now()
 				connection.LastPing = t
 				var err = connection.Conn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
-				err = connection.Push(connection.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
+				err = connection.Pong()
 				return err
 			}
 		}

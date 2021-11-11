@@ -25,19 +25,16 @@ import (
 // 7 body len
 
 const (
-	// Version
 	// Version byte = 'V'
 
-	// message type
 	Unknown byte = 0
-	Text    int  = 1
+	Text    byte = 1
 	Bin     byte = 2
 	Open    byte = 3
 	Close   byte = 4
 	Ping    byte = 9
 	Pong    byte = 10
 
-	// proto type
 	// Text     int = 1
 	// Json     int = 2
 	// ProtoBuf int = 3

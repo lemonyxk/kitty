@@ -38,6 +38,14 @@ func (c *Conn) ClientIP() string {
 	return ""
 }
 
+func (c *Conn) Ping() error {
+	return c.Push(c.Server.Protocol.Encode(socket.Ping, 0, nil, nil))
+}
+
+func (c *Conn) Pong() error {
+	return c.Push(c.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
+}
+
 func (c *Conn) Push(msg []byte) error {
 	return c.Server.Push(c.FD, msg)
 }

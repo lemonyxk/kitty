@@ -87,6 +87,14 @@ func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
 	return c.Push(c.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
 }
 
+func (c *Client) Ping() error {
+	return c.Push(c.Protocol.Encode(socket.Ping, 0, nil, nil))
+}
+
+func (c *Client) Pong() error {
+	return c.Push(c.Protocol.Encode(socket.Pong, 0, nil, nil))
+}
+
 func (c *Client) Push(message []byte) error {
 	return c.Conn.Write(message)
 }
@@ -198,7 +206,7 @@ func (c *Client) Connect() {
 	// heartbeat function
 	if c.HeartBeat == nil {
 		c.HeartBeat = func(client *Client) error {
-			return client.Push(client.Protocol.Encode(socket.Ping, 0, nil, nil))
+			return client.Ping()
 		}
 	}
 

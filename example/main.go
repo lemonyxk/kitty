@@ -111,6 +111,7 @@ func runHttpServer() {
 	})
 
 	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
+		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		return stream.EndString("hello world!")
 	})
 
@@ -150,7 +151,7 @@ func runHttpClientWithProcess() {
 
 func runHttpClient() {
 	time.AfterFunc(time.Second, func() {
-		var res = client.Get("http://127.0.0.1:8666/hello").Query().Send()
+		var res = client.Get("https://127.0.0.1:8666/hello").Query().Send()
 		if res.LastError() == nil {
 			log.Println("http OK!")
 		}

@@ -133,14 +133,14 @@ func (s *Server) handler(stream *http2.Stream) {
 	}
 }
 
-func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 	if !strings.HasPrefix(r.URL.Path, s.router.prefixPath) {
-		return
+		return errors.New("not match")
 	}
 
 	if s.router.fileSystem == nil {
-		return
+		return errors.New("file system is nil")
 	}
 
 	var openPath = r.URL.Path[len(s.router.prefixPath):]
@@ -149,12 +149,12 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 
 	var file, err = s.router.fileSystem.Open(openPath)
 	if err != nil {
-		return
+		return errors.New("not found")
 	}
 
 	info, err := file.Stat()
 	if err != nil {
-		return
+		return nil
 	}
 
 	if info.IsDir() {
@@ -188,7 +188,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 
 			dir, err := file.Readdir(0)
 			if err != nil {
-				return
+				return nil
 			}
 
 			var bts bytes.Buffer
@@ -221,10 +221,10 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 			_, err = w.Write(bts.Bytes())
 			if err != nil {
 				w.WriteHeader(http.StatusForbidden)
-				return
+				return nil
 			}
 
-			return
+			return nil
 		}
 	}
 
@@ -233,7 +233,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 	bts, err := ioutil.ReadAll(file)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
-		return
+		return nil
 	}
 
 	w.Header().Set("Content-Type", contentType)
@@ -241,8 +241,10 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(bts)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
-		return
+		return nil
 	}
+
+	return nil
 }
 
 func (s *Server) SetRouter(router *Router) *Server {
@@ -303,8 +305,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// static file
 	if s.router.fileSystem != nil && r.Method == http.MethodGet {
-		s.staticHandler(w, r)
-		return
+		if s.staticHandler(w, r) == nil {
+			return
+		}
 	}
 
 	s.process(w, r)

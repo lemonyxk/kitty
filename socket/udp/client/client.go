@@ -320,6 +320,8 @@ func (c *Client) Connect() {
 	// 连接成功
 	c.OnOpen(c)
 
+	var reader = c.Protocol.Reader()
+
 	var buffer = make([]byte, c.ReadBufferSize+udp.HeadLen)
 
 	go func() {
@@ -333,7 +335,9 @@ func (c *Client) Connect() {
 				break
 			}
 
-			err = c.process(buffer[:n])
+			err = reader(n, buffer, func(bytes []byte) {
+				err = c.process(bytes)
+			})
 
 			if err != nil {
 				if err.Error() != "close" {

@@ -12,7 +12,6 @@ package udp
 
 import (
 	"encoding/binary"
-	"errors"
 
 	"github.com/lemoyxk/kitty/socket"
 )
@@ -59,55 +58,9 @@ func (p *DefaultProtocol) Encode(messageType byte, id int64, route []byte, body 
 }
 
 func (p *DefaultProtocol) Reader() func(n int, buf []byte, fn func(bytes []byte)) error {
-
-	var singleMessageLen = 0
-
-	var message []byte
-
 	return func(n int, buf []byte, fn func(bytes []byte)) error {
-
-		message = append(message, buf[0:n]...)
-
-		// read continue
-		if len(message) < HeadLen {
-			return nil
-		}
-
-		for {
-
-			// jump out and read continue
-			if len(message) < HeadLen {
-				return nil
-			}
-
-			// just begin
-			if singleMessageLen == 0 {
-
-				// proto error
-				if !isHeaderInvalid(message) {
-					message = message[0:0]
-					singleMessageLen = 0
-					return errors.New("invalid header")
-				}
-
-				singleMessageLen = getLen(message)
-			}
-
-			// jump out and read continue
-			if len(message) < singleMessageLen {
-				return nil
-			}
-
-			// a complete message
-			fn(message[0:singleMessageLen])
-
-			// delete this message
-			message = message[singleMessageLen:]
-
-			// reset len
-			singleMessageLen = 0
-		}
-
+		fn(buf[:n])
+		return nil
 	}
 }
 

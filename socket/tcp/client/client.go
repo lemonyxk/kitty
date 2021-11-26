@@ -300,7 +300,6 @@ func (c *Client) Connect() {
 				}
 				break
 			}
-
 		}
 	}()
 

@@ -255,6 +255,14 @@ func (s *Server) Close(fd int64) error {
 	return conn.Close()
 }
 
+func (s *Server) GetConnectionByAddr(addr string) (*Conn, bool) {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	fd, ok := s.addrMap[addr]
+	conn, ok := s.connections[fd]
+	return conn, ok
+}
+
 func (s *Server) GetConnection(fd int64) (*Conn, bool) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
@@ -323,18 +331,19 @@ func (s *Server) Shutdown() error {
 
 func (s *Server) process(addr *net.UDPAddr, message []byte) {
 
-	s.processLock.Lock()
-	defer s.processLock.Unlock()
-	fd, ok := s.addrMap[addr.String()]
-	conn, ok := s.connections[fd]
-
 	switch message[2] {
 	case socket.Bin, socket.Ping, socket.Pong:
+		var conn, ok = s.GetConnectionByAddr(addr.String())
 		if !ok {
 			return
 		}
 		conn.accept <- message
 	case socket.Open:
+
+		s.processLock.Lock()
+		defer s.processLock.Unlock()
+
+		var _, ok = s.GetConnectionByAddr(addr.String())
 		if ok {
 			return
 		}
@@ -345,7 +354,7 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 			Server:   s,
 			LastPing: time.Now(),
 			accept:   make(chan []byte, 128),
-			close:    make(chan struct{}),
+			close:    make(chan struct{}, 1),
 		}
 
 		conn.tick = time.NewTimer(s.HeartBeatTimeout)
@@ -359,18 +368,21 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 		}()
 
 		// make sure this goroutine will run over
-
 		go func() {
+			var reader = s.Protocol.Reader()
 			for {
 				select {
 				case message := <-conn.accept:
-					var err = s.decodeMessage(conn, message)
+					var err error
+					err = reader(len(message), message, func(bytes []byte) {
+						err = s.decodeMessage(conn, bytes)
+					})
 					if err != nil {
 						s.OnError(err)
 					}
 				case <-conn.close:
 					conn.tick.Stop()
-					break
+					return
 				}
 			}
 		}()
@@ -383,6 +395,10 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 		}
 
 	case socket.Close:
+		s.processLock.Lock()
+		defer s.processLock.Unlock()
+
+		var conn, ok = s.GetConnectionByAddr(addr.String())
 		if !ok {
 			return
 		}

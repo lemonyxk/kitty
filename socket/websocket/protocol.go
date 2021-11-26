@@ -24,7 +24,7 @@ var PongMessage = []byte{0x0, 0x0, 0xa, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 
 type Protocol interface {
 	Decode(message []byte) (messageType byte, id int64, route []byte, body []byte)
 	Encode(messageType byte, id int64, route []byte, body []byte) []byte
-	Read()
+	Reader() func(n int, buf []byte, fn func(bytes []byte)) error
 }
 
 type DefaultProtocol struct{}
@@ -55,8 +55,11 @@ func (p *DefaultProtocol) Encode(messageType byte, id int64, route []byte, body 
 	return nil
 }
 
-func (p *DefaultProtocol) Read() {
-
+func (p *DefaultProtocol) Reader() func(n int, buf []byte, fn func(bytes []byte)) error {
+	return func(n int, buf []byte, fn func(bytes []byte)) error {
+		fn(buf)
+		return nil
+	}
 }
 
 func isHeaderInvalid(message []byte) bool {

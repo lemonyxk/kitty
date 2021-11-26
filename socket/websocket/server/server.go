@@ -317,6 +317,8 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 	// 打开连接 记录
 	s.onOpen(conn)
 
+	var reader = s.Protocol.Reader()
+
 	// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
 	for {
 
@@ -333,12 +335,14 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 			_ = s.PingHandler(conn)("")
 		}
 
-		err = s.decodeMessage(conn, message)
+		err = reader(len(message), message, func(bytes []byte) {
+			err = s.decodeMessage(conn, bytes)
+		})
+
 		if err != nil {
 			s.onError(err)
 			break
 		}
-
 	}
 
 	// close and clean

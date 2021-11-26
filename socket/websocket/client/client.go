@@ -283,6 +283,8 @@ func (c *Client) Connect() {
 	// 连接成功
 	c.OnOpen(c)
 
+	var reader = c.Protocol.Reader()
+
 	go func() {
 		for {
 			messageFrame, message, err := c.Conn.Read()
@@ -294,7 +296,9 @@ func (c *Client) Connect() {
 				break
 			}
 
-			err = c.decodeMessage(messageFrame, message)
+			err = reader(len(message), message, func(bytes []byte) {
+				err = c.decodeMessage(messageFrame, bytes)
+			})
 
 			if err != nil {
 				c.OnError(err)

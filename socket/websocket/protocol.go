@@ -57,7 +57,7 @@ func (p *DefaultProtocol) Encode(messageType byte, id int64, route []byte, body 
 
 func (p *DefaultProtocol) Reader() func(n int, buf []byte, fn func(bytes []byte)) error {
 	return func(n int, buf []byte, fn func(bytes []byte)) error {
-		fn(buf)
+		fn(buf[:n])
 		return nil
 	}
 }

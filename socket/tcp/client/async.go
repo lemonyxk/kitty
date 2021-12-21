@@ -12,16 +12,23 @@ package client
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/lemoyxk/kitty/socket"
 )
 
+var async = new(Async)
+
 type Async struct {
 	client *Client
+	mux    sync.Mutex
 }
 
 func (a *Async) Emit(pack socket.Pack) (*socket.Stream, error) {
+	a.mux.Lock()
+	defer a.mux.Unlock()
+
 	var ch = make(chan *socket.Stream)
 	a.client.GetRouter().Route(pack.Event).Handler(func(client *Client, stream *socket.Stream) error {
 		ch <- stream
@@ -46,6 +53,9 @@ func (a *Async) Emit(pack socket.Pack) (*socket.Stream, error) {
 }
 
 func (a *Async) JsonEmit(pack socket.JsonPack) (*socket.Stream, error) {
+	a.mux.Lock()
+	defer a.mux.Unlock()
+
 	var ch = make(chan *socket.Stream)
 	a.client.GetRouter().Route(pack.Event).Handler(func(client *Client, stream *socket.Stream) error {
 		ch <- stream
@@ -70,6 +80,9 @@ func (a *Async) JsonEmit(pack socket.JsonPack) (*socket.Stream, error) {
 }
 
 func (a *Async) ProtoBufEmit(pack socket.ProtoBufPack) (*socket.Stream, error) {
+	a.mux.Lock()
+	defer a.mux.Unlock()
+
 	var ch = make(chan *socket.Stream)
 	a.client.GetRouter().Route(pack.Event).Handler(func(client *Client, stream *socket.Stream) error {
 		ch <- stream
@@ -94,5 +107,6 @@ func (a *Async) ProtoBufEmit(pack socket.ProtoBufPack) (*socket.Stream, error) {
 }
 
 func (c *Client) Async() *Async {
-	return &Async{client: c}
+	async.client = c
+	return async
 }

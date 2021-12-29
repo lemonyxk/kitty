@@ -55,7 +55,7 @@ func (s *Server) Use(middle ...func(next Middle) Middle) {
 }
 
 func (s *Server) process(w http.ResponseWriter, r *http.Request) {
-	var stream = &http2.Stream{Response: w, Request: r, Query: &http2.Store{}, Form: &http2.Store{}, Json: &http2.Json{}, Files: &http2.Files{}}
+	var stream = &http2.Stream{Response: w, Request: r, Protobuf: &http2.Protobuf{}, Query: &http2.Store{}, Form: &http2.Store{}, Json: &http2.Json{}, Files: &http2.Files{}}
 	s.middleware(stream)
 }
 
@@ -216,8 +216,8 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 				</html>
 			`)
 
-			w.Header().Set("Content-Type", "text/html")
-			w.Header().Set("Content-Length", strconv.Itoa(bts.Len()))
+			w.Header().Set(kitty.ContentType, kitty.TextHtml)
+			w.Header().Set(kitty.ContentLength, strconv.Itoa(bts.Len()))
 			_, err = w.Write(bts.Bytes())
 			if err != nil {
 				w.WriteHeader(http.StatusForbidden)
@@ -236,8 +236,8 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Length", strconv.Itoa(len(bts)))
+	w.Header().Set(kitty.ContentType, contentType)
+	w.Header().Set(kitty.ContentLength, strconv.Itoa(len(bts)))
 	_, err = w.Write(bts)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)

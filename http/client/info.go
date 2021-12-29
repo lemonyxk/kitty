@@ -16,6 +16,7 @@ import (
 	url2 "net/url"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/lemoyxk/kitty/kitty"
 )
 
@@ -103,6 +104,16 @@ func (h *info) AddCookie(cookie *http.Cookie) *info {
 	}
 	h.cookies = append(h.cookies, cookie)
 	return h
+}
+
+func (h *info) Protobuf(body ...proto.Message) *params {
+	h.SetHeader(kitty.ContentType, kitty.ApplicationProtobuf)
+	h.body = body
+	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
+	if err != nil {
+		return &params{err: err}
+	}
+	return &params{info: h, req: request, cancel: cancel}
 }
 
 func (h *info) Json(body ...interface{}) *params {

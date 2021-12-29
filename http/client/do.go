@@ -24,6 +24,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemoyxk/kitty/kitty"
 )
@@ -37,9 +38,36 @@ func getRequest(method string, url string, info *info) (*http.Request, context.C
 		return doPostJson(method, url, info)
 	case kitty.MultipartFormData:
 		return doPostFormData(method, url, info)
+	case kitty.ApplicationProtobuf:
+		return doPostXProtobuf(method, url, info)
 	default:
 		return doUrl(method, url, info)
 	}
+}
+
+func doPostXProtobuf(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+	body, ok := info.body.([]proto.Message)
+	if !ok {
+		return nil, nil, errors.New(kitty.ApplicationProtobuf + " body must be proto.Message")
+	}
+
+	var protobufBody []byte
+
+	for i := 0; i < len(body); i++ {
+		b, err := proto.Marshal(body[i])
+		if err != nil {
+			return nil, nil, err
+		}
+		protobufBody = append(protobufBody, b...)
+	}
+
+	var ctx, cancel = context.WithCancel(context.Background())
+	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(protobufBody))
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	return request, cancel, err
 }
 
 func doPostFormData(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
@@ -49,7 +77,7 @@ func doPostFormData(method string, url string, info *info) (*http.Request, conte
 
 	body, ok := info.body.([]map[string]interface{})
 	if !ok {
-		return nil, nil, errors.New("application/x-www-form-urlencoded body must be map[string]interface")
+		return nil, nil, errors.New(kitty.MultipartFormData + " body must be map[string]interface")
 	}
 
 	var buf = new(bytes.Buffer)
@@ -104,7 +132,7 @@ func doPostFormData(method string, url string, info *info) (*http.Request, conte
 func doPostJson(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([]interface{})
 	if !ok {
-		return nil, nil, errors.New("application/json body must be interface")
+		return nil, nil, errors.New(kitty.ApplicationJson + " body must be interface")
 	}
 
 	var jsonBody []byte
@@ -133,7 +161,7 @@ func doPostFormUrlencoded(method string, url string, info *info) (*http.Request,
 
 	body, ok := info.body.([]map[string]interface{})
 	if !ok {
-		return nil, nil, errors.New("application/x-www-form-urlencoded body must be map[string]interface")
+		return nil, nil, errors.New(kitty.ApplicationFormUrlencoded + " body must be map[string]interface")
 	}
 
 	var buff bytes.Buffer

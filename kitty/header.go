@@ -15,8 +15,11 @@ const (
 	XRealIP                   = "X-Real-IP"
 	Host                      = "Host"
 	ApplicationFormUrlencoded = "application/x-www-form-urlencoded"
+	ApplicationProtobuf       = "application/x-protobuf"
 	ApplicationJson           = "application/json"
+	ApplicationOctetStream    = "application/octet-stream"
 	MultipartFormData         = "multipart/form-data"
+	TextHtml                  = "text/html"
 	ContentType               = "Content-Type"
 	ContentLength             = "Content-Length"
 )

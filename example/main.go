@@ -9,7 +9,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/lemoyxk/kitty"
+	awesomepackage "github.com/lemoyxk/kitty/example/protobuf"
 	"github.com/lemoyxk/kitty/http"
 	"github.com/lemoyxk/kitty/http/client"
 	server3 "github.com/lemoyxk/kitty/http/server"
@@ -115,6 +117,17 @@ func runHttpServer() {
 		return stream.EndString("hello world!")
 	})
 
+	httpServerRouter.Route("POST", "/proto").Handler(func(stream *http.Stream) error {
+		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
+		var res awesomepackage.AwesomeMessage
+		var msg = stream.Protobuf.Bytes()
+		var err = proto.Unmarshal(msg, &res)
+		if err != nil {
+			return stream.EndString(err.Error())
+		}
+		return stream.EndString("hello proto!")
+	})
+
 	httpServerRouter.Group("/hello").Handler(func(handler *server3.RouteHandler) {
 		handler.Get("/world").Handler(func(t *http.Stream) error {
 			return t.JsonFormat("SUCCESS", 200, os.Getpid())
@@ -150,8 +163,19 @@ func runHttpClientWithProcess() {
 }
 
 func runHttpClient() {
+
 	time.AfterFunc(time.Second, func() {
 		var res = client.Get("https://127.0.0.1:8666/hello").Query().Send()
+		if res.LastError() == nil {
+			log.Println("http OK!")
+		}
+
+		var msg = awesomepackage.AwesomeMessage{
+			AwesomeField: "1",
+			AwesomeKey:   "2",
+		}
+
+		res = client.Post("https://127.0.0.1:8666/proto").Protobuf(&msg).Send()
 		if res.LastError() == nil {
 			log.Println("http OK!")
 		}

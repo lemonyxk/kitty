@@ -20,17 +20,19 @@ type Stream struct {
 	Query    *Store
 	Form     *Store
 	Json     *Json
+	Protobuf *Protobuf
 	Files    *Files
 
 	Params  kitty2.Params
 	Context kitty2.Context
 	Logger  kitty2.Logger
 
-	maxMemory     int64
-	hasParseQuery bool
-	hasParseForm  bool
-	hasParseJson  bool
-	hasParseFiles bool
+	maxMemory        int64
+	hasParseQuery    bool
+	hasParseForm     bool
+	hasParseJson     bool
+	hasParseProtobuf bool
+	hasParseFiles    bool
 }
 
 func (s *Stream) Forward(fn func(stream *Stream) error) error {
@@ -61,7 +63,7 @@ func (s *Stream) End(data interface{}) error {
 }
 
 func (s *Stream) EndJson(data interface{}) error {
-	s.SetHeader("Content-Type", "application/json")
+	s.SetHeader(kitty2.ContentType, kitty2.ApplicationJson)
 	bts, err := jsoniter.Marshal(data)
 	if err != nil {
 		return err
@@ -81,7 +83,7 @@ func (s *Stream) EndBytes(data []byte) error {
 }
 
 func (s *Stream) EndFile(fileName string, content interface{}) error {
-	s.SetHeader("Content-Type", "application/octet-stream")
+	s.SetHeader(kitty2.ContentType, kitty2.ApplicationOctetStream)
 	s.SetHeader("content-Disposition", "attachment;filename="+fileName)
 	return s.End(content)
 }
@@ -127,6 +129,24 @@ func (s *Stream) ParseJson() *Json {
 	s.Json.bts = jsonBody
 
 	return s.Json
+}
+
+func (s *Stream) ParseProtobuf() *Protobuf {
+
+	if s.hasParseProtobuf {
+		return s.Protobuf
+	}
+
+	s.hasParseProtobuf = true
+
+	protobufBody, err := ioutil.ReadAll(s.Request.Body)
+	if err != nil {
+		return s.Protobuf
+	}
+
+	s.Protobuf.bts = protobufBody
+
+	return s.Protobuf
 }
 
 func (s *Stream) ParseFiles() *Files {
@@ -222,26 +242,31 @@ func (s *Stream) ParseForm() *Store {
 
 func (s *Stream) AutoParse() {
 
-	var header = s.Request.Header.Get("Content-Type")
+	var header = s.Request.Header.Get(kitty2.ContentType)
 
 	if strings.ToUpper(s.Request.Method) == "GET" {
 		s.ParseQuery()
 		return
 	}
 
-	if strings.HasPrefix(header, "multipart/form-data") {
+	if strings.HasPrefix(header, kitty2.MultipartFormData) {
 		s.ParseMultipart()
 		s.ParseFiles()
 		return
 	}
 
-	if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
+	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
 		s.ParseForm()
 		return
 	}
 
-	if strings.HasPrefix(header, "application/json") {
+	if strings.HasPrefix(header, kitty2.ApplicationJson) {
 		s.ParseJson()
+		return
+	}
+
+	if strings.HasPrefix(header, kitty2.ApplicationProtobuf) {
+		s.ParseProtobuf()
 		return
 	}
 }
@@ -251,17 +276,17 @@ func (s *Stream) AutoGet(key string) Value {
 		return s.Query.First(key)
 	}
 
-	var header = s.Request.Header.Get("Content-Type")
+	var header = s.Request.Header.Get(kitty2.ContentType)
 
-	if strings.HasPrefix(header, "multipart/form-data") {
+	if strings.HasPrefix(header, kitty2.MultipartFormData) {
 		return s.Form.First(key)
 	}
 
-	if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
+	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
 		return s.Form.First(key)
 	}
 
-	if strings.HasPrefix(header, "application/json") {
+	if strings.HasPrefix(header, kitty2.ApplicationJson) {
 		return s.Json.Get(key)
 	}
 
@@ -283,22 +308,26 @@ func (s *Stream) Url() string {
 
 func (s *Stream) String() string {
 
-	var header = s.Request.Header.Get("Content-Type")
+	var header = s.Request.Header.Get(kitty2.ContentType)
 
 	if strings.ToUpper(s.Request.Method) == "GET" {
 		return s.Query.String()
 	}
 
-	if strings.HasPrefix(header, "multipart/form-data") {
+	if strings.HasPrefix(header, kitty2.MultipartFormData) {
 		return s.Form.String()
 	}
 
-	if strings.HasPrefix(header, "application/x-www-form-urlencoded") {
+	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
 		return s.Form.String()
 	}
 
-	if strings.HasPrefix(header, "application/json") {
+	if strings.HasPrefix(header, kitty2.ApplicationJson) {
 		return s.Json.String()
+	}
+
+	if strings.HasPrefix(header, kitty2.ApplicationProtobuf) {
+		return string(s.Protobuf.Bytes())
 	}
 
 	return ""

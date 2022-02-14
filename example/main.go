@@ -119,6 +119,8 @@ func runHttpServer() {
 
 	httpServerRouter.Route("POST", "/proto").Handler(func(stream *http.Stream) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
+		log.Println(stream.AutoGet("name").String())
+		log.Println(stream.Files.First("file"))
 		var res awesomepackage.AwesomeMessage
 		var msg = stream.Protobuf.Bytes()
 		var err = proto.Unmarshal(msg, &res)

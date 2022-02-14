@@ -223,8 +223,6 @@ func (s *Stream) ParseForm() *Store {
 
 	s.hasParseForm = true
 
-	s.Form = &Store{}
-
 	err := s.Request.ParseForm()
 	if err != nil {
 		return s.Form

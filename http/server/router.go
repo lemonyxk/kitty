@@ -195,6 +195,7 @@ type Router struct {
 	fixPath      string
 	fileSystem   http2.FileSystem
 	defaultIndex []string
+	staticMiddle map[string]func(bts []byte) ([]byte, string)
 	globalAfter  []After
 	globalBefore []Before
 	openDir      bool
@@ -229,6 +230,10 @@ func (r *Router) SetOpenDir(openDir bool) {
 	r.openDir = openDir
 }
 
+func (r *Router) SetStaticMiddle(t string, fn func(bts []byte) ([]byte, string)) {
+	r.staticMiddle[t] = fn
+}
+
 func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem http2.FileSystem) {
 
 	if prefixPath == "" {
@@ -243,7 +248,8 @@ func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem htt
 	r.fileSystem = fileSystem
 	r.fixPath = fixPath
 	r.openDir = false
-	r.defaultIndex = []string{"index.html"}
+	r.defaultIndex = []string{}
+	r.staticMiddle = make(map[string]func(bts []byte) ([]byte, string))
 }
 
 func (r *Router) Group(path ...string) *group {

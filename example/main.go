@@ -143,7 +143,10 @@ func runHttpServer() {
 	// httpServerRouter.SetStaticPath("/", "", http2.Dir("./example/public"))
 
 	httpServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
-	httpServerRouter.SetDefaultIndex("index.html", "index.htm")
+	// httpServerRouter.SetDefaultIndex("index.html", "index.htm")
+	httpServerRouter.SetStaticMiddle(".md", func(bts []byte) ([]byte, string) {
+		return bts, "text/markdown"
+	})
 	httpServerRouter.SetOpenDir(true)
 
 	go httpServer.SetRouter(httpServerRouter).Start()

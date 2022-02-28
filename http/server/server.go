@@ -228,20 +228,37 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	var contentType = mime.TypeByExtension(filepath.Ext(info.Name()))
-
 	bts, err := ioutil.ReadAll(file)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		return nil
 	}
 
-	w.Header().Set(kitty.ContentType, contentType)
-	w.Header().Set(kitty.ContentLength, strconv.Itoa(len(bts)))
-	_, err = w.Write(bts)
-	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
-		return nil
+	var ext = filepath.Ext(info.Name())
+
+	var fn, ok = s.router.staticMiddle[ext]
+
+	if ok {
+		var bts, contentType = fn(bts)
+
+		w.Header().Set(kitty.ContentType, contentType)
+		w.Header().Set(kitty.ContentLength, strconv.Itoa(len(bts)))
+		_, err = w.Write(bts)
+		if err != nil {
+			w.WriteHeader(http.StatusForbidden)
+			return nil
+		}
+
+	} else {
+		var contentType = mime.TypeByExtension(ext)
+
+		w.Header().Set(kitty.ContentType, contentType)
+		w.Header().Set(kitty.ContentLength, strconv.Itoa(len(bts)))
+		_, err = w.Write(bts)
+		if err != nil {
+			w.WriteHeader(http.StatusForbidden)
+			return nil
+		}
 	}
 
 	return nil

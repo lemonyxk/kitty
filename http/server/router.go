@@ -11,6 +11,7 @@
 package server
 
 import (
+	"io/fs"
 	http2 "net/http"
 	"strconv"
 	"strings"
@@ -195,7 +196,7 @@ type Router struct {
 	fixPath      string
 	fileSystem   http2.FileSystem
 	defaultIndex []string
-	staticMiddle map[string]func(bts []byte) ([]byte, string)
+	staticMiddle map[string]func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error
 	globalAfter  []After
 	globalBefore []Before
 	openDir      bool
@@ -230,7 +231,7 @@ func (r *Router) SetOpenDir(openDir bool) {
 	r.openDir = openDir
 }
 
-func (r *Router) SetStaticMiddle(t string, fn func(bts []byte) ([]byte, string)) {
+func (r *Router) SetStaticMiddle(t string, fn func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error) {
 	r.staticMiddle[t] = fn
 }
 
@@ -249,7 +250,7 @@ func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem htt
 	r.fixPath = fixPath
 	r.openDir = false
 	r.defaultIndex = []string{}
-	r.staticMiddle = make(map[string]func(bts []byte) ([]byte, string))
+	r.staticMiddle = make(map[string]func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error)
 }
 
 func (r *Router) Group(path ...string) *group {

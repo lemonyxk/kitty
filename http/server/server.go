@@ -189,6 +189,16 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 		if !findDefault && s.router.openDir {
 
+			if s.router.dirMiddle != nil {
+				var fn = s.router.dirMiddle
+				err = fn(w, r, file, info)
+				if err != nil {
+					w.WriteHeader(http.StatusForbidden)
+					return nil
+				}
+				return nil
+			}
+
 			dir, err := file.Readdir(0)
 			if err != nil {
 				return nil
@@ -203,6 +213,18 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 				    <meta charset="UTF-8">
 				    <meta http-equiv="X-UA-Compatible" content="IE=edge">
 				    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+					<style>
+						a {
+						    color: #008CBA;
+						    line-height: inherit;
+						    text-decoration: none;
+							display:block;
+							margin-top:5px;
+						}
+						a:hover {
+						    color: #008C0A;
+						}
+					</style>
 				    <title>kitty-server</title>
 				</head>
 				<body>
@@ -241,6 +263,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 			w.WriteHeader(http.StatusForbidden)
 			return nil
 		}
+		return nil
 	}
 
 	bts, err := ioutil.ReadAll(file)

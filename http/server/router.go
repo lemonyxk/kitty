@@ -200,6 +200,7 @@ type Router struct {
 	globalAfter  []After
 	globalBefore []Before
 	openDir      bool
+	dirMiddle    func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error
 }
 
 func (r *Router) SetGlobalBefore(before ...Before) {

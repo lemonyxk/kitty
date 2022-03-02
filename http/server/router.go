@@ -190,17 +190,18 @@ func (r *route) Handler(fn function) {
 }
 
 type Router struct {
-	StrictMode   bool
-	tire         *tire.Tire
-	prefixPath   string
-	fixPath      string
-	fileSystem   http2.FileSystem
-	defaultIndex []string
-	staticMiddle map[string]func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error
-	globalAfter  []After
-	globalBefore []Before
-	openDir      bool
-	dirMiddle    func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error
+	StrictMode     bool
+	tire           *tire.Tire
+	prefixPath     string
+	fixPath        string
+	fileSystem     http2.FileSystem
+	defaultIndex   []string
+	staticMiddle   map[string]func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error
+	globalAfter    []After
+	globalBefore   []Before
+	openDir        bool
+	dirMiddle      func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error
+	staticDownload bool
 }
 
 func (r *Router) SetGlobalBefore(before ...Before) {
@@ -238,6 +239,10 @@ func (r *Router) SetStaticMiddle(t string, fn func(http2.ResponseWriter, *http2.
 
 func (r *Router) SetDirMiddle(t string, fn func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error) {
 	r.dirMiddle = fn
+}
+
+func (r *Router) SetStaticDownload(flag bool) {
+	r.staticDownload = flag
 }
 
 func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem http2.FileSystem) {

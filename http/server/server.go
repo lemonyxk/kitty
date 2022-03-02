@@ -237,6 +237,11 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 							width:1rem;
 							margin-right: 5px;
 						}
+						a {
+							display: flex;
+							justify-content: center;
+							align-items: center;
+						}
 					</style>
 				    <title>kitty-server</title>
 				</head>
@@ -245,13 +250,17 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 			for i := 0; i < len(dir); i++ {
 				if dir[i].IsDir() {
-					bts.WriteString(`<div><svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSvgIcon-root MuiSvgIcon-fontSizeLarge css-zjt8k" focusable="false" aria-hidden="true" viewBox="0 0 24 24" data-testid="DriveFileMoveIcon" tabindex="-1" title="DriveFileMove"><path d="M20 6h-8l-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 12v-3h-4v-4h4V8l5 5-5 5z"></path></svg><a class="dir" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
+					bts.WriteString(`<div>` + emptySVG + dirSVG + `<a class="dir" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
 				} else {
-					bts.WriteString(`<div><svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSvgIcon-root MuiSvgIcon-fontSizeLarge css-zjt8k" focusable="false" aria-hidden="true" viewBox="0 0 24 24" data-testid="ArticleIcon" tabindex="-1" title="Article"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"></path></svg><a class="file" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
+					var download = ""
+					if s.router.staticDownload {
+						download = `<a class="file" download href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + downloadSVG + `</a>`
+					}
+					bts.WriteString(`<div>` + download + fileSVG + `<a class="file" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a>` + `</div>`)
 				}
 			}
 
-			bts.WriteString(`<div><a class="dir" href="` + filepath.Dir(r.URL.Path) + `">` + `<svg class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium MuiSvgIcon-root MuiSvgIcon-fontSizeLarge css-zjt8k" focusable="false" aria-hidden="true" viewBox="0 0 24 24" data-testid="ArrowBackIcon" tabindex="-1" title="ArrowBack"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"></path></svg>` + `</a></div>`)
+			bts.WriteString(`<div><a class="dir" href="` + filepath.Dir(r.URL.Path) + `">` + backSVG + `</a></div>`)
 
 			bts.WriteString(`				    
 				</body>

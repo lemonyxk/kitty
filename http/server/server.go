@@ -231,7 +231,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 			`)
 
 			for i := 0; i < len(dir); i++ {
-				bts.WriteString(`<a href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a><br/>`)
+				bts.WriteString(`<a href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a>`)
 			}
 
 			bts.WriteString(`<a href="` + filepath.Dir(r.URL.Path) + `">` + ".." + `</a>`)

@@ -236,6 +236,10 @@ func (r *Router) SetStaticMiddle(t string, fn func(http2.ResponseWriter, *http2.
 	r.staticMiddle[t] = fn
 }
 
+func (r *Router) SetDirMiddle(t string, fn func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error) {
+	r.dirMiddle = fn
+}
+
 func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem http2.FileSystem) {
 
 	if prefixPath == "" {

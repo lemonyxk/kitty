@@ -249,13 +249,15 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 			`)
 
 			for i := 0; i < len(dir); i++ {
+				var download = ""
+				var empty = ""
+				if s.router.staticDownload {
+					download = `<a class="file" download href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + downloadSVG + `</a>`
+					empty = emptySVG
+				}
 				if dir[i].IsDir() {
-					bts.WriteString(`<div>` + emptySVG + dirSVG + `<a class="dir" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
+					bts.WriteString(`<div>` + empty + dirSVG + `<a class="dir" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
 				} else {
-					var download = ""
-					if s.router.staticDownload {
-						download = `<a class="file" download href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + downloadSVG + `</a>`
-					}
 					bts.WriteString(`<div>` + download + fileSVG + `<a class="file" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a>` + `</div>`)
 				}
 			}

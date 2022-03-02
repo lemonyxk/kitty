@@ -269,6 +269,50 @@ func (s *Stream) AutoParse() {
 	}
 }
 
+func (s *Stream) Has(key string) bool {
+	if strings.ToUpper(s.Request.Method) == "GET" {
+		return s.Query.Has(key)
+	}
+
+	var header = s.Request.Header.Get(kitty2.ContentType)
+
+	if strings.HasPrefix(header, kitty2.MultipartFormData) {
+		return s.Form.Has(key)
+	}
+
+	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
+		return s.Form.Has(key)
+	}
+
+	if strings.HasPrefix(header, kitty2.ApplicationJson) {
+		return s.Json.Has(key)
+	}
+
+	return false
+}
+
+func (s *Stream) Empty(key string) bool {
+	if strings.ToUpper(s.Request.Method) == "GET" {
+		return s.Query.Empty(key)
+	}
+
+	var header = s.Request.Header.Get(kitty2.ContentType)
+
+	if strings.HasPrefix(header, kitty2.MultipartFormData) {
+		return s.Form.Empty(key)
+	}
+
+	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
+		return s.Form.Empty(key)
+	}
+
+	if strings.HasPrefix(header, kitty2.ApplicationJson) {
+		return s.Json.Empty(key)
+	}
+
+	return false
+}
+
 func (s *Stream) AutoGet(key string) Value {
 	if strings.ToUpper(s.Request.Method) == "GET" {
 		return s.Query.First(key)

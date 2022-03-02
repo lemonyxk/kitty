@@ -4,6 +4,7 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
+	"io/fs"
 	"log"
 	http2 "net/http"
 	"os"
@@ -144,8 +145,8 @@ func runHttpServer() {
 
 	httpServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
 	// httpServerRouter.SetDefaultIndex("index.html", "index.htm")
-	httpServerRouter.SetStaticMiddle(".md", func(bts []byte) ([]byte, string) {
-		return bts, "text/markdown"
+	httpServerRouter.SetStaticMiddle(".md", func(writer http2.ResponseWriter, request *http2.Request, file fs.File, info fs.FileInfo) error {
+		return nil
 	})
 	httpServerRouter.SetOpenDir(true)
 

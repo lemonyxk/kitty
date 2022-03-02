@@ -290,6 +290,9 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	var contentType = mime.TypeByExtension(ext)
+	if contentType == "" {
+		contentType = kitty.TextPlain
+	}
 
 	w.Header().Set(kitty.ContentType, contentType)
 	w.Header().Set(kitty.ContentLength, strconv.Itoa(len(bts)))

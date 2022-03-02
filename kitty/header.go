@@ -19,7 +19,9 @@ const (
 	ApplicationJson           = "application/json"
 	ApplicationOctetStream    = "application/octet-stream"
 	MultipartFormData         = "multipart/form-data"
-	TextHtml                  = "text/html"
 	ContentType               = "Content-Type"
 	ContentLength             = "Content-Length"
+
+	TextHtml  = "text/html"
+	TextPlain = "text/plain"
 )

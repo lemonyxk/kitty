@@ -151,6 +151,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return errors.New("not found")
 	}
+	defer func() { _ = file.Close() }()
 
 	info, err := file.Stat()
 	if err != nil {
@@ -161,26 +162,25 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 		var findDefault = false
 
-		if len(s.router.defaultIndex) > 0 {
+		for i := 0; i < len(s.router.defaultIndex); i++ {
+			if s.router.defaultIndex[i] == "" {
+				continue
+			}
 
-			for i := 0; i < len(s.router.defaultIndex); i++ {
-				if s.router.defaultIndex[i] == "" {
-					continue
-				}
-
-				var otp = filepath.Join(openPath, s.router.defaultIndex[i])
-				var of, err = s.router.fileSystem.Open(otp)
-				if err != nil {
-					continue
-				}
-				if _, err := of.Stat(); err != nil {
-					continue
-				} else {
-					openPath = otp
-					file = of
-					findDefault = true
-					break
-				}
+			var otp = filepath.Join(openPath, s.router.defaultIndex[i])
+			var of, err = s.router.fileSystem.Open(otp)
+			if err != nil {
+				continue
+			}
+			if _, err := of.Stat(); err != nil {
+				_ = of.Close()
+				continue
+			} else {
+				_ = file.Close()
+				openPath = otp
+				file = of
+				findDefault = true
+				break
 			}
 		}
 

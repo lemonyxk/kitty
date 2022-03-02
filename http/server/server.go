@@ -172,13 +172,16 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 			if err != nil {
 				continue
 			}
-			if _, err := of.Stat(); err != nil {
+
+			in, err := of.Stat()
+			if err != nil {
 				_ = of.Close()
 				continue
 			} else {
 				_ = file.Close()
 				openPath = otp
 				file = of
+				info = in
 				findDefault = true
 				break
 			}

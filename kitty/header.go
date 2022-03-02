@@ -22,6 +22,6 @@ const (
 	ContentType               = "Content-Type"
 	ContentLength             = "Content-Length"
 
-	TextHtml  = "text/html"
-	TextPlain = "text/plain"
+	TextHtml  = "text/html; charset=utf-8"
+	TextPlain = "text/plain; charset=utf-8"
 )

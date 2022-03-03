@@ -212,8 +212,34 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 				<head>
 				    <meta charset="UTF-8">
 				    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-				    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+				    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=0,minimum-scale=1.0,maximum-scale=1.0">
 					<style>
+						body {
+						    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+						    sans-serif;
+						    -webkit-font-smoothing: antialiased;
+						    -moz-osx-font-smoothing: grayscale;
+						}
+						
+						* {
+						    box-sizing: border-box;
+						}
+						::-webkit-scrollbar {
+						    width: 0px;
+						    height: 0px;
+						}
+						
+						::-webkit-scrollbar-track {
+						    /* border-radius: 3px; */
+						    /* background: rgba(115, 18, 226, 0.16); */
+						    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.08);
+						}
+						
+						::-webkit-scrollbar-thumb {
+						    /* border-radius: 3px; */
+						    background: rgba(20, 5, 107, 0.06);
+						    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.08);
+						}
 						.dir {
 						    color: #008CBA;
 						    line-height: inherit;

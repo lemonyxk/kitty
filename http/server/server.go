@@ -206,74 +206,6 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 			var bts bytes.Buffer
 
-			bts.WriteString(`
-				<!DOCTYPE html>
-				<html lang="en">
-				<head>
-				    <meta charset="UTF-8">
-				    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-				    <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=0,minimum-scale=1.0,maximum-scale=1.0">
-					<style>
-						body {
-						    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-						    sans-serif;
-						    -webkit-font-smoothing: antialiased;
-						    -moz-osx-font-smoothing: grayscale;
-						}
-						
-						* {
-						    box-sizing: border-box;
-						}
-						::-webkit-scrollbar {
-						    width: 0px;
-						    height: 0px;
-						}
-						
-						::-webkit-scrollbar-track {
-						    /* border-radius: 3px; */
-						    /* background: rgba(115, 18, 226, 0.16); */
-						    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.08);
-						}
-						
-						::-webkit-scrollbar-thumb {
-						    /* border-radius: 3px; */
-						    background: rgba(20, 5, 107, 0.06);
-						    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.08);
-						}
-						.dir {
-						    color: #008CBA;
-						    line-height: inherit;
-						    text-decoration: none;
-						}
-						.file {
-						    color: #000000;
-						    line-height: inherit;
-						    text-decoration: none;
-						}
-						a:hover {
-						    color: #008C0A;
-						}
-						div {
-						    margin-top: 4px;
-						    display: flex;
-						    justify-content: flex-start;
-						    align-items: center;
-						}
-						svg {
-							width:1rem;
-							margin-right: 5px;
-						}
-						a {
-							display: flex;
-							justify-content: center;
-							align-items: center;
-						}
-					</style>
-				    <title>kitty-server</title>
-				</head>
-				<body>
-			`)
-
 			for i := 0; i < len(dir); i++ {
 				var download = ""
 				var empty = ""
@@ -290,14 +222,11 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 			bts.WriteString(`<div><a class="dir" href="` + filepath.Dir(r.URL.Path) + `">` + backSVG + `</a></div>`)
 
-			bts.WriteString(`				    
-				</body>
-				</html>
-			`)
+			var str = strings.ReplaceAll(html, `{{body}}`, bts.String())
 
 			w.Header().Set(kitty.ContentType, kitty.TextHtml)
-			w.Header().Set(kitty.ContentLength, strconv.Itoa(bts.Len()))
-			_, err = w.Write(bts.Bytes())
+			w.Header().Set(kitty.ContentLength, strconv.Itoa(len(str)))
+			_, err = w.Write([]byte(str))
 			if err != nil {
 				w.WriteHeader(http.StatusForbidden)
 				return nil

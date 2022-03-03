@@ -76,6 +76,7 @@ var html = `
 			display: flex;
 			justify-content: center;
 			align-items: center;
+			font-size: 1.1rem;
 		}
 	</style>
     <title>kitty-server</title>
@@ -83,5 +84,10 @@ var html = `
 <body>
 {{body}}
 </body>
+
+<script>
+
+</script>
+
 </html>
 `

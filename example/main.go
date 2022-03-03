@@ -4,7 +4,6 @@ import (
 	"embed"
 	_ "embed"
 	"fmt"
-	"io/fs"
 	"log"
 	http2 "net/http"
 	"os"
@@ -101,8 +100,8 @@ func runUdpServer() {
 
 func runHttpServer() {
 	var httpServer = kitty.NewHttpServer("127.0.0.1:8666")
-	httpServer.CertFile = "/Users/lemo/test/go/localhost+2.pem"
-	httpServer.KeyFile = "/Users/lemo/test/go/localhost+2-key.pem"
+	// httpServer.CertFile = "/Users/lemo/test/go/localhost+2.pem"
+	// httpServer.KeyFile = "/Users/lemo/test/go/localhost+2-key.pem"
 
 	var httpServerRouter = kitty.NewHttpServerRouter()
 
@@ -145,9 +144,9 @@ func runHttpServer() {
 
 	httpServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
 	// httpServerRouter.SetDefaultIndex("index.html", "index.htm")
-	httpServerRouter.SetStaticMiddle(".md", func(writer http2.ResponseWriter, request *http2.Request, file fs.File, info fs.FileInfo) error {
-		return nil
-	})
+	// httpServerRouter.SetStaticMiddle(".md", func(writer http2.ResponseWriter, request *http2.Request, file fs.File, info fs.FileInfo) error {
+	// 	return nil
+	// })
 	httpServerRouter.SetOpenDir(true)
 
 	go httpServer.SetRouter(httpServerRouter).Start()

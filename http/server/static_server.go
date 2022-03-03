@@ -110,7 +110,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 				}
 			}
 
-			bts.WriteString(`<div class="back"><a class="dir" href="` + filepath.Dir(r.URL.Path) + `">` + backSVG + `</a></div>`)
+			// bts.WriteString(`<div class="back"><a class="dir" href="` + filepath.Dir(r.URL.Path) + `">` + backSVG + `</a></div>`)
 
 			var str = strings.ReplaceAll(html, `{{body}}`, bts.String())
 

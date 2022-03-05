@@ -42,8 +42,17 @@ func (g *group) Before(before ...Before) *group {
 	return g
 }
 
-func (g *group) Remove(path string) {
-	g.router.tire.Delete(g.path + path)
+func (g *group) Remove(path ...string) {
+	if g.router.tire == nil {
+		return
+	}
+	for i := 0; i < len(path); i++ {
+		var dp = g.path + path[i]
+		if !g.router.StrictMode {
+			dp = strings.ToLower(dp)
+		}
+		g.router.tire.Delete(dp)
+	}
 }
 
 func (g *group) After(after ...After) *group {
@@ -59,40 +68,49 @@ type RouteHandler struct {
 	group *group
 }
 
-func (rh *RouteHandler) Remove(path string) {
-	rh.group.router.tire.Delete(rh.group.path + path)
+func (rh *RouteHandler) Remove(path ...string) {
+	if rh.group.router.tire == nil {
+		return
+	}
+	for i := 0; i < len(path); i++ {
+		var dp = rh.group.path + path[i]
+		if !rh.group.router.StrictMode {
+			dp = strings.ToLower(dp)
+		}
+		rh.group.router.tire.Delete(dp)
+	}
 }
 
-func (rh *RouteHandler) Route(method string, path string) *route {
+func (rh *RouteHandler) Route(method string, path ...string) *route {
 	return &route{path: path, method: method, group: rh.group}
 }
 
-func (rh *RouteHandler) Get(path string) *route {
-	return rh.Route("GET", path)
+func (rh *RouteHandler) Get(path ...string) *route {
+	return rh.Route("GET", path...)
 }
 
-func (rh *RouteHandler) Post(path string) *route {
-	return rh.Route("POST", path)
+func (rh *RouteHandler) Post(path ...string) *route {
+	return rh.Route("POST", path...)
 }
 
-func (rh *RouteHandler) Delete(path string) *route {
-	return rh.Route("DELETE", path)
+func (rh *RouteHandler) Delete(path ...string) *route {
+	return rh.Route("DELETE", path...)
 }
 
-func (rh *RouteHandler) Put(path string) *route {
-	return rh.Route("PUT", path)
+func (rh *RouteHandler) Put(path ...string) *route {
+	return rh.Route("PUT", path...)
 }
 
-func (rh *RouteHandler) Patch(path string) *route {
-	return rh.Route("PATCH", path)
+func (rh *RouteHandler) Patch(path ...string) *route {
+	return rh.Route("PATCH", path...)
 }
 
-func (rh *RouteHandler) Option(path string) *route {
-	return rh.Route("OPTION", path)
+func (rh *RouteHandler) Option(path ...string) *route {
+	return rh.Route("OPTION", path...)
 }
 
 type route struct {
-	path        string
+	path        []string
 	method      string
 	before      []Before
 	after       []After
@@ -135,7 +153,7 @@ func (r *route) ForceAfter() *route {
 
 func (r *route) Handler(fn function) {
 
-	if r.path == "" || r.method == "" {
+	if len(r.path) == 0 || r.method == "" {
 		panic("route path or method can not empty")
 	}
 
@@ -151,57 +169,63 @@ func (r *route) Handler(fn function) {
 		g = new(group)
 	}
 
-	var path = router.formatPath(g.path + r.path)
+	for i := 0; i < len(r.path); i++ {
 
-	if router.tire == nil {
-		router.tire = new(tire.Tire)
+		var path = router.formatPath(g.path + r.path[i])
+
+		if router.tire == nil {
+			router.tire = new(tire.Tire)
+		}
+
+		var hba = &node{}
+
+		hba.Info = ci.File + ":" + strconv.Itoa(ci.Line)
+
+		hba.Function = fn
+
+		hba.Before = append(g.before, r.before...)
+		if r.passBefore {
+			hba.Before = nil
+		}
+		if r.forceBefore {
+			hba.Before = r.before
+		}
+
+		hba.After = append(g.after, r.after...)
+		if r.passAfter {
+			hba.After = nil
+		}
+		if r.forceAfter {
+			hba.After = r.after
+		}
+
+		hba.Before = append(hba.Before, router.globalBefore...)
+		hba.After = append(hba.After, router.globalAfter...)
+
+		hba.Method = method
+
+		hba.Route = []byte(path)
+
+		router.tire.Insert(path, hba)
 	}
-
-	var hba = &node{}
-
-	hba.Info = ci.File + ":" + strconv.Itoa(ci.Line)
-
-	hba.Function = fn
-
-	hba.Before = append(g.before, r.before...)
-	if r.passBefore {
-		hba.Before = nil
-	}
-	if r.forceBefore {
-		hba.Before = r.before
-	}
-
-	hba.After = append(g.after, r.after...)
-	if r.passAfter {
-		hba.After = nil
-	}
-	if r.forceAfter {
-		hba.After = r.after
-	}
-
-	hba.Before = append(hba.Before, router.globalBefore...)
-	hba.After = append(hba.After, router.globalAfter...)
-
-	hba.Method = method
-
-	hba.Route = []byte(path)
-
-	router.tire.Insert(path, hba)
 }
 
 type Router struct {
-	StrictMode     bool
-	tire           *tire.Tire
-	prefixPath     string
-	fixPath        string
-	fileSystem     http2.FileSystem
-	defaultIndex   []string
-	staticMiddle   map[string]func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error
-	globalAfter    []After
-	globalBefore   []Before
-	openDir        bool
-	dirMiddle      func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error
-	staticDownload bool
+	StrictMode   bool
+	tire         *tire.Tire
+	globalAfter  []After
+	globalBefore []Before
+
+	fileSystem             http2.FileSystem
+	prefixPath             string
+	fixPath                string
+	defaultIndex           []string
+	staticFileMiddle       map[string]func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error
+	staticGlobalFileMiddle func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error
+	staticDirMiddle        map[string]func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error
+	staticGlobalDirMiddle  func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error
+	staticDownload         bool
+	openDir                bool
 }
 
 func (r *Router) SetGlobalBefore(before ...Before) {
@@ -213,7 +237,14 @@ func (r *Router) SetGlobalAfter(after ...After) {
 }
 
 func (r *Router) Remove(path ...string) {
-	r.tire.Delete(strings.Join(path, ""))
+	if r.tire == nil {
+		return
+	}
+	var dp = strings.Join(path, "")
+	if !r.StrictMode {
+		dp = strings.ToLower(dp)
+	}
+	r.tire.Delete(dp)
 }
 
 func (r *Router) GetAllRouters() []*node {
@@ -233,16 +264,46 @@ func (r *Router) SetOpenDir(openDir bool) {
 	r.openDir = openDir
 }
 
-func (r *Router) SetStaticMiddle(t string, fn func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error) {
-	r.staticMiddle[t] = fn
-}
-
-func (r *Router) SetDirMiddle(t string, fn func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error) {
-	r.dirMiddle = fn
-}
-
 func (r *Router) SetStaticDownload(flag bool) {
 	r.staticDownload = flag
+}
+
+type StaticFileMiddle struct {
+	r *Router
+	t []string
+}
+
+func (s *StaticFileMiddle) Handler(fn func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error) {
+	for i := 0; i < len(s.t); i++ {
+		s.r.staticFileMiddle[s.t[i]] = fn
+	}
+}
+
+func (r *Router) SetStaticFileMiddle(t ...string) *StaticFileMiddle {
+	return &StaticFileMiddle{r, t}
+}
+
+type StaticDirMiddle struct {
+	r *Router
+	t []string
+}
+
+func (s *StaticDirMiddle) Handler(fn func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error) {
+	for i := 0; i < len(s.t); i++ {
+		s.r.staticDirMiddle[s.t[i]] = fn
+	}
+}
+
+func (r *Router) SetStaticDirMiddle(t ...string) *StaticDirMiddle {
+	return &StaticDirMiddle{r, t}
+}
+
+func (r *Router) SetStaticGlobalFileMiddle(fn func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error) {
+	r.staticGlobalFileMiddle = fn
+}
+
+func (r *Router) SetStaticGlobalDirMiddle(fn func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error) {
+	r.staticGlobalDirMiddle = fn
 }
 
 func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem http2.FileSystem) {
@@ -260,7 +321,8 @@ func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem htt
 	r.fixPath = fixPath
 	r.openDir = false
 	r.defaultIndex = []string{}
-	r.staticMiddle = make(map[string]func(http2.ResponseWriter, *http2.Request, fs.File, fs.FileInfo) error)
+	r.staticFileMiddle = make(map[string]func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error)
+	r.staticDirMiddle = make(map[string]func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error)
 }
 
 func (r *Router) Group(path ...string) *group {
@@ -274,8 +336,8 @@ func (r *Router) Group(path ...string) *group {
 	return g
 }
 
-func (r *Router) Route(method string, path string) *route {
-	return (&RouteHandler{group: r.Group("")}).Route(method, path)
+func (r *Router) Route(method string, path ...string) *route {
+	return (&RouteHandler{group: r.Group("")}).Route(method, path...)
 }
 
 func (r *Router) getRoute(method string, path string) (*tire.Tire, []byte) {

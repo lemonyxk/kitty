@@ -33,9 +33,9 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 		return errors.New("file system is nil")
 	}
 
-	var openPath = r.URL.Path[len(s.router.prefixPath):]
+	var urlPath = r.URL.Path[len(s.router.prefixPath):]
 
-	openPath = filepath.Join(s.router.fixPath, openPath)
+	var openPath = filepath.Join(s.router.fixPath, urlPath)
 
 	var file, err = s.router.fileSystem.Open(openPath)
 	if err != nil {
@@ -79,9 +79,9 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 		if !findDefault && s.router.openDir {
 
-			if s.router.dirMiddle != nil {
-				var fn = s.router.dirMiddle
-				err = fn(w, r, file, info)
+			var fn, ok = s.router.staticDirMiddle[urlPath]
+			if ok {
+				var err = fn(w, r, file, info)
 				if err != nil {
 					w.WriteHeader(http.StatusForbidden)
 					return nil
@@ -89,49 +89,24 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 				return nil
 			}
 
-			dir, err := file.Readdir(0)
-			if err != nil {
+			if s.router.staticGlobalDirMiddle != nil {
+				var err = s.router.staticGlobalDirMiddle(w, r, file, info)
+				if err != nil {
+					w.WriteHeader(http.StatusForbidden)
+					return nil
+				}
 				return nil
 			}
 
-			var bts bytes.Buffer
-
-			for i := 0; i < len(dir); i++ {
-				var download = ""
-				var empty = ""
-				if s.router.staticDownload {
-					download = `<a class="file" download href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + downloadSVG + `</a>`
-					empty = emptySVG
-				}
-				if dir[i].IsDir() {
-					bts.WriteString(`<div class="list">` + empty + dirSVG + `<a class="dir" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
-				} else {
-					bts.WriteString(`<div class="list">` + download + fileSVG + `<a class="file" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a>` + `</div>`)
-				}
-			}
-
-			// bts.WriteString(`<div class="back"><a href="` + filepath.Dir(r.URL.Path) + `">` + backSVG + `</a></div>`)
-
-			var str = strings.ReplaceAll(html, `{{body}}`, bts.String())
-
-			w.Header().Set(kitty.ContentType, kitty.TextHtml)
-			w.Header().Set(kitty.ContentLength, strconv.Itoa(len(str)))
-			_, err = w.Write([]byte(str))
-			if err != nil {
-				w.WriteHeader(http.StatusForbidden)
-				return nil
-			}
-
-			return nil
+			return s.staticDefaultDirMiddle(w, r, file)
 		}
 	}
 
 	var ext = filepath.Ext(info.Name())
 
-	var fn, ok = s.router.staticMiddle[ext]
-
+	var fn, ok = s.router.staticFileMiddle[ext]
 	if ok {
-		err = fn(w, r, file, info)
+		var err = fn(w, r, file, info)
 		if err != nil {
 			w.WriteHeader(http.StatusForbidden)
 			return nil
@@ -139,6 +114,19 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
+	if s.router.staticGlobalFileMiddle != nil {
+		var err = s.router.staticGlobalFileMiddle(w, r, file, info)
+		if err != nil {
+			w.WriteHeader(http.StatusForbidden)
+			return nil
+		}
+		return nil
+	}
+
+	return s.staticDefaultFileMiddle(w, err, file, ext)
+}
+
+func (s *Server) staticDefaultFileMiddle(w http.ResponseWriter, err error, file http.File, ext string) error {
 	bts, err := ioutil.ReadAll(file)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
@@ -153,6 +141,41 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set(kitty.ContentType, contentType)
 	w.Header().Set(kitty.ContentLength, strconv.Itoa(len(bts)))
 	_, err = w.Write(bts)
+	if err != nil {
+		w.WriteHeader(http.StatusForbidden)
+		return nil
+	}
+
+	return nil
+}
+
+func (s *Server) staticDefaultDirMiddle(w http.ResponseWriter, r *http.Request, file http.File) error {
+	dir, err := file.Readdir(0)
+	if err != nil {
+		return nil
+	}
+
+	var bts bytes.Buffer
+
+	for i := 0; i < len(dir); i++ {
+		var download = ""
+		var empty = ""
+		if s.router.staticDownload {
+			download = `<a class="file" download href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + downloadSVG + `</a>`
+			empty = emptySVG
+		}
+		if dir[i].IsDir() {
+			bts.WriteString(`<div class="list">` + empty + dirSVG + `<a class="dir" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
+		} else {
+			bts.WriteString(`<div class="list">` + download + fileSVG + `<a class="file" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a>` + `</div>`)
+		}
+	}
+
+	var str = strings.ReplaceAll(html, `{{body}}`, bts.String())
+
+	w.Header().Set(kitty.ContentType, kitty.TextHtml)
+	w.Header().Set(kitty.ContentLength, strconv.Itoa(len(str)))
+	_, err = w.Write([]byte(str))
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		return nil

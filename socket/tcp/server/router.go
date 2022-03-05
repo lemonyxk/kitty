@@ -45,8 +45,17 @@ func (g *group) After(after ...After) *group {
 	return g
 }
 
-func (g *group) Remove(path string) {
-	g.router.tire.Delete(g.path + path)
+func (g *group) Remove(path ...string) {
+	if g.router.tire == nil {
+		return
+	}
+	for i := 0; i < len(path); i++ {
+		var dp = g.path + path[i]
+		if !g.router.StrictMode {
+			dp = strings.ToLower(dp)
+		}
+		g.router.tire.Delete(dp)
+	}
 }
 
 func (g *group) Handler(fn groupFunction) {
@@ -57,16 +66,25 @@ type RouteHandler struct {
 	group *group
 }
 
-func (rh *RouteHandler) Route(path string) *route {
+func (rh *RouteHandler) Route(path ...string) *route {
 	return &route{path: path, group: rh.group}
 }
 
-func (rh *RouteHandler) Remove(path string) {
-	rh.group.router.tire.Delete(rh.group.path + path)
+func (rh *RouteHandler) Remove(path ...string) {
+	if rh.group.router.tire == nil {
+		return
+	}
+	for i := 0; i < len(path); i++ {
+		var dp = rh.group.path + path[i]
+		if !rh.group.router.StrictMode {
+			dp = strings.ToLower(dp)
+		}
+		rh.group.router.tire.Delete(dp)
+	}
 }
 
 type route struct {
-	path        string
+	path        []string
 	before      []Before
 	after       []After
 	socket      *Server
@@ -109,7 +127,7 @@ func (r *route) ForceAfter() *route {
 
 func (r *route) Handler(fn function) {
 
-	if r.path == "" {
+	if len(r.path) == 0 {
 		panic("route path can not empty")
 	}
 
@@ -122,41 +140,43 @@ func (r *route) Handler(fn function) {
 		g = new(group)
 	}
 
-	var path = router.formatPath(g.path + r.path)
+	for i := 0; i < len(r.path); i++ {
 
-	if router.tire == nil {
-		router.tire = new(tire.Tire)
+		var path = router.formatPath(g.path + r.path[i])
+
+		if router.tire == nil {
+			router.tire = new(tire.Tire)
+		}
+
+		var sba = &node{}
+
+		sba.Info = ci.File + ":" + strconv.Itoa(ci.Line)
+
+		sba.Function = fn
+
+		sba.Before = append(g.before, r.before...)
+		if r.passBefore {
+			sba.Before = nil
+		}
+		if r.forceBefore {
+			sba.Before = r.before
+		}
+
+		sba.After = append(g.after, r.after...)
+		if r.passAfter {
+			sba.After = nil
+		}
+		if r.forceAfter {
+			sba.After = r.after
+		}
+
+		sba.Before = append(sba.Before, router.globalBefore...)
+		sba.After = append(sba.After, router.globalAfter...)
+
+		sba.Route = []byte(path)
+
+		router.tire.Insert(path, sba)
 	}
-
-	var sba = &node{}
-
-	sba.Info = ci.File + ":" + strconv.Itoa(ci.Line)
-
-	sba.Function = fn
-
-	sba.Before = append(g.before, r.before...)
-	if r.passBefore {
-		sba.Before = nil
-	}
-	if r.forceBefore {
-		sba.Before = r.before
-	}
-
-	sba.After = append(g.after, r.after...)
-	if r.passAfter {
-		sba.After = nil
-	}
-	if r.forceAfter {
-		sba.After = r.after
-	}
-
-	sba.Before = append(sba.Before, router.globalBefore...)
-	sba.After = append(sba.After, router.globalAfter...)
-
-	sba.Route = []byte(path)
-
-	router.tire.Insert(path, sba)
-
 }
 
 type Router struct {
@@ -195,11 +215,18 @@ func (r *Router) Group(path ...string) *group {
 }
 
 func (r *Router) Remove(path ...string) {
-	r.tire.Delete(strings.Join(path, ""))
+	if r.tire == nil {
+		return
+	}
+	var dp = strings.Join(path, "")
+	if !r.StrictMode {
+		dp = strings.ToLower(dp)
+	}
+	r.tire.Delete(dp)
 }
 
-func (r *Router) Route(path string) *route {
-	return (&RouteHandler{group: r.Group("")}).Route(path)
+func (r *Router) Route(path ...string) *route {
+	return (&RouteHandler{group: r.Group("")}).Route(path...)
 }
 
 func (r *Router) getRoute(path string) (*tire.Tire, []byte) {

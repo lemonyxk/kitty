@@ -104,13 +104,13 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 					empty = emptySVG
 				}
 				if dir[i].IsDir() {
-					bts.WriteString(`<div>` + empty + dirSVG + `<a class="dir" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
+					bts.WriteString(`<div class="list">` + empty + dirSVG + `<a class="dir" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
 				} else {
-					bts.WriteString(`<div>` + download + fileSVG + `<a class="file" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a>` + `</div>`)
+					bts.WriteString(`<div class="list">` + download + fileSVG + `<a class="file" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a>` + `</div>`)
 				}
 			}
 
-			// bts.WriteString(`<div class="back"><a class="dir" href="` + filepath.Dir(r.URL.Path) + `">` + backSVG + `</a></div>`)
+			// bts.WriteString(`<div class="back"><a href="` + filepath.Dir(r.URL.Path) + `">` + backSVG + `</a></div>`)
 
 			var str = strings.ReplaceAll(html, `{{body}}`, bts.String())
 

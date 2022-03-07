@@ -220,10 +220,10 @@ type Router struct {
 	prefixPath             string
 	fixPath                string
 	defaultIndex           []string
-	staticFileMiddle       map[string]func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error
-	staticGlobalFileMiddle func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error
-	staticDirMiddle        map[string]func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error
-	staticGlobalDirMiddle  func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error
+	staticFileMiddle       map[string]func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error
+	staticGlobalFileMiddle func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error
+	staticDirMiddle        map[string]func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error
+	staticGlobalDirMiddle  func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error
 	staticDownload         bool
 	openDir                bool
 }
@@ -273,7 +273,7 @@ type StaticFileMiddle struct {
 	t []string
 }
 
-func (s *StaticFileMiddle) Handler(fn func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error) {
+func (s *StaticFileMiddle) Handler(fn func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error) {
 	for i := 0; i < len(s.t); i++ {
 		s.r.staticFileMiddle[s.t[i]] = fn
 	}
@@ -288,7 +288,7 @@ type StaticDirMiddle struct {
 	t []string
 }
 
-func (s *StaticDirMiddle) Handler(fn func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error) {
+func (s *StaticDirMiddle) Handler(fn func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error) {
 	for i := 0; i < len(s.t); i++ {
 		s.r.staticDirMiddle[s.t[i]] = fn
 	}
@@ -298,11 +298,11 @@ func (r *Router) SetStaticDirMiddle(t ...string) *StaticDirMiddle {
 	return &StaticDirMiddle{r, t}
 }
 
-func (r *Router) SetStaticGlobalFileMiddle(fn func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error) {
+func (r *Router) SetStaticGlobalFileMiddle(fn func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error) {
 	r.staticGlobalFileMiddle = fn
 }
 
-func (r *Router) SetStaticGlobalDirMiddle(fn func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error) {
+func (r *Router) SetStaticGlobalDirMiddle(fn func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error) {
 	r.staticGlobalDirMiddle = fn
 }
 
@@ -321,8 +321,8 @@ func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem htt
 	r.fixPath = fixPath
 	r.openDir = false
 	r.defaultIndex = []string{}
-	r.staticFileMiddle = make(map[string]func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error)
-	r.staticDirMiddle = make(map[string]func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error)
+	r.staticFileMiddle = make(map[string]func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error)
+	r.staticDirMiddle = make(map[string]func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error)
 }
 
 func (r *Router) Group(path ...string) *group {

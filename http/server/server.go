@@ -184,7 +184,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// static file
-	if s.router.fileSystem != nil && r.Method == http.MethodGet {
+	if len(s.router.static) > 0 && r.Method == http.MethodGet {
 		if s.staticHandler(w, r) == nil {
 			return
 		}

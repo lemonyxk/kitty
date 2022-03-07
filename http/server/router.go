@@ -210,22 +210,27 @@ func (r *route) Handler(fn function) {
 	}
 }
 
+type Static struct {
+	fileSystem http2.FileSystem
+	prefixPath string
+	fixPath    string
+	index      int
+}
+
 type Router struct {
 	StrictMode   bool
 	tire         *tire.Tire
 	globalAfter  []After
 	globalBefore []Before
 
-	fileSystem             http2.FileSystem
-	prefixPath             string
-	fixPath                string
+	static                 []*Static
 	defaultIndex           []string
 	staticFileMiddle       map[string]func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error
 	staticGlobalFileMiddle func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error
 	staticDirMiddle        map[string]func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error
 	staticGlobalDirMiddle  func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error
 	staticDownload         bool
-	openDir                bool
+	openDir                []int
 }
 
 func (r *Router) SetGlobalBefore(before ...Before) {
@@ -260,8 +265,8 @@ func (r *Router) SetDefaultIndex(index ...string) {
 	r.defaultIndex = index
 }
 
-func (r *Router) SetOpenDir(openDir bool) {
-	r.openDir = openDir
+func (r *Router) SetOpenDir(dirIndex ...int) {
+	r.openDir = dirIndex
 }
 
 func (r *Router) SetStaticDownload(flag bool) {
@@ -306,7 +311,7 @@ func (r *Router) SetStaticGlobalDirMiddle(fn func(w http2.ResponseWriter, r *htt
 	r.staticGlobalDirMiddle = fn
 }
 
-func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem http2.FileSystem) {
+func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem http2.FileSystem) int {
 
 	if prefixPath == "" {
 		panic("prefixPath can not be empty")
@@ -316,13 +321,18 @@ func (r *Router) SetStaticPath(prefixPath string, fixPath string, fileSystem htt
 		panic("fileSystem can not be empty")
 	}
 
-	r.prefixPath = prefixPath
-	r.fileSystem = fileSystem
-	r.fixPath = fixPath
-	r.openDir = false
-	r.defaultIndex = []string{}
+	for i := 0; i < len(r.static); i++ {
+		if r.static[i].prefixPath == prefixPath {
+			panic("prefixPath is exist")
+		}
+	}
+
+	var static = &Static{fileSystem, prefixPath, fixPath, len(r.static)}
+	r.static = append(r.static, static)
 	r.staticFileMiddle = make(map[string]func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error)
 	r.staticDirMiddle = make(map[string]func(w http2.ResponseWriter, r *http2.Request, f http2.File, i fs.FileInfo) error)
+
+	return static.index
 }
 
 func (r *Router) Group(path ...string) *group {

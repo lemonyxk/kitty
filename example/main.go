@@ -143,11 +143,12 @@ func runHttpServer() {
 	// httpServerRouter.SetStaticPath("/", "", http2.Dir("./example/public"))
 
 	httpServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
+	httpServerRouter.SetStaticPath("/js", "test", http2.Dir("./example"))
 	// httpServerRouter.SetDefaultIndex("index.html", "index.htm")
 	// httpServerRouter.SetStaticFileMiddle(".md").Handler(func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error {
 	// 	return nil
 	// })
-	httpServerRouter.SetOpenDir(true)
+	httpServerRouter.SetOpenDir(0)
 
 	go httpServer.SetRouter(httpServerRouter).Start()
 }

@@ -25,22 +25,43 @@ import (
 
 func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
-	if !strings.HasPrefix(r.URL.Path, s.router.prefixPath) {
-		return errors.New("not match")
+	var static *Static
+
+	var file http.File
+
+	var err error
+
+	var openPath string
+
+	var urlPath string
+
+	for i := 0; i < len(s.router.static); i++ {
+		if !strings.HasPrefix(r.URL.Path, s.router.static[i].prefixPath) {
+			continue
+		}
+
+		urlPath = r.URL.Path[len(s.router.static[i].prefixPath):]
+
+		openPath = filepath.Join(s.router.static[i].fixPath, urlPath)
+
+		file, err = s.router.static[i].fileSystem.Open(openPath)
+		if err != nil {
+			continue
+		}
+
+		static = s.router.static[i]
+
+		break
 	}
 
-	if s.router.fileSystem == nil {
-		return errors.New("file system is nil")
+	if static == nil {
+		return errors.New("static not found")
 	}
 
-	var urlPath = r.URL.Path[len(s.router.prefixPath):]
-
-	var openPath = filepath.Join(s.router.fixPath, urlPath)
-
-	var file, err = s.router.fileSystem.Open(openPath)
-	if err != nil {
-		return errors.New("not found")
+	if static.fileSystem == nil {
+		return errors.New("static fileSystem is nil")
 	}
+
 	defer func() { _ = file.Close() }()
 
 	info, err := file.Stat()
@@ -58,7 +79,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 			}
 
 			var otp = filepath.Join(openPath, s.router.defaultIndex[i])
-			var of, err = s.router.fileSystem.Open(otp)
+			var of, err = static.fileSystem.Open(otp)
 			if err != nil {
 				continue
 			}
@@ -77,7 +98,25 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 
-		if !findDefault && s.router.openDir {
+		if !findDefault {
+
+			if len(s.router.openDir) == 0 {
+				w.WriteHeader(http.StatusForbidden)
+				return nil
+			}
+
+			var shouldOpen = false
+			for i := 0; i < len(s.router.openDir); i++ {
+				if s.router.openDir[i] == static.index {
+					shouldOpen = true
+					break
+				}
+			}
+
+			if !shouldOpen {
+				w.WriteHeader(http.StatusForbidden)
+				return nil
+			}
 
 			var fn, ok = s.router.staticDirMiddle[urlPath]
 			if ok {

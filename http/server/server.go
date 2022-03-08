@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	http2 "github.com/lemoyxk/kitty/http"
 	"github.com/lemoyxk/kitty/kitty"
@@ -25,6 +26,9 @@ type Server struct {
 	OnClose   func(stream *http2.Stream)
 	OnError   func(stream *http2.Stream, err error)
 	OnSuccess func()
+
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
 
 	middle    []func(next Middle) Middle
 	router    *Router
@@ -141,7 +145,7 @@ func (s *Server) Start() {
 
 	s.Ready()
 
-	var server = http.Server{Addr: s.Addr, Handler: s}
+	var server = http.Server{Addr: s.Addr, Handler: s, ReadTimeout: s.ReadTimeout, WriteTimeout: s.WriteTimeout}
 
 	var err error
 	var netListen net.Listener

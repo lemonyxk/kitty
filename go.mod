@@ -1,6 +1,5 @@
 module github.com/lemoyxk/kitty/v2
 
-
 go 1.18
 
 require (

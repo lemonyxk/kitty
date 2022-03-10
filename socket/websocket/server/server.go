@@ -21,7 +21,7 @@ import (
 
 type Server struct {
 	Name string
-	// Host 服务Host≠
+	// Host 服务Host
 	Addr string
 	// TLS FILE
 	CertFile string

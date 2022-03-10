@@ -1,4 +1,4 @@
-module github.com/lemoyxk/kitty
+module github.com/lemoyxk/kitty/v1
 
 go 1.17
 

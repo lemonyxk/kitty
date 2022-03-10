@@ -35,6 +35,17 @@ type Stream struct {
 	hasParseFiles    bool
 }
 
+func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
+	return &Stream{
+		Response: w, Request: r,
+		Protobuf: &Protobuf{},
+		Query:    &Store{},
+		Form:     &Store{},
+		Json:     &Json{},
+		Files:    &Files{},
+	}
+}
+
 func (s *Stream) Forward(fn func(stream *Stream) error) error {
 	return fn(s)
 }

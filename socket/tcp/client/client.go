@@ -8,11 +8,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
-	"github.com/lemoyxk/kitty/kitty"
+	"github.com/lemoyxk/kitty/v2/kitty"
 
-	"github.com/lemoyxk/kitty/socket"
+	"github.com/lemoyxk/kitty/v2/socket"
 
-	"github.com/lemoyxk/kitty/socket/tcp"
+	"github.com/lemoyxk/kitty/v2/socket/tcp"
 )
 
 type Client struct {

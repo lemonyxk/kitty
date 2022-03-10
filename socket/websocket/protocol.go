@@ -13,7 +13,7 @@ package websocket
 import (
 	"encoding/binary"
 
-	"github.com/lemoyxk/kitty/socket"
+	"github.com/lemoyxk/kitty/v2/socket"
 )
 
 const HeadLen = 16

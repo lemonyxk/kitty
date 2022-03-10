@@ -16,10 +16,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lemoyxk/kitty"
-	"github.com/lemoyxk/kitty/socket"
-	"github.com/lemoyxk/kitty/socket/tcp/client"
-	"github.com/lemoyxk/kitty/socket/tcp/server"
+	"github.com/lemoyxk/kitty/v2"
+	"github.com/lemoyxk/kitty/v2/socket"
+	"github.com/lemoyxk/kitty/v2/socket/tcp/client"
+	"github.com/lemoyxk/kitty/v2/socket/tcp/server"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lemoyxk/kitty/socket/udp"
+	"github.com/lemoyxk/kitty/v2/socket/udp"
 )
 
 type Conn struct {

@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
-	"github.com/lemoyxk/kitty/kitty"
+	"github.com/lemoyxk/kitty/v2/kitty"
 
-	"github.com/lemoyxk/kitty/socket"
-	websocket2 "github.com/lemoyxk/kitty/socket/websocket"
+	"github.com/lemoyxk/kitty/v2/socket"
+	websocket2 "github.com/lemoyxk/kitty/v2/socket/websocket"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"

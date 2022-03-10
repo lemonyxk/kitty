@@ -13,7 +13,7 @@ package client
 import (
 	"net/http"
 
-	"github.com/lemoyxk/kitty/kitty"
+	"github.com/lemoyxk/kitty/v2/kitty"
 )
 
 type Client struct {

@@ -10,16 +10,16 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lemoyxk/kitty"
-	awesomepackage "github.com/lemoyxk/kitty/example/protobuf"
-	"github.com/lemoyxk/kitty/http"
-	"github.com/lemoyxk/kitty/http/client"
-	server3 "github.com/lemoyxk/kitty/http/server"
-	"github.com/lemoyxk/kitty/socket"
-	"github.com/lemoyxk/kitty/socket/tcp/server"
-	udpClient2 "github.com/lemoyxk/kitty/socket/udp/client"
-	server4 "github.com/lemoyxk/kitty/socket/udp/server"
-	server2 "github.com/lemoyxk/kitty/socket/websocket/server"
+	"github.com/lemoyxk/kitty/v2"
+	awesomepackage "github.com/lemoyxk/kitty/v2/example/protobuf"
+	"github.com/lemoyxk/kitty/v2/http"
+	"github.com/lemoyxk/kitty/v2/http/client"
+	server3 "github.com/lemoyxk/kitty/v2/http/server"
+	"github.com/lemoyxk/kitty/v2/socket"
+	"github.com/lemoyxk/kitty/v2/socket/tcp/server"
+	udpClient2 "github.com/lemoyxk/kitty/v2/socket/udp/client"
+	server4 "github.com/lemoyxk/kitty/v2/socket/udp/server"
+	server2 "github.com/lemoyxk/kitty/v2/socket/websocket/server"
 )
 
 //go:embed public/**

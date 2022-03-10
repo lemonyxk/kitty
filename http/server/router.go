@@ -19,7 +19,7 @@ import (
 	"github.com/lemoyxk/caller"
 	"github.com/lemoyxk/structure/tire"
 
-	"github.com/lemoyxk/kitty/http"
+	"github.com/lemoyxk/kitty/v2/http"
 )
 
 type groupFunction func(handler *RouteHandler)

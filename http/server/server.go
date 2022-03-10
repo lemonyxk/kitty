@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	http2 "github.com/lemoyxk/kitty/http"
-	"github.com/lemoyxk/kitty/kitty"
+	http2 "github.com/lemoyxk/kitty/v2/http"
+	"github.com/lemoyxk/kitty/v2/kitty"
 )
 
 type Server struct {

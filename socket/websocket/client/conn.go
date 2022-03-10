@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/lemoyxk/kitty/socket"
+	"github.com/lemoyxk/kitty/v2/socket"
 )
 
 type Conn struct {

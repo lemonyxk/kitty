@@ -26,7 +26,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
-	"github.com/lemoyxk/kitty/kitty"
+	"github.com/lemoyxk/kitty/v2/kitty"
 )
 
 func getRequest(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {

@@ -15,11 +15,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lemoyxk/kitty"
-	"github.com/lemoyxk/kitty/http"
-	"github.com/lemoyxk/kitty/http/client"
-	"github.com/lemoyxk/kitty/http/server"
-	kitty2 "github.com/lemoyxk/kitty/kitty"
+	"github.com/lemoyxk/kitty/v2"
+	"github.com/lemoyxk/kitty/v2/http"
+	"github.com/lemoyxk/kitty/v2/http/client"
+	"github.com/lemoyxk/kitty/v2/http/server"
+	kitty2 "github.com/lemoyxk/kitty/v2/kitty"
 	"github.com/stretchr/testify/assert"
 )
 

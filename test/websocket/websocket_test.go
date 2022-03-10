@@ -17,12 +17,12 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
-	"github.com/lemoyxk/kitty"
-	"github.com/lemoyxk/kitty/socket/websocket/client"
+	"github.com/lemoyxk/kitty/v2"
+	"github.com/lemoyxk/kitty/v2/socket/websocket/client"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lemoyxk/kitty/socket"
-	"github.com/lemoyxk/kitty/socket/websocket/server"
+	"github.com/lemoyxk/kitty/v2/socket"
+	"github.com/lemoyxk/kitty/v2/socket/websocket/server"
 )
 
 type JsonPack struct {

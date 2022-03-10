@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lemoyxk/kitty/kitty"
+	"github.com/lemoyxk/kitty/v2/kitty"
 )
 
 func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {

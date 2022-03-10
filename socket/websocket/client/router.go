@@ -7,7 +7,7 @@ import (
 	"github.com/lemoyxk/caller"
 	"github.com/lemoyxk/structure/tire"
 
-	"github.com/lemoyxk/kitty/socket"
+	"github.com/lemoyxk/kitty/v2/socket"
 )
 
 type groupFunction func(handler *RouteHandler)

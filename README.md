@@ -11,14 +11,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/lemoyxk/kitty"
-	"github.com/lemoyxk/kitty/http"
-	"github.com/lemoyxk/kitty/http/client"
-	server3 "github.com/lemoyxk/kitty/http/server"
-	"github.com/lemoyxk/kitty/socket"
-	"github.com/lemoyxk/kitty/socket/tcp/server"
-	server4 "github.com/lemoyxk/kitty/socket/udp/server"
-	server2 "github.com/lemoyxk/kitty/socket/websocket/server"
+	"github.com/lemoyxk/kitty/v2"
+	"github.com/lemoyxk/kitty/v2/http"
+	"github.com/lemoyxk/kitty/v2/http/client"
+	server3 "github.com/lemoyxk/kitty/v2/http/server"
+	"github.com/lemoyxk/kitty/v2/socket"
+	"github.com/lemoyxk/kitty/v2/socket/tcp/server"
+	server4 "github.com/lemoyxk/kitty/v2/socket/udp/server"
+	server2 "github.com/lemoyxk/kitty/v2/socket/websocket/server"
 )
 
 //go:embed public/**

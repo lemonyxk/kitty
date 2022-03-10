@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/json-iterator/go"
-	kitty2 "github.com/lemoyxk/kitty/kitty"
+	kitty2 "github.com/lemoyxk/kitty/v2/kitty"
 )
 
 type Stream struct {

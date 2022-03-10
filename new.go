@@ -11,14 +11,14 @@
 package kitty
 
 import (
-	httpClient "github.com/lemoyxk/kitty/http/client"
-	httpServer "github.com/lemoyxk/kitty/http/server"
-	tcpClient "github.com/lemoyxk/kitty/socket/tcp/client"
-	tcpServer "github.com/lemoyxk/kitty/socket/tcp/server"
-	udpClient "github.com/lemoyxk/kitty/socket/udp/client"
-	udpServer "github.com/lemoyxk/kitty/socket/udp/server"
-	webSocketClient "github.com/lemoyxk/kitty/socket/websocket/client"
-	webSocketServer "github.com/lemoyxk/kitty/socket/websocket/server"
+	httpClient "github.com/lemoyxk/kitty/v2/http/client"
+	httpServer "github.com/lemoyxk/kitty/v2/http/server"
+	tcpClient "github.com/lemoyxk/kitty/v2/socket/tcp/client"
+	tcpServer "github.com/lemoyxk/kitty/v2/socket/tcp/server"
+	udpClient "github.com/lemoyxk/kitty/v2/socket/udp/client"
+	udpServer "github.com/lemoyxk/kitty/v2/socket/udp/server"
+	webSocketClient "github.com/lemoyxk/kitty/v2/socket/websocket/client"
+	webSocketServer "github.com/lemoyxk/kitty/v2/socket/websocket/server"
 )
 
 // HTTP

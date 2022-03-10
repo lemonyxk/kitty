@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lemoyxk/kitty/socket"
+	"github.com/lemoyxk/kitty/v2/socket"
 )
 
 var async = new(Async)

@@ -12,7 +12,7 @@ package socket
 
 import (
 	"github.com/golang/protobuf/proto"
-	kitty2 "github.com/lemoyxk/kitty/kitty"
+	kitty2 "github.com/lemoyxk/kitty/v2/kitty"
 )
 
 // 0 version

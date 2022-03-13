@@ -45,6 +45,27 @@ func getRequest(method string, url string, info *info) (*http.Request, context.C
 	}
 }
 
+func doRaw(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+	body, ok := info.body.([][]byte)
+	if !ok {
+		return nil, nil, errors.New("raw body must be []byte")
+	}
+
+	var rawBody []byte
+
+	for i := 0; i < len(body); i++ {
+		rawBody = append(rawBody, body[i]...)
+	}
+
+	var ctx, cancel = context.WithCancel(context.Background())
+	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(rawBody))
+	if err != nil {
+		cancel()
+		return nil, nil, err
+	}
+	return request, cancel, err
+}
+
 func doPostXProtobuf(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([]proto.Message)
 	if !ok {

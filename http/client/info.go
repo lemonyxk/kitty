@@ -154,3 +154,12 @@ func (h *info) Multipart(body ...map[string]interface{}) *params {
 	}
 	return &params{info: h, req: request, cancel: cancel}
 }
+
+func (h *info) Raw(body ...[]byte) *params {
+	h.body = body
+	request, cancel, err := doRaw(h.handler.method, h.handler.url, h)
+	if err != nil {
+		return &params{err: err}
+	}
+	return &params{info: h, req: request, cancel: cancel}
+}

@@ -27,12 +27,14 @@ type Server struct {
 	CertFile string
 	// TLS KEY
 	KeyFile string
+	Path    string
 
 	OnOpen    func(conn *Conn)
 	OnMessage func(conn *Conn, msg []byte)
 	OnClose   func(conn *Conn)
 	OnError   func(err error)
 	OnSuccess func()
+	OnRaw     func(w http.ResponseWriter, r *http.Request)
 	OnUnknown func(conn *Conn, message []byte, next Middle)
 
 	HeartBeatTimeout  time.Duration
@@ -199,6 +201,10 @@ func (s *Server) Ready() {
 
 	if s.Addr == "" {
 		panic("Addr must set")
+	}
+
+	if s.Path == "" {
+		s.Path = "/"
 	}
 
 	if s.HeartBeatTimeout == 0 {
@@ -489,6 +495,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Match the webSocket router
 	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if r.URL.Path != s.Path {
+		if s.OnRaw != nil {
+			s.OnRaw(w, r)
+			return
+		}
+
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

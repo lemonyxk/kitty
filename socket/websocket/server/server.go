@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/kitty"
+	hash "github.com/lemonyxk/structure/v3/map"
 
 	"github.com/lemonyxk/kitty/v2/socket"
 	websocket2 "github.com/lemonyxk/kitty/v2/socket/websocket"
@@ -52,8 +53,7 @@ type Server struct {
 	upgrade websocket.Upgrader
 
 	fd          int64
-	connections map[int64]*Conn
-	mux         sync.RWMutex
+	connections *hash.Hash[int64, *Conn]
 	router      *Router
 	middle      []func(next Middle) Middle
 	server      *http.Server
@@ -71,8 +71,8 @@ func (s *Server) Use(middle ...func(next Middle) Middle) {
 }
 
 func (s *Server) Push(fd int64, msg []byte) error {
-	var conn, ok = s.GetConnection(fd)
-	if !ok {
+	var conn = s.GetConnection(fd)
+	if conn == nil {
 		return errors.New("client is close")
 	}
 
@@ -87,12 +87,15 @@ func (s *Server) Emit(fd int64, pack socket.Pack) error {
 func (s *Server) EmitAll(pack socket.Pack) (int, int) {
 	var counter = 0
 	var success = 0
-	for fd := range s.connections {
+
+	s.connections.Range(func(fd int64, conn *Conn) bool {
 		counter++
 		if s.Emit(fd, pack) == nil {
 			success++
 		}
-	}
+		return true
+	})
+
 	return counter, success
 }
 
@@ -107,12 +110,15 @@ func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
 func (s *Server) JsonEmitAll(pack socket.JsonPack) (int, int) {
 	var counter = 0
 	var success = 0
-	for fd := range s.connections {
+
+	s.connections.Range(func(fd int64, conn *Conn) bool {
 		counter++
 		if s.JsonEmit(fd, pack) == nil {
 			success++
 		}
-	}
+		return true
+	})
+
 	return counter, success
 }
 
@@ -127,56 +133,45 @@ func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
 func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
 	var counter = 0
 	var success = 0
-	for fd := range s.connections {
+	s.connections.Range(func(fd int64, conn *Conn) bool {
 		counter++
 		if s.ProtoBufEmit(fd, msg) == nil {
 			success++
 		}
-	}
+		return true
+	})
 	return counter, success
 }
 
 func (s *Server) addConnect(conn *Conn) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-	s.fd++
-	s.connections[s.fd] = conn
-	conn.FD = s.fd
+	var fd = atomic.AddInt64(&s.fd, 1)
+	s.connections.Set(fd, conn)
+	conn.FD = fd
 }
 
 func (s *Server) delConnect(conn *Conn) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-	delete(s.connections, conn.FD)
+	s.connections.Delete(conn.FD)
 }
 
-func (s *Server) GetConnections() chan *Conn {
-	var ch = make(chan *Conn, 1)
-	go func() {
-		for _, conn := range s.connections {
-			ch <- conn
-		}
-		close(ch)
-	}()
-	return ch
+func (s *Server) GetConnections(fn func(conn *Conn)) {
+	s.connections.Range(func(fd int64, conn *Conn) bool {
+		fn(conn)
+		return true
+	})
 }
 
-func (s *Server) GetConnection(fd int64) (*Conn, bool) {
-	s.mux.RLock()
-	defer s.mux.RUnlock()
-	conn, ok := s.connections[fd]
-	return conn, ok
+func (s *Server) GetConnection(fd int64) *Conn {
+	conn := s.connections.Get(fd)
+	return conn
 }
 
 func (s *Server) GetConnectionsCount() int {
-	s.mux.RLock()
-	defer s.mux.RUnlock()
-	return len(s.connections)
+	return s.connections.Len()
 }
 
 func (s *Server) Close(fd int64) error {
-	conn, ok := s.GetConnection(fd)
-	if !ok {
+	conn := s.GetConnection(fd)
+	if conn == nil {
 		return errors.New("fd not found")
 	}
 	return conn.Close()
@@ -284,7 +279,7 @@ func (s *Server) Ready() {
 		CheckOrigin:      s.CheckOrigin,
 	}
 
-	s.connections = make(map[int64]*Conn)
+	s.connections = hash.New[int64, *Conn]()
 }
 
 func (s *Server) process(w http.ResponseWriter, r *http.Request) {

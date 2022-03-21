@@ -145,7 +145,7 @@ func (r *route) Handler(fn function) {
 		var path = router.formatPath(g.path + r.path[0])
 
 		if router.tire == nil {
-			router.tire = tire.NewTire[*node]()
+			router.tire = tire.New[*node]()
 		}
 
 		var wba = &node{}

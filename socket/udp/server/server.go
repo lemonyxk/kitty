@@ -15,11 +15,13 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/kitty"
+	hash "github.com/lemonyxk/structure/v3/map"
 
 	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/udp"
@@ -48,9 +50,8 @@ type Server struct {
 	Protocol    udp.Protocol
 
 	fd          int64
-	connections map[int64]*Conn
-	addrMap     map[string]int64
-	mux         sync.RWMutex
+	connections *hash.Hash[int64, *Conn]
+	addrMap     *hash.Hash[string, int64]
 	router      *Router
 	middle      []func(Middle) Middle
 	netListen   *net.UDPConn
@@ -68,8 +69,8 @@ func (s *Server) Use(middle ...func(Middle) Middle) {
 }
 
 func (s *Server) Push(fd int64, msg []byte) error {
-	var conn, ok = s.GetConnection(fd)
-	if !ok {
+	var conn = s.GetConnection(fd)
+	if conn == nil {
 		return errors.New("client is close")
 	}
 
@@ -84,12 +85,13 @@ func (s *Server) Emit(fd int64, pack socket.Pack) error {
 func (s *Server) EmitAll(pack socket.Pack) (int, int) {
 	var counter = 0
 	var success = 0
-	for fd := range s.connections {
+	s.connections.Range(func(fd int64, conn *Conn) bool {
 		counter++
 		if s.Emit(fd, pack) == nil {
 			success++
 		}
-	}
+		return true
+	})
 	return counter, success
 }
 
@@ -104,12 +106,15 @@ func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
 func (s *Server) JsonEmitAll(msg socket.JsonPack) (int, int) {
 	var counter = 0
 	var success = 0
-	for fd := range s.connections {
+
+	s.connections.Range(func(fd int64, conn *Conn) bool {
 		counter++
 		if s.JsonEmit(fd, msg) == nil {
 			success++
 		}
-	}
+		return true
+	})
+
 	return counter, success
 }
 
@@ -124,12 +129,15 @@ func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
 func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
 	var counter = 0
 	var success = 0
-	for fd := range s.connections {
+
+	s.connections.Range(func(fd int64, conn *Conn) bool {
 		counter++
 		if s.ProtoBufEmit(fd, msg) == nil {
 			success++
 		}
-	}
+		return true
+	})
+
 	return counter, success
 }
 
@@ -201,8 +209,8 @@ func (s *Server) Ready() {
 		}
 	}
 
-	s.connections = make(map[int64]*Conn)
-	s.addrMap = make(map[string]int64)
+	s.connections = hash.New[int64, *Conn]()
+	s.addrMap = hash.New[string, int64]()
 }
 
 func (s *Server) onOpen(conn *Conn) {
@@ -221,59 +229,45 @@ func (s *Server) onError(err error) {
 }
 
 func (s *Server) addConnect(conn *Conn) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-	s.fd++
-	s.connections[s.fd] = conn
-	s.addrMap[conn.Host()] = s.fd
-	conn.FD = s.fd
+	var fd = atomic.AddInt64(&s.fd, 1)
+	s.connections.Set(fd, conn)
+	s.addrMap.Set(conn.Host(), fd)
+	conn.FD = fd
 }
 
 func (s *Server) delConnect(conn *Conn) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-	delete(s.connections, conn.FD)
-	delete(s.addrMap, conn.Host())
+	s.connections.Delete(conn.FD)
+	s.addrMap.Delete(conn.Host())
 }
 
-func (s *Server) GetConnections() chan *Conn {
-	var ch = make(chan *Conn, 1)
-	go func() {
-		for _, conn := range s.connections {
-			ch <- conn
-		}
-		close(ch)
-	}()
-	return ch
+func (s *Server) GetConnections(fn func(conn *Conn)) {
+	s.connections.Range(func(fd int64, conn *Conn) bool {
+		fn(conn)
+		return true
+	})
 }
 
 func (s *Server) Close(fd int64) error {
-	conn, ok := s.GetConnection(fd)
-	if !ok {
+	conn := s.GetConnection(fd)
+	if conn == nil {
 		return errors.New("fd not found")
 	}
 	return conn.Close()
 }
 
-func (s *Server) GetConnectionByAddr(addr string) (*Conn, bool) {
-	s.mux.RLock()
-	defer s.mux.RUnlock()
-	fd, ok := s.addrMap[addr]
-	conn, ok := s.connections[fd]
-	return conn, ok
+func (s *Server) GetConnectionByAddr(addr string) *Conn {
+	fd := s.addrMap.Get(addr)
+	conn := s.connections.Get(fd)
+	return conn
 }
 
-func (s *Server) GetConnection(fd int64) (*Conn, bool) {
-	s.mux.RLock()
-	defer s.mux.RUnlock()
-	conn, ok := s.connections[fd]
-	return conn, ok
+func (s *Server) GetConnection(fd int64) *Conn {
+	conn := s.connections.Get(fd)
+	return conn
 }
 
 func (s *Server) GetConnectionsCount() int {
-	s.mux.RLock()
-	defer s.mux.RUnlock()
-	return len(s.connections)
+	return s.connections.Len()
 }
 
 func (s *Server) Start() {
@@ -333,18 +327,18 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 
 	switch message[2] {
 	case socket.Bin, socket.Ping, socket.Pong:
-		var conn, ok = s.GetConnectionByAddr(addr.String())
-		if !ok {
+		var conn = s.GetConnectionByAddr(addr.String())
+		if conn == nil {
 			return
 		}
 		conn.accept <- message
-	case socket.Open:
 
+	case socket.Open:
 		s.processLock.Lock()
 		defer s.processLock.Unlock()
 
-		var _, ok = s.GetConnectionByAddr(addr.String())
-		if ok {
+		var c = s.GetConnectionByAddr(addr.String())
+		if c != nil {
 			return
 		}
 
@@ -398,8 +392,8 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 		s.processLock.Lock()
 		defer s.processLock.Unlock()
 
-		var conn, ok = s.GetConnectionByAddr(addr.String())
-		if !ok {
+		var conn = s.GetConnectionByAddr(addr.String())
+		if conn == nil {
 			return
 		}
 		s.onClose(conn)

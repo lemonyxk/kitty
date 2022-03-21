@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/json-iterator/go"
-	kitty2 "github.com/lemoyxk/kitty/v2/kitty"
+	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
 )
 
 type Stream struct {
@@ -58,11 +58,11 @@ func (s *Stream) SetHeader(header string, content string) {
 	s.Response.Header().Set(header, content)
 }
 
-func (s *Stream) JsonFormat(status string, code int, msg interface{}) error {
+func (s *Stream) JsonFormat(status string, code int, msg any) error {
 	return s.EndJson(JsonFormat{Status: status, Code: code, Msg: msg})
 }
 
-func (s *Stream) End(data interface{}) error {
+func (s *Stream) End(data any) error {
 	switch data.(type) {
 	case []byte:
 		return s.EndBytes(data.([]byte))
@@ -73,7 +73,7 @@ func (s *Stream) End(data interface{}) error {
 	}
 }
 
-func (s *Stream) EndJson(data interface{}) error {
+func (s *Stream) EndJson(data any) error {
 	s.SetHeader(kitty2.ContentType, kitty2.ApplicationJson)
 	bts, err := jsoniter.Marshal(data)
 	if err != nil {
@@ -93,7 +93,7 @@ func (s *Stream) EndBytes(data []byte) error {
 	return err
 }
 
-func (s *Stream) EndFile(fileName string, content interface{}) error {
+func (s *Stream) EndFile(fileName string, content any) error {
 	s.SetHeader(kitty2.ContentType, kitty2.ApplicationOctetStream)
 	s.SetHeader("content-Disposition", "attachment;filename="+fileName)
 	return s.End(content)

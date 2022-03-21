@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-10-29 18:57
 **/
@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/lemoyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket"
 )
 
 type Conn struct {

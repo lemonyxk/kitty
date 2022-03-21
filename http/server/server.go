@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	http2 "github.com/lemoyxk/kitty/v2/http"
-	"github.com/lemoyxk/kitty/v2/kitty"
+	http2 "github.com/lemonyxk/kitty/v2/http"
+	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
 type Server struct {
@@ -88,7 +88,7 @@ func (s *Server) handler(stream *http2.Stream) {
 
 	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
-	var nodeData = n.Data.(*node)
+	var nodeData = n.Data
 
 	if s.OnMessage != nil {
 		s.OnMessage(stream)

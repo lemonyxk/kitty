@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2020-09-18 16:40
 **/
@@ -17,18 +17,18 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
-	"github.com/lemoyxk/kitty/v2"
-	"github.com/lemoyxk/kitty/v2/socket/websocket/client"
+	"github.com/lemonyxk/kitty/v2"
+	"github.com/lemonyxk/kitty/v2/socket/websocket/client"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lemoyxk/kitty/v2/socket"
-	"github.com/lemoyxk/kitty/v2/socket/websocket/server"
+	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket/websocket/server"
 )
 
 type JsonPack struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
-	ID    int64       `json:"id"`
+	Event string `json:"event"`
+	Data  any    `json:"data"`
+	ID    int64  `json:"id"`
 }
 
 var stop = make(chan bool)

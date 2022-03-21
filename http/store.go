@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-05-13 19:31
 **/
@@ -21,7 +21,7 @@ type Store struct {
 	values [][]string
 }
 
-func (s *Store) Struct(input interface{}) {
+func (s *Store) Struct(input any) {
 
 	if input == nil {
 		panic("input can not be nil")

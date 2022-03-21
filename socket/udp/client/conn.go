@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-10-29 18:44
 **/
@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lemoyxk/kitty/v2/socket/udp"
+	"github.com/lemonyxk/kitty/v2/socket/udp"
 )
 
 type Conn struct {

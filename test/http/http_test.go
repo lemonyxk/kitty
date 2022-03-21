@@ -1,9 +1,9 @@
 /**
-* @program: lemo
+* @program: lemon
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2019-10-05 14:19
 **/
@@ -15,11 +15,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lemoyxk/kitty/v2"
-	"github.com/lemoyxk/kitty/v2/http"
-	"github.com/lemoyxk/kitty/v2/http/client"
-	"github.com/lemoyxk/kitty/v2/http/server"
-	kitty2 "github.com/lemoyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2"
+	"github.com/lemonyxk/kitty/v2/http"
+	"github.com/lemonyxk/kitty/v2/http/client"
+	"github.com/lemonyxk/kitty/v2/http/server"
+	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/stretchr/testify/assert"
 )
 

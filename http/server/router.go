@@ -1,9 +1,9 @@
 /**
-* @program: lemo
+* @program: lemon
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2019-11-25 11:29
 **/
@@ -16,10 +16,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lemoyxk/caller"
-	"github.com/lemoyxk/structure/tire"
+	"github.com/lemonyxk/caller"
+	"github.com/lemonyxk/structure/v3/tire"
 
-	"github.com/lemoyxk/kitty/v2/http"
+	"github.com/lemonyxk/kitty/v2/http"
 )
 
 type groupFunction func(handler *RouteHandler)
@@ -174,7 +174,7 @@ func (r *route) Handler(fn function) {
 		var path = router.formatPath(g.path + r.path[i])
 
 		if router.tire == nil {
-			router.tire = new(tire.Tire)
+			router.tire = tire.NewTire[*node]()
 		}
 
 		var hba = &node{}
@@ -219,7 +219,7 @@ type Static struct {
 
 type Router struct {
 	StrictMode   bool
-	tire         *tire.Tire
+	tire         *tire.Tire[*node]
 	globalAfter  []After
 	globalBefore []Before
 
@@ -256,7 +256,7 @@ func (r *Router) GetAllRouters() []*node {
 	var res []*node
 	var tires = r.tire.GetAllValue()
 	for i := 0; i < len(tires); i++ {
-		res = append(res, tires[i].Data.(*node))
+		res = append(res, tires[i].Data)
 	}
 	return res
 }
@@ -350,7 +350,7 @@ func (r *Router) Route(method string, path ...string) *route {
 	return (&RouteHandler{group: r.Group("")}).Route(method, path...)
 }
 
-func (r *Router) getRoute(method string, path string) (*tire.Tire, []byte) {
+func (r *Router) getRoute(method string, path string) (*tire.Tire[*node], []byte) {
 
 	if r.tire == nil {
 		return nil, nil
@@ -368,7 +368,7 @@ func (r *Router) getRoute(method string, path string) (*tire.Tire, []byte) {
 		return nil, nil
 	}
 
-	if t.Data.(*node).Method != method {
+	if t.Data.Method != method {
 		return nil, nil
 	}
 

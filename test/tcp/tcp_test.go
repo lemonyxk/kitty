@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2020-09-18 16:40
 **/
@@ -16,10 +16,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lemoyxk/kitty/v2"
-	"github.com/lemoyxk/kitty/v2/socket"
-	"github.com/lemoyxk/kitty/v2/socket/tcp/client"
-	"github.com/lemoyxk/kitty/v2/socket/tcp/server"
+	"github.com/lemonyxk/kitty/v2"
+	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket/tcp/client"
+	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
 	"github.com/stretchr/testify/assert"
 )
 

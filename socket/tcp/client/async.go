@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-03-03 15:26
 **/
@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lemoyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket"
 )
 
 var async = new(Async)

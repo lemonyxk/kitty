@@ -11,14 +11,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/lemoyxk/kitty/v2"
-	"github.com/lemoyxk/kitty/v2/http"
-	"github.com/lemoyxk/kitty/v2/http/client"
-	server3 "github.com/lemoyxk/kitty/v2/http/server"
-	"github.com/lemoyxk/kitty/v2/socket"
-	"github.com/lemoyxk/kitty/v2/socket/tcp/server"
-	server4 "github.com/lemoyxk/kitty/v2/socket/udp/server"
-	server2 "github.com/lemoyxk/kitty/v2/socket/websocket/server"
+	"github.com/lemonyxk/kitty/v2"
+	"github.com/lemonyxk/kitty/v2/http"
+	"github.com/lemonyxk/kitty/v2/http/client"
+	server3 "github.com/lemonyxk/kitty/v2/http/server"
+	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
+	server4 "github.com/lemonyxk/kitty/v2/socket/udp/server"
+	server2 "github.com/lemonyxk/kitty/v2/socket/websocket/server"
 )
 
 //go:embed public/**
@@ -99,8 +99,8 @@ func runUdpServer() {
 
 func runHttpServer() {
 	var httpServer = kitty.NewHttpServer("127.0.0.1:8666")
-	httpServer.CertFile = "/Users/lemo/test/go/localhost+2.pem"
-	httpServer.KeyFile = "/Users/lemo/test/go/localhost+2-key.pem"
+	httpServer.CertFile = "/Users/lemon/test/go/localhost+2.pem"
+	httpServer.KeyFile = "/Users/lemon/test/go/localhost+2-key.pem"
 
 	var httpServerRouter = kitty.NewHttpServerRouter()
 

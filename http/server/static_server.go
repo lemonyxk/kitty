@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2022-03-03 23:27
 **/
@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lemoyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
 func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {

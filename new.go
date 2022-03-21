@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-10-13 02:23
 **/
@@ -11,14 +11,14 @@
 package kitty
 
 import (
-	httpClient "github.com/lemoyxk/kitty/v2/http/client"
-	httpServer "github.com/lemoyxk/kitty/v2/http/server"
-	tcpClient "github.com/lemoyxk/kitty/v2/socket/tcp/client"
-	tcpServer "github.com/lemoyxk/kitty/v2/socket/tcp/server"
-	udpClient "github.com/lemoyxk/kitty/v2/socket/udp/client"
-	udpServer "github.com/lemoyxk/kitty/v2/socket/udp/server"
-	webSocketClient "github.com/lemoyxk/kitty/v2/socket/websocket/client"
-	webSocketServer "github.com/lemoyxk/kitty/v2/socket/websocket/server"
+	httpClient "github.com/lemonyxk/kitty/v2/http/client"
+	httpServer "github.com/lemonyxk/kitty/v2/http/server"
+	tcpClient "github.com/lemonyxk/kitty/v2/socket/tcp/client"
+	tcpServer "github.com/lemonyxk/kitty/v2/socket/tcp/server"
+	udpClient "github.com/lemonyxk/kitty/v2/socket/udp/client"
+	udpServer "github.com/lemonyxk/kitty/v2/socket/udp/server"
+	webSocketClient "github.com/lemonyxk/kitty/v2/socket/websocket/client"
+	webSocketServer "github.com/lemonyxk/kitty/v2/socket/websocket/server"
 )
 
 // HTTP

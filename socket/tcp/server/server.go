@@ -1,9 +1,9 @@
 /**
-* @program: lemo
+* @program: lemon
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2019-10-09 14:06
 **/
@@ -18,12 +18,12 @@ import (
 	"time"
 
 	"github.com/json-iterator/go"
-	"github.com/lemoyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/kitty"
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/lemoyxk/kitty/v2/socket"
-	"github.com/lemoyxk/kitty/v2/socket/tcp"
+	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket/tcp"
 )
 
 type Server struct {
@@ -405,7 +405,7 @@ func (s *Server) handler(conn *Conn, stream *socket.Stream) {
 		return
 	}
 
-	var nodeData = n.Data.(*node)
+	var nodeData = n.Data
 
 	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 

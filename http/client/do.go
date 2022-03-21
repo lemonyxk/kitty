@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-05-21 17:35
 **/
@@ -26,7 +26,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
-	"github.com/lemoyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
 func getRequest(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
@@ -93,10 +93,10 @@ func doPostXProtobuf(method string, url string, info *info) (*http.Request, cont
 
 func doPostFormData(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	if info.body == nil {
-		info.body = []map[string]interface{}{}
+		info.body = []kitty.M{}
 	}
 
-	body, ok := info.body.([]map[string]interface{})
+	body, ok := info.body.([]kitty.M)
 	if !ok {
 		return nil, nil, errors.New(kitty.MultipartFormData + " body must be map[string]interface")
 	}
@@ -151,7 +151,7 @@ func doPostFormData(method string, url string, info *info) (*http.Request, conte
 }
 
 func doPostJson(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
-	body, ok := info.body.([]interface{})
+	body, ok := info.body.([]any)
 	if !ok {
 		return nil, nil, errors.New(kitty.ApplicationJson + " body must be interface")
 	}
@@ -177,10 +177,10 @@ func doPostJson(method string, url string, info *info) (*http.Request, context.C
 
 func doPostFormUrlencoded(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	if info.body == nil {
-		info.body = []map[string]interface{}{}
+		info.body = []kitty.M{}
 	}
 
-	body, ok := info.body.([]map[string]interface{})
+	body, ok := info.body.([]kitty.M)
 	if !ok {
 		return nil, nil, errors.New(kitty.ApplicationFormUrlencoded + " body must be map[string]interface")
 	}
@@ -222,10 +222,10 @@ func doUrl(method string, url string, info *info) (*http.Request, context.Cancel
 	}
 
 	if info.body == nil {
-		info.body = []map[string]interface{}{}
+		info.body = []kitty.M{}
 	}
 
-	body, ok := info.body.([]map[string]interface{})
+	body, ok := info.body.([]kitty.M)
 	if !ok {
 		return nil, nil, err
 	}

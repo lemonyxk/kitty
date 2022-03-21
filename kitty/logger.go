@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-05-13 19:34
 **/
@@ -11,8 +11,8 @@
 package kitty
 
 type Logger interface {
-	Errorf(format string, args ...interface{})
-	Warningf(format string, args ...interface{})
-	Infof(format string, args ...interface{})
-	Debugf(format string, args ...interface{})
+	Errorf(format string, args ...any)
+	Warningf(format string, args ...any)
+	Infof(format string, args ...any)
+	Debugf(format string, args ...any)
 }

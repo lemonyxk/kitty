@@ -8,11 +8,11 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
-	"github.com/lemoyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/kitty"
 
-	"github.com/lemoyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket"
 
-	"github.com/lemoyxk/kitty/v2/socket/tcp"
+	"github.com/lemonyxk/kitty/v2/socket/tcp"
 )
 
 type Client struct {
@@ -375,7 +375,7 @@ func (c *Client) handler(conn *Client, stream *socket.Stream) {
 		return
 	}
 
-	var nodeData = n.Data.(*node)
+	var nodeData = n.Data
 
 	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 

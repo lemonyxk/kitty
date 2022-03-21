@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-05-13 19:33
 **/
@@ -17,7 +17,7 @@ type Json struct {
 	bts []byte
 }
 
-func (j *Json) Reset(data interface{}) jsoniter.Any {
+func (j *Json) Reset(data any) jsoniter.Any {
 	bts, _ := jsoniter.Marshal(data)
 	j.any = jsoniter.Get(bts)
 	j.bts = bts
@@ -44,7 +44,7 @@ func (j *Json) Empty(key string) bool {
 	return j.getAny().Get(key).ToString() == ""
 }
 
-func (j *Json) Get(path ...interface{}) Value {
+func (j *Json) Get(path ...any) Value {
 	var res = j.getAny().Get(path...)
 	if res.LastError() != nil {
 		return Value{}
@@ -61,11 +61,11 @@ func (j *Json) String() string {
 	return j.getAny().ToString()
 }
 
-func (j *Json) Path(path ...interface{}) jsoniter.Any {
+func (j *Json) Path(path ...any) jsoniter.Any {
 	return j.getAny().Get(path...)
 }
 
-func (j *Json) Array(path ...interface{}) Array {
+func (j *Json) Array(path ...any) Array {
 	var result []jsoniter.Any
 	var val = j.getAny().Get(path...)
 	for i := 0; i < val.Size(); i++ {

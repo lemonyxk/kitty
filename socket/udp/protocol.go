@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-02-12 23:59
 **/
@@ -13,7 +13,7 @@ package udp
 import (
 	"encoding/binary"
 
-	"github.com/lemoyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket"
 )
 
 const HeadLen = 16

@@ -1,9 +1,9 @@
 /**
-* @program: lemo
+* @program: lemon
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2019-11-19 20:56
 **/
@@ -12,7 +12,7 @@ package socket
 
 import (
 	"github.com/golang/protobuf/proto"
-	kitty2 "github.com/lemoyxk/kitty/v2/kitty"
+	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
 )
 
 // 0 version
@@ -56,7 +56,7 @@ type Stream struct {
 
 type JsonPack struct {
 	Event string
-	Data  interface{}
+	Data  any
 	ID    int64
 }
 

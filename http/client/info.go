@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2021-05-21 17:37
 **/
@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lemoyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
 type info struct {
@@ -25,7 +25,7 @@ type info struct {
 	headerKey       []string
 	headerValue     []string
 	cookies         []*http.Cookie
-	body            interface{}
+	body            any
 	progress        *Progress
 	userName        string
 	passWord        string
@@ -116,7 +116,7 @@ func (h *info) Protobuf(body ...proto.Message) *params {
 	return &params{info: h, req: request, cancel: cancel}
 }
 
-func (h *info) Json(body ...interface{}) *params {
+func (h *info) Json(body ...any) *params {
 	h.SetHeader(kitty.ContentType, kitty.ApplicationJson)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
@@ -126,7 +126,7 @@ func (h *info) Json(body ...interface{}) *params {
 	return &params{info: h, req: request, cancel: cancel}
 }
 
-func (h *info) Query(body ...map[string]interface{}) *params {
+func (h *info) Query(body ...kitty.M) *params {
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
@@ -135,7 +135,7 @@ func (h *info) Query(body ...map[string]interface{}) *params {
 	return &params{info: h, req: request, cancel: cancel}
 }
 
-func (h *info) Form(body ...map[string]interface{}) *params {
+func (h *info) Form(body ...kitty.M) *params {
 	h.SetHeader(kitty.ContentType, kitty.ApplicationFormUrlencoded)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
@@ -145,7 +145,7 @@ func (h *info) Form(body ...map[string]interface{}) *params {
 	return &params{info: h, req: request, cancel: cancel}
 }
 
-func (h *info) Multipart(body ...map[string]interface{}) *params {
+func (h *info) Multipart(body ...kitty.M) *params {
 	h.SetHeader(kitty.ContentType, kitty.MultipartFormData)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)

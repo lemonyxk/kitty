@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2019-10-03 13:37
 **/
@@ -13,7 +13,7 @@ package client
 import (
 	"net/http"
 
-	"github.com/lemoyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
 type Client struct {

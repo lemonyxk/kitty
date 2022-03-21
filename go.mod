@@ -1,4 +1,4 @@
-module github.com/lemoyxk/kitty/v2
+module github.com/lemonyxk/kitty/v2
 
 go 1.18
 
@@ -6,9 +6,9 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/json-iterator/go v1.1.12
-	github.com/lemoyxk/caller v0.0.0-20211111155840-a4a8dd35a4dd
-	github.com/lemoyxk/structure v0.0.0-20211220180515-361786807cb4
-	github.com/stretchr/testify v1.7.0
+	github.com/lemonyxk/caller v0.0.0-20220321145833-a460d38644d8
+	github.com/lemonyxk/structure/v3 v3.0.1-0.20220321150301-4a52b4b19225
+	github.com/stretchr/testify v1.7.1
 )
 
 require (

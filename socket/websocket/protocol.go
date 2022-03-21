@@ -1,9 +1,9 @@
 /**
-* @program: lemo
+* @program: lemon
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2020-06-06 10:54
 **/
@@ -13,7 +13,7 @@ package websocket
 import (
 	"encoding/binary"
 
-	"github.com/lemoyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket"
 )
 
 const HeadLen = 16

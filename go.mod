@@ -7,7 +7,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/json-iterator/go v1.1.12
 	github.com/lemonyxk/caller v0.0.0-20220321145833-a460d38644d8
-	github.com/lemonyxk/structure/v3 v3.0.1-0.20220321181107-4b0496fa833b
+	github.com/lemonyxk/structure/v3 v3.0.1-0.20220518152418-c644a5099734
 	github.com/stretchr/testify v1.7.1
 )
 

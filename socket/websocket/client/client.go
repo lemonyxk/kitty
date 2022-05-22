@@ -1,13 +1,13 @@
 package client
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/json-iterator/go"
+	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 
@@ -58,7 +58,7 @@ type Client struct {
 	cancelPongTimer       chan struct{}
 }
 
-type Middle func(stream *socket.Stream[Conn])
+type Middle router.Middle[*socket.Stream[Conn]]
 
 func (c *Client) LocalAddr() net.Addr {
 	return c.Conn.LocalAddr()

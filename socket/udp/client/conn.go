@@ -11,12 +11,12 @@
 package client
 
 import (
-	"errors"
 	"net"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/udp"
 )

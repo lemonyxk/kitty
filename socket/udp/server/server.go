@@ -11,7 +11,6 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"sync"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
+	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 	hash "github.com/lemonyxk/structure/v3/map"
@@ -59,7 +59,7 @@ type Server struct {
 	processLock sync.RWMutex
 }
 
-type Middle func(stream *socket.Stream[Conn])
+type Middle router.Middle[*socket.Stream[Conn]]
 
 func (s *Server) LocalAddr() net.Addr {
 	return s.netListen.LocalAddr()

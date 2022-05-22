@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/v2"
+	"github.com/lemonyxk/kitty/v2/errors"
 	awesomepackage "github.com/lemonyxk/kitty/v2/example/protobuf"
 	"github.com/lemonyxk/kitty/v2/http"
 	"github.com/lemonyxk/kitty/v2/http/client"
@@ -44,21 +45,33 @@ func main() {
 }
 
 func runTcpServer() {
+
 	var tcpServer = kitty.NewTcpServer("127.0.0.1:8888")
 
 	var tcpServerRouter = kitty.NewTcpServerRouter()
 
-	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	tcpServer.Use(func(next server.Middle) server.Middle {
+		return func(stream *socket.Stream[server.Conn]) {
+			next(stream)
+		}
+	})
+
+	var before = func(stream *socket.Stream[server.Conn]) error {
+		return errors.NewWithStack("before")
+	}
+
+	tcpServerRouter.Group("/hello").Before(before).Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			go func() {
-				_ = stream.Conn.JsonEmit(socket.JsonPack{
-					Event: "/hello/world",
-					Data:  nil,
-				})
-			}()
-			return nil
+			return stream.Conn.JsonEmit(socket.JsonPack{
+				Event: "/hello/world",
+				Data:  nil,
+			})
 		})
 	})
+
+	tcpServer.OnError = func(err error) {
+		log.Printf("[tcpServer] %+v", err)
+	}
 
 	tcpServer.OnSuccess = func() {
 		log.Println(tcpServer.LocalAddr())
@@ -211,14 +224,10 @@ func runTcpClient() {
 		go tcpClient.SetRouter(clientRouter).Connect()
 
 		tcpClient.OnSuccess = func() {
-			for i := 0; i < 100; i++ {
-				go func() {
-					_ = tcpClient.JsonEmit(socket.JsonPack{
-						Event: "/hello/world",
-						Data:  nil,
-					})
-				}()
-			}
+			_ = tcpClient.JsonEmit(socket.JsonPack{
+				Event: "/hello/world",
+				Data:  nil,
+			})
 		}
 	})
 }

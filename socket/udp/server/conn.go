@@ -12,7 +12,6 @@ package server
 
 import "C"
 import (
-	"errors"
 	"net"
 	"strconv"
 	"sync"
@@ -20,6 +19,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/udp"
 )

@@ -12,7 +12,6 @@ package server
 
 import (
 	"bytes"
-	"errors"
 	"io/ioutil"
 	"mime"
 	"net/http"
@@ -20,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 )
 

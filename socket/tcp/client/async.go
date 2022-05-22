@@ -11,10 +11,10 @@
 package client
 
 import (
-	"errors"
 	"sync"
 	"time"
 
+	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/socket"
 )
 

@@ -11,13 +11,13 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"sync/atomic"
 	"time"
 
 	"github.com/json-iterator/go"
+	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 	hash "github.com/lemonyxk/structure/v3/map"
@@ -56,7 +56,7 @@ type Server struct {
 	netListen   net.Listener
 }
 
-type Middle func(stream *socket.Stream[Conn])
+type Middle router.Middle[*socket.Stream[Conn]]
 
 func (s *Server) LocalAddr() net.Addr {
 	return s.netListen.Addr()
@@ -304,7 +304,7 @@ func (s *Server) process(netConn net.Conn) {
 	// 超时时间
 	err := netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
 	if err != nil {
-		s.onError(err)
+		s.onError(errors.WithStack(err))
 		return
 	}
 
@@ -345,7 +345,7 @@ func (s *Server) process(netConn net.Conn) {
 		})
 
 		if err != nil {
-			s.onError(err)
+			s.onError(errors.WithStack(err))
 			break
 		}
 

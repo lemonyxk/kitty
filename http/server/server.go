@@ -2,13 +2,13 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/lemonyxk/kitty/v2/errors"
 	http2 "github.com/lemonyxk/kitty/v2/http"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
@@ -39,13 +39,13 @@ type Server struct {
 	server       *http.Server
 }
 
+type Middle router.Middle[*http2.Stream]
+
 func (s *Server) Ready() {
 	if s.Addr == "" {
 		panic("Addr must set")
 	}
 }
-
-type Middle func(*http2.Stream)
 
 func (s *Server) LocalAddr() net.Addr {
 	return s.netListen.Addr()

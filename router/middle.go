@@ -10,6 +10,8 @@
 
 package router
 
+type Middle[T any] func(T)
+
 type Func[T any] func(stream T) error
 
 type Before[T any] func(stream T) error

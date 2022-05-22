@@ -17,78 +17,146 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/kitty"
 
 	"github.com/lemonyxk/kitty/v2/socket"
 )
 
-type Conn struct {
-	Name     string
-	FD       int64
-	Conn     *websocket.Conn
-	LastPing time.Time
-	Server   *Server
-	Response http.ResponseWriter
-	Request  *http.Request
+type Conn interface {
+	Name() string
+	FD() int64
+	SetFD(int64)
+	Host() string
+	ClientIP() string
+	Ping() error
+	Pong() error
+	Push(msg []byte) error
+	Emit(pack socket.Pack) error
+	JsonEmit(msg socket.JsonPack) error
+	ProtoBufEmit(msg socket.ProtoBufPack) error
+	Write(messageType int, msg []byte) (int, error)
+	Close() error
+	SetLastPing(time.Time)
+	LastPing() time.Time
+	Conn() *websocket.Conn
+	Server() *Server
+	protocol(messageType byte, route []byte, body []byte) error
+}
+
+type conn struct {
+	name     string
+	fd       int64
+	conn     *websocket.Conn
+	lastPing time.Time
+	server   *Server
+	response http.ResponseWriter
+	request  *http.Request
 	mux      sync.Mutex
 }
 
-func (c *Conn) Host() string {
-	if host := c.Request.Header.Get(kitty.Host); host != "" {
-		return host
-	}
-	return c.Request.Host
+func (c *conn) Name() string {
+	return c.name
 }
 
-func (c *Conn) ClientIP() string {
+func (c *conn) Server() *Server {
+	return c.server
+}
 
-	if ip := strings.Split(c.Request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
+func (c *conn) Conn() *websocket.Conn {
+	return c.conn
+}
+
+func (c *conn) SetLastPing(t time.Time) {
+	c.lastPing = t
+}
+
+func (c *conn) LastPing() time.Time {
+	return c.lastPing
+}
+
+func (c *conn) FD() int64 {
+	return c.fd
+}
+
+func (c *conn) SetFD(fd int64) {
+	c.fd = fd
+}
+
+func (c *conn) Host() string {
+	if host := c.request.Header.Get(kitty.Host); host != "" {
+		return host
+	}
+	return c.request.Host
+}
+
+func (c *conn) ClientIP() string {
+
+	if ip := strings.Split(c.request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
 		return ip
 	}
 
-	if ip := c.Request.Header.Get(kitty.XRealIP); ip != "" {
+	if ip := c.request.Header.Get(kitty.XRealIP); ip != "" {
 		return ip
 	}
 
-	if ip, _, err := net.SplitHostPort(c.Request.RemoteAddr); err == nil {
+	if ip, _, err := net.SplitHostPort(c.request.RemoteAddr); err == nil {
 		return ip
 	}
 
 	return ""
 }
 
-func (c *Conn) Ping() error {
-	return c.Push(c.Server.Protocol.Encode(socket.Ping, 0, nil, nil))
+func (c *conn) Ping() error {
+	return c.protocol(socket.Ping, nil, nil)
 }
 
-func (c *Conn) Pong() error {
-	return c.Push(c.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
+func (c *conn) Pong() error {
+	return c.protocol(socket.Pong, nil, nil)
 }
 
-func (c *Conn) Push(msg []byte) error {
-	return c.Server.Push(c.FD, msg)
+func (c *conn) Push(msg []byte) error {
+	_, err := c.Write(int(socket.Bin), msg)
+	return err
 }
 
-func (c *Conn) Emit(pack socket.Pack) error {
-	return c.Server.Emit(c.FD, pack)
+func (c *conn) Emit(pack socket.Pack) error {
+	return c.protocol(socket.Bin, []byte(pack.Event), pack.Data)
 }
 
-func (c *Conn) JsonEmit(msg socket.JsonPack) error {
-	return c.Server.JsonEmit(c.FD, msg)
+func (c *conn) JsonEmit(pack socket.JsonPack) error {
+	data, err := jsoniter.Marshal(pack.Data)
+	if err != nil {
+		return err
+	}
+	return c.protocol(socket.Bin, []byte(pack.Event), data)
 }
 
-func (c *Conn) ProtoBufEmit(msg socket.ProtoBufPack) error {
-	return c.Server.ProtoBufEmit(c.FD, msg)
+func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
+	data, err := proto.Marshal(pack.Data)
+	if err != nil {
+		return err
+	}
+	return c.protocol(socket.Bin, []byte(pack.Event), data)
 }
 
-func (c *Conn) Close() error {
-	return c.Conn.Close()
+func (c *conn) Close() error {
+	return c.conn.Close()
 }
 
-func (c *Conn) Write(messageType int, msg []byte) (int, error) {
+func (c *conn) Write(messageType int, msg []byte) (int, error) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	return len(msg), c.Conn.WriteMessage(messageType, msg)
+	return len(msg), c.conn.WriteMessage(messageType, msg)
+}
+
+func (c *conn) protocol(messageType byte, route []byte, body []byte) error {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	var msg = c.server.Protocol.Encode(messageType, 0, route, body)
+	err := c.conn.WriteMessage(int(socket.Bin), msg)
+	return err
 }

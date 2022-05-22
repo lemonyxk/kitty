@@ -15,60 +15,127 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/socket"
 )
 
-type Conn struct {
-	Name     string
-	FD       int64
-	Conn     net.Conn
-	Server   *Server
-	LastPing time.Time
+type Conn interface {
+	Host() string
+	ClientIP() string
+	Ping() error
+	Pong() error
+	Push(msg []byte) error
+	Emit(pack socket.Pack) error
+	JsonEmit(msg socket.JsonPack) error
+	ProtoBufEmit(msg socket.ProtoBufPack) error
+	Close() error
+	Write(msg []byte) (int, error)
+	FD() int64
+	SetFD(fd int64)
+	LastPing() time.Time
+	SetLastPing(t time.Time)
+	Name() string
+	Server() *Server
+	Conn() net.Conn
+	protocol(messageType byte, route []byte, body []byte) error
+}
+
+type conn struct {
+	name     string
+	fd       int64
+	conn     net.Conn
+	server   *Server
+	lastPing time.Time
 	mux      sync.RWMutex
 }
 
-func (c *Conn) Host() string {
-	return c.Conn.RemoteAddr().String()
+func (c *conn) Name() string {
+	return c.name
 }
 
-func (c *Conn) ClientIP() string {
-	if ip, _, err := net.SplitHostPort(c.Conn.RemoteAddr().String()); err == nil {
+func (c *conn) Server() *Server {
+	return c.server
+}
+
+func (c *conn) Conn() net.Conn {
+	return c.conn
+}
+
+func (c *conn) FD() int64 {
+	return c.fd
+}
+
+func (c *conn) SetFD(fd int64) {
+	c.fd = fd
+}
+
+func (c *conn) LastPing() time.Time {
+	return c.lastPing
+}
+
+func (c *conn) SetLastPing(t time.Time) {
+	c.lastPing = t
+}
+
+func (c *conn) Host() string {
+	return c.conn.RemoteAddr().String()
+}
+
+func (c *conn) ClientIP() string {
+	if ip, _, err := net.SplitHostPort(c.conn.RemoteAddr().String()); err == nil {
 		return ip
 	}
 	return ""
 }
 
-func (c *Conn) Ping() error {
-	return c.Push(c.Server.Protocol.Encode(socket.Ping, 0, nil, nil))
+func (c *conn) Ping() error {
+	return c.protocol(socket.Ping, nil, nil)
 }
 
-func (c *Conn) Pong() error {
-	return c.Push(c.Server.Protocol.Encode(socket.Pong, 0, nil, nil))
+func (c *conn) Pong() error {
+	return c.protocol(socket.Pong, nil, nil)
 }
 
-func (c *Conn) Push(msg []byte) error {
-	return c.Server.Push(c.FD, msg)
+func (c *conn) Push(msg []byte) error {
+	_, err := c.Write(msg)
+	return err
 }
 
-func (c *Conn) Emit(pack socket.Pack) error {
-	return c.Server.Emit(c.FD, pack)
+func (c *conn) Emit(pack socket.Pack) error {
+	return c.protocol(socket.Bin, []byte(pack.Event), pack.Data)
 }
 
-func (c *Conn) JsonEmit(msg socket.JsonPack) error {
-	return c.Server.JsonEmit(c.FD, msg)
+func (c *conn) JsonEmit(pack socket.JsonPack) error {
+	data, err := jsoniter.Marshal(pack.Data)
+	if err != nil {
+		return err
+	}
+	return c.protocol(socket.Bin, []byte(pack.Event), data)
 }
 
-func (c *Conn) ProtoBufEmit(msg socket.ProtoBufPack) error {
-	return c.Server.ProtoBufEmit(c.FD, msg)
+func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
+	data, err := proto.Marshal(pack.Data)
+	if err != nil {
+		return err
+	}
+	return c.protocol(socket.Bin, []byte(pack.Event), data)
 }
 
-func (c *Conn) Close() error {
-	return c.Conn.Close()
+func (c *conn) Close() error {
+	return c.conn.Close()
 }
 
-func (c *Conn) Write(msg []byte) (int, error) {
+func (c *conn) Write(msg []byte) (int, error) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
+	return c.conn.Write(msg)
+}
 
-	return c.Conn.Write(msg)
+func (c *conn) protocol(messageType byte, route []byte, body []byte) error {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	var data = c.server.Protocol.Encode(messageType, 0, route, body)
+	_, err := c.conn.Write(data)
+	return err
 }

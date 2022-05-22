@@ -40,28 +40,27 @@ const (
 	// ProtoBuf int = 3
 )
 
-type Pack struct {
-	Event string
-	Data  []byte
-	ID    int64
-}
-
-type Stream struct {
+type Stream[T any] struct {
 	Pack
+
+	Conn T
 
 	Context kitty2.Context
 	Params  kitty2.Params
 	Logger  kitty2.Logger
 }
 
+type Pack struct {
+	Event string
+	Data  []byte
+}
+
 type JsonPack struct {
 	Event string
 	Data  any
-	ID    int64
 }
 
 type ProtoBufPack struct {
 	Event string
 	Data  proto.Message
-	ID    int64
 }

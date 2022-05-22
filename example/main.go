@@ -15,7 +15,9 @@ import (
 	"github.com/lemonyxk/kitty/v2/http"
 	"github.com/lemonyxk/kitty/v2/http/client"
 	server3 "github.com/lemonyxk/kitty/v2/http/server"
+	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
+	client2 "github.com/lemonyxk/kitty/v2/socket/tcp/client"
 	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
 	udpClient2 "github.com/lemonyxk/kitty/v2/socket/udp/client"
 	server4 "github.com/lemonyxk/kitty/v2/socket/udp/server"
@@ -46,9 +48,14 @@ func runTcpServer() {
 
 	var tcpServerRouter = kitty.NewTcpServerRouter()
 
-	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
-			log.Println(string(stream.Data))
+	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
+			go func() {
+				_ = stream.Conn.JsonEmit(socket.JsonPack{
+					Event: "/hello/world",
+					Data:  nil,
+				})
+			}()
 			return nil
 		})
 	})
@@ -65,8 +72,8 @@ func runWebSocketServer() {
 
 	var webSocketServerRouter = kitty.NewWebSocketServerRouter()
 
-	webSocketServerRouter.Group("/hello").Handler(func(handler *server2.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server2.Conn, stream *socket.Stream) error {
+	webSocketServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server2.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[server2.Conn]) error {
 			log.Println(string(stream.Data))
 			return nil
 		})
@@ -84,8 +91,8 @@ func runUdpServer() {
 
 	var udpServerRouter = kitty.NewUdpServerRouter()
 
-	udpServerRouter.Group("/hello").Handler(func(handler *server4.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server4.Conn, stream *socket.Stream) error {
+	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server4.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[server4.Conn]) error {
 			log.Println(string(stream.Data))
 			return nil
 		})
@@ -105,6 +112,8 @@ func runHttpServer() {
 
 	var httpServerRouter = kitty.NewHttpServerRouter()
 
+	var httpStaticServerRouter = kitty.NewHttpServerStaticRouter()
+
 	httpServer.Use(func(next server3.Middle) server3.Middle {
 		return func(stream *http.Stream) {
 			stream.AutoParse()
@@ -112,12 +121,12 @@ func runHttpServer() {
 		}
 	})
 
-	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.RouteMethod("GET", "/hello").Handler(func(stream *http.Stream) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		return stream.EndString("hello world!")
 	})
 
-	httpServerRouter.Route("POST", "/proto").Handler(func(stream *http.Stream) error {
+	httpServerRouter.RouteMethod("POST", "/proto").Handler(func(stream *http.Stream) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		log.Println(stream.AutoGet("name").String())
 		log.Println(stream.Files.First("file"))
@@ -130,10 +139,9 @@ func runHttpServer() {
 		return stream.EndString("hello proto!")
 	})
 
-	httpServerRouter.Group("/hello").Handler(func(handler *server3.RouteHandler) {
-		handler.Get("/world").Handler(func(t *http.Stream) error {
-			return t.JsonFormat("SUCCESS", 200, os.Getpid())
-		})
+	var group = httpServerRouter.Group("/hello").Create()
+	group.Get("/world").Handler(func(t *http.Stream) error {
+		return t.JsonFormat("SUCCESS", 200, os.Getpid())
 	})
 
 	httpServer.OnSuccess = func() {
@@ -142,13 +150,13 @@ func runHttpServer() {
 
 	// httpServerRouter.SetStaticPath("/", "", http2.Dir("./example/public"))
 
-	httpServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
-	httpServerRouter.SetStaticPath("/js", "test", http2.Dir("./example"))
+	httpStaticServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
+	httpStaticServerRouter.SetStaticPath("/js", "test", http2.Dir("./example"))
 	// httpServerRouter.SetDefaultIndex("index.html", "index.htm")
 	// httpServerRouter.SetStaticFileMiddle(".md").Handler(func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error {
 	// 	return nil
 	// })
-	httpServerRouter.SetOpenDir(0)
+	httpStaticServerRouter.SetOpenDir(0)
 
 	go httpServer.SetRouter(httpServerRouter).Start()
 }
@@ -192,7 +200,26 @@ func runTcpClient() {
 	time.AfterFunc(time.Second, func() {
 		var tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
 		var clientRouter = kitty.NewTcpClientRouter()
-		tcpClient.SetRouter(clientRouter).Connect()
+
+		clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client2.Conn]]) {
+			handler.Route("/world").Handler(func(stream *socket.Stream[client2.Conn]) error {
+				log.Println("tcp OK!")
+				return nil
+			})
+		})
+
+		go tcpClient.SetRouter(clientRouter).Connect()
+
+		tcpClient.OnSuccess = func() {
+			for i := 0; i < 100; i++ {
+				go func() {
+					_ = tcpClient.JsonEmit(socket.JsonPack{
+						Event: "/hello/world",
+						Data:  nil,
+					})
+				}()
+			}
+		}
 	})
 }
 
@@ -201,7 +228,7 @@ func runUdpClient() {
 		var udpClient = kitty.NewUdpClient("127.0.0.1:5000")
 		var clientRouter = kitty.NewUdpClientRouter()
 
-		udpClient.OnOpen = func(client *udpClient2.Client) {
+		udpClient.OnOpen = func(client udpClient2.Conn) {
 			log.Println(client.RemoteAddr())
 		}
 

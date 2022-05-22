@@ -35,21 +35,21 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 	var urlPath string
 
-	for i := 0; i < len(s.router.static); i++ {
-		if !strings.HasPrefix(r.URL.Path, s.router.static[i].prefixPath) {
+	for i := 0; i < len(s.staticRouter.static); i++ {
+		if !strings.HasPrefix(r.URL.Path, s.staticRouter.static[i].prefixPath) {
 			continue
 		}
 
-		urlPath = r.URL.Path[len(s.router.static[i].prefixPath):]
+		urlPath = r.URL.Path[len(s.staticRouter.static[i].prefixPath):]
 
-		openPath = filepath.Join(s.router.static[i].fixPath, urlPath)
+		openPath = filepath.Join(s.staticRouter.static[i].fixPath, urlPath)
 
-		file, err = s.router.static[i].fileSystem.Open(openPath)
+		file, err = s.staticRouter.static[i].fileSystem.Open(openPath)
 		if err != nil {
 			continue
 		}
 
-		static = s.router.static[i]
+		static = s.staticRouter.static[i]
 
 		break
 	}
@@ -73,12 +73,12 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 		var findDefault = false
 
-		for i := 0; i < len(s.router.defaultIndex); i++ {
-			if s.router.defaultIndex[i] == "" {
+		for i := 0; i < len(s.staticRouter.defaultIndex); i++ {
+			if s.staticRouter.defaultIndex[i] == "" {
 				continue
 			}
 
-			var otp = filepath.Join(openPath, s.router.defaultIndex[i])
+			var otp = filepath.Join(openPath, s.staticRouter.defaultIndex[i])
 			var of, err = static.fileSystem.Open(otp)
 			if err != nil {
 				continue
@@ -100,14 +100,14 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 		if !findDefault {
 
-			if len(s.router.openDir) == 0 {
+			if len(s.staticRouter.openDir) == 0 {
 				w.WriteHeader(http.StatusForbidden)
 				return nil
 			}
 
 			var shouldOpen = false
-			for i := 0; i < len(s.router.openDir); i++ {
-				if s.router.openDir[i] == static.index {
+			for i := 0; i < len(s.staticRouter.openDir); i++ {
+				if s.staticRouter.openDir[i] == static.index {
 					shouldOpen = true
 					break
 				}
@@ -118,7 +118,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 				return nil
 			}
 
-			var fn, ok = s.router.staticDirMiddle[urlPath]
+			var fn, ok = s.staticRouter.staticDirMiddle[urlPath]
 			if ok {
 				var err = fn(w, r, file, info)
 				if err != nil {
@@ -128,8 +128,8 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 				return nil
 			}
 
-			if s.router.staticGlobalDirMiddle != nil {
-				var err = s.router.staticGlobalDirMiddle(w, r, file, info)
+			if s.staticRouter.staticGlobalDirMiddle != nil {
+				var err = s.staticRouter.staticGlobalDirMiddle(w, r, file, info)
 				if err != nil {
 					w.WriteHeader(http.StatusForbidden)
 					return nil
@@ -143,7 +143,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 	var ext = filepath.Ext(info.Name())
 
-	var fn, ok = s.router.staticFileMiddle[ext]
+	var fn, ok = s.staticRouter.staticFileMiddle[ext]
 	if ok {
 		var err = fn(w, r, file, info)
 		if err != nil {
@@ -153,8 +153,8 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	if s.router.staticGlobalFileMiddle != nil {
-		var err = s.router.staticGlobalFileMiddle(w, r, file, info)
+	if s.staticRouter.staticGlobalFileMiddle != nil {
+		var err = s.staticRouter.staticGlobalFileMiddle(w, r, file, info)
 		if err != nil {
 			w.WriteHeader(http.StatusForbidden)
 			return nil
@@ -199,7 +199,7 @@ func (s *Server) staticDefaultDirMiddle(w http.ResponseWriter, r *http.Request, 
 	for i := 0; i < len(dir); i++ {
 		var download = ""
 		var empty = ""
-		if s.router.staticDownload {
+		if s.staticRouter.staticDownload {
 			download = `<a class="file" download href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + downloadSVG + `</a>`
 			empty = emptySVG
 		}

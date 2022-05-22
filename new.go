@@ -11,8 +11,11 @@
 package kitty
 
 import (
+	"github.com/lemonyxk/kitty/v2/http"
 	httpClient "github.com/lemonyxk/kitty/v2/http/client"
 	httpServer "github.com/lemonyxk/kitty/v2/http/server"
+	"github.com/lemonyxk/kitty/v2/router"
+	"github.com/lemonyxk/kitty/v2/socket"
 	tcpClient "github.com/lemonyxk/kitty/v2/socket/tcp/client"
 	tcpServer "github.com/lemonyxk/kitty/v2/socket/tcp/server"
 	udpClient "github.com/lemonyxk/kitty/v2/socket/udp/client"
@@ -27,8 +30,12 @@ func NewHttpServer(addr string) *httpServer.Server {
 	return &httpServer.Server{Addr: addr}
 }
 
-func NewHttpServerRouter() *httpServer.Router {
-	return &httpServer.Router{}
+func NewHttpServerRouter() *router.Router[*http.Stream] {
+	return &router.Router[*http.Stream]{}
+}
+
+func NewHttpServerStaticRouter() *httpServer.StaticRouter {
+	return &httpServer.StaticRouter{}
 }
 
 func NewHttpClientProgress() *httpClient.Progress {
@@ -41,8 +48,8 @@ func NewHttpClient() *httpClient.Client {
 
 // WEB SOCKET
 
-func NewWebSocketClientRouter() *webSocketClient.Router {
-	return &webSocketClient.Router{}
+func NewWebSocketClientRouter() *router.Router[*socket.Stream[webSocketClient.Conn]] {
+	return &router.Router[*socket.Stream[webSocketClient.Conn]]{}
 }
 
 func NewWebSocketClient(addr string) *webSocketClient.Client {
@@ -53,8 +60,8 @@ func NewWebSocketServer(addr string) *webSocketServer.Server {
 	return &webSocketServer.Server{Addr: addr}
 }
 
-func NewWebSocketServerRouter() *webSocketServer.Router {
-	return &webSocketServer.Router{}
+func NewWebSocketServerRouter() *router.Router[*socket.Stream[webSocketServer.Conn]] {
+	return &router.Router[*socket.Stream[webSocketServer.Conn]]{}
 }
 
 // UDP
@@ -63,16 +70,16 @@ func NewUdpServer(addr string) *udpServer.Server {
 	return &udpServer.Server{Addr: addr}
 }
 
-func NewUdpServerRouter() *udpServer.Router {
-	return &udpServer.Router{}
+func NewUdpServerRouter() *router.Router[*socket.Stream[udpServer.Conn]] {
+	return &router.Router[*socket.Stream[udpServer.Conn]]{}
 }
 
 func NewUdpClient(addr string) *udpClient.Client {
 	return &udpClient.Client{Addr: addr}
 }
 
-func NewUdpClientRouter() *udpClient.Router {
-	return &udpClient.Router{}
+func NewUdpClientRouter() *router.Router[*socket.Stream[udpClient.Conn]] {
+	return &router.Router[*socket.Stream[udpClient.Conn]]{}
 }
 
 // TCP
@@ -81,14 +88,14 @@ func NewTcpServer(addr string) *tcpServer.Server {
 	return &tcpServer.Server{Addr: addr}
 }
 
-func NewTcpServerRouter() *tcpServer.Router {
-	return &tcpServer.Router{}
+func NewTcpServerRouter() *router.Router[*socket.Stream[tcpServer.Conn]] {
+	return &router.Router[*socket.Stream[tcpServer.Conn]]{}
 }
 
 func NewTcpClient(addr string) *tcpClient.Client {
 	return &tcpClient.Client{Addr: addr}
 }
 
-func NewTcpClientRouter() *tcpClient.Router {
-	return &tcpClient.Router{}
+func NewTcpClientRouter() *router.Router[*socket.Stream[tcpClient.Conn]] {
+	return &router.Router[*socket.Stream[tcpClient.Conn]]{}
 }

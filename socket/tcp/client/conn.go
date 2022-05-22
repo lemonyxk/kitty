@@ -14,33 +14,83 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"github.com/lemonyxk/kitty/v2/socket"
 )
 
-type Conn struct {
-	Conn     net.Conn
-	LastPong time.Time
+type Conn interface {
+	Conn() net.Conn
+	LocalAddr() net.Addr
+	RemoteAddr() net.Addr
+	Close() error
+	Write([]byte) error
+	Read([]byte) (int, error)
+	LastPong() time.Time
+	SetLastPong(time.Time)
+	Client() *Client
+	Ping() error
+	Pong() error
+	protocol(messageType byte, route []byte, body []byte) error
+}
+
+type conn struct {
+	conn     net.Conn
+	client   *Client
+	lastPong time.Time
 	mux      sync.RWMutex
 }
 
-func (c *Conn) LocalAddr() net.Addr {
-	return c.Conn.LocalAddr()
+func (c *conn) Conn() net.Conn {
+	return c.conn
 }
 
-func (c *Conn) RemoteAddr() net.Addr {
-	return c.Conn.RemoteAddr()
+func (c *conn) Client() *Client {
+	return c.client
 }
 
-func (c *Conn) Write(message []byte) error {
+func (c *conn) Ping() error {
+	return c.protocol(socket.Ping, nil, nil)
+}
+
+func (c *conn) Pong() error {
+	return c.protocol(socket.Pong, nil, nil)
+}
+
+func (c *conn) LastPong() time.Time {
+	return c.lastPong
+}
+
+func (c *conn) SetLastPong(t time.Time) {
+	c.lastPong = t
+}
+
+func (c *conn) LocalAddr() net.Addr {
+	return c.conn.LocalAddr()
+}
+
+func (c *conn) RemoteAddr() net.Addr {
+	return c.conn.RemoteAddr()
+}
+
+func (c *conn) Write(message []byte) error {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	_, err := c.Conn.Write(message)
+	_, err := c.conn.Write(message)
 	return err
 }
 
-func (c *Conn) Close() error {
-	return c.Conn.Close()
+func (c *conn) protocol(messageType byte, route []byte, body []byte) error {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+	var message = c.client.Protocol.Encode(messageType, 0, route, body)
+	_, err := c.conn.Write(message)
+	return err
 }
 
-func (c *Conn) Read(b []byte) (n int, err error) {
-	return c.Conn.Read(b)
+func (c *conn) Close() error {
+	return c.conn.Close()
+}
+
+func (c *conn) Read(b []byte) (n int, err error) {
+	return c.conn.Read(b)
 }

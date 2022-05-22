@@ -25,12 +25,12 @@ type Async struct {
 	mux    sync.Mutex
 }
 
-func (a *Async) Emit(pack socket.Pack) (*socket.Stream, error) {
+func (a *Async) Emit(pack socket.Pack) (*socket.Stream[Conn], error) {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
-	var ch = make(chan *socket.Stream)
-	a.client.GetRouter().Route(pack.Event).Handler(func(client *Client, stream *socket.Stream) error {
+	var ch = make(chan *socket.Stream[Conn])
+	a.client.GetRouter().Route(pack.Event).Handler(func(stream *socket.Stream[Conn]) error {
 		ch <- stream
 		return nil
 	})
@@ -52,12 +52,12 @@ func (a *Async) Emit(pack socket.Pack) (*socket.Stream, error) {
 	}
 }
 
-func (a *Async) JsonEmit(pack socket.JsonPack) (*socket.Stream, error) {
+func (a *Async) JsonEmit(pack socket.JsonPack) (*socket.Stream[Conn], error) {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
-	var ch = make(chan *socket.Stream)
-	a.client.GetRouter().Route(pack.Event).Handler(func(client *Client, stream *socket.Stream) error {
+	var ch = make(chan *socket.Stream[Conn])
+	a.client.GetRouter().Route(pack.Event).Handler(func(stream *socket.Stream[Conn]) error {
 		ch <- stream
 		return nil
 	})
@@ -79,12 +79,12 @@ func (a *Async) JsonEmit(pack socket.JsonPack) (*socket.Stream, error) {
 	}
 }
 
-func (a *Async) ProtoBufEmit(pack socket.ProtoBufPack) (*socket.Stream, error) {
+func (a *Async) ProtoBufEmit(pack socket.ProtoBufPack) (*socket.Stream[Conn], error) {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
-	var ch = make(chan *socket.Stream)
-	a.client.GetRouter().Route(pack.Event).Handler(func(client *Client, stream *socket.Stream) error {
+	var ch = make(chan *socket.Stream[Conn])
+	a.client.GetRouter().Route(pack.Event).Handler(func(stream *socket.Stream[Conn]) error {
 		ch <- stream
 		return nil
 	})

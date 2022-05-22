@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	http2 "github.com/lemonyxk/kitty/v2/http"
 	"github.com/lemonyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/router"
 )
 
 type Server struct {
@@ -30,10 +32,11 @@ type Server struct {
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 
-	middle    []func(next Middle) Middle
-	router    *Router
-	netListen net.Listener
-	server    *http.Server
+	middle       []func(next Middle) Middle
+	router       *router.Router[*http2.Stream]
+	staticRouter *StaticRouter
+	netListen    net.Listener
+	server       *http.Server
 }
 
 func (s *Server) Ready() {
@@ -72,11 +75,24 @@ func (s *Server) handler(stream *http2.Stream) {
 	}
 
 	// Get the router
-	n, formatPath := s.router.getRoute(stream.Request.Method, stream.Request.URL.Path)
+	var method = strings.ToUpper(stream.Request.Method)
+	n, formatPath := s.router.GetRoute(stream.Request.URL.Path)
 
 	if n == nil {
 		stream.Response.WriteHeader(http.StatusNotFound)
 		var err = errors.New(stream.Request.URL.Path + " " + "404 not found")
+		if s.OnError != nil {
+			s.OnError(stream, err)
+		}
+		if s.OnClose != nil {
+			s.OnClose(stream)
+		}
+		return
+	}
+
+	if n.Data.Method != method {
+		stream.Response.WriteHeader(http.StatusMethodNotAllowed)
+		var err = errors.New(stream.Request.URL.Path + " " + "405 method not allowed")
 		if s.OnError != nil {
 			s.OnError(stream, err)
 		}
@@ -131,12 +147,17 @@ func (s *Server) handler(stream *http2.Stream) {
 	}
 }
 
-func (s *Server) SetRouter(router *Router) *Server {
+func (s *Server) SetRouter(router *router.Router[*http2.Stream]) *Server {
 	s.router = router
 	return s
 }
 
-func (s *Server) GetRouter() *Router {
+func (s *Server) SetStaticRouter(router *StaticRouter) *Server {
+	s.staticRouter = router
+	return s
+}
+
+func (s *Server) GetRouter() *router.Router[*http2.Stream] {
 	return s.router
 }
 
@@ -181,14 +202,13 @@ func (s *Server) Shutdown() error {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	// router not exists
-	if s.router == nil {
+	if s.router == nil && s.staticRouter == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	// static file
-	if len(s.router.static) > 0 && r.Method == http.MethodGet {
+	if s.staticRouter != nil && r.Method == http.MethodGet {
 		if s.staticHandler(w, r) == nil {
 			return
 		}

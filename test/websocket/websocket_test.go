@@ -18,6 +18,7 @@ import (
 
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2"
+	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket/websocket/client"
 	"github.com/stretchr/testify/assert"
 
@@ -28,7 +29,6 @@ import (
 type JsonPack struct {
 	Event string `json:"event"`
 	Data  any    `json:"data"`
-	ID    int64  `json:"id"`
 }
 
 var stop = make(chan bool)
@@ -41,11 +41,11 @@ func shutdown() {
 
 var webSocketServer *server.Server
 
-var webSocketServerRouter *server.Router
+var webSocketServerRouter *router.Router[*socket.Stream[server.Conn]]
 
 var webSocketClient *client.Client
 
-var clientRouter *client.Router
+var clientRouter *router.Router[*socket.Stream[client.Conn]]
 
 var addr = "127.0.0.1:8669"
 
@@ -55,49 +55,46 @@ func initServer(fn func()) {
 	webSocketServer = kitty.NewWebSocketServer(addr)
 
 	// event
-	webSocketServer.OnOpen = func(conn *server.Conn) {}
-	webSocketServer.OnClose = func(conn *server.Conn) {}
+	webSocketServer.OnOpen = func(conn server.Conn) {}
+	webSocketServer.OnClose = func(conn server.Conn) {}
 	webSocketServer.OnError = func(err error) {}
-	webSocketServer.OnMessage = func(conn *server.Conn, msg []byte) {}
+	webSocketServer.OnMessage = func(conn server.Conn, msg []byte) {}
 
 	// middleware
 	webSocketServer.Use(func(next server.Middle) server.Middle {
-		return func(conn *server.Conn, stream *socket.Stream) {
-			next(conn, stream)
+		return func(stream *socket.Stream[server.Conn]) {
+			next(stream)
 		}
 	})
 
 	// handle unknown proto
-	webSocketServer.OnUnknown = func(conn *server.Conn, message []byte, next server.Middle) {
+	webSocketServer.OnUnknown = func(conn server.Conn, message []byte, next server.Middle) {
 		var j = jsoniter.Get(message)
-		var id = j.Get("id").ToInt64()
 		var route = j.Get("event").ToString()
 		var data = j.Get("data").ToString()
 		if route == "" {
 			return
 		}
-		next(conn, &socket.Stream{Pack: socket.Pack{Event: route, Data: []byte(data), ID: id}})
+		next(&socket.Stream[server.Conn]{Conn: conn, Pack: socket.Pack{Event: route, Data: []byte(data)}})
 	}
 
 	// create router
 	webSocketServerRouter = kitty.NewWebSocketServerRouter()
 
 	// set group route
-	webSocketServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
-			return ServerJson(conn, JsonPack{
+	webSocketServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
+			return ServerJson(stream.Conn, JsonPack{
 				Event: "/hello/world",
 				Data:  "i am server",
-				ID:    stream.ID,
 			})
 		})
 	})
 
-	webSocketServerRouter.Route("/async").Handler(func(conn *server.Conn, stream *socket.Stream) error {
-		return ServerJson(conn, JsonPack{
+	webSocketServerRouter.Route("/async").Handler(func(stream *socket.Stream[server.Conn]) error {
+		return ServerJson(stream.Conn, JsonPack{
 			Event: "/async",
 			Data:  "async test",
-			ID:    stream.ID,
 		})
 	})
 
@@ -115,21 +112,20 @@ func initClient(fn func()) {
 	webSocketClient.HeartBeatInterval = time.Second
 
 	// event
-	webSocketClient.OnClose = func(c *client.Client) {}
-	webSocketClient.OnOpen = func(c *client.Client) {}
+	webSocketClient.OnClose = func(c client.Conn) {}
+	webSocketClient.OnOpen = func(c client.Conn) {}
 	webSocketClient.OnError = func(err error) {}
-	webSocketClient.OnMessage = func(c *client.Client, messageType int, msg []byte) {}
+	webSocketClient.OnMessage = func(c client.Conn, messageType int, msg []byte) {}
 
 	// handle unknown proto
-	webSocketClient.OnUnknown = func(conn *client.Client, message []byte, next client.Middle) {
+	webSocketClient.OnUnknown = func(c client.Conn, message []byte, next client.Middle) {
 		var j = jsoniter.Get(message)
-		var id = j.Get("id").ToInt64()
 		var route = j.Get("event").ToString()
 		var data = j.Get("data").ToString()
 		if route == "" {
 			return
 		}
-		next(conn, &socket.Stream{Pack: socket.Pack{Event: route, Data: []byte(data), ID: id}})
+		next(&socket.Stream[client.Conn]{Conn: c, Pack: socket.Pack{Event: route, Data: []byte(data)}})
 	}
 
 	// create router
@@ -190,17 +186,14 @@ func Test_WS_Client_Async(t *testing.T) {
 
 func Test_WS_Client(t *testing.T) {
 
-	var id int64 = 123456
-
 	var count = 10000
 
 	var flag = true
 
-	clientRouter.Group("/hello").Handler(func(handler *client.RouteHandler) {
-		handler.Route("/world").Handler(func(c *client.Client, stream *socket.Stream) error {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			defer mux.Add(-1)
 			assert.True(t, string(stream.Data) == "i am server", "stream is nil")
-			assert.True(t, stream.ID == id, "id not match", stream.ID)
 			return nil
 		})
 	})
@@ -210,7 +203,6 @@ func Test_WS_Client(t *testing.T) {
 		_ = ClientJson(webSocketClient, JsonPack{
 			Event: "/hello/world",
 			Data:  strings.Repeat("hello world!", 1),
-			ID:    id,
 		})
 	}
 
@@ -239,10 +231,10 @@ func ClientJson(c *client.Client, pack JsonPack) error {
 	return c.Push(data)
 }
 
-func ServerJson(conn *server.Conn, pack JsonPack) error {
+func ServerJson(conn server.Conn, pack JsonPack) error {
 	data, err := jsoniter.Marshal(pack)
 	if err != nil {
 		return err
 	}
-	return conn.Server.Push(conn.FD, data)
+	return conn.Server().Push(conn.FD(), data)
 }

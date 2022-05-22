@@ -20,6 +20,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/http/client"
 	"github.com/lemonyxk/kitty/v2/http/server"
 	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,9 +45,9 @@ func TestMain(t *testing.M) {
 
 func Test_Method_Get(t *testing.T) {
 
-	var httpServerRouter = &server.Router{}
+	var httpServerRouter = &router.Router[*http.Stream]{}
 
-	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.RouteMethod("GET", "/hello").Handler(func(stream *http.Stream) error {
 		assert.True(t, stream.Query.First("a").String() == "1")
 		return stream.EndString("hello world!")
 	})
@@ -59,9 +60,9 @@ func Test_Method_Get(t *testing.T) {
 
 func Test_Method_Post(t *testing.T) {
 
-	var httpServerRouter = &server.Router{}
+	var httpServerRouter = &router.Router[*http.Stream]{}
 
-	httpServerRouter.Route("POST", "/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.RouteMethod("POST", "/hello").Handler(func(stream *http.Stream) error {
 		assert.True(t, stream.Form.First("a").String() == "2")
 		return stream.End("hello group!")
 	})
@@ -79,9 +80,11 @@ func Test_Method_NotFound(t *testing.T) {
 }
 
 func Test_Static_File(t *testing.T) {
-	var httpServerRouter = &server.Router{}
-	httpServerRouter.SetStaticPath("/", "", http3.Dir("../../example/public"))
+	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerStaticRouter = &server.StaticRouter{}
+	httpServerStaticRouter.SetStaticPath("/", "", http3.Dir("../../example/public"))
 	httpServer.SetRouter(httpServerRouter)
+	httpServer.SetStaticRouter(httpServerStaticRouter)
 	assert.True(t, len(client.Get(ts.URL+"/1.png").Query().Send().Bytes()) == 2853516)
 	assert.True(t, client.Get(ts.URL+"/test.txt").Query().Send().String() == "hello static!")
 }

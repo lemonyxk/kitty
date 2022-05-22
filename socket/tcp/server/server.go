@@ -19,6 +19,7 @@ import (
 
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/router"
 	hash "github.com/lemonyxk/structure/v3/map"
 
 	"github.com/golang/protobuf/proto"
@@ -31,12 +32,12 @@ type Server struct {
 	Name string
 	Addr string
 
-	OnClose   func(conn *Conn)
-	OnMessage func(conn *Conn, msg []byte)
-	OnOpen    func(conn *Conn)
+	OnClose   func(conn Conn)
+	OnMessage func(conn Conn, msg []byte)
+	OnOpen    func(conn Conn)
 	OnError   func(err error)
 	OnSuccess func()
-	OnUnknown func(conn *Conn, message []byte, next Middle)
+	OnUnknown func(conn Conn, message []byte, next Middle)
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
@@ -44,18 +45,18 @@ type Server struct {
 	ReadBufferSize  int
 	WriteBufferSize int
 
-	PingHandler func(conn *Conn) func(appData string) error
-	PongHandler func(conn *Conn) func(appData string) error
+	PingHandler func(conn Conn) func(appData string) error
+	PongHandler func(conn Conn) func(appData string) error
 	Protocol    tcp.Protocol
 
 	fd          int64
-	connections *hash.Hash[int64, *Conn]
-	router      *Router
+	connections *hash.Hash[int64, Conn]
+	router      *router.Router[*socket.Stream[Conn]]
 	middle      []func(Middle) Middle
 	netListen   net.Listener
 }
 
-type Middle func(conn *Conn, stream *socket.Stream)
+type Middle func(stream *socket.Stream[Conn])
 
 func (s *Server) LocalAddr() net.Addr {
 	return s.netListen.Addr()
@@ -63,6 +64,15 @@ func (s *Server) LocalAddr() net.Addr {
 
 func (s *Server) Use(middle ...func(Middle) Middle) {
 	s.middle = append(s.middle, middle...)
+}
+
+func (s *Server) protocol(fd int64, messageType byte, route []byte, body []byte) error {
+	var conn = s.GetConnection(fd)
+	if conn == nil {
+		return errors.New("client is close")
+	}
+
+	return conn.protocol(messageType, route, body)
 }
 
 func (s *Server) Push(fd int64, msg []byte) error {
@@ -76,13 +86,13 @@ func (s *Server) Push(fd int64, msg []byte) error {
 }
 
 func (s *Server) Emit(fd int64, pack socket.Pack) error {
-	return s.Push(fd, s.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), pack.Data))
+	return s.protocol(fd, socket.Bin, []byte(pack.Event), pack.Data)
 }
 
 func (s *Server) EmitAll(pack socket.Pack) (int, int) {
 	var counter = 0
 	var success = 0
-	s.connections.Range(func(fd int64, conn *Conn) bool {
+	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
 		if s.Emit(fd, pack) == nil {
 			success++
@@ -97,14 +107,14 @@ func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return s.Push(fd, s.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
+	return s.protocol(fd, socket.Bin, []byte(pack.Event), data)
 }
 
 func (s *Server) JsonEmitAll(msg socket.JsonPack) (int, int) {
 	var counter = 0
 	var success = 0
 
-	s.connections.Range(func(fd int64, conn *Conn) bool {
+	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
 		if s.JsonEmit(fd, msg) == nil {
 			success++
@@ -120,14 +130,14 @@ func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return s.Push(fd, s.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
+	return s.protocol(fd, socket.Bin, []byte(pack.Event), data)
 }
 
 func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
 	var counter = 0
 	var success = 0
 
-	s.connections.Range(func(fd int64, conn *Conn) bool {
+	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
 		if s.ProtoBufEmit(fd, msg) == nil {
 			success++
@@ -161,14 +171,14 @@ func (s *Server) Ready() {
 	}
 
 	if s.OnOpen == nil {
-		s.OnOpen = func(conn *Conn) {
-			fmt.Println("tcp server:", conn.FD, "is open")
+		s.OnOpen = func(conn Conn) {
+			fmt.Println("tcp server:", conn.FD(), "is open")
 		}
 	}
 
 	if s.OnClose == nil {
-		s.OnClose = func(conn *Conn) {
-			fmt.Println("tcp server:", conn.FD, "is close")
+		s.OnClose = func(conn Conn) {
+			fmt.Println("tcp server:", conn.FD(), "is close")
 		}
 	}
 
@@ -183,11 +193,11 @@ func (s *Server) Ready() {
 	}
 
 	if s.PingHandler == nil {
-		s.PingHandler = func(connection *Conn) func(appData string) error {
+		s.PingHandler = func(connection Conn) func(appData string) error {
 			return func(appData string) error {
 				var t = time.Now()
-				connection.LastPing = t
-				var err = connection.Conn.SetReadDeadline(t.Add(s.HeartBeatTimeout))
+				connection.SetLastPing(t)
+				var err = connection.Conn().SetReadDeadline(t.Add(s.HeartBeatTimeout))
 				err = connection.Pong()
 				return err
 			}
@@ -196,22 +206,22 @@ func (s *Server) Ready() {
 
 	// no answer
 	if s.PongHandler == nil {
-		s.PongHandler = func(connection *Conn) func(appData string) error {
+		s.PongHandler = func(connection Conn) func(appData string) error {
 			return func(appData string) error {
 				return nil
 			}
 		}
 	}
 
-	s.connections = hash.New[int64, *Conn]()
+	s.connections = hash.New[int64, Conn]()
 }
 
-func (s *Server) onOpen(conn *Conn) {
+func (s *Server) onOpen(conn Conn) {
 	s.addConnect(conn)
 	s.OnOpen(conn)
 }
 
-func (s *Server) onClose(conn *Conn) {
+func (s *Server) onClose(conn Conn) {
 	_ = conn.Close()
 	s.delConnect(conn)
 	s.OnClose(conn)
@@ -221,18 +231,18 @@ func (s *Server) onError(err error) {
 	s.OnError(err)
 }
 
-func (s *Server) addConnect(conn *Conn) {
+func (s *Server) addConnect(conn Conn) {
 	var fd = atomic.AddInt64(&s.fd, 1)
 	s.connections.Set(fd, conn)
-	conn.FD = fd
+	conn.SetFD(fd)
 }
 
-func (s *Server) delConnect(conn *Conn) {
-	s.connections.Delete(conn.FD)
+func (s *Server) delConnect(conn Conn) {
+	s.connections.Delete(conn.FD())
 }
 
-func (s *Server) GetConnections(fn func(conn *Conn)) {
-	s.connections.Range(func(fd int64, conn *Conn) bool {
+func (s *Server) GetConnections(fn func(conn Conn)) {
+	s.connections.Range(func(fd int64, conn Conn) bool {
 		fn(conn)
 		return true
 	})
@@ -246,7 +256,7 @@ func (s *Server) Close(fd int64) error {
 	return conn.Close()
 }
 
-func (s *Server) GetConnection(fd int64) *Conn {
+func (s *Server) GetConnection(fd int64) Conn {
 	conn := s.connections.Get(fd)
 	return conn
 }
@@ -308,11 +318,11 @@ func (s *Server) process(netConn net.Conn) {
 		panic(err)
 	}
 
-	var conn = &Conn{
-		FD:       0,
-		Conn:     netConn,
-		Server:   s,
-		LastPing: time.Now(),
+	var conn = &conn{
+		fd:       0,
+		conn:     netConn,
+		server:   s,
+		lastPing: time.Now(),
 	}
 
 	s.onOpen(conn)
@@ -344,9 +354,10 @@ func (s *Server) process(netConn net.Conn) {
 	s.onClose(conn)
 }
 
-func (s *Server) decodeMessage(conn *Conn, message []byte) error {
+func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	// unpack
 	messageType, id, route, body := s.Protocol.Decode(message)
+	_ = id
 
 	if s.OnMessage != nil {
 		s.OnMessage(conn, message)
@@ -370,20 +381,20 @@ func (s *Server) decodeMessage(conn *Conn, message []byte) error {
 	}
 
 	// on router
-	s.middleware(conn, &socket.Stream{Pack: socket.Pack{Event: string(route), Data: body, ID: id}})
+	s.middleware(&socket.Stream[Conn]{Conn: conn, Pack: socket.Pack{Event: string(route), Data: body}})
 
 	return nil
 }
 
-func (s *Server) middleware(conn *Conn, stream *socket.Stream) {
+func (s *Server) middleware(stream *socket.Stream[Conn]) {
 	var next Middle = s.handler
 	for i := len(s.middle) - 1; i >= 0; i-- {
 		next = s.middle[i](next)
 	}
-	next(conn, stream)
+	next(stream)
 }
 
-func (s *Server) handler(conn *Conn, stream *socket.Stream) {
+func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	if s.router == nil {
 		if s.OnError != nil {
@@ -392,7 +403,7 @@ func (s *Server) handler(conn *Conn, stream *socket.Stream) {
 		return
 	}
 
-	var n, formatPath = s.router.getRoute(stream.Event)
+	var n, formatPath = s.router.GetRoute(stream.Event)
 	if n == nil {
 		if s.OnError != nil {
 			s.OnError(errors.New(stream.Event + " " + "404 not found"))
@@ -405,7 +416,7 @@ func (s *Server) handler(conn *Conn, stream *socket.Stream) {
 	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
 	for i := 0; i < len(nodeData.Before); i++ {
-		if err := nodeData.Before[i](conn, stream); err != nil {
+		if err := nodeData.Before[i](stream); err != nil {
 			if s.OnError != nil {
 				s.OnError(err)
 			}
@@ -413,7 +424,7 @@ func (s *Server) handler(conn *Conn, stream *socket.Stream) {
 		}
 	}
 
-	err := nodeData.Function(conn, stream)
+	err := nodeData.Function(stream)
 	if err != nil {
 		if s.OnError != nil {
 			s.OnError(err)
@@ -422,7 +433,7 @@ func (s *Server) handler(conn *Conn, stream *socket.Stream) {
 	}
 
 	for i := 0; i < len(nodeData.After); i++ {
-		if err := nodeData.After[i](conn, stream); err != nil {
+		if err := nodeData.After[i](stream); err != nil {
 			if s.OnError != nil {
 				s.OnError(err)
 			}
@@ -431,11 +442,11 @@ func (s *Server) handler(conn *Conn, stream *socket.Stream) {
 	}
 }
 
-func (s *Server) SetRouter(router *Router) *Server {
+func (s *Server) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Server {
 	s.router = router
 	return s
 }
 
-func (s *Server) GetRouter() *Router {
+func (s *Server) GetRouter() *router.Router[*socket.Stream[Conn]] {
 	return s.router
 }

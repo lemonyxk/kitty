@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/lemonyxk/kitty/v2"
+	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/tcp/client"
 	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
@@ -33,11 +34,11 @@ func shutdown() {
 
 var tcpServer *server.Server
 
-var tcpServerRouter *server.Router
+var tcpServerRouter *router.Router[*socket.Stream[server.Conn]]
 
 var tcpClient *client.Client
 
-var clientRouter *client.Router
+var clientRouter *router.Router[*socket.Stream[client.Conn]]
 
 var addr = "127.0.0.1:8667"
 
@@ -47,37 +48,35 @@ func initServer(fn func()) {
 	tcpServer = kitty.NewTcpServer(addr)
 
 	// event
-	tcpServer.OnOpen = func(conn *server.Conn) {}
-	tcpServer.OnClose = func(conn *server.Conn) {}
+	tcpServer.OnOpen = func(conn server.Conn) {}
+	tcpServer.OnClose = func(conn server.Conn) {}
 	tcpServer.OnError = func(err error) {}
-	tcpServer.OnMessage = func(conn *server.Conn, msg []byte) {}
+	tcpServer.OnMessage = func(conn server.Conn, msg []byte) {}
 
 	// middleware
 	tcpServer.Use(func(next server.Middle) server.Middle {
-		return func(conn *server.Conn, stream *socket.Stream) {
-			next(conn, stream)
+		return func(stream *socket.Stream[server.Conn]) {
+			next(stream)
 		}
 	})
 
 	// create router
-	tcpServerRouter = &server.Router{StrictMode: true}
+	tcpServerRouter = &router.Router[*socket.Stream[server.Conn]]{StrictMode: true}
 
 	// set group route
-	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
-			return conn.JsonEmit(socket.JsonPack{
+	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
+			return stream.Conn.JsonEmit(socket.JsonPack{
 				Event: "/hello/world",
 				Data:  "i am server",
-				ID:    stream.ID,
 			})
 		})
 	})
 
-	tcpServerRouter.Route("/async").Handler(func(conn *server.Conn, stream *socket.Stream) error {
-		return conn.JsonEmit(socket.JsonPack{
+	tcpServerRouter.Route("/async").Handler(func(stream *socket.Stream[server.Conn]) error {
+		return stream.Conn.JsonEmit(socket.JsonPack{
 			Event: "/async",
 			Data:  "async test",
-			ID:    stream.ID,
 		})
 	})
 
@@ -95,13 +94,13 @@ func initClient(fn func()) {
 	tcpClient.HeartBeatInterval = time.Second
 
 	// event
-	tcpClient.OnClose = func(c *client.Client) {}
-	tcpClient.OnOpen = func(c *client.Client) {}
+	tcpClient.OnClose = func(c client.Conn) {}
+	tcpClient.OnOpen = func(c client.Conn) {}
 	tcpClient.OnError = func(err error) {}
-	tcpClient.OnMessage = func(client *client.Client, msg []byte) {}
+	tcpClient.OnMessage = func(client client.Conn, msg []byte) {}
 
 	// create router
-	clientRouter = &client.Router{StrictMode: true}
+	clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
 
 	go tcpClient.SetRouter(clientRouter).Connect()
 
@@ -158,17 +157,14 @@ func Test_TCP_Client_Async(t *testing.T) {
 
 func Test_TCP_Client(t *testing.T) {
 
-	var id int64 = 123456789
-
 	var count = 1
 
 	var flag = true
 
-	clientRouter.Group("/hello").Handler(func(handler *client.RouteHandler) {
-		handler.Route("/world").Handler(func(c *client.Client, stream *socket.Stream) error {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			defer mux.Add(-1)
 			assert.True(t, string(stream.Data) == `"i am server"`, "stream is nil")
-			assert.True(t, stream.ID == id, "id not match", stream.ID)
 			return nil
 		})
 	})
@@ -178,7 +174,6 @@ func Test_TCP_Client(t *testing.T) {
 		_ = tcpClient.JsonEmit(socket.JsonPack{
 			Event: "/hello/world",
 			Data:  strings.Repeat("hello world!", 1),
-			ID:    id,
 		})
 
 	}

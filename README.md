@@ -1,5 +1,4 @@
 ```go
-
 package main
 
 import (
@@ -11,12 +10,17 @@ import (
 	"os"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/v2"
+	awesomepackage "github.com/lemonyxk/kitty/v2/example/protobuf"
 	"github.com/lemonyxk/kitty/v2/http"
 	"github.com/lemonyxk/kitty/v2/http/client"
 	server3 "github.com/lemonyxk/kitty/v2/http/server"
+	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
+	client2 "github.com/lemonyxk/kitty/v2/socket/tcp/client"
 	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
+	udpClient2 "github.com/lemonyxk/kitty/v2/socket/udp/client"
 	server4 "github.com/lemonyxk/kitty/v2/socket/udp/server"
 	server2 "github.com/lemonyxk/kitty/v2/socket/websocket/server"
 )
@@ -45,9 +49,14 @@ func runTcpServer() {
 
 	var tcpServerRouter = kitty.NewTcpServerRouter()
 
-	tcpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
-			log.Println(string(stream.Data))
+	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
+			go func() {
+				_ = stream.Conn.JsonEmit(socket.JsonPack{
+					Event: "/hello/world",
+					Data:  nil,
+				})
+			}()
 			return nil
 		})
 	})
@@ -64,8 +73,8 @@ func runWebSocketServer() {
 
 	var webSocketServerRouter = kitty.NewWebSocketServerRouter()
 
-	webSocketServerRouter.Group("/hello").Handler(func(handler *server2.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server2.Conn, stream *socket.Stream) error {
+	webSocketServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server2.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[server2.Conn]) error {
 			log.Println(string(stream.Data))
 			return nil
 		})
@@ -83,8 +92,8 @@ func runUdpServer() {
 
 	var udpServerRouter = kitty.NewUdpServerRouter()
 
-	udpServerRouter.Group("/hello").Handler(func(handler *server4.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server4.Conn, stream *socket.Stream) error {
+	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server4.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[server4.Conn]) error {
 			log.Println(string(stream.Data))
 			return nil
 		})
@@ -99,10 +108,12 @@ func runUdpServer() {
 
 func runHttpServer() {
 	var httpServer = kitty.NewHttpServer("127.0.0.1:8666")
-	httpServer.CertFile = "/Users/lemon/test/go/localhost+2.pem"
-	httpServer.KeyFile = "/Users/lemon/test/go/localhost+2-key.pem"
+	// httpServer.CertFile = "/Users/lemon/test/go/localhost+2.pem"
+	// httpServer.KeyFile = "/Users/lemon/test/go/localhost+2-key.pem"
 
 	var httpServerRouter = kitty.NewHttpServerRouter()
+
+	var httpStaticServerRouter = kitty.NewHttpServerStaticRouter()
 
 	httpServer.Use(func(next server3.Middle) server3.Middle {
 		return func(stream *http.Stream) {
@@ -111,14 +122,27 @@ func runHttpServer() {
 		}
 	})
 
-	httpServerRouter.Route("GET", "/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.RouteMethod("GET", "/hello").Handler(func(stream *http.Stream) error {
+		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		return stream.EndString("hello world!")
 	})
 
-	httpServerRouter.Group("/hello").Handler(func(handler *server3.RouteHandler) {
-		handler.Get("/world").Handler(func(t *http.Stream) error {
-			return t.JsonFormat("SUCCESS", 200, os.Getpid())
-		})
+	httpServerRouter.RouteMethod("POST", "/proto").Handler(func(stream *http.Stream) error {
+		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
+		log.Println(stream.AutoGet("name").String())
+		log.Println(stream.Files.First("file"))
+		var res awesomepackage.AwesomeMessage
+		var msg = stream.Protobuf.Bytes()
+		var err = proto.Unmarshal(msg, &res)
+		if err != nil {
+			return stream.EndString(err.Error())
+		}
+		return stream.EndString("hello proto!")
+	})
+
+	var group = httpServerRouter.Group("/hello").Create()
+	group.Get("/world").Handler(func(t *http.Stream) error {
+		return t.JsonFormat("SUCCESS", 200, os.Getpid())
 	})
 
 	httpServer.OnSuccess = func() {
@@ -127,9 +151,13 @@ func runHttpServer() {
 
 	// httpServerRouter.SetStaticPath("/", "", http2.Dir("./example/public"))
 
-	httpServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
-	httpServerRouter.SetDefaultIndex("index.html", "index.htm")
-	httpServerRouter.SetOpenDir(true)
+	httpStaticServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
+	httpStaticServerRouter.SetStaticPath("/js", "test", http2.Dir("./example"))
+	// httpServerRouter.SetDefaultIndex("index.html", "index.htm")
+	// httpServerRouter.SetStaticFileMiddle(".md").Handler(func(w http2.ResponseWriter, r *http2.Request, f fs.File, i fs.FileInfo) error {
+	// 	return nil
+	// })
+	httpStaticServerRouter.SetOpenDir(0)
 
 	go httpServer.SetRouter(httpServerRouter).Start()
 }
@@ -150,8 +178,19 @@ func runHttpClientWithProcess() {
 }
 
 func runHttpClient() {
+
 	time.AfterFunc(time.Second, func() {
-		var res = client.Get("http://127.0.0.1:8666/hello").Query().Send()
+		var res = client.Get("https://127.0.0.1:8666/hello").Query().Send()
+		if res.LastError() == nil {
+			log.Println("http OK!")
+		}
+
+		var msg = awesomepackage.AwesomeMessage{
+			AwesomeField: "1",
+			AwesomeKey:   "2",
+		}
+
+		res = client.Post("https://127.0.0.1:8666/proto").Protobuf(&msg).Send()
 		if res.LastError() == nil {
 			log.Println("http OK!")
 		}
@@ -162,7 +201,26 @@ func runTcpClient() {
 	time.AfterFunc(time.Second, func() {
 		var tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
 		var clientRouter = kitty.NewTcpClientRouter()
-		tcpClient.SetRouter(clientRouter).Connect()
+
+		clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client2.Conn]]) {
+			handler.Route("/world").Handler(func(stream *socket.Stream[client2.Conn]) error {
+				log.Println("tcp OK!")
+				return nil
+			})
+		})
+
+		go tcpClient.SetRouter(clientRouter).Connect()
+
+		tcpClient.OnSuccess = func() {
+			for i := 0; i < 100; i++ {
+				go func() {
+					_ = tcpClient.JsonEmit(socket.JsonPack{
+						Event: "/hello/world",
+						Data:  nil,
+					})
+				}()
+			}
+		}
 	})
 }
 
@@ -170,7 +228,14 @@ func runUdpClient() {
 	time.AfterFunc(time.Second, func() {
 		var udpClient = kitty.NewUdpClient("127.0.0.1:5000")
 		var clientRouter = kitty.NewUdpClientRouter()
-		udpClient.SetRouter(clientRouter).Connect()
+
+		udpClient.OnOpen = func(client udpClient2.Conn) {
+			log.Println(client.RemoteAddr())
+		}
+
+		go udpClient.SetRouter(clientRouter).Connect()
+
+		select {}
 	})
 }
 
@@ -181,5 +246,4 @@ func runWebSocketClient() {
 		webSocketClient.SetRouter(clientRouter).Connect()
 	})
 }
-
 ```

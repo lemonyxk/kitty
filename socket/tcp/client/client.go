@@ -9,7 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/kitty"
-
+	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
 
 	"github.com/lemonyxk/kitty/v2/socket/tcp"
@@ -19,31 +19,31 @@ type Client struct {
 	Name string
 	Addr string
 
-	Conn *Conn
+	Conn Conn
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
 	ReconnectInterval time.Duration
-	HeartBeat         func(c *Client) error
+	HeartBeat         func(c Conn) error
 
 	ReadBufferSize  int
 	WriteBufferSize int
 	DailTimeout     time.Duration
 
-	OnOpen         func(client *Client)
-	OnClose        func(client *Client)
-	OnMessage      func(client *Client, msg []byte)
+	OnOpen         func(conn Conn)
+	OnClose        func(conn Conn)
+	OnMessage      func(conn Conn, msg []byte)
 	OnError        func(err error)
 	OnSuccess      func()
 	OnReconnecting func()
-	OnUnknown      func(client *Client, message []byte, next Middle)
+	OnUnknown      func(conn Conn, message []byte, next Middle)
 
-	PingHandler func(client *Client) func(appData string) error
-	PongHandler func(client *Client) func(appData string) error
+	PingHandler func(client Conn) func(appData string) error
+	PongHandler func(client Conn) func(appData string) error
 
 	Protocol tcp.Protocol
 
-	router                *Router
+	router                *router.Router[*socket.Stream[Conn]]
 	middle                []func(Middle) Middle
 	isStop                bool
 	stopCh                chan struct{}
@@ -53,7 +53,7 @@ type Client struct {
 	cancelPongTimer       chan struct{}
 }
 
-type Middle func(client *Client, stream *socket.Stream)
+type Middle func(stream *socket.Stream[Conn])
 
 func (c *Client) LocalAddr() net.Addr {
 	return c.Conn.LocalAddr()
@@ -68,7 +68,7 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 }
 
 func (c *Client) Emit(pack socket.Pack) error {
-	return c.Push(c.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), pack.Data))
+	return c.protocol(socket.Bin, []byte(pack.Event), pack.Data)
 }
 
 func (c *Client) JsonEmit(pack socket.JsonPack) error {
@@ -76,7 +76,7 @@ func (c *Client) JsonEmit(pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return c.Push(c.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
+	return c.protocol(socket.Bin, []byte(pack.Event), data)
 }
 
 func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
@@ -84,19 +84,15 @@ func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return c.Push(c.Protocol.Encode(socket.Bin, pack.ID, []byte(pack.Event), data))
-}
-
-func (c *Client) Ping() error {
-	return c.Push(c.Protocol.Encode(socket.Ping, 0, nil, nil))
-}
-
-func (c *Client) Pong() error {
-	return c.Push(c.Protocol.Encode(socket.Pong, 0, nil, nil))
+	return c.protocol(socket.Bin, []byte(pack.Event), data)
 }
 
 func (c *Client) Push(message []byte) error {
 	return c.Conn.Write(message)
+}
+
+func (c *Client) protocol(messageType byte, route []byte, body []byte) error {
+	return c.Conn.protocol(messageType, route, body)
 }
 
 func (c *Client) Close() error {
@@ -120,13 +116,13 @@ func (c *Client) Connect() {
 	}
 
 	if c.OnOpen == nil {
-		c.OnOpen = func(client *Client) {
+		c.OnOpen = func(client Conn) {
 			fmt.Println("tcp client: connect success")
 		}
 	}
 
 	if c.OnClose == nil {
-		c.OnClose = func(client *Client) {
+		c.OnClose = func(client Conn) {
 			fmt.Println("tcp client: connection close")
 		}
 	}
@@ -190,7 +186,7 @@ func (c *Client) Connect() {
 		panic(err)
 	}
 
-	c.Conn = &Conn{Conn: handler, LastPong: time.Now()}
+	c.Conn = &conn{conn: handler, client: c, lastPong: time.Now()}
 
 	c.stopCh = make(chan struct{})
 	c.isStop = false
@@ -205,14 +201,14 @@ func (c *Client) Connect() {
 
 	// heartbeat function
 	if c.HeartBeat == nil {
-		c.HeartBeat = func(client *Client) error {
+		c.HeartBeat = func(client Conn) error {
 			return client.Ping()
 		}
 	}
 
 	// no answer
 	if c.PingHandler == nil {
-		c.PingHandler = func(client *Client) func(appData string) error {
+		c.PingHandler = func(client Conn) func(appData string) error {
 			return func(appData string) error {
 				return nil
 			}
@@ -220,9 +216,9 @@ func (c *Client) Connect() {
 	}
 
 	if c.PongHandler == nil {
-		c.PongHandler = func(connection *Client) func(appData string) error {
+		c.PongHandler = func(connection Conn) func(appData string) error {
 			return func(appData string) error {
-				c.Conn.LastPong = time.Now()
+				c.Conn.SetLastPong(time.Now())
 				if c.HeartBeatTimeout != 0 {
 					c.pongTimer.Reset(c.HeartBeatTimeout)
 				}
@@ -240,7 +236,7 @@ func (c *Client) Connect() {
 		for {
 			select {
 			case <-c.heartbeatTicker.C:
-				if err := c.HeartBeat(c); err != nil {
+				if err := c.HeartBeat(c.Conn); err != nil {
 					c.OnError(err)
 				}
 			case <-c.cancelHeartbeatTicker:
@@ -272,7 +268,7 @@ func (c *Client) Connect() {
 	}
 
 	// 连接成功
-	c.OnOpen(c)
+	c.OnOpen(c.Conn)
 
 	var reader = c.Protocol.Reader()
 
@@ -314,7 +310,7 @@ func (c *Client) Connect() {
 	// 关闭连接
 	_ = c.Close()
 	// 触发回调
-	c.OnClose(c)
+	c.OnClose(c.Conn)
 	// 触发重连设置
 	c.reconnecting()
 }
@@ -322,43 +318,44 @@ func (c *Client) Connect() {
 func (c *Client) decodeMessage(message []byte) error {
 	// unpack
 	messageType, id, route, body := c.Protocol.Decode(message)
+	_ = id
 
 	if c.OnMessage != nil {
-		c.OnMessage(c, message)
+		c.OnMessage(c.Conn, message)
 	}
 
 	if messageType == socket.Unknown {
 		if c.OnUnknown != nil {
-			c.OnUnknown(c, message, c.middleware)
+			c.OnUnknown(c.Conn, message, c.middleware)
 		}
 		return nil
 	}
 
 	// Ping
 	if messageType == socket.Ping {
-		return c.PingHandler(c)("")
+		return c.PingHandler(c.Conn)("")
 	}
 
 	// Pong
 	if messageType == socket.Pong {
-		return c.PongHandler(c)("")
+		return c.PongHandler(c.Conn)("")
 	}
 
 	// on router
-	c.middleware(c, &socket.Stream{Pack: socket.Pack{Event: string(route), Data: body, ID: id}})
+	c.middleware(&socket.Stream[Conn]{Conn: c.Conn, Pack: socket.Pack{Event: string(route), Data: body}})
 
 	return nil
 }
 
-func (c *Client) middleware(conn *Client, stream *socket.Stream) {
+func (c *Client) middleware(stream *socket.Stream[Conn]) {
 	var next Middle = c.handler
 	for i := len(c.middle) - 1; i >= 0; i-- {
 		next = c.middle[i](next)
 	}
-	next(conn, stream)
+	next(stream)
 }
 
-func (c *Client) handler(conn *Client, stream *socket.Stream) {
+func (c *Client) handler(stream *socket.Stream[Conn]) {
 
 	if c.router == nil {
 		if c.OnError != nil {
@@ -367,7 +364,7 @@ func (c *Client) handler(conn *Client, stream *socket.Stream) {
 		return
 	}
 
-	var n, formatPath = c.router.getRoute(stream.Event)
+	var n, formatPath = c.router.GetRoute(stream.Event)
 	if n == nil {
 		if c.OnError != nil {
 			c.OnError(errors.New(stream.Event + " " + "404 not found"))
@@ -380,7 +377,7 @@ func (c *Client) handler(conn *Client, stream *socket.Stream) {
 	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
 	for i := 0; i < len(nodeData.Before); i++ {
-		if err := nodeData.Before[i](conn, stream); err != nil {
+		if err := nodeData.Before[i](stream); err != nil {
 			if c.OnError != nil {
 				c.OnError(err)
 			}
@@ -388,7 +385,7 @@ func (c *Client) handler(conn *Client, stream *socket.Stream) {
 		}
 	}
 
-	err := nodeData.Function(conn, stream)
+	err := nodeData.Function(stream)
 	if err != nil {
 		if c.OnError != nil {
 			c.OnError(err)
@@ -397,7 +394,7 @@ func (c *Client) handler(conn *Client, stream *socket.Stream) {
 	}
 
 	for i := 0; i < len(nodeData.After); i++ {
-		if err := nodeData.After[i](conn, stream); err != nil {
+		if err := nodeData.After[i](stream); err != nil {
 			if c.OnError != nil {
 				c.OnError(err)
 			}
@@ -406,11 +403,11 @@ func (c *Client) handler(conn *Client, stream *socket.Stream) {
 	}
 }
 
-func (c *Client) SetRouter(router *Router) *Client {
+func (c *Client) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Client {
 	c.router = router
 	return c
 }
 
-func (c *Client) GetRouter() *Router {
+func (c *Client) GetRouter() *router.Router[*socket.Stream[Conn]] {
 	return c.router
 }

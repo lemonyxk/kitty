@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/lemonyxk/kitty/v2"
+	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/udp/client"
 	"github.com/lemonyxk/kitty/v2/socket/udp/server"
@@ -33,11 +34,11 @@ func shutdown() {
 
 var udpServer *server.Server
 
-var udpServerRouter *server.Router
+var udpServerRouter *router.Router[*socket.Stream[server.Conn]]
 
 var udpClient *client.Client
 
-var clientRouter *client.Router
+var clientRouter *router.Router[*socket.Stream[client.Conn]]
 
 var addr = "127.0.0.1:8668"
 
@@ -47,37 +48,35 @@ func initServer(fn func()) {
 	udpServer = kitty.NewUdpServer(addr)
 
 	// event
-	udpServer.OnOpen = func(conn *server.Conn) {}
-	udpServer.OnClose = func(conn *server.Conn) {}
+	udpServer.OnOpen = func(conn server.Conn) {}
+	udpServer.OnClose = func(conn server.Conn) {}
 	udpServer.OnError = func(err error) {}
-	udpServer.OnMessage = func(conn *server.Conn, msg []byte) {}
+	udpServer.OnMessage = func(conn server.Conn, msg []byte) {}
 
 	// middleware
 	udpServer.Use(func(next server.Middle) server.Middle {
-		return func(conn *server.Conn, stream *socket.Stream) {
-			next(conn, stream)
+		return func(stream *socket.Stream[server.Conn]) {
+			next(stream)
 		}
 	})
 
 	// create router
-	udpServerRouter = &server.Router{StrictMode: true}
+	udpServerRouter = &router.Router[*socket.Stream[server.Conn]]{StrictMode: true}
 
 	// set group route
-	udpServerRouter.Group("/hello").Handler(func(handler *server.RouteHandler) {
-		handler.Route("/world").Handler(func(conn *server.Conn, stream *socket.Stream) error {
-			return conn.JsonEmit(socket.JsonPack{
+	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
+			return stream.Conn.JsonEmit(socket.JsonPack{
 				Event: "/hello/world",
 				Data:  "i am server",
-				ID:    stream.ID,
 			})
 		})
 	})
 
-	udpServerRouter.Route("/async").Handler(func(conn *server.Conn, stream *socket.Stream) error {
-		return conn.JsonEmit(socket.JsonPack{
+	udpServerRouter.Route("/async").Handler(func(stream *socket.Stream[server.Conn]) error {
+		return stream.Conn.JsonEmit(socket.JsonPack{
 			Event: "/async",
 			Data:  "async test",
-			ID:    stream.ID,
 		})
 	})
 
@@ -95,13 +94,13 @@ func initClient(fn func()) {
 	udpClient.HeartBeatInterval = time.Second
 
 	// event
-	udpClient.OnClose = func(c *client.Client) {}
-	udpClient.OnOpen = func(c *client.Client) {}
+	udpClient.OnClose = func(c client.Conn) {}
+	udpClient.OnOpen = func(c client.Conn) {}
 	udpClient.OnError = func(err error) {}
-	udpClient.OnMessage = func(client *client.Client, msg []byte) {}
+	udpClient.OnMessage = func(client client.Conn, msg []byte) {}
 
 	// create router
-	clientRouter = &client.Router{StrictMode: true}
+	clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
 
 	go udpClient.SetRouter(clientRouter).Connect()
 
@@ -160,17 +159,14 @@ func Test_UDP_Client_Async(t *testing.T) {
 
 func Test_UDP_Client(t *testing.T) {
 
-	var id int64 = 123456789
-
 	var count = 10000
 
 	var flag = true
 
-	clientRouter.Group("/hello").Handler(func(handler *client.RouteHandler) {
-		handler.Route("/world").Handler(func(c *client.Client, stream *socket.Stream) error {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			defer mux.Add(-1)
 			assert.True(t, string(stream.Data) == `"i am server"`, "stream is nil")
-			assert.True(t, stream.ID == id, "id not match", stream.ID)
 			return nil
 		})
 	})
@@ -180,7 +176,6 @@ func Test_UDP_Client(t *testing.T) {
 		_ = udpClient.JsonEmit(socket.JsonPack{
 			Event: "/hello/world",
 			Data:  strings.Repeat("hello world!", 1),
-			ID:    id,
 		})
 	}
 

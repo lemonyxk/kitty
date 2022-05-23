@@ -11,13 +11,13 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/v2"
-	"github.com/lemonyxk/kitty/v2/errors"
 	awesomepackage "github.com/lemonyxk/kitty/v2/example/protobuf"
 	"github.com/lemonyxk/kitty/v2/http"
 	"github.com/lemonyxk/kitty/v2/http/client"
 	server3 "github.com/lemonyxk/kitty/v2/http/server"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket/async"
 	client2 "github.com/lemonyxk/kitty/v2/socket/tcp/client"
 	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
 	udpClient2 "github.com/lemonyxk/kitty/v2/socket/udp/client"
@@ -56,18 +56,21 @@ func runTcpServer() {
 		}
 	})
 
-	var before = func(stream *socket.Stream[server.Conn]) error {
-		return errors.NewWithStack("before")
-	}
+	// var before = func(stream *socket.Stream[server.Conn]) error {
+	// 	// return errors.NewWithStack("before")
+	// 	return nil
+	// }
 
-	tcpServerRouter.Group("/hello").Before(before).Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
-		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			return stream.Conn.JsonEmit(socket.JsonPack{
-				Event: "/hello/world",
-				Data:  nil,
-			})
-		})
-	})
+	var asyncServer = async.NewServer[server.Conn](tcpServer)
+
+	// tcpServerRouter.Group("/hello").Before(before).Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	// 	handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
+	// 		return stream.Conn.JsonEmit(socket.JsonPack{
+	// 			Event: "/hello/world",
+	// 			Data:  nil,
+	// 		})
+	// 	})
+	// })
 
 	tcpServer.OnError = func(err error) {
 		log.Printf("[tcpServer] %+v", err)
@@ -75,6 +78,15 @@ func runTcpServer() {
 
 	tcpServer.OnSuccess = func() {
 		log.Println(tcpServer.LocalAddr())
+
+		time.AfterFunc(time.Second*2, func() {
+			var stream, err = asyncServer.Emit(1, socket.Pack{
+				Event: "/hello/world",
+				Data:  nil,
+			})
+
+			log.Println(stream, err)
+		})
 	}
 
 	go tcpServer.SetRouter(tcpServerRouter).Start()
@@ -184,7 +196,7 @@ func runHttpClientWithProcess() {
 			}
 		})
 
-		client.Get("https://code.jquery.com/jquery-3.6.0.js").Progress(progress).Query().Send()
+		// client.Get("https://code.jquery.com/jquery-3.6.0.js").Progress(progress).Query().Send()
 		// client.Get("https://127.0.0.1:8666/1.png").Progress(progress).Query().Send()
 	})
 }
@@ -216,19 +228,25 @@ func runTcpClient() {
 
 		clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client2.Conn]]) {
 			handler.Route("/world").Handler(func(stream *socket.Stream[client2.Conn]) error {
-				log.Println("tcp OK!")
-				return nil
+				return stream.Conn.Emit(socket.Pack{
+					Event: stream.Event,
+					Data:  nil,
+				})
 			})
 		})
 
 		go tcpClient.SetRouter(clientRouter).Connect()
 
-		tcpClient.OnSuccess = func() {
-			_ = tcpClient.JsonEmit(socket.JsonPack{
-				Event: "/hello/world",
-				Data:  nil,
-			})
-		}
+		// tcpClient.OnSuccess = func() {
+		// 	go func() {
+		// 		for i := 0; i < 10; i++ {
+		// 			_ = tcpClient.JsonEmit(socket.JsonPack{
+		// 				Event: "/hello/world",
+		// 				Data:  nil,
+		// 			})
+		// 		}
+		// 	}()
+		// }
 	})
 }
 

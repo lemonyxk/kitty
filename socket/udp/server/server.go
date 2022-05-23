@@ -42,6 +42,7 @@ type Server struct {
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
 	HandshakeTimeout  time.Duration
+	DailTimeout       time.Duration
 
 	ReadBufferSize  int
 	WriteBufferSize int
@@ -156,6 +157,10 @@ func (s *Server) Ready() {
 
 	if s.Addr == "" {
 		panic("Addr must set")
+	}
+
+	if s.DailTimeout == 0 {
+		s.DailTimeout = time.Second * 3
 	}
 
 	if s.HandshakeTimeout == 0 {
@@ -499,6 +504,10 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 			return
 		}
 	}
+}
+
+func (s *Server) GetDailTimeout() time.Duration {
+	return s.DailTimeout
 }
 
 func (s *Server) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Server {

@@ -15,7 +15,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/socket"
 )
 
@@ -30,6 +32,9 @@ type Conn interface {
 	Client() *Client
 	Ping() error
 	Pong() error
+	JsonEmit(pack socket.JsonPack) error
+	ProtoBufEmit(pack socket.ProtoBufPack) error
+	Emit(pack socket.Pack) error
 	protocol(messageType byte, route []byte, body []byte) error
 }
 
@@ -38,6 +43,26 @@ type conn struct {
 	client   *Client
 	lastPong time.Time
 	mux      sync.RWMutex
+}
+
+func (c *conn) Emit(pack socket.Pack) error {
+	return c.protocol(socket.Bin, []byte(pack.Event), pack.Data)
+}
+
+func (c *conn) JsonEmit(pack socket.JsonPack) error {
+	data, err := jsoniter.Marshal(pack.Data)
+	if err != nil {
+		return err
+	}
+	return c.protocol(socket.Bin, []byte(pack.Event), data)
+}
+
+func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
+	data, err := proto.Marshal(pack.Data)
+	if err != nil {
+		return err
+	}
+	return c.protocol(socket.Bin, []byte(pack.Event), data)
 }
 
 func (c *conn) Client() *Client {

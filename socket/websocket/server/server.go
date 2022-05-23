@@ -42,6 +42,7 @@ type Server struct {
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
 	HandshakeTimeout  time.Duration
+	DailTimeout       time.Duration
 
 	ReadBufferSize  int
 	WriteBufferSize int
@@ -212,6 +213,10 @@ func (s *Server) Ready() {
 		s.Path = "/"
 	}
 
+	if s.DailTimeout == 0 {
+		s.DailTimeout = time.Second * 3
+	}
+
 	if s.HeartBeatTimeout == 0 {
 		s.HeartBeatTimeout = 6 * time.Second
 	}
@@ -299,14 +304,14 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 
 	// 错误处理
 	if err != nil {
-		s.onError(errors.WithStack(err))
+		s.onError(err)
 		return
 	}
 
 	// 超时时间
 	err = netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
 	if err != nil {
-		s.onError(errors.WithStack(err))
+		s.onError(err)
 		return
 	}
 
@@ -351,7 +356,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err != nil {
-			s.onError(errors.WithStack(err))
+			s.onError(err)
 			break
 		}
 	}
@@ -448,6 +453,10 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 			return
 		}
 	}
+}
+
+func (s *Server) GetDailTimeout() time.Duration {
+	return s.DailTimeout
 }
 
 func (s *Server) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Server {

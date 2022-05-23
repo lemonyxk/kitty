@@ -11,6 +11,7 @@
 package udp
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -19,6 +20,7 @@ import (
 	"github.com/lemonyxk/kitty/v2"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
+	async2 "github.com/lemonyxk/kitty/v2/socket/async"
 	"github.com/lemonyxk/kitty/v2/socket/udp/client"
 	"github.com/lemonyxk/kitty/v2/socket/udp/server"
 	"github.com/stretchr/testify/assert"
@@ -73,10 +75,10 @@ func initServer(fn func()) {
 		})
 	})
 
-	udpServerRouter.Route("/async").Handler(func(stream *socket.Stream[server.Conn]) error {
+	udpServerRouter.Route("/asyncClient").Handler(func(stream *socket.Stream[server.Conn]) error {
 		return stream.Conn.JsonEmit(socket.JsonPack{
-			Event: "/async",
-			Data:  "async test",
+			Event: "/asyncClient",
+			Data:  string(stream.Data),
 		})
 	})
 
@@ -101,6 +103,13 @@ func initClient(fn func()) {
 
 	// create router
 	clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
+
+	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
+		return stream.Conn.Client().JsonEmit(socket.JsonPack{
+			Event: "/asyncServer",
+			Data:  string(stream.Data),
+		})
+	})
 
 	go udpClient.SetRouter(clientRouter).Connect()
 
@@ -145,16 +154,32 @@ func TestMain(t *testing.M) {
 }
 
 func Test_UDP_Client_Async(t *testing.T) {
-	stream, err := udpClient.Async().JsonEmit(socket.JsonPack{
-		Event: "/async",
-		Data:  strings.Repeat("hello world!", 1),
-	})
 
-	assert.True(t, err == nil, err)
+	var asyncClient = async2.NewClient[client.Conn](udpClient)
 
-	assert.True(t, stream != nil, "stream is nil")
+	var wait = sync.WaitGroup{}
 
-	assert.True(t, string(stream.Data) == `"async test"`, "stream is nil")
+	wait.Add(100)
+
+	for i := 0; i < 100; i++ {
+		var index = i
+		go func() {
+			stream, err := asyncClient.JsonEmit(socket.JsonPack{
+				Event: "/asyncClient",
+				Data:  index,
+			})
+
+			assert.True(t, err == nil, err)
+
+			assert.True(t, stream != nil, "stream is nil")
+
+			assert.True(t, string(stream.Data) == fmt.Sprintf("\"%d\"", index), "stream is nil")
+
+			wait.Done()
+		}()
+	}
+
+	wait.Wait()
 }
 
 func Test_UDP_Client(t *testing.T) {
@@ -190,6 +215,35 @@ func Test_UDP_Client(t *testing.T) {
 	if !flag {
 		t.Fatal("timeout")
 	}
+}
+
+func Test_TCP_Server_Async(t *testing.T) {
+
+	var asyncServer = async2.NewServer[server.Conn](udpServer)
+
+	var wait = sync.WaitGroup{}
+
+	wait.Add(100)
+
+	for i := 0; i < 100; i++ {
+		var index = i
+		go func() {
+			stream, err := asyncServer.JsonEmit(1, socket.JsonPack{
+				Event: "/asyncServer",
+				Data:  index,
+			})
+
+			assert.True(t, err == nil, err)
+
+			assert.True(t, stream != nil, "stream is nil")
+
+			assert.True(t, string(stream.Data) == fmt.Sprintf("\"%d\"", index), "stream is nil")
+
+			wait.Done()
+		}()
+	}
+
+	wait.Wait()
 }
 
 func Test_UDP_Shutdown(t *testing.T) {

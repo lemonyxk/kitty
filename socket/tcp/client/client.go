@@ -5,8 +5,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
@@ -38,8 +36,8 @@ type Client struct {
 	OnReconnecting func()
 	OnUnknown      func(conn Conn, message []byte, next Middle)
 
-	PingHandler func(client Conn) func(appData string) error
-	PongHandler func(client Conn) func(appData string) error
+	PingHandler func(conn Conn) func(appData string) error
+	PongHandler func(conn Conn) func(appData string) error
 
 	Protocol tcp.Protocol
 
@@ -68,31 +66,19 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 }
 
 func (c *Client) Emit(pack socket.Pack) error {
-	return c.protocol(socket.Bin, []byte(pack.Event), pack.Data)
+	return c.Conn.Emit(pack)
 }
 
 func (c *Client) JsonEmit(pack socket.JsonPack) error {
-	data, err := jsoniter.Marshal(pack.Data)
-	if err != nil {
-		return err
-	}
-	return c.protocol(socket.Bin, []byte(pack.Event), data)
+	return c.Conn.JsonEmit(pack)
 }
 
 func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
-	data, err := proto.Marshal(pack.Data)
-	if err != nil {
-		return err
-	}
-	return c.protocol(socket.Bin, []byte(pack.Event), data)
+	return c.Conn.ProtoBufEmit(pack)
 }
 
 func (c *Client) Push(message []byte) error {
 	return c.Conn.Write(message)
-}
-
-func (c *Client) protocol(messageType byte, route []byte, body []byte) error {
-	return c.Conn.protocol(messageType, route, body)
 }
 
 func (c *Client) Close() error {
@@ -116,13 +102,13 @@ func (c *Client) Connect() {
 	}
 
 	if c.OnOpen == nil {
-		c.OnOpen = func(client Conn) {
+		c.OnOpen = func(conn Conn) {
 			fmt.Println("tcp client: connect success")
 		}
 	}
 
 	if c.OnClose == nil {
-		c.OnClose = func(client Conn) {
+		c.OnClose = func(conn Conn) {
 			fmt.Println("tcp client: connection close")
 		}
 	}
@@ -135,7 +121,7 @@ func (c *Client) Connect() {
 
 	// 握手
 	if c.DailTimeout == 0 {
-		c.DailTimeout = 2 * time.Second
+		c.DailTimeout = 3 * time.Second
 	}
 
 	// 读出BUF大小
@@ -201,14 +187,14 @@ func (c *Client) Connect() {
 
 	// heartbeat function
 	if c.HeartBeat == nil {
-		c.HeartBeat = func(client Conn) error {
-			return client.Ping()
+		c.HeartBeat = func(conn Conn) error {
+			return conn.Ping()
 		}
 	}
 
 	// no answer
 	if c.PingHandler == nil {
-		c.PingHandler = func(client Conn) func(appData string) error {
+		c.PingHandler = func(conn Conn) func(appData string) error {
 			return func(appData string) error {
 				return nil
 			}
@@ -401,6 +387,10 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 			return
 		}
 	}
+}
+
+func (c *Client) GetDailTimeout() time.Duration {
+	return c.DailTimeout
 }
 
 func (c *Client) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Client {

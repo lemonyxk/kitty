@@ -119,7 +119,7 @@ func (c *conn) Pong() error {
 
 func (c *conn) Write(msg []byte) (int, error) {
 	if len(msg) > c.client.ReadBufferSize+udp.HeadLen {
-		return 0, errors.New("max length is " + strconv.Itoa(c.client.ReadBufferSize) + "but now is " + strconv.Itoa(len(msg)))
+		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.client.ReadBufferSize))
 	}
 
 	c.mux.Lock()
@@ -130,7 +130,7 @@ func (c *conn) Write(msg []byte) (int, error) {
 
 func (c *conn) WriteToAddr(msg []byte, addr *net.UDPAddr) (int, error) {
 	if len(msg) > c.client.ReadBufferSize+udp.HeadLen {
-		return 0, errors.New("max length is " + strconv.Itoa(c.client.ReadBufferSize) + "but now is " + strconv.Itoa(len(msg)))
+		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.client.ReadBufferSize))
 	}
 
 	c.mux.Lock()
@@ -142,7 +142,7 @@ func (c *conn) WriteToAddr(msg []byte, addr *net.UDPAddr) (int, error) {
 func (c *conn) protocol(messageType byte, route []byte, body []byte) error {
 	var msg = c.client.Protocol.Encode(messageType, 0, route, body)
 	if len(msg) > c.client.ReadBufferSize+udp.HeadLen {
-		return errors.New("max length is " + strconv.Itoa(c.client.ReadBufferSize) + "but now is " + strconv.Itoa(len(msg)))
+		return errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.client.ReadBufferSize))
 	}
 
 	c.mux.Lock()

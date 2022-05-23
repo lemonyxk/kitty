@@ -11,11 +11,11 @@
 package kitty
 
 import (
-	"github.com/lemonyxk/kitty/v2/http"
-	httpClient "github.com/lemonyxk/kitty/v2/http/client"
-	httpServer "github.com/lemonyxk/kitty/v2/http/server"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket/http"
+	httpClient "github.com/lemonyxk/kitty/v2/socket/http/client"
+	httpServer "github.com/lemonyxk/kitty/v2/socket/http/server"
 	tcpClient "github.com/lemonyxk/kitty/v2/socket/tcp/client"
 	tcpServer "github.com/lemonyxk/kitty/v2/socket/tcp/server"
 	udpClient "github.com/lemonyxk/kitty/v2/socket/udp/client"

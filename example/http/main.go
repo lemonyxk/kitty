@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2022-05-24 03:15
 **/
@@ -19,11 +19,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/v2"
 	"github.com/lemonyxk/kitty/v2/errors"
-	awesomepackage "github.com/lemonyxk/kitty/v2/example/protobuf"
-	"github.com/lemonyxk/kitty/v2/http"
-	"github.com/lemonyxk/kitty/v2/http/client"
-	server3 "github.com/lemonyxk/kitty/v2/http/server"
-	router2 "github.com/lemonyxk/kitty/v2/router"
+	"github.com/lemonyxk/kitty/v2/example/protobuf"
+	"github.com/lemonyxk/kitty/v2/router"
+	"github.com/lemonyxk/kitty/v2/socket/http"
+	"github.com/lemonyxk/kitty/v2/socket/http/client"
+	"github.com/lemonyxk/kitty/v2/socket/http/server"
 )
 
 //go:embed public/**
@@ -43,7 +43,7 @@ func runHttpServer() {
 	var httpStaticServerRouter = kitty.NewHttpServerStaticRouter()
 
 	// middleware
-	httpServer.Use(func(next server3.Middle) server3.Middle {
+	httpServer.Use(func(next server.Middle) server.Middle {
 		return func(stream *http.Stream) {
 			stream.AutoParse()
 			log.Println("middleware1 start")
@@ -52,7 +52,7 @@ func runHttpServer() {
 		}
 	})
 
-	httpServer.Use(func(next server3.Middle) server3.Middle {
+	httpServer.Use(func(next server.Middle) server.Middle {
 		return func(stream *http.Stream) {
 			log.Println("middleware2 start")
 			next(stream)
@@ -79,8 +79,8 @@ func runHttpServer() {
 	}
 
 	// you cloud create your own router to use get and post or other method easily
-	var router = httpServerRouter.Create()
-	router.Get("/hello").Before(before).After(after).Handler(func(stream *http.Stream) error {
+	var httpRouter = httpServerRouter.Create()
+	httpRouter.Get("/hello").Before(before).After(after).Handler(func(stream *http.Stream) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		return stream.EndString("hello world!")
 	})
@@ -106,7 +106,7 @@ func runHttpServer() {
 	})
 
 	// another way to use group router
-	httpServerRouter.Group("/hello").Handler(func(handler *router2.Handler[*http.Stream]) {
+	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream]) {
 		handler.Get("/hello").Handler(func(t *http.Stream) error {
 			return t.JsonFormat("SUCCESS", 200, os.Getpid())
 		})

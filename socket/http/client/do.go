@@ -48,7 +48,7 @@ func getRequest(method string, url string, info *info) (*http.Request, context.C
 func doRaw(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([][]byte)
 	if !ok {
-		return nil, nil, errors.New("raw body must be []byte")
+		return nil, nil, errors.Wrap(errors.AssertionFailed, "[]byte")
 	}
 
 	var rawBody []byte
@@ -69,7 +69,7 @@ func doRaw(method string, url string, info *info) (*http.Request, context.Cancel
 func doPostXProtobuf(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([]proto.Message)
 	if !ok {
-		return nil, nil, errors.New(kitty.ApplicationProtobuf + " body must be proto.Message")
+		return nil, nil, errors.Wrap(errors.AssertionFailed, "proto.Message")
 	}
 
 	var protobufBody []byte
@@ -98,7 +98,7 @@ func doPostFormData(method string, url string, info *info) (*http.Request, conte
 
 	body, ok := info.body.([]kitty.M)
 	if !ok {
-		return nil, nil, errors.New(kitty.MultipartFormData + " body must be map[string]interface")
+		return nil, nil, errors.Wrap(errors.AssertionFailed, "map[string]interface{}")
 	}
 
 	var buf = new(bytes.Buffer)
@@ -153,7 +153,7 @@ func doPostFormData(method string, url string, info *info) (*http.Request, conte
 func doPostJson(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([]any)
 	if !ok {
-		return nil, nil, errors.New(kitty.ApplicationJson + " body must be interface")
+		return nil, nil, errors.Wrap(errors.AssertionFailed, "interface{}")
 	}
 
 	var jsonBody []byte
@@ -182,7 +182,7 @@ func doPostFormUrlencoded(method string, url string, info *info) (*http.Request,
 
 	body, ok := info.body.([]kitty.M)
 	if !ok {
-		return nil, nil, errors.New(kitty.ApplicationFormUrlencoded + " body must be map[string]interface")
+		return nil, nil, errors.Wrap(errors.AssertionFailed, "map[string]interface{}")
 	}
 
 	var buff bytes.Buffer
@@ -276,7 +276,7 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 	defer cancel()
 
 	if req == nil {
-		return &Req{err: errors.New("invalid request")}
+		return &Req{err: errors.Invalid}
 	}
 
 	for i := 0; i < len(info.headerKey); i++ {

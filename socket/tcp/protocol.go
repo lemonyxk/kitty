@@ -85,7 +85,7 @@ func (p *DefaultProtocol) Reader() func(n int, buf []byte, fn func(bytes []byte)
 				if !isHeaderInvalid(message) {
 					message = message[0:0]
 					singleMessageLen = 0
-					return errors.New("invalid header")
+					return errors.Invalid
 				}
 
 				singleMessageLen = getLen(message)

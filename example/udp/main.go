@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2022-05-23 21:58
 **/
@@ -17,13 +17,13 @@ import (
 	"github.com/lemonyxk/kitty/v2"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
-	client2 "github.com/lemonyxk/kitty/v2/socket/udp/client"
+	"github.com/lemonyxk/kitty/v2/socket/udp/client"
 	"github.com/lemonyxk/kitty/v2/socket/udp/server"
 )
 
 var udpServer *server.Server
 
-var udpClient *client2.Client
+var udpClient *client.Client
 
 func runUdpServer() {
 
@@ -60,8 +60,8 @@ func runUdpClient() {
 
 	var clientRouter = kitty.NewUdpClientRouter()
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client2.Conn]]) {
-		handler.Route("/world").Handler(func(stream *socket.Stream[client2.Conn]) error {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
 			return stream.Conn.Emit(socket.Pack{
 				Event: stream.Event,

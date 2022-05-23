@@ -1,5 +1,5 @@
 ```go
 
-fmt.Println("Hello, World!")
+log.Println("Hello, World!")
 
 ```

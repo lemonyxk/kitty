@@ -73,7 +73,7 @@ func (s *Server) Use(middle ...func(Middle) Middle) {
 func (s *Server) protocol(fd int64, messageType byte, route []byte, body []byte) error {
 	var conn = s.GetConnection(fd)
 	if conn == nil {
-		return errors.New("client is close")
+		return errors.ClientClosed
 	}
 
 	err := conn.protocol(messageType, route, body)
@@ -83,7 +83,7 @@ func (s *Server) protocol(fd int64, messageType byte, route []byte, body []byte)
 func (s *Server) Push(fd int64, msg []byte) error {
 	var conn = s.GetConnection(fd)
 	if conn == nil {
-		return errors.New("client is close")
+		return errors.ClientClosed
 	}
 
 	_, err := conn.Write(msg)
@@ -266,7 +266,7 @@ func (s *Server) GetConnections(fn func(conn Conn)) {
 func (s *Server) Close(fd int64) error {
 	conn := s.GetConnection(fd)
 	if conn == nil {
-		return errors.New("fd not found")
+		return errors.ConnNotFount
 	}
 	return conn.Close()
 }
@@ -462,7 +462,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	if s.router == nil {
 		if s.OnError != nil {
-			s.OnError(errors.New(stream.Event + " " + "404 not found"))
+			s.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}
@@ -470,7 +470,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	var n, formatPath = s.router.GetRoute(stream.Event)
 	if n == nil {
 		if s.OnError != nil {
-			s.OnError(errors.New(stream.Event + " " + "404 not found"))
+			s.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}

@@ -354,7 +354,7 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 
 	if c.router == nil {
 		if c.OnError != nil {
-			c.OnError(errors.New(stream.Event + " " + "404 not found"))
+			c.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}
@@ -362,7 +362,7 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 	var n, formatPath = c.router.GetRoute(stream.Event)
 	if n == nil {
 		if c.OnError != nil {
-			c.OnError(errors.New(stream.Event + " " + "404 not found"))
+			c.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}

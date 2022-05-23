@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2022-05-23 04:45
 **/
@@ -13,6 +13,7 @@ package errors
 import (
 	"fmt"
 	"io"
+	"reflect"
 	"runtime"
 	"strconv"
 )
@@ -97,6 +98,35 @@ func Wrap(err error, text string) error {
 		err:     err,
 		stack:   stack(2),
 	}
+}
+
+func Is(err, target error) bool {
+	if target == nil {
+		return err == target
+	}
+
+	isComparable := reflect.TypeOf(target).Comparable()
+	for {
+		if isComparable && err == target {
+			return true
+		}
+		if x, ok := err.(interface{ Is(error) bool }); ok && x.Is(target) {
+			return true
+		}
+		if err = Unwrap(err); err == nil {
+			return false
+		}
+	}
+}
+
+func Unwrap(err error) error {
+	u, ok := err.(interface {
+		Unwrap() error
+	})
+	if !ok {
+		return nil
+	}
+	return u.Unwrap()
 }
 
 func (e *errString) Unwrap() error {

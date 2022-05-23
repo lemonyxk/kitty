@@ -16,11 +16,11 @@ import (
 	"testing"
 
 	"github.com/lemonyxk/kitty/v2"
-	"github.com/lemonyxk/kitty/v2/http"
-	"github.com/lemonyxk/kitty/v2/http/client"
-	"github.com/lemonyxk/kitty/v2/http/server"
 	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
+	"github.com/lemonyxk/kitty/v2/socket/http"
+	"github.com/lemonyxk/kitty/v2/socket/http/client"
+	"github.com/lemonyxk/kitty/v2/socket/http/server"
 	"github.com/stretchr/testify/assert"
 )
 

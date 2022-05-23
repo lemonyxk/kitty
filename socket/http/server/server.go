@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/lemonyxk/kitty/v2/errors"
-	http2 "github.com/lemonyxk/kitty/v2/http"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
+	http2 "github.com/lemonyxk/kitty/v2/socket/http"
 )
 
 type Server struct {
@@ -80,7 +80,7 @@ func (s *Server) handler(stream *http2.Stream) {
 
 	if n == nil {
 		stream.Response.WriteHeader(http.StatusNotFound)
-		var err = errors.New(stream.Request.URL.Path + " " + "404 not found")
+		var err = errors.Wrap(errors.RouteNotFount, stream.Request.URL.Path)
 		if s.OnError != nil {
 			s.OnError(stream, err)
 		}
@@ -92,7 +92,7 @@ func (s *Server) handler(stream *http2.Stream) {
 
 	if n.Data.Method != method {
 		stream.Response.WriteHeader(http.StatusMethodNotAllowed)
-		var err = errors.New(stream.Request.URL.Path + " " + "405 method not allowed")
+		var err = errors.Wrap(errors.MethodNotAllowed, stream.Request.URL.Path)
 		if s.OnError != nil {
 			s.OnError(stream, err)
 		}

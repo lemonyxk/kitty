@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2022-05-23 19:29
 **/
@@ -57,7 +57,7 @@ func (a *asyncClient[T]) Emit(pack socket.Pack) (*socket.Stream[T], error) {
 
 	select {
 	case <-timeout:
-		return nil, errors.New("timeout")
+		return nil, errors.Timeout
 	case stream := <-ch:
 		return stream, nil
 	}
@@ -84,7 +84,7 @@ func (a *asyncClient[T]) JsonEmit(pack socket.JsonPack) (*socket.Stream[T], erro
 
 	select {
 	case <-timeout:
-		return nil, errors.New("timeout")
+		return nil, errors.Timeout
 	case stream := <-ch:
 		return stream, nil
 	}
@@ -111,7 +111,7 @@ func (a *asyncClient[T]) ProtoBufEmit(pack socket.ProtoBufPack) (*socket.Stream[
 
 	select {
 	case <-timeout:
-		return nil, errors.New("timeout")
+		return nil, errors.Timeout
 	case stream := <-ch:
 		return stream, nil
 	}

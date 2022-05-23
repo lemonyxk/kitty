@@ -55,11 +55,11 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if static == nil {
-		return errors.New("static not found")
+		return errors.Wrap(errors.NilError, "static")
 	}
 
 	if static.fileSystem == nil {
-		return errors.New("static fileSystem is nil")
+		return errors.Wrap(errors.NilError, "static file system")
 	}
 
 	defer func() { _ = file.Close() }()

@@ -62,6 +62,10 @@ func (r *Router[T]) Remove(path ...string) {
 	r.tire.Delete(dp)
 }
 
+func (r *Router[T]) Create() *Handler[T] {
+	return &Handler[T]{group: r.Group("")}
+}
+
 func (r *Router[T]) RouteMethod(method string, path ...string) *Route[T] {
 	return (&Handler[T]{group: r.Group("")}).RouteMethod(method, path...)
 }

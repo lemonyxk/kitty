@@ -82,7 +82,7 @@ func Test_Method_NotFound(t *testing.T) {
 func Test_Static_File(t *testing.T) {
 	var httpServerRouter = &router.Router[*http.Stream]{}
 	var httpServerStaticRouter = &server.StaticRouter{}
-	httpServerStaticRouter.SetStaticPath("/", "", http3.Dir("../../example/public"))
+	httpServerStaticRouter.SetStaticPath("/", "", http3.Dir("../../example/http/public"))
 	httpServer.SetRouter(httpServerRouter)
 	httpServer.SetStaticRouter(httpServerStaticRouter)
 	assert.True(t, len(client.Get(ts.URL+"/1.png").Query().Send().Bytes()) == 2853516)

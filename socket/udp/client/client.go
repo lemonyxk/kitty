@@ -89,11 +89,12 @@ func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
 }
 
 func (c *Client) Push(message []byte) error {
-	return c.Conn.Write(message)
+	return c.Conn.Push(message)
 }
 
 func (c *Client) PushAddr(message []byte, addr *net.UDPAddr) error {
-	return c.Conn.WriteToAddr(message, addr)
+	_, err := c.Conn.WriteToAddr(message, addr)
+	return err
 }
 
 func (c *Client) Close() error {

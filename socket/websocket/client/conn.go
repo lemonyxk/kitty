@@ -25,8 +25,9 @@ type Conn interface {
 	LocalAddr() net.Addr
 	RemoteAddr() net.Addr
 	Close() error
-	Write(data []byte) error
+	Write(messageType int, data []byte) (int, error)
 	Read() (int, []byte, error)
+	Push(msg []byte) error
 	LastPong() time.Time
 	SetLastPong(t time.Time)
 	Client() *Client
@@ -97,14 +98,19 @@ func (c *conn) Close() error {
 	return c.conn.Close()
 }
 
+func (c *conn) Push(message []byte) error {
+	_, err := c.Write(int(socket.Bin), message)
+	return err
+}
+
 func (c *conn) Read() (int, []byte, error) {
 	return c.conn.ReadMessage()
 }
 
-func (c *conn) Write(message []byte) error {
+func (c *conn) Write(messageType int, message []byte) (int, error) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	return c.conn.WriteMessage(int(socket.Bin), message)
+	return len(message), c.conn.WriteMessage(messageType, message)
 }
 
 func (c *conn) protocol(messageType byte, route []byte, body []byte) error {

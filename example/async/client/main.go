@@ -21,6 +21,8 @@ import (
 	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
 )
 
+// the same as ws and udp
+
 var tcpServer *server.Server
 
 var tcpClient *client2.Client

@@ -17,23 +17,23 @@ import (
 	"github.com/lemonyxk/kitty/v2"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
-	client2 "github.com/lemonyxk/kitty/v2/socket/tcp/client"
-	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
+	client2 "github.com/lemonyxk/kitty/v2/socket/udp/client"
+	"github.com/lemonyxk/kitty/v2/socket/udp/server"
 )
 
-var tcpServer *server.Server
+var udpServer *server.Server
 
-var tcpClient *client2.Client
+var udpClient *client2.Client
 
-func runTcpServer() {
+func runUdpServer() {
 
 	var ready = make(chan struct{})
 
-	tcpServer = kitty.NewTcpServer("127.0.0.1:8888")
+	udpServer = kitty.NewUdpServer("127.0.0.1:8888")
 
-	var tcpServerRouter = kitty.NewTcpServerRouter()
+	var udpServerRouter = kitty.NewUdpServerRouter()
 
-	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data))
 			return stream.Conn.Emit(socket.Pack{
@@ -43,22 +43,22 @@ func runTcpServer() {
 		})
 	})
 
-	tcpServer.OnSuccess = func() {
+	udpServer.OnSuccess = func() {
 		ready <- struct{}{}
 	}
 
-	go tcpServer.SetRouter(tcpServerRouter).Start()
+	go udpServer.SetRouter(udpServerRouter).Start()
 
 	<-ready
 }
 
-func runTcpClient() {
+func runUdpClient() {
 
 	var ready = make(chan struct{})
 
-	tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
+	udpClient = kitty.NewUdpClient("127.0.0.1:8888")
 
-	var clientRouter = kitty.NewTcpClientRouter()
+	var clientRouter = kitty.NewUdpClientRouter()
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client2.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client2.Conn]) error {
@@ -70,20 +70,20 @@ func runTcpClient() {
 		})
 	})
 
-	tcpClient.OnSuccess = func() {
+	udpClient.OnSuccess = func() {
 		ready <- struct{}{}
 	}
 
-	go tcpClient.SetRouter(clientRouter).Connect()
+	go udpClient.SetRouter(clientRouter).Connect()
 
 	<-ready
 }
 
 func main() {
-	runTcpServer()
-	runTcpClient()
+	runUdpServer()
+	runUdpClient()
 
-	var err = tcpClient.Emit(socket.Pack{
+	var err = udpClient.Emit(socket.Pack{
 		Event: "/hello/world",
 		Data:  []byte("hello world"),
 	})

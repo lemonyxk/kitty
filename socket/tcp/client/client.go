@@ -78,7 +78,7 @@ func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
 }
 
 func (c *Client) Push(message []byte) error {
-	return c.Conn.Write(message)
+	return c.Conn.Push(message)
 }
 
 func (c *Client) Close() error {

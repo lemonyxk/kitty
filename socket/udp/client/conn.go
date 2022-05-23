@@ -27,8 +27,9 @@ type Conn interface {
 	LocalAddr() net.Addr
 	RemoteAddr() net.Addr
 	Read(b []byte) (n int, addr *net.UDPAddr, err error)
-	Write(b []byte) (err error)
-	WriteToAddr(b []byte, addr *net.UDPAddr) (err error)
+	Write(b []byte) (int, error)
+	WriteToAddr(b []byte, addr *net.UDPAddr) (int, error)
+	Push(msg []byte) error
 	Close() error
 	Conn() *net.UDPConn
 	LastPong() time.Time
@@ -99,8 +100,13 @@ func (c *conn) Ping() error {
 }
 
 func (c *conn) Close() error {
-	_ = c.Write(udp.CloseMessage)
+	_, _ = c.Write(udp.CloseMessage)
 	return c.conn.Close()
+}
+
+func (c *conn) Push(message []byte) error {
+	_, err := c.Write(message)
+	return err
 }
 
 func (c *conn) Read(b []byte) (n int, addr *net.UDPAddr, err error) {
@@ -111,28 +117,26 @@ func (c *conn) Pong() error {
 	return c.protocol(socket.Pong, nil, nil)
 }
 
-func (c *conn) Write(msg []byte) error {
+func (c *conn) Write(msg []byte) (int, error) {
 	if len(msg) > c.client.ReadBufferSize+udp.HeadLen {
-		return errors.New("max length is " + strconv.Itoa(c.client.ReadBufferSize) + "but now is " + strconv.Itoa(len(msg)))
+		return 0, errors.New("max length is " + strconv.Itoa(c.client.ReadBufferSize) + "but now is " + strconv.Itoa(len(msg)))
 	}
 
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	_, err := c.conn.WriteToUDP(msg, c.addr)
-	return err
+	return c.conn.WriteToUDP(msg, c.addr)
 }
 
-func (c *conn) WriteToAddr(msg []byte, addr *net.UDPAddr) error {
+func (c *conn) WriteToAddr(msg []byte, addr *net.UDPAddr) (int, error) {
 	if len(msg) > c.client.ReadBufferSize+udp.HeadLen {
-		return errors.New("max length is " + strconv.Itoa(c.client.ReadBufferSize) + "but now is " + strconv.Itoa(len(msg)))
+		return 0, errors.New("max length is " + strconv.Itoa(c.client.ReadBufferSize) + "but now is " + strconv.Itoa(len(msg)))
 	}
 
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	_, err := c.conn.WriteToUDP(msg, addr)
-	return err
+	return c.conn.WriteToUDP(msg, addr)
 }
 
 func (c *conn) protocol(messageType byte, route []byte, body []byte) error {

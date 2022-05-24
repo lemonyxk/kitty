@@ -17,7 +17,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/async"
-	client2 "github.com/lemonyxk/kitty/v2/socket/tcp/client"
+	"github.com/lemonyxk/kitty/v2/socket/tcp/client"
 	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
 )
 
@@ -25,7 +25,7 @@ import (
 
 var tcpServer *server.Server
 
-var tcpClient *client2.Client
+var tcpClient *client.Client
 
 func asyncTcpServer() {
 
@@ -74,7 +74,7 @@ func main() {
 	asyncTcpServer()
 	asyncTcpClient()
 
-	var asyncClient = async.NewClient[client2.Conn](tcpClient)
+	var asyncClient = async.NewClient[client.Conn](tcpClient)
 
 	var stream, err = asyncClient.Emit(socket.Pack{
 		Event: "/hello/world",

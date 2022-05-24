@@ -17,10 +17,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2"
+	"github.com/lemonyxk/kitty/v2/example/protobuf"
+	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
-	async2 "github.com/lemonyxk/kitty/v2/socket/async"
+	"github.com/lemonyxk/kitty/v2/socket/async"
 	"github.com/lemonyxk/kitty/v2/socket/websocket/client"
 	"github.com/stretchr/testify/assert"
 
@@ -34,8 +37,6 @@ type JsonPack struct {
 }
 
 var stop = make(chan bool)
-
-var mux sync.WaitGroup
 
 func shutdown() {
 	stop <- true
@@ -51,13 +52,17 @@ var clientRouter *router.Router[*socket.Stream[client.Conn]]
 
 var addr = "127.0.0.1:8669"
 
-func initServer(fn func()) {
+var fd int64 = 0
+
+func initServer() {
+
+	var ready = make(chan bool)
 
 	// create server
 	webSocketServer = kitty.NewWebSocketServer(addr)
 
 	// event
-	webSocketServer.OnOpen = func(conn server.Conn) {}
+	webSocketServer.OnOpen = func(conn server.Conn) { fd++ }
 	webSocketServer.OnClose = func(conn server.Conn) {}
 	webSocketServer.OnError = func(err error) {}
 	webSocketServer.OnMessage = func(conn server.Conn, msg []byte) {}
@@ -100,14 +105,45 @@ func initServer(fn func()) {
 		})
 	})
 
+	var wsRouter = webSocketServerRouter.Create()
+	wsRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[server.Conn]) error {
+		var res kitty2.M
+		_ = jsoniter.Unmarshal(stream.Data, &res)
+		return stream.Conn.JsonEmit(socket.JsonPack{
+			Event: stream.Event,
+			Data:  res,
+		})
+	})
+
+	wsRouter.Route("/Emit").Handler(func(stream *socket.Stream[server.Conn]) error {
+		return stream.Conn.Emit(socket.Pack{
+			Event: stream.Event,
+			Data:  stream.Data,
+		})
+	})
+
+	wsRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[server.Conn]) error {
+		var res awesomepackage.AwesomeMessage
+		_ = proto.Unmarshal(stream.Data, &res)
+		return stream.Conn.ProtoBufEmit(socket.ProtoBufPack{
+			Event: stream.Event,
+			Data:  &res,
+		})
+	})
+
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
 
 	webSocketServer.OnSuccess = func() {
-		fn()
+		ready <- true
 	}
+
+	<-ready
 }
 
-func initClient(fn func()) {
+func initClient() {
+
+	var ready = make(chan bool)
+
 	// create client
 	webSocketClient = kitty.NewWebSocketClient("ws://" + addr)
 	webSocketClient.ReconnectInterval = time.Second
@@ -143,26 +179,17 @@ func initClient(fn func()) {
 	go webSocketClient.SetRouter(clientRouter).Connect()
 
 	webSocketClient.OnSuccess = func() {
-		fn()
+		ready <- true
 	}
+
+	<-ready
 }
 
 func TestMain(t *testing.M) {
 
-	var sucServer = false
-	var sucClient = false
+	initServer()
 
-	var serverFn = func() {
-		sucServer = true
-	}
-
-	var clientFn = func() {
-		sucClient = true
-	}
-
-	initServer(serverFn)
-
-	initClient(clientFn)
+	initClient()
 
 	go func() {
 		<-stop
@@ -171,18 +198,12 @@ func TestMain(t *testing.M) {
 		_ = webSocketServer.Shutdown()
 	}()
 
-	for {
-		if sucServer && sucClient {
-			t.Run()
-			break
-		}
-	}
-
+	t.Run()
 }
 
 func Test_WS_Client_Async(t *testing.T) {
 
-	var asyncClient = async2.NewClient[client.Conn](webSocketClient)
+	var asyncClient = async.NewClient[client.Conn](webSocketClient)
 
 	var wait = sync.WaitGroup{}
 
@@ -215,6 +236,10 @@ func Test_WS_Client(t *testing.T) {
 
 	var flag = true
 
+	var mux sync.WaitGroup
+
+	mux.Add(count)
+
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			defer mux.Add(-1)
@@ -224,7 +249,6 @@ func Test_WS_Client(t *testing.T) {
 	})
 
 	for i := 0; i < count; i++ {
-		mux.Add(1)
 		_ = ClientJson(webSocketClient, JsonPack{
 			Event: "/hello/world",
 			Data:  strings.Repeat("hello world!", 1),
@@ -244,9 +268,94 @@ func Test_WS_Client(t *testing.T) {
 	}
 }
 
-func Test_TCP_Server_Async(t *testing.T) {
+func Test_WS_JsonEmit(t *testing.T) {
 
-	var asyncServer = async2.NewServer[server.Conn](webSocketServer)
+	var mux = sync.WaitGroup{}
+
+	mux.Add(1)
+
+	var wsRouter = clientRouter.Create()
+
+	wsRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[client.Conn]) error {
+		var res kitty2.M
+		_ = jsoniter.Unmarshal(stream.Data, &res)
+		assert.True(t, res["name"] == "kitty", res)
+		assert.True(t, res["age"] == "18", res)
+		mux.Done()
+		return nil
+	})
+
+	var err = webSocketClient.JsonEmit(socket.JsonPack{
+		Event: "/JsonFormat",
+		Data: kitty2.M{
+			"name": "kitty",
+			"age":  "18",
+		},
+	})
+
+	assert.True(t, err == nil, err)
+
+	mux.Wait()
+}
+
+func Test_WS_Emit(t *testing.T) {
+
+	var mux = sync.WaitGroup{}
+
+	mux.Add(1)
+
+	var wsRouter = clientRouter.Create()
+
+	wsRouter.Route("/Emit").Handler(func(stream *socket.Stream[client.Conn]) error {
+		assert.True(t, string(stream.Data) == `{"name":"kitty","age":18}`, string(stream.Data))
+		mux.Done()
+		return nil
+	})
+
+	var err = webSocketClient.Emit(socket.Pack{
+		Event: "/Emit",
+		Data:  []byte(`{"name":"kitty","age":18}`),
+	})
+
+	assert.True(t, err == nil, err)
+
+	mux.Wait()
+}
+
+func Test_WS_ProtobufEmit(t *testing.T) {
+	var mux = sync.WaitGroup{}
+
+	mux.Add(1)
+
+	var wsRouter = clientRouter.Create()
+
+	wsRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[client.Conn]) error {
+		var res awesomepackage.AwesomeMessage
+		_ = proto.Unmarshal(stream.Data, &res)
+		assert.True(t, res.AwesomeField == "1", res)
+		assert.True(t, res.AwesomeKey == "2", res)
+		mux.Done()
+		return nil
+	})
+
+	var buf = awesomepackage.AwesomeMessage{
+		AwesomeField: "1",
+		AwesomeKey:   "2",
+	}
+
+	var err = webSocketClient.ProtoBufEmit(socket.ProtoBufPack{
+		Event: "/ProtoBufEmit",
+		Data:  &buf,
+	})
+
+	assert.True(t, err == nil, err)
+
+	mux.Wait()
+}
+
+func Test_WS_Server_Async(t *testing.T) {
+
+	var asyncServer = async.NewServer[server.Conn](webSocketServer)
 
 	var wait = sync.WaitGroup{}
 
@@ -255,7 +364,7 @@ func Test_TCP_Server_Async(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		var index = i
 		go func() {
-			stream, err := asyncServer.JsonEmit(1, socket.JsonPack{
+			stream, err := asyncServer.JsonEmit(fd, socket.JsonPack{
 				Event: "/asyncServer",
 				Data:  index,
 			})

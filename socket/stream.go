@@ -12,7 +12,7 @@ package socket
 
 import (
 	"github.com/golang/protobuf/proto"
-	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
 // 0 version
@@ -45,9 +45,9 @@ type Stream[T any] struct {
 
 	Conn T
 
-	Context kitty2.Context
-	Params  kitty2.Params
-	Logger  kitty2.Logger
+	Context kitty.Context
+	Params  kitty.Params
+	Logger  kitty.Logger
 }
 
 type Pack struct {

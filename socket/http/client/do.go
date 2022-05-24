@@ -18,7 +18,7 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
-	url2 "net/url"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -33,13 +33,13 @@ func getRequest(method string, url string, info *info) (*http.Request, context.C
 	var contentType = strings.ToLower(getContentType(info))
 	switch contentType {
 	case kitty.ApplicationFormUrlencoded:
-		return doPostFormUrlencoded(method, url, info)
+		return doFormUrlencoded(method, url, info)
 	case kitty.ApplicationJson:
-		return doPostJson(method, url, info)
+		return doJson(method, url, info)
 	case kitty.MultipartFormData:
-		return doPostFormData(method, url, info)
+		return doFormData(method, url, info)
 	case kitty.ApplicationProtobuf:
-		return doPostXProtobuf(method, url, info)
+		return doXProtobuf(method, url, info)
 	default:
 		return doUrl(method, url, info)
 	}
@@ -66,7 +66,7 @@ func doRaw(method string, url string, info *info) (*http.Request, context.Cancel
 	return request, cancel, err
 }
 
-func doPostXProtobuf(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doXProtobuf(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([]proto.Message)
 	if !ok {
 		return nil, nil, errors.Wrap(errors.AssertionFailed, "proto.Message")
@@ -91,7 +91,7 @@ func doPostXProtobuf(method string, url string, info *info) (*http.Request, cont
 	return request, cancel, err
 }
 
-func doPostFormData(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doFormData(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	if info.body == nil {
 		info.body = []kitty.M{}
 	}
@@ -150,7 +150,7 @@ func doPostFormData(method string, url string, info *info) (*http.Request, conte
 	return request, cancel, err
 }
 
-func doPostJson(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doJson(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([]any)
 	if !ok {
 		return nil, nil, errors.Wrap(errors.AssertionFailed, "interface{}")
@@ -175,7 +175,7 @@ func doPostJson(method string, url string, info *info) (*http.Request, context.C
 	return request, cancel, err
 }
 
-func doPostFormUrlencoded(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doFormUrlencoded(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
 	if info.body == nil {
 		info.body = []kitty.M{}
 	}
@@ -215,8 +215,8 @@ func doPostFormUrlencoded(method string, url string, info *info) (*http.Request,
 	return request, cancel, err
 }
 
-func doUrl(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
-	Url, err := url2.Parse(url)
+func doUrl(method string, u string, info *info) (*http.Request, context.CancelFunc, error) {
+	Url, err := url.Parse(u)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -230,7 +230,7 @@ func doUrl(method string, url string, info *info) (*http.Request, context.Cancel
 		return nil, nil, err
 	}
 
-	var params = url2.Values{}
+	var params = url.Values{}
 
 	for i := 0; i < len(body); i++ {
 		for key, value := range body[i] {
@@ -250,7 +250,11 @@ func doUrl(method string, url string, info *info) (*http.Request, context.Cancel
 	var pStr = params.Encode()
 
 	if pStr != "" {
-		Url.RawQuery = Url.RawQuery + "&" + pStr
+		if Url.RawQuery != "" {
+			Url.RawQuery = Url.RawQuery + "&" + pStr
+		} else {
+			Url.RawQuery = pStr
+		}
 	}
 
 	var ctx, cancel = context.WithCancel(context.Background())
@@ -297,6 +301,10 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 
 	if info.dialerKeepAlive != 0 {
 		defaultDialer.KeepAlive = info.dialerKeepAlive
+	}
+
+	if info.tlsConfig != nil {
+		defaultTransport.TLSClientConfig = info.tlsConfig
 	}
 
 	if info.proxy != nil {

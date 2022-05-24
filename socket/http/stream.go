@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/json-iterator/go"
-	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
 type Stream struct {
@@ -23,9 +23,9 @@ type Stream struct {
 	Protobuf *Protobuf
 	Files    *Files
 
-	Params  kitty2.Params
-	Context kitty2.Context
-	Logger  kitty2.Logger
+	Params  kitty.Params
+	Context kitty.Context
+	Logger  kitty.Logger
 
 	maxMemory        int64
 	hasParseQuery    bool
@@ -74,7 +74,7 @@ func (s *Stream) End(data any) error {
 }
 
 func (s *Stream) EndJson(data any) error {
-	s.SetHeader(kitty2.ContentType, kitty2.ApplicationJson)
+	s.SetHeader(kitty.ContentType, kitty.ApplicationJson)
 	bts, err := jsoniter.Marshal(data)
 	if err != nil {
 		return err
@@ -94,13 +94,13 @@ func (s *Stream) EndBytes(data []byte) error {
 }
 
 func (s *Stream) EndFile(fileName string, content any) error {
-	s.SetHeader(kitty2.ContentType, kitty2.ApplicationOctetStream)
-	s.SetHeader("content-Disposition", "attachment;filename="+fileName)
+	s.SetHeader(kitty.ContentType, kitty.ApplicationOctetStream)
+	s.SetHeader(kitty.ContentDisposition, "attachment;filename="+fileName)
 	return s.End(content)
 }
 
 func (s *Stream) Host() string {
-	if host := s.Request.Header.Get(kitty2.Host); host != "" {
+	if host := s.Request.Header.Get(kitty.Host); host != "" {
 		return host
 	}
 	return s.Request.Host
@@ -108,11 +108,11 @@ func (s *Stream) Host() string {
 
 func (s *Stream) ClientIP() string {
 
-	if ip := strings.Split(s.Request.Header.Get(kitty2.XForwardedFor), ",")[0]; ip != "" {
+	if ip := strings.Split(s.Request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
 		return ip
 	}
 
-	if ip := s.Request.Header.Get(kitty2.XRealIP); ip != "" {
+	if ip := s.Request.Header.Get(kitty.XRealIP); ip != "" {
 		return ip
 	}
 
@@ -251,30 +251,30 @@ func (s *Stream) ParseForm() *Store {
 
 func (s *Stream) AutoParse() {
 
-	var header = s.Request.Header.Get(kitty2.ContentType)
+	var header = s.Request.Header.Get(kitty.ContentType)
 
 	if strings.ToUpper(s.Request.Method) == "GET" {
 		s.ParseQuery()
 		return
 	}
 
-	if strings.HasPrefix(header, kitty2.MultipartFormData) {
+	if strings.HasPrefix(header, kitty.MultipartFormData) {
 		s.ParseMultipart()
 		s.ParseFiles()
 		return
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
 		s.ParseForm()
 		return
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationJson) {
+	if strings.HasPrefix(header, kitty.ApplicationJson) {
 		s.ParseJson()
 		return
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationProtobuf) {
+	if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
 		s.ParseProtobuf()
 		return
 	}
@@ -285,17 +285,17 @@ func (s *Stream) Has(key string) bool {
 		return s.Query.Has(key)
 	}
 
-	var header = s.Request.Header.Get(kitty2.ContentType)
+	var header = s.Request.Header.Get(kitty.ContentType)
 
-	if strings.HasPrefix(header, kitty2.MultipartFormData) {
+	if strings.HasPrefix(header, kitty.MultipartFormData) {
 		return s.Form.Has(key)
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
 		return s.Form.Has(key)
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationJson) {
+	if strings.HasPrefix(header, kitty.ApplicationJson) {
 		return s.Json.Has(key)
 	}
 
@@ -307,17 +307,17 @@ func (s *Stream) Empty(key string) bool {
 		return s.Query.Empty(key)
 	}
 
-	var header = s.Request.Header.Get(kitty2.ContentType)
+	var header = s.Request.Header.Get(kitty.ContentType)
 
-	if strings.HasPrefix(header, kitty2.MultipartFormData) {
+	if strings.HasPrefix(header, kitty.MultipartFormData) {
 		return s.Form.Empty(key)
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
 		return s.Form.Empty(key)
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationJson) {
+	if strings.HasPrefix(header, kitty.ApplicationJson) {
 		return s.Json.Empty(key)
 	}
 
@@ -329,17 +329,17 @@ func (s *Stream) AutoGet(key string) Value {
 		return s.Query.First(key)
 	}
 
-	var header = s.Request.Header.Get(kitty2.ContentType)
+	var header = s.Request.Header.Get(kitty.ContentType)
 
-	if strings.HasPrefix(header, kitty2.MultipartFormData) {
+	if strings.HasPrefix(header, kitty.MultipartFormData) {
 		return s.Form.First(key)
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
 		return s.Form.First(key)
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationJson) {
+	if strings.HasPrefix(header, kitty.ApplicationJson) {
 		return s.Json.Get(key)
 	}
 
@@ -361,25 +361,25 @@ func (s *Stream) Url() string {
 
 func (s *Stream) String() string {
 
-	var header = s.Request.Header.Get(kitty2.ContentType)
+	var header = s.Request.Header.Get(kitty.ContentType)
 
 	if strings.ToUpper(s.Request.Method) == "GET" {
 		return s.Query.String()
 	}
 
-	if strings.HasPrefix(header, kitty2.MultipartFormData) {
+	if strings.HasPrefix(header, kitty.MultipartFormData) {
 		return s.Form.String()
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
 		return s.Form.String()
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationJson) {
+	if strings.HasPrefix(header, kitty.ApplicationJson) {
 		return s.Json.String()
 	}
 
-	if strings.HasPrefix(header, kitty2.ApplicationProtobuf) {
+	if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
 		return string(s.Protobuf.Bytes())
 	}
 

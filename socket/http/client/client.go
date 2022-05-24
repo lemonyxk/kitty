@@ -42,3 +42,38 @@ func (h *Client) Head(url string) *info {
 	var info = &info{handler: h}
 	return info
 }
+
+func (h *Client) Trace(url string) *info {
+	h.method = http.MethodTrace
+	h.url = url
+	var info = &info{handler: h}
+	return info
+}
+
+func (h *Client) Options(url string) *info {
+	h.method = http.MethodOptions
+	h.url = url
+	var info = &info{handler: h}
+	return info
+}
+
+func (h *Client) Put(url string) *info {
+	h.method = http.MethodPut
+	h.url = url
+	var info = &info{handler: h}
+	return info
+}
+
+func (h *Client) Delete(url string) *info {
+	h.method = http.MethodDelete
+	h.url = url
+	var info = &info{handler: h}
+	return info
+}
+
+func (h *Client) Patch(url string) *info {
+	h.method = http.MethodPatch
+	h.url = url
+	var info = &info{handler: h}
+	return info
+}

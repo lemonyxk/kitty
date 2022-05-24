@@ -17,7 +17,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/async"
-	client2 "github.com/lemonyxk/kitty/v2/socket/tcp/client"
+	"github.com/lemonyxk/kitty/v2/socket/tcp/client"
 	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
 )
 
@@ -25,13 +25,19 @@ import (
 
 var tcpServer *server.Server
 
-var tcpClient *client2.Client
+var tcpClient *client.Client
+
+var fd int64 = 0
 
 func asyncTcpServer() {
 
 	var ready = make(chan struct{})
 
 	tcpServer = kitty.NewTcpServer("127.0.0.1:8888")
+
+	tcpServer.OnOpen = func(conn server.Conn) {
+		fd++
+	}
 
 	var tcpServerRouter = kitty.NewTcpServerRouter()
 
@@ -56,8 +62,8 @@ func asyncTcpClient() {
 		ready <- struct{}{}
 	}
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client2.Conn]]) {
-		handler.Route("/world").Handler(func(stream *socket.Stream[client2.Conn]) error {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			return stream.Conn.Emit(socket.Pack{
 				Event: stream.Event,
 				Data:  stream.Data,
@@ -76,7 +82,7 @@ func main() {
 
 	var asyncServer = async.NewServer[server.Conn](tcpServer)
 
-	var stream, err = asyncServer.Emit(1, socket.Pack{
+	var stream, err = asyncServer.Emit(fd, socket.Pack{
 		Event: "/hello/world",
 		Data:  []byte("hello world"),
 	})

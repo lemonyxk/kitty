@@ -20,6 +20,7 @@ import (
 	"github.com/lemonyxk/kitty/v2"
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/example/protobuf"
+	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket/http"
 	"github.com/lemonyxk/kitty/v2/socket/http/client"
@@ -35,8 +36,8 @@ func runHttpServer() {
 
 	var httpServer = kitty.NewHttpServer("127.0.0.1:8666")
 	// use ssl for https
-	// httpServer.CertFile = "/Users/lemon/test/go/localhost+2.pem"
-	// httpServer.KeyFile = "/Users/lemon/test/go/localhost+2-key.pem"
+	// httpServer.CertFile = "/Users/lemo/test/go/localhost+2.pem"
+	// httpServer.KeyFile = "/Users/lemo/test/go/localhost+2-key.pem"
 
 	var httpServerRouter = kitty.NewHttpServerRouter()
 
@@ -142,6 +143,11 @@ func main() {
 	}
 
 	var res = client.Post("http://127.0.0.1:8666/proto").Protobuf(&msg).Send()
+	if res.LastError() != nil {
+		log.Println(res.LastError())
+	}
+
+	res = client.Get("http://127.0.0.1:8666/hello/world").Query(kitty2.M{"a": 1}).Send()
 	if res.LastError() != nil {
 		log.Println(res.LastError())
 	}

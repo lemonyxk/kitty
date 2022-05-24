@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/socket"
 )
 

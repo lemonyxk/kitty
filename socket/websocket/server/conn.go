@@ -19,7 +19,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/kitty"
 
 	"github.com/lemonyxk/kitty/v2/socket"

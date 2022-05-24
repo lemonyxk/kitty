@@ -20,7 +20,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
-	hash "github.com/lemonyxk/structure/v3/map"
+	"github.com/lemonyxk/structure/v3/map"
 
 	"github.com/golang/protobuf/proto"
 

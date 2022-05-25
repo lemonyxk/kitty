@@ -15,6 +15,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
@@ -57,8 +58,6 @@ type Client struct {
 	isStop                bool
 	heartbeatTicker       *time.Ticker
 	cancelHeartbeatTicker chan struct{}
-	pongTimer             *time.Timer
-	cancelPongTimer       chan struct{}
 }
 
 type Middle router.Middle[*socket.Stream[Conn]]
@@ -75,16 +74,16 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 	c.middle = append(c.middle, middle...)
 }
 
-func (c *Client) Emit(pack socket.Pack) error {
-	return c.Conn.Emit(pack)
+func (c *Client) Emit(event string, data []byte) error {
+	return c.Conn.Emit(event, data)
 }
 
-func (c *Client) JsonEmit(pack socket.JsonPack) error {
-	return c.Conn.JsonEmit(pack)
+func (c *Client) JsonEmit(event string, data any) error {
+	return c.Conn.JsonEmit(event, data)
 }
 
-func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
-	return c.Conn.ProtoBufEmit(pack)
+func (c *Client) ProtoBufEmit(event string, data proto.Message) error {
+	return c.Conn.ProtoBufEmit(event, data)
 }
 
 func (c *Client) Push(message []byte) error {
@@ -182,7 +181,17 @@ func (c *Client) Connect() {
 		return
 	}
 
-	c.Conn = &conn{addr: addr, conn: handler, client: c, lastPong: time.Now()}
+	var netConn = &conn{
+		addr:     addr,
+		conn:     handler,
+		client:   c,
+		lastPong: time.Now(),
+		// PONG
+		timeoutTimer:       time.NewTimer(c.HeartBeatTimeout),
+		cancelTimeoutTimer: make(chan struct{}),
+	}
+
+	c.Conn = netConn
 
 	// send open message
 	err = c.Conn.SendOpen()
@@ -223,10 +232,6 @@ func (c *Client) Connect() {
 	c.heartbeatTicker = time.NewTicker(c.HeartBeatInterval)
 	c.cancelHeartbeatTicker = make(chan struct{})
 
-	// PONG
-	c.pongTimer = time.NewTimer(c.HeartBeatTimeout)
-	c.cancelPongTimer = make(chan struct{})
-
 	// heartbeat function
 	if c.HeartBeat == nil {
 		c.HeartBeat = func(conn Conn) error {
@@ -244,11 +249,12 @@ func (c *Client) Connect() {
 	}
 
 	if c.PongHandler == nil {
-		c.PongHandler = func(connection Conn) func(data string) error {
+		c.PongHandler = func(conn Conn) func(data string) error {
 			return func(data string) error {
-				c.Conn.SetLastPong(time.Now())
+				var t = time.Now()
+				c.Conn.SetLastPong(t)
 				if c.HeartBeatTimeout != 0 {
-					c.pongTimer.Reset(c.HeartBeatTimeout)
+					return netConn.SetReadDeadline(t.Add(c.HeartBeatTimeout))
 				}
 				return nil
 			}
@@ -274,17 +280,17 @@ func (c *Client) Connect() {
 	}()
 
 	if c.HeartBeatTimeout == 0 {
-		c.pongTimer.Stop()
+		netConn.timeoutTimer.Stop()
 	}
 
 	go func() {
 		for {
 			select {
-			case <-c.pongTimer.C:
+			case <-netConn.timeoutTimer.C:
 				if !c.isStop {
 					c.stopCh <- struct{}{}
 				}
-			case <-c.cancelPongTimer:
+			case <-netConn.cancelTimeoutTimer:
 				return
 			}
 		}
@@ -332,11 +338,10 @@ func (c *Client) Connect() {
 	<-c.stopCh
 
 	c.isStop = true
-	c.cancelHeartbeatTicker <- struct{}{}
-	c.cancelPongTimer <- struct{}{}
-
-	// 关闭定时器
 	c.heartbeatTicker.Stop()
+	c.cancelHeartbeatTicker <- struct{}{}
+	netConn.cancelTimeoutTimer <- struct{}{}
+
 	// 关闭连接
 	_ = c.Close()
 	// 触发回调
@@ -387,7 +392,7 @@ func (c *Client) decodeMessage(message []byte) error {
 	}
 
 	// on router
-	c.middleware(&socket.Stream[Conn]{Conn: c.Conn, Pack: socket.Pack{Event: string(route), Data: body}})
+	c.middleware(&socket.Stream[Conn]{Conn: c.Conn, Event: string(route), Data: body})
 
 	return nil
 }

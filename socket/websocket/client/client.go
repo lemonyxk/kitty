@@ -1,23 +1,29 @@
 package client
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/gorilla/websocket"
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
-
-	"github.com/gorilla/websocket"
+	"github.com/lemonyxk/kitty/v2/ssl"
 )
 
 type Client struct {
 	Name string
 	Addr string
+	// TLS FILE
+	CertFile string
+	// TLS KEY
+	KeyFile string
 
 	Conn     Conn
 	Response *http.Response
@@ -50,8 +56,6 @@ type Client struct {
 	isStop                bool
 	heartbeatTicker       *time.Ticker
 	cancelHeartbeatTicker chan struct{}
-	pongTimer             *time.Timer
-	cancelPongTimer       chan struct{}
 }
 
 type Middle router.Middle[*socket.Stream[Conn]]
@@ -68,16 +72,16 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 	c.middle = append(c.middle, middle...)
 }
 
-func (c *Client) Emit(pack socket.Pack) error {
-	return c.Conn.Emit(pack)
+func (c *Client) Emit(event string, data []byte) error {
+	return c.Conn.Emit(event, data)
 }
 
-func (c *Client) JsonEmit(pack socket.JsonPack) error {
-	return c.Conn.JsonEmit(pack)
+func (c *Client) JsonEmit(event string, data any) error {
+	return c.Conn.JsonEmit(event, data)
 }
 
-func (c *Client) ProtoBufEmit(pack socket.ProtoBufPack) error {
-	return c.Conn.ProtoBufEmit(pack)
+func (c *Client) ProtoBufEmit(event string, data proto.Message) error {
+	return c.Conn.ProtoBufEmit(event, data)
 }
 
 func (c *Client) Push(message []byte) error {
@@ -157,10 +161,21 @@ func (c *Client) Connect() {
 		c.Protocol = &protocol.DefaultWsProtocol{}
 	}
 
+	var err error
+	var config = &tls.Config{}
+
+	if c.CertFile != "" && c.KeyFile != "" {
+		config, err = ssl.NewTLSConfig(c.CertFile, c.KeyFile)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	var dialer = websocket.Dialer{
 		HandshakeTimeout: c.DailTimeout,
 		WriteBufferSize:  c.WriteBufferSize,
 		ReadBufferSize:   c.ReadBufferSize,
+		TLSClientConfig:  config,
 	}
 
 	// 连接服务器
@@ -183,10 +198,6 @@ func (c *Client) Connect() {
 	c.heartbeatTicker = time.NewTicker(c.HeartBeatInterval)
 	c.cancelHeartbeatTicker = make(chan struct{})
 
-	// PONG
-	c.pongTimer = time.NewTimer(c.HeartBeatTimeout)
-	c.cancelPongTimer = make(chan struct{})
-
 	// heartbeat function
 	if c.HeartBeat == nil {
 		c.HeartBeat = func(conn Conn) error {
@@ -204,11 +215,12 @@ func (c *Client) Connect() {
 	}
 
 	if c.PongHandler == nil {
-		c.PongHandler = func(connection Conn) func(data string) error {
+		c.PongHandler = func(conn Conn) func(data string) error {
 			return func(data string) error {
-				c.Conn.SetLastPong(time.Now())
+				var t = time.Now()
+				conn.SetLastPong(t)
 				if c.HeartBeatTimeout != 0 {
-					c.pongTimer.Reset(c.HeartBeatTimeout)
+					return conn.Conn().SetReadDeadline(t.Add(c.HeartBeatTimeout))
 				}
 				return nil
 			}
@@ -239,22 +251,15 @@ func (c *Client) Connect() {
 		}
 	}()
 
-	if c.HeartBeatTimeout == 0 {
-		c.pongTimer.Stop()
-	}
-
-	go func() {
-		for {
-			select {
-			case <-c.pongTimer.C:
-				if !c.isStop {
-					c.stopCh <- struct{}{}
-				}
-			case <-c.cancelPongTimer:
-				return
-			}
+	if c.HeartBeatTimeout != 0 {
+		err = c.Conn.Conn().SetReadDeadline(time.Now().Add(c.HeartBeatTimeout))
+		if err != nil {
+			fmt.Println(err)
+			c.OnError(err)
+			c.reconnecting()
+			return
 		}
-	}()
+	}
 
 	// start success
 	if c.OnSuccess != nil {
@@ -294,11 +299,9 @@ func (c *Client) Connect() {
 	<-c.stopCh
 
 	c.isStop = true
-	c.cancelHeartbeatTicker <- struct{}{}
-	c.cancelPongTimer <- struct{}{}
-
-	// 关闭定时器
 	c.heartbeatTicker.Stop()
+	c.cancelHeartbeatTicker <- struct{}{}
+
 	// 关闭连接
 	_ = c.Close()
 	// 触发回调
@@ -335,7 +338,7 @@ func (c *Client) decodeMessage(messageFrame int, message []byte) error {
 	}
 
 	// on router
-	c.middleware(&socket.Stream[Conn]{Conn: c.Conn, Pack: socket.Pack{Event: string(route), Data: body}})
+	c.middleware(&socket.Stream[Conn]{Conn: c.Conn, Event: string(route), Data: body})
 
 	return nil
 }

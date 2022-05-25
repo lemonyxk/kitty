@@ -11,6 +11,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 	"sync/atomic"
@@ -21,6 +22,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
+	"github.com/lemonyxk/kitty/v2/ssl"
 	"github.com/lemonyxk/structure/v3/map"
 
 	"github.com/golang/protobuf/proto"
@@ -31,6 +33,10 @@ import (
 type Server struct {
 	Name string
 	Addr string
+	// TLS FILE
+	CertFile string
+	// TLS KEY
+	KeyFile string
 
 	OnClose   func(conn Conn)
 	OnMessage func(conn Conn, msg []byte)
@@ -86,16 +92,16 @@ func (s *Server) Push(fd int64, msg []byte) error {
 	return err
 }
 
-func (s *Server) Emit(fd int64, pack socket.Pack) error {
-	return s.protocol(fd, protocol.Bin, []byte(pack.Event), pack.Data)
+func (s *Server) Emit(fd int64, event string, data []byte) error {
+	return s.protocol(fd, protocol.Bin, []byte(event), data)
 }
 
-func (s *Server) EmitAll(pack socket.Pack) (int, int) {
+func (s *Server) EmitAll(event string, data []byte) (int, int) {
 	var counter = 0
 	var success = 0
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
-		if s.Emit(fd, pack) == nil {
+		if s.Emit(fd, event, data) == nil {
 			success++
 		}
 		return true
@@ -103,21 +109,21 @@ func (s *Server) EmitAll(pack socket.Pack) (int, int) {
 	return counter, success
 }
 
-func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
-	data, err := jsoniter.Marshal(pack.Data)
+func (s *Server) JsonEmit(fd int64, event string, data any) error {
+	msg, err := jsoniter.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return s.protocol(fd, protocol.Bin, []byte(pack.Event), data)
+	return s.protocol(fd, protocol.Bin, []byte(event), msg)
 }
 
-func (s *Server) JsonEmitAll(msg socket.JsonPack) (int, int) {
+func (s *Server) JsonEmitAll(event string, data any) (int, int) {
 	var counter = 0
 	var success = 0
 
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
-		if s.JsonEmit(fd, msg) == nil {
+		if s.JsonEmit(fd, event, data) == nil {
 			success++
 		}
 		return true
@@ -126,21 +132,21 @@ func (s *Server) JsonEmitAll(msg socket.JsonPack) (int, int) {
 	return counter, success
 }
 
-func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
-	data, err := proto.Marshal(pack.Data)
+func (s *Server) ProtoBufEmit(fd int64, event string, data proto.Message) error {
+	msg, err := proto.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return s.protocol(fd, protocol.Bin, []byte(pack.Event), data)
+	return s.protocol(fd, protocol.Bin, []byte(event), msg)
 }
 
-func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
+func (s *Server) ProtoBufEmitAll(event string, data proto.Message) (int, int) {
 	var counter = 0
 	var success = 0
 
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
-		if s.ProtoBufEmit(fd, msg) == nil {
+		if s.ProtoBufEmit(fd, event, data) == nil {
 			success++
 		}
 		return true
@@ -198,12 +204,15 @@ func (s *Server) Ready() {
 	}
 
 	if s.PingHandler == nil {
-		s.PingHandler = func(connection Conn) func(data string) error {
+		s.PingHandler = func(conn Conn) func(data string) error {
 			return func(data string) error {
+				var err error
 				var t = time.Now()
-				connection.SetLastPing(t)
-				var err = connection.Conn().SetReadDeadline(t.Add(s.HeartBeatTimeout))
-				err = connection.Pong()
+				conn.SetLastPing(t)
+				if s.HeartBeatTimeout != 0 {
+					err = conn.Conn().SetReadDeadline(t.Add(s.HeartBeatTimeout))
+				}
+				err = conn.Pong()
 				return err
 			}
 		}
@@ -211,7 +220,7 @@ func (s *Server) Ready() {
 
 	// no answer
 	if s.PongHandler == nil {
-		s.PongHandler = func(connection Conn) func(data string) error {
+		s.PongHandler = func(conn Conn) func(data string) error {
 			return func(data string) error {
 				return nil
 			}
@@ -277,7 +286,17 @@ func (s *Server) Start() {
 	var err error
 	var netListen net.Listener
 
-	netListen, err = net.Listen("tcp", s.Addr)
+	if s.CertFile != "" && s.KeyFile != "" {
+		var config, err = ssl.NewTLSConfig(s.CertFile, s.KeyFile)
+		if err != nil {
+			panic(err)
+		}
+		netListen, err = tls.Listen("tcp", s.Addr, config)
+	} else {
+		netListen, err = net.Listen("tcp", s.Addr)
+	}
+
+	// netListen, err = net.Listen("tcp", s.Addr)
 
 	if err != nil {
 		panic(err)
@@ -305,22 +324,36 @@ func (s *Server) Shutdown() error {
 }
 
 func (s *Server) process(netConn net.Conn) {
-
 	// 超时时间
-	err := netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
-	if err != nil {
-		s.onError(err)
-		return
+	if s.HeartBeatTimeout != 0 {
+		err := netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
+		if err != nil {
+			s.onError(err)
+			return
+		}
 	}
 
-	err = netConn.(*net.TCPConn).SetReadBuffer(s.ReadBufferSize)
-	if err != nil {
-		panic(err)
-	}
+	switch netConn.(type) {
+	case *tls.Conn:
+		err := netConn.(*tls.Conn).NetConn().(*net.TCPConn).SetReadBuffer(s.ReadBufferSize)
+		if err != nil {
+			panic(err)
+		}
 
-	err = netConn.(*net.TCPConn).SetWriteBuffer(s.WriteBufferSize)
-	if err != nil {
-		panic(err)
+		err = netConn.(*tls.Conn).NetConn().(*net.TCPConn).SetWriteBuffer(s.WriteBufferSize)
+		if err != nil {
+			panic(err)
+		}
+	case *net.TCPConn:
+		err := netConn.(*net.TCPConn).SetReadBuffer(s.ReadBufferSize)
+		if err != nil {
+			panic(err)
+		}
+
+		err = netConn.(*net.TCPConn).SetWriteBuffer(s.WriteBufferSize)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	var conn = &conn{
@@ -386,7 +419,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	}
 
 	// on router
-	s.middleware(&socket.Stream[Conn]{Conn: conn, Pack: socket.Pack{Event: string(route), Data: body}})
+	s.middleware(&socket.Stream[Conn]{Conn: conn, Event: string(route), Data: body})
 
 	return nil
 }

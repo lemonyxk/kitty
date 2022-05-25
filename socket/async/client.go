@@ -14,15 +14,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
 )
 
 type Client[T any] interface {
-	JsonEmit(pack socket.JsonPack) error
-	ProtoBufEmit(pack socket.ProtoBufPack) error
-	Emit(pack socket.Pack) error
+	JsonEmit(event string, data any) error
+	ProtoBufEmit(event string, data proto.Message) error
+	Emit(event string, data []byte) error
 	GetRouter() *router.Router[*socket.Stream[T]]
 	GetDailTimeout() time.Duration
 }
@@ -36,19 +37,19 @@ func NewClient[T any](client Client[T]) *asyncClient[T] {
 	return &asyncClient[T]{client: client}
 }
 
-func (a *asyncClient[T]) Emit(pack socket.Pack) (*socket.Stream[T], error) {
+func (a *asyncClient[T]) Emit(event string, data []byte) (*socket.Stream[T], error) {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
 	var ch = make(chan *socket.Stream[T])
-	a.client.GetRouter().Route(pack.Event).Handler(func(stream *socket.Stream[T]) error {
+	a.client.GetRouter().Route(event).Handler(func(stream *socket.Stream[T]) error {
 		ch <- stream
 		return nil
 	})
 
-	defer func() { a.client.GetRouter().Remove(pack.Event) }()
+	defer func() { a.client.GetRouter().Remove(event) }()
 
-	var err = a.client.Emit(pack)
+	var err = a.client.Emit(event, data)
 	if err != nil {
 		return nil, err
 	}
@@ -63,19 +64,19 @@ func (a *asyncClient[T]) Emit(pack socket.Pack) (*socket.Stream[T], error) {
 	}
 }
 
-func (a *asyncClient[T]) JsonEmit(pack socket.JsonPack) (*socket.Stream[T], error) {
+func (a *asyncClient[T]) JsonEmit(event string, data any) (*socket.Stream[T], error) {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
 	var ch = make(chan *socket.Stream[T])
-	a.client.GetRouter().Route(pack.Event).Handler(func(stream *socket.Stream[T]) error {
+	a.client.GetRouter().Route(event).Handler(func(stream *socket.Stream[T]) error {
 		ch <- stream
 		return nil
 	})
 
-	defer func() { a.client.GetRouter().Remove(pack.Event) }()
+	defer func() { a.client.GetRouter().Remove(event) }()
 
-	var err = a.client.JsonEmit(pack)
+	var err = a.client.JsonEmit(event, data)
 	if err != nil {
 		return nil, err
 	}
@@ -90,19 +91,19 @@ func (a *asyncClient[T]) JsonEmit(pack socket.JsonPack) (*socket.Stream[T], erro
 	}
 }
 
-func (a *asyncClient[T]) ProtoBufEmit(pack socket.ProtoBufPack) (*socket.Stream[T], error) {
+func (a *asyncClient[T]) ProtoBufEmit(event string, data proto.Message) (*socket.Stream[T], error) {
 	a.mux.Lock()
 	defer a.mux.Unlock()
 
 	var ch = make(chan *socket.Stream[T])
-	a.client.GetRouter().Route(pack.Event).Handler(func(stream *socket.Stream[T]) error {
+	a.client.GetRouter().Route(event).Handler(func(stream *socket.Stream[T]) error {
 		ch <- stream
 		return nil
 	})
 
-	defer func() { a.client.GetRouter().Remove(pack.Event) }()
+	defer func() { a.client.GetRouter().Remove(event) }()
 
-	var err = a.client.ProtoBufEmit(pack)
+	var err = a.client.ProtoBufEmit(event, data)
 	if err != nil {
 		return nil, err
 	}

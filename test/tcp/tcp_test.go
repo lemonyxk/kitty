@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -74,44 +75,29 @@ func initServer() {
 	// set group route
 	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			return stream.Conn.JsonEmit(socket.JsonPack{
-				Event: "/hello/world",
-				Data:  "i am server",
-			})
+			return stream.Conn.JsonEmit(stream.Event, "i am server")
 		})
 	})
 
 	tcpServerRouter.Route("/asyncClient").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Conn.JsonEmit(socket.JsonPack{
-			Event: "/asyncClient",
-			Data:  string(stream.Data),
-		})
+		return stream.Conn.JsonEmit(stream.Event, string(stream.Data))
 	})
 
 	var tcpRouter = tcpServerRouter.Create()
 	tcpRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res kitty2.M
 		_ = jsoniter.Unmarshal(stream.Data, &res)
-		return stream.Conn.JsonEmit(socket.JsonPack{
-			Event: stream.Event,
-			Data:  res,
-		})
+		return stream.Conn.JsonEmit(stream.Event, res)
 	})
 
 	tcpRouter.Route("/Emit").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Conn.Emit(socket.Pack{
-			Event: stream.Event,
-			Data:  stream.Data,
-		})
+		return stream.Conn.Emit(stream.Event, stream.Data)
 	})
 
 	tcpRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res awesomepackage.AwesomeMessage
 		_ = proto.Unmarshal(stream.Data, &res)
-		return stream.Conn.ProtoBufEmit(socket.ProtoBufPack{
-			Event: stream.Event,
-			Data:  &res,
-		})
+		return stream.Conn.ProtoBufEmit(stream.Event, &res)
 	})
 
 	go tcpServer.SetRouter(tcpServerRouter).Start()
@@ -127,10 +113,11 @@ func initClient() {
 
 	var ready = make(chan bool)
 
+	var isRun = false
+
 	// create client
 	tcpClient = kitty.NewTcpClient(addr)
 	tcpClient.ReconnectInterval = time.Second
-	tcpClient.HeartBeatInterval = time.Second
 
 	// event
 	tcpClient.OnClose = func(c client.Conn) {}
@@ -142,19 +129,21 @@ func initClient() {
 	clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
 
 	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
-		return stream.Conn.JsonEmit(socket.JsonPack{
-			Event: "/asyncServer",
-			Data:  string(stream.Data),
-		})
+		return stream.Conn.JsonEmit(stream.Event, string(stream.Data))
 	})
 
 	go tcpClient.SetRouter(clientRouter).Connect()
 
 	tcpClient.OnSuccess = func() {
+		if isRun {
+			return
+		}
 		ready <- true
 	}
 
 	<-ready
+
+	isRun = true
 }
 
 func TestMain(t *testing.M) {
@@ -184,10 +173,7 @@ func Test_TCP_Client_Async(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		var index = i
 		go func() {
-			stream, err := asyncClient.JsonEmit(socket.JsonPack{
-				Event: "/asyncClient",
-				Data:  index,
-			})
+			stream, err := asyncClient.JsonEmit("/asyncClient", index)
 
 			assert.True(t, err == nil, err)
 
@@ -221,11 +207,7 @@ func Test_TCP_Client(t *testing.T) {
 	})
 
 	for i := 0; i < count; i++ {
-		_ = tcpClient.JsonEmit(socket.JsonPack{
-			Event: "/hello/world",
-			Data:  strings.Repeat("hello world!", 1),
-		})
-
+		_ = tcpClient.JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
 	}
 
 	go func() {
@@ -258,12 +240,9 @@ func Test_TCP_JsonEmit(t *testing.T) {
 		return nil
 	})
 
-	var err = tcpClient.JsonEmit(socket.JsonPack{
-		Event: "/JsonFormat",
-		Data: kitty2.M{
-			"name": "kitty",
-			"age":  "18",
-		},
+	var err = tcpClient.JsonEmit("/JsonFormat", kitty2.M{
+		"name": "kitty",
+		"age":  "18",
 	})
 
 	assert.True(t, err == nil, err)
@@ -285,10 +264,7 @@ func Test_TCP_Emit(t *testing.T) {
 		return nil
 	})
 
-	var err = tcpClient.Emit(socket.Pack{
-		Event: "/Emit",
-		Data:  []byte(`{"name":"kitty","age":18}`),
-	})
+	var err = tcpClient.Emit("/Emit", []byte(`{"name":"kitty","age":18}`))
 
 	assert.True(t, err == nil, err)
 
@@ -316,10 +292,7 @@ func Test_TCP_ProtobufEmit(t *testing.T) {
 		AwesomeKey:   "2",
 	}
 
-	var err = tcpClient.ProtoBufEmit(socket.ProtoBufPack{
-		Event: "/ProtoBufEmit",
-		Data:  &buf,
-	})
+	var err = tcpClient.ProtoBufEmit("/ProtoBufEmit", &buf)
 
 	assert.True(t, err == nil, err)
 
@@ -337,10 +310,8 @@ func Test_TCP_Server_Async(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		var index = i
 		go func() {
-			stream, err := asyncServer.JsonEmit(fd, socket.JsonPack{
-				Event: "/asyncServer",
-				Data:  index,
-			})
+
+			stream, err := asyncServer.JsonEmit(fd, "/asyncServer", index)
 
 			assert.True(t, err == nil, err)
 
@@ -353,6 +324,58 @@ func Test_TCP_Server_Async(t *testing.T) {
 	}
 
 	wait.Wait()
+}
+
+func Test_TCP_Ping_Pong(t *testing.T) {
+
+	var pingCount int32 = 0
+	var pongCount int32 = 0
+
+	tcpServer.HeartBeatTimeout = time.Second * 3
+	tcpServer.PingHandler = func(conn server.Conn) func(data string) error {
+		return func(data string) error {
+			atomic.AddInt32(&pingCount, 1)
+			var err error
+			var t = time.Now()
+			conn.SetLastPing(t)
+			if tcpServer.HeartBeatTimeout != 0 {
+				err = conn.Conn().SetReadDeadline(t.Add(tcpServer.HeartBeatTimeout))
+			}
+			err = conn.Pong()
+			return err
+		}
+	}
+
+	tcpClient.ReconnectInterval = time.Millisecond * 1
+
+	tcpClient.HeartBeatTimeout = time.Second * 3
+	tcpClient.HeartBeatInterval = time.Millisecond * 10
+	tcpClient.PongHandler = func(conn client.Conn) func(data string) error {
+		return func(data string) error {
+			atomic.AddInt32(&pongCount, 1)
+			var t = time.Now()
+			conn.SetLastPong(t)
+			if tcpClient.HeartBeatTimeout != 0 {
+				return conn.Conn().SetReadDeadline(t.Add(tcpClient.HeartBeatTimeout))
+			}
+			return nil
+		}
+	}
+
+	// reconnect make the config effective
+	_ = tcpClient.Close()
+
+	var ready = make(chan bool)
+
+	time.AfterFunc(time.Millisecond*1234, func() {
+		ready <- true
+	})
+
+	<-ready
+
+	assert.True(t, pingCount == pongCount, fmt.Sprintf("pingCount:%d, pongCount:%d", pingCount, pongCount))
+
+	assert.True(t, pingCount == 123, pingCount)
 }
 
 func Test_TCP_Shutdown(t *testing.T) {

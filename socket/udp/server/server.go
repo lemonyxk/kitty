@@ -90,16 +90,16 @@ func (s *Server) Push(fd int64, msg []byte) error {
 	return err
 }
 
-func (s *Server) Emit(fd int64, pack socket.Pack) error {
-	return s.protocol(fd, protocol.Bin, []byte(pack.Event), pack.Data)
+func (s *Server) Emit(fd int64, event string, data []byte) error {
+	return s.protocol(fd, protocol.Bin, []byte(event), data)
 }
 
-func (s *Server) EmitAll(pack socket.Pack) (int, int) {
+func (s *Server) EmitAll(event string, data []byte) (int, int) {
 	var counter = 0
 	var success = 0
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
-		if s.Emit(fd, pack) == nil {
+		if s.Emit(fd, event, data) == nil {
 			success++
 		}
 		return true
@@ -107,21 +107,21 @@ func (s *Server) EmitAll(pack socket.Pack) (int, int) {
 	return counter, success
 }
 
-func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
-	data, err := jsoniter.Marshal(pack.Data)
+func (s *Server) JsonEmit(fd int64, event string, data any) error {
+	msg, err := jsoniter.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return s.protocol(fd, protocol.Bin, []byte(pack.Event), data)
+	return s.protocol(fd, protocol.Bin, []byte(event), msg)
 }
 
-func (s *Server) JsonEmitAll(msg socket.JsonPack) (int, int) {
+func (s *Server) JsonEmitAll(event string, data any) (int, int) {
 	var counter = 0
 	var success = 0
 
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
-		if s.JsonEmit(fd, msg) == nil {
+		if s.JsonEmit(fd, event, data) == nil {
 			success++
 		}
 		return true
@@ -130,21 +130,21 @@ func (s *Server) JsonEmitAll(msg socket.JsonPack) (int, int) {
 	return counter, success
 }
 
-func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
-	data, err := proto.Marshal(pack.Data)
+func (s *Server) ProtoBufEmit(fd int64, event string, data proto.Message) error {
+	msg, err := proto.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return s.protocol(fd, protocol.Bin, []byte(pack.Event), data)
+	return s.protocol(fd, protocol.Bin, []byte(event), msg)
 }
 
-func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
+func (s *Server) ProtoBufEmitAll(event string, data proto.Message) (int, int) {
 	var counter = 0
 	var success = 0
 
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
-		if s.ProtoBufEmit(fd, msg) == nil {
+		if s.ProtoBufEmit(fd, event, data) == nil {
 			success++
 		}
 		return true
@@ -206,19 +206,23 @@ func (s *Server) Ready() {
 	}
 
 	if s.PingHandler == nil {
-		s.PingHandler = func(connection Conn) func(data string) error {
+		s.PingHandler = func(conn Conn) func(data string) error {
 			return func(data string) error {
+				var err error
 				var t = time.Now()
-				connection.SetLastPing(t)
-				connection.Tick().Reset(s.HeartBeatTimeout)
-				return connection.Pong()
+				conn.SetLastPing(t)
+				if s.HeartBeatTimeout != 0 {
+					err = conn.SetReadDeadline(t.Add(s.HeartBeatTimeout))
+				}
+				err = conn.Pong()
+				return err
 			}
 		}
 	}
 
 	// no answer
 	if s.PongHandler == nil {
-		s.PongHandler = func(connection Conn) func(data string) error {
+		s.PongHandler = func(conn Conn) func(data string) error {
 			return func(data string) error {
 				return nil
 			}
@@ -379,11 +383,11 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 			close:    make(chan struct{}, 1),
 		}
 
-		conn.tick = time.NewTimer(s.HeartBeatTimeout)
+		conn.timeoutTimer = time.NewTimer(s.HeartBeatTimeout)
 
 		// make sure this goroutine will run over
 		go func() {
-			for range conn.tick.C {
+			for range conn.timeoutTimer.C {
 				_ = conn.SendClose()
 				s.onClose(conn)
 			}
@@ -399,7 +403,7 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 						s.OnError(err)
 					}
 				case <-conn.close:
-					conn.tick.Stop()
+					conn.timeoutTimer.Stop()
 					return
 				}
 			}
@@ -458,7 +462,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	}
 
 	// on router
-	s.middleware(&socket.Stream[Conn]{Conn: conn, Pack: socket.Pack{Event: string(route), Data: body}})
+	s.middleware(&socket.Stream[Conn]{Conn: conn, Event: string(route), Data: body})
 
 	return nil
 }

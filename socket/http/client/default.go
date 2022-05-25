@@ -11,6 +11,7 @@
 package client
 
 import (
+	"crypto/tls"
 	"net"
 	"net/http"
 	"runtime"
@@ -27,6 +28,8 @@ var defaultDialer = net.Dialer{
 	KeepAlive: dialerKeepAlive,
 }
 
+var defaultTlsConfig = tls.Config{}
+
 var defaultTransport = http.Transport{
 	Proxy:                 http.ProxyFromEnvironment,
 	DisableCompression:    false,
@@ -38,6 +41,7 @@ var defaultTransport = http.Transport{
 	MaxIdleConnsPerHost:   runtime.NumCPU() * 2,
 	MaxConnsPerHost:       runtime.NumCPU() * 2,
 	DialContext:           defaultDialer.DialContext,
+	TLSClientConfig:       &defaultTlsConfig,
 }
 
 var defaultClient = http.Client{

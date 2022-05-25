@@ -47,7 +47,7 @@ func asyncWsServer() {
 		var route = message[:index]
 		var data = message[index+1:]
 
-		next(&socket.Stream[server.Conn]{Conn: conn, Pack: socket.Pack{Event: string(route), Data: data}})
+		next(&socket.Stream[server.Conn]{Conn: conn, Event: string(route), Data: data})
 	}
 
 	wsServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
@@ -69,6 +69,7 @@ func asyncWsServer() {
 func asyncWsClient() {
 
 	var ready = make(chan struct{})
+	var isRun = false
 
 	wsClient = kitty.NewWebSocketClient("ws://127.0.0.1:8888")
 
@@ -87,7 +88,7 @@ func asyncWsClient() {
 		var route = message[:index]
 		var data = message[index+1:]
 
-		next(&socket.Stream[client.Conn]{Conn: conn, Pack: socket.Pack{Event: string(route), Data: data}})
+		next(&socket.Stream[client.Conn]{Conn: conn, Event: string(route), Data: data})
 	}
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
@@ -98,12 +99,16 @@ func asyncWsClient() {
 	})
 
 	wsClient.OnSuccess = func() {
+		if isRun {
+			return
+		}
 		ready <- struct{}{}
 	}
 
 	go wsClient.SetRouter(clientRouter).Connect()
 
 	<-ready
+	isRun = true
 }
 
 func packMessage(a, b string) []byte {

@@ -54,10 +54,7 @@ func asyncTcpServer() {
 	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data))
-			return stream.Conn.Emit(socket.Pack{
-				Event: stream.Event,
-				Data:  stream.Data,
-			})
+			return stream.Conn.Emit(stream.Event, stream.Data)
 		})
 	})
 
@@ -73,6 +70,7 @@ func asyncTcpServer() {
 func asyncTcpClient() {
 
 	var ready = make(chan struct{})
+	var isRun = false
 
 	tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
 
@@ -87,30 +85,28 @@ func asyncTcpClient() {
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
-			return stream.Conn.Emit(socket.Pack{
-				Event: stream.Event,
-				Data:  stream.Data,
-			})
+			return stream.Conn.Emit(stream.Event, stream.Data)
 		})
 	})
 
 	tcpClient.OnSuccess = func() {
+		if isRun {
+			return
+		}
 		ready <- struct{}{}
 	}
 
 	go tcpClient.SetRouter(clientRouter).Connect()
 
 	<-ready
+	isRun = true
 }
 
 func main() {
 	asyncTcpServer()
 	asyncTcpClient()
 
-	var err = tcpClient.Emit(socket.Pack{
-		Event: "/hello/world",
-		Data:  []byte("hello world"),
-	})
+	var err = tcpClient.Emit("/hello/world", []byte("hello world"))
 
 	log.Println(err)
 

@@ -20,7 +20,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/errors"
-	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
 )
 
@@ -33,34 +32,39 @@ type Conn interface {
 	SendOpen() error
 	Close() error
 	Push(data []byte) error
-	Emit(pack socket.Pack) error
-	JsonEmit(msg socket.JsonPack) error
-	ProtoBufEmit(msg socket.ProtoBufPack) error
+	JsonEmit(event string, data any) error
+	ProtoBufEmit(event string, data proto.Message) error
+	Emit(event string, data []byte) error
 	Write(msg []byte) (int, error)
 	WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error)
 	FD() int64
 	SetFD(fd int64)
 	LastPing() time.Time
 	SetLastPing(t time.Time)
-	Tick() *time.Timer
 	CloseChan() chan struct{}
 	AcceptChan() chan []byte
 	Name() string
 	Server() *Server
 	Conn() *net.UDPAddr
+	SetReadDeadline(t time.Time) error
 	protocol(messageType byte, route []byte, body []byte) error
 }
 
 type conn struct {
-	name     string
-	fd       int64
-	conn     *net.UDPAddr
-	server   *Server
-	lastPing time.Time
-	mux      sync.RWMutex
-	tick     *time.Timer
-	accept   chan []byte
-	close    chan struct{}
+	name         string
+	fd           int64
+	conn         *net.UDPAddr
+	server       *Server
+	lastPing     time.Time
+	mux          sync.RWMutex
+	timeoutTimer *time.Timer
+	accept       chan []byte
+	close        chan struct{}
+}
+
+func (c *conn) SetReadDeadline(t time.Time) error {
+	c.timeoutTimer.Reset(t.Sub(time.Now()))
+	return nil
 }
 
 func (c *conn) Name() string {
@@ -89,10 +93,6 @@ func (c *conn) AcceptChan() chan []byte {
 
 func (c *conn) FD() int64 {
 	return c.fd
-}
-
-func (c *conn) Tick() *time.Timer {
-	return c.tick
 }
 
 func (c *conn) SetFD(fd int64) {
@@ -139,24 +139,24 @@ func (c *conn) Push(msg []byte) error {
 	return err
 }
 
-func (c *conn) Emit(pack socket.Pack) error {
-	return c.protocol(protocol.Bin, []byte(pack.Event), pack.Data)
+func (c *conn) Emit(event string, data []byte) error {
+	return c.protocol(protocol.Bin, []byte(event), data)
 }
 
-func (c *conn) JsonEmit(pack socket.JsonPack) error {
-	data, err := jsoniter.Marshal(pack.Data)
+func (c *conn) JsonEmit(event string, data any) error {
+	msg, err := jsoniter.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(event), msg)
 }
 
-func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
-	data, err := proto.Marshal(pack.Data)
+func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
+	msg, err := proto.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(event), msg)
 }
 
 func (c *conn) Close() error {

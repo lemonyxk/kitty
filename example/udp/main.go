@@ -31,15 +31,14 @@ func runUdpServer() {
 
 	udpServer = kitty.NewUdpServer("127.0.0.1:8888")
 
+	udpServer.HeartBeatTimeout = time.Second * 5
+
 	var udpServerRouter = kitty.NewUdpServerRouter()
 
 	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data))
-			return stream.Conn.Emit(socket.Pack{
-				Event: "/hello/world",
-				Data:  stream.Data,
-			})
+			return stream.Conn.Emit(stream.Event, stream.Data)
 		})
 	})
 
@@ -54,29 +53,34 @@ func runUdpServer() {
 
 func runUdpClient() {
 
-	var ready = make(chan struct{})
+	var ready = make(chan struct{}, 100)
+	var isRun = false
 
 	udpClient = kitty.NewUdpClient("127.0.0.1:8888")
+
+	udpClient.HeartBeatTimeout = time.Second * 2
+	udpClient.HeartBeatInterval = time.Second * 3
 
 	var clientRouter = kitty.NewUdpClientRouter()
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
-			return stream.Conn.Emit(socket.Pack{
-				Event: stream.Event,
-				Data:  stream.Data,
-			})
+			return stream.Conn.Emit(stream.Event, stream.Data)
 		})
 	})
 
 	udpClient.OnSuccess = func() {
+		if isRun {
+			return
+		}
 		ready <- struct{}{}
 	}
 
 	go udpClient.SetRouter(clientRouter).Connect()
 
 	<-ready
+	isRun = true
 }
 
 func main() {
@@ -84,10 +88,7 @@ func main() {
 	runUdpServer()
 	runUdpClient()
 
-	var err = udpClient.Emit(socket.Pack{
-		Event: "/hello/world",
-		Data:  []byte("hello world"),
-	})
+	var err = udpClient.Emit("/hello/world", []byte("hello world"))
 
 	log.Println(err)
 

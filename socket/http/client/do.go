@@ -322,6 +322,7 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 		defaultDialer.KeepAlive = dialerKeepAlive
 		defaultTransport.Proxy = http.ProxyFromEnvironment
 		defaultTransport.DisableCompression = false
+		defaultTransport.TLSClientConfig = &defaultTlsConfig
 	}()
 
 	response, err := defaultClient.Do(req)

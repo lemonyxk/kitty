@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -82,7 +83,7 @@ func initServer() {
 		if route == "" {
 			return
 		}
-		next(&socket.Stream[server.Conn]{Conn: conn, Pack: socket.Pack{Event: route, Data: []byte(data)}})
+		next(&socket.Stream[server.Conn]{Conn: conn, Event: route, Data: []byte(data)})
 	}
 
 	// create router
@@ -109,26 +110,17 @@ func initServer() {
 	wsRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res kitty2.M
 		_ = jsoniter.Unmarshal(stream.Data, &res)
-		return stream.Conn.JsonEmit(socket.JsonPack{
-			Event: stream.Event,
-			Data:  res,
-		})
+		return stream.Conn.JsonEmit(stream.Event, res)
 	})
 
 	wsRouter.Route("/Emit").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Conn.Emit(socket.Pack{
-			Event: stream.Event,
-			Data:  stream.Data,
-		})
+		return stream.Conn.Emit(stream.Event, stream.Data)
 	})
 
 	wsRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res awesomepackage.AwesomeMessage
 		_ = proto.Unmarshal(stream.Data, &res)
-		return stream.Conn.ProtoBufEmit(socket.ProtoBufPack{
-			Event: stream.Event,
-			Data:  &res,
-		})
+		return stream.Conn.ProtoBufEmit(stream.Event, &res)
 	})
 
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
@@ -141,8 +133,12 @@ func initServer() {
 }
 
 func initClient() {
-
+	// do not use chan in on success event
+	// because when the client is closed and reconnected, the on success event will be called again.
+	// or you can use a global variable to record the client status.
+	// just for test.
 	var ready = make(chan bool)
+	var isRun = false
 
 	// create client
 	webSocketClient = kitty.NewWebSocketClient("ws://" + addr)
@@ -163,26 +159,28 @@ func initClient() {
 		if route == "" {
 			return
 		}
-		next(&socket.Stream[client.Conn]{Conn: c, Pack: socket.Pack{Event: route, Data: []byte(data)}})
+		next(&socket.Stream[client.Conn]{Conn: c, Event: route, Data: []byte(data)})
 	}
 
 	// create router
 	clientRouter = kitty.NewWebSocketClientRouter()
 
 	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
-		return stream.Conn.Client().JsonEmit(socket.JsonPack{
-			Event: "/asyncServer",
-			Data:  string(stream.Data),
-		})
+		return stream.Conn.Client().JsonEmit(stream.Event, string(stream.Data))
 	})
 
 	go webSocketClient.SetRouter(clientRouter).Connect()
 
 	webSocketClient.OnSuccess = func() {
+		if isRun {
+			return
+		}
 		ready <- true
 	}
 
 	<-ready
+
+	isRun = true
 }
 
 func TestMain(t *testing.M) {
@@ -212,10 +210,7 @@ func Test_WS_Client_Async(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		var index = i
 		go func() {
-			stream, err := asyncClient.JsonEmit(socket.JsonPack{
-				Event: "/asyncClient",
-				Data:  fmt.Sprintf("%d", index),
-			})
+			stream, err := asyncClient.JsonEmit("/asyncClient", fmt.Sprintf("%d", index))
 
 			assert.True(t, err == nil, err)
 
@@ -285,13 +280,7 @@ func Test_WS_JsonEmit(t *testing.T) {
 		return nil
 	})
 
-	var err = webSocketClient.JsonEmit(socket.JsonPack{
-		Event: "/JsonFormat",
-		Data: kitty2.M{
-			"name": "kitty",
-			"age":  "18",
-		},
-	})
+	var err = webSocketClient.JsonEmit("/JsonFormat", kitty2.M{"name": "kitty", "age": "18"})
 
 	assert.True(t, err == nil, err)
 
@@ -312,10 +301,7 @@ func Test_WS_Emit(t *testing.T) {
 		return nil
 	})
 
-	var err = webSocketClient.Emit(socket.Pack{
-		Event: "/Emit",
-		Data:  []byte(`{"name":"kitty","age":18}`),
-	})
+	var err = webSocketClient.Emit("/Emit", []byte(`{"name":"kitty","age":18}`))
 
 	assert.True(t, err == nil, err)
 
@@ -343,10 +329,7 @@ func Test_WS_ProtobufEmit(t *testing.T) {
 		AwesomeKey:   "2",
 	}
 
-	var err = webSocketClient.ProtoBufEmit(socket.ProtoBufPack{
-		Event: "/ProtoBufEmit",
-		Data:  &buf,
-	})
+	var err = webSocketClient.ProtoBufEmit("/ProtoBufEmit", &buf)
 
 	assert.True(t, err == nil, err)
 
@@ -364,22 +347,71 @@ func Test_WS_Server_Async(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		var index = i
 		go func() {
-			stream, err := asyncServer.JsonEmit(fd, socket.JsonPack{
-				Event: "/asyncServer",
-				Data:  index,
-			})
+			stream, err := asyncServer.JsonEmit(fd, "/asyncServer", index)
 
 			assert.True(t, err == nil, err)
 
 			assert.True(t, stream != nil, "stream is nil")
 
-			assert.True(t, string(stream.Data) == fmt.Sprintf("\"%d\"", index), "stream is nil")
+			assert.True(t, string(stream.Data) == fmt.Sprintf("\"%d\"", index), string(stream.Data))
 
 			wait.Done()
 		}()
 	}
 
 	wait.Wait()
+}
+
+func Test_WS_Ping_Pong(t *testing.T) {
+
+	var pingCount int32 = 0
+	var pongCount int32 = 0
+
+	webSocketServer.HeartBeatTimeout = time.Second * 3
+	webSocketServer.PingHandler = func(conn server.Conn) func(data string) error {
+		return func(data string) error {
+			atomic.AddInt32(&pingCount, 1)
+			var err error
+			var t = time.Now()
+			conn.SetLastPing(t)
+			if webSocketServer.HeartBeatTimeout != 0 {
+				err = conn.Conn().SetReadDeadline(t.Add(webSocketServer.HeartBeatTimeout))
+			}
+			err = conn.Pong()
+			return err
+		}
+	}
+
+	webSocketClient.ReconnectInterval = time.Millisecond * 1
+
+	webSocketClient.HeartBeatTimeout = time.Second * 3
+	webSocketClient.HeartBeatInterval = time.Millisecond * 10
+	webSocketClient.PongHandler = func(conn client.Conn) func(data string) error {
+		return func(data string) error {
+			atomic.AddInt32(&pongCount, 1)
+			var t = time.Now()
+			conn.SetLastPong(t)
+			if webSocketClient.HeartBeatTimeout != 0 {
+				return conn.Conn().SetReadDeadline(t.Add(webSocketClient.HeartBeatTimeout))
+			}
+			return nil
+		}
+	}
+
+	// reconnect make the config effective
+	_ = webSocketClient.Close()
+
+	var ready = make(chan bool)
+
+	time.AfterFunc(time.Millisecond*1234, func() {
+		ready <- true
+	})
+
+	<-ready
+
+	assert.True(t, pingCount == pongCount, fmt.Sprintf("pingCount:%d, pongCount:%d", pingCount, pongCount))
+
+	assert.True(t, pingCount == 123, pingCount)
 }
 
 func Test_WS_Shutdown(t *testing.T) {

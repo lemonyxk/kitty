@@ -22,8 +22,6 @@ import (
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
-
-	"github.com/lemonyxk/kitty/v2/socket"
 )
 
 type Conn interface {
@@ -35,9 +33,9 @@ type Conn interface {
 	Ping() error
 	Pong() error
 	Push(msg []byte) error
-	Emit(pack socket.Pack) error
-	JsonEmit(msg socket.JsonPack) error
-	ProtoBufEmit(msg socket.ProtoBufPack) error
+	JsonEmit(event string, data any) error
+	ProtoBufEmit(event string, data proto.Message) error
+	Emit(event string, data []byte) error
 	Write(messageType int, msg []byte) (int, error)
 	Close() error
 	SetLastPing(time.Time)
@@ -125,24 +123,24 @@ func (c *conn) Push(msg []byte) error {
 	return err
 }
 
-func (c *conn) Emit(pack socket.Pack) error {
-	return c.protocol(protocol.Bin, []byte(pack.Event), pack.Data)
+func (c *conn) Emit(event string, data []byte) error {
+	return c.protocol(protocol.Bin, []byte(event), data)
 }
 
-func (c *conn) JsonEmit(pack socket.JsonPack) error {
-	data, err := jsoniter.Marshal(pack.Data)
+func (c *conn) JsonEmit(event string, data any) error {
+	msg, err := jsoniter.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(event), msg)
 }
 
-func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
-	data, err := proto.Marshal(pack.Data)
+func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
+	msg, err := proto.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(event), msg)
 }
 
 func (c *conn) Close() error {

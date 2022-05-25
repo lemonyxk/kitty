@@ -18,6 +18,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket/protocol"
 )
 
 type Conn interface {
@@ -47,7 +48,7 @@ type conn struct {
 }
 
 func (c *conn) Emit(pack socket.Pack) error {
-	return c.protocol(socket.Bin, []byte(pack.Event), pack.Data)
+	return c.protocol(protocol.Bin, []byte(pack.Event), pack.Data)
 }
 
 func (c *conn) JsonEmit(pack socket.JsonPack) error {
@@ -55,7 +56,7 @@ func (c *conn) JsonEmit(pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(socket.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(pack.Event), data)
 }
 
 func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
@@ -63,7 +64,7 @@ func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(socket.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(pack.Event), data)
 }
 
 func (c *conn) Conn() net.Conn {
@@ -75,11 +76,13 @@ func (c *conn) Client() *Client {
 }
 
 func (c *conn) Ping() error {
-	return c.protocol(socket.Ping, nil, nil)
+	_, err := c.Write(c.client.Protocol.Ping())
+	return err
 }
 
 func (c *conn) Pong() error {
-	return c.protocol(socket.Pong, nil, nil)
+	_, err := c.Write(c.client.Protocol.Pong())
+	return err
 }
 
 func (c *conn) LastPong() time.Time {

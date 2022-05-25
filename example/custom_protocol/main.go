@@ -12,121 +12,105 @@ package main
 
 import (
 	"log"
-	"strings"
 	"time"
 
 	"github.com/lemonyxk/kitty/v2"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
-	"github.com/lemonyxk/kitty/v2/socket/websocket/client"
-	"github.com/lemonyxk/kitty/v2/socket/websocket/server"
+	"github.com/lemonyxk/kitty/v2/socket/tcp/client"
+	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
 )
 
-// Websocket and udp are not streaming data,
-// So wo do not need to implement the Protocol.
-// But tcp we need to, like this:
+// The same as websocket and udp.
+//
+// Implement the Protocol.
 //
 // 	type Protocol interface {
 // 		Decode(message []byte) (messageType byte, id int64, route []byte, body []byte)
 // 		Encode(messageType byte, id int64, route []byte, body []byte) []byte
 // 		Reader() func(n int, buf []byte, fn func(bytes []byte)) error
+// 		HeadLen() int
+// 		Ping() []byte
+// 		Pong() []byte
+// 		IsPong(messageType byte) bool
+// 		IsPing(messageType byte) bool
+// 		IsUnknown(messageType byte) bool
 // 	}
-//
-// And do not forget ping and pong:
-// 	messageType:
-// 		Ping    byte = 9
-// 		Pong    byte = 10
 
-var wsServer *server.Server
+var tcpServer *server.Server
 
-var wsClient *client.Client
+var tcpClient *client.Client
 
-func asyncWsServer() {
+func asyncTcpServer() {
 
 	var ready = make(chan struct{})
 
-	wsServer = kitty.NewWebSocketServer("127.0.0.1:8888")
+	tcpServer = kitty.NewTcpServer("127.0.0.1:8888")
 
-	var wsServerRouter = kitty.NewWebSocketServerRouter()
+	tcpServer.Protocol = &CustomTcp{}
 
-	// route:message
-	wsServer.OnUnknown = func(conn server.Conn, message []byte, next server.Middle) {
-		var index = strings.IndexByte(string(message), ':')
-		if index == -1 {
-			return
-		}
+	var tcpServerRouter = kitty.NewTcpServerRouter()
 
-		var route = message[:index]
-		var data = message[index+1:]
-
-		next(&socket.Stream[server.Conn]{Conn: conn, Pack: socket.Pack{Event: string(route), Data: data}})
-	}
-
-	wsServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data))
-			return stream.Conn.Push(packMessage(stream.Event, string(stream.Data)))
+			return stream.Conn.Emit(socket.Pack{
+				Event: stream.Event,
+				Data:  stream.Data,
+			})
 		})
 	})
 
-	wsServer.OnSuccess = func() {
+	tcpServer.OnSuccess = func() {
 		ready <- struct{}{}
 	}
 
-	go wsServer.SetRouter(wsServerRouter).Start()
+	go tcpServer.SetRouter(tcpServerRouter).Start()
 
 	<-ready
 }
 
-func asyncWsClient() {
+func asyncTcpClient() {
 
 	var ready = make(chan struct{})
 
-	wsClient = kitty.NewWebSocketClient("ws://127.0.0.1:8888")
+	tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
 
-	var clientRouter = kitty.NewWebSocketClientRouter()
+	tcpClient.Protocol = &CustomTcp{}
 
-	wsClient.OnError = func(err error) {
+	var clientRouter = kitty.NewTcpClientRouter()
+
+	tcpClient.OnError = func(err error) {
 		log.Println(err)
-	}
-
-	wsClient.OnUnknown = func(conn client.Conn, message []byte, next client.Middle) {
-		var index = strings.IndexByte(string(message), ':')
-		if index == -1 {
-			return
-		}
-
-		var route = message[:index]
-		var data = message[index+1:]
-
-		next(&socket.Stream[client.Conn]{Conn: conn, Pack: socket.Pack{Event: string(route), Data: data}})
 	}
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
-			return stream.Conn.Push(packMessage(stream.Event, string(stream.Data)))
+			return stream.Conn.Emit(socket.Pack{
+				Event: stream.Event,
+				Data:  stream.Data,
+			})
 		})
 	})
 
-	wsClient.OnSuccess = func() {
+	tcpClient.OnSuccess = func() {
 		ready <- struct{}{}
 	}
 
-	go wsClient.SetRouter(clientRouter).Connect()
+	go tcpClient.SetRouter(clientRouter).Connect()
 
 	<-ready
 }
 
-func packMessage(a, b string) []byte {
-	return []byte(a + ":" + b)
-}
-
 func main() {
-	asyncWsServer()
-	asyncWsClient()
+	asyncTcpServer()
+	asyncTcpClient()
 
-	var err = wsClient.Push(packMessage("/hello/world", "hello world"))
+	var err = tcpClient.Emit(socket.Pack{
+		Event: "/hello/world",
+		Data:  []byte("hello world"),
+	})
 
 	log.Println(err)
 

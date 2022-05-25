@@ -13,4 +13,5 @@ Kitty is a lightweight networking library, support http, tcp, udp.
 - [udp server](./example/udp)
 - [websocket server](./example/websocket)
 - [async server and client](./example/async)
+- [unknown protocol](./example/unknown_protocol)
 - [custom protocol](./example/custom_protocol)

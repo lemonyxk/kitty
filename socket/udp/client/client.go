@@ -18,9 +18,8 @@ import (
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
-
 	"github.com/lemonyxk/kitty/v2/socket"
-	"github.com/lemonyxk/kitty/v2/socket/udp"
+	"github.com/lemonyxk/kitty/v2/socket/protocol"
 )
 
 type Client struct {
@@ -46,10 +45,10 @@ type Client struct {
 	OnReconnecting func()
 	OnUnknown      func(conn Conn, message []byte, next Middle)
 
-	PingHandler func(conn Conn) func(appData string) error
-	PongHandler func(conn Conn) func(appData string) error
+	PingHandler func(conn Conn) func(data string) error
+	PongHandler func(conn Conn) func(data string) error
 
-	Protocol udp.Protocol
+	Protocol protocol.UDPProtocol
 
 	router                *router.Router[*socket.Stream[Conn]]
 	middle                []func(Middle) Middle
@@ -163,7 +162,7 @@ func (c *Client) Connect() {
 	}
 
 	if c.Protocol == nil {
-		c.Protocol = &udp.DefaultProtocol{}
+		c.Protocol = &protocol.DefaultUdpProtocol{}
 	}
 
 	// 连接服务器
@@ -186,7 +185,7 @@ func (c *Client) Connect() {
 	c.Conn = &conn{addr: addr, conn: handler, client: c, lastPong: time.Now()}
 
 	// send open message
-	err = c.Push(udp.OpenMessage)
+	err = c.Conn.SendOpen()
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()
@@ -199,7 +198,7 @@ func (c *Client) Connect() {
 		_ = c.Close()
 	})
 
-	var msg = make([]byte, c.ReadBufferSize+udp.HeadLen)
+	var msg = make([]byte, c.Protocol.HeadLen())
 	_, _, err = c.Conn.Read(msg)
 	if err != nil {
 		c.OnError(err)
@@ -207,7 +206,9 @@ func (c *Client) Connect() {
 		return
 	}
 
-	if msg[2] != socket.Open {
+	messageType := c.Protocol.GetMessageType(msg)
+
+	if !c.Protocol.IsOpen(messageType) {
 		c.OnError(err)
 		c.reconnecting()
 		return
@@ -235,16 +236,16 @@ func (c *Client) Connect() {
 
 	// no answer
 	if c.PingHandler == nil {
-		c.PingHandler = func(conn Conn) func(appData string) error {
-			return func(appData string) error {
+		c.PingHandler = func(conn Conn) func(data string) error {
+			return func(data string) error {
 				return nil
 			}
 		}
 	}
 
 	if c.PongHandler == nil {
-		c.PongHandler = func(connection Conn) func(appData string) error {
-			return func(appData string) error {
+		c.PongHandler = func(connection Conn) func(data string) error {
+			return func(data string) error {
 				c.Conn.SetLastPong(time.Now())
 				if c.HeartBeatTimeout != 0 {
 					c.pongTimer.Reset(c.HeartBeatTimeout)
@@ -299,7 +300,7 @@ func (c *Client) Connect() {
 
 	var reader = c.Protocol.Reader()
 
-	var buffer = make([]byte, c.ReadBufferSize+udp.HeadLen)
+	var buffer = make([]byte, c.ReadBufferSize+c.Protocol.HeadLen())
 
 	go func() {
 		for {
@@ -345,16 +346,17 @@ func (c *Client) Connect() {
 }
 
 func (c *Client) process(message []byte) error {
+	messageType := c.Protocol.GetMessageType(message)
 
-	switch message[2] {
-	case socket.Bin, socket.Ping, socket.Pong:
+	if c.Protocol.IsPing(messageType) || c.Protocol.IsPong(messageType) {
 		return c.decodeMessage(message)
-	case socket.Open:
+	} else if c.Protocol.IsOpen(messageType) {
 		return nil
-	case socket.Close:
+	} else if c.Protocol.IsClose(messageType) {
 		return errors.ServerClosed
-	default:
-		return nil
+	} else {
+		// bin message
+		return c.decodeMessage(message)
 	}
 }
 
@@ -367,7 +369,7 @@ func (c *Client) decodeMessage(message []byte) error {
 		c.OnMessage(c.Conn, message)
 	}
 
-	if messageType == socket.Unknown {
+	if c.Protocol.IsUnknown(messageType) {
 		if c.OnUnknown != nil {
 			c.OnUnknown(c.Conn, message, c.middleware)
 		}
@@ -375,12 +377,12 @@ func (c *Client) decodeMessage(message []byte) error {
 	}
 
 	// Ping
-	if messageType == socket.Ping {
+	if c.Protocol.IsPing(messageType) {
 		return c.PingHandler(c.Conn)("")
 	}
 
 	// Pong
-	if messageType == socket.Pong {
+	if c.Protocol.IsPong(messageType) {
 		return c.PongHandler(c.Conn)("")
 	}
 

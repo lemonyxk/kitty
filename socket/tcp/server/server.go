@@ -20,12 +20,12 @@ import (
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
+	"github.com/lemonyxk/kitty/v2/socket/protocol"
 	"github.com/lemonyxk/structure/v3/map"
 
 	"github.com/golang/protobuf/proto"
 
 	"github.com/lemonyxk/kitty/v2/socket"
-	"github.com/lemonyxk/kitty/v2/socket/tcp"
 )
 
 type Server struct {
@@ -46,9 +46,9 @@ type Server struct {
 	ReadBufferSize  int
 	WriteBufferSize int
 
-	PingHandler func(conn Conn) func(appData string) error
-	PongHandler func(conn Conn) func(appData string) error
-	Protocol    tcp.Protocol
+	PingHandler func(conn Conn) func(data string) error
+	PongHandler func(conn Conn) func(data string) error
+	Protocol    protocol.Protocol
 
 	fd          int64
 	connections *hash.Hash[int64, Conn]
@@ -87,7 +87,7 @@ func (s *Server) Push(fd int64, msg []byte) error {
 }
 
 func (s *Server) Emit(fd int64, pack socket.Pack) error {
-	return s.protocol(fd, socket.Bin, []byte(pack.Event), pack.Data)
+	return s.protocol(fd, protocol.Bin, []byte(pack.Event), pack.Data)
 }
 
 func (s *Server) EmitAll(pack socket.Pack) (int, int) {
@@ -108,7 +108,7 @@ func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return s.protocol(fd, socket.Bin, []byte(pack.Event), data)
+	return s.protocol(fd, protocol.Bin, []byte(pack.Event), data)
 }
 
 func (s *Server) JsonEmitAll(msg socket.JsonPack) (int, int) {
@@ -131,7 +131,7 @@ func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return s.protocol(fd, socket.Bin, []byte(pack.Event), data)
+	return s.protocol(fd, protocol.Bin, []byte(pack.Event), data)
 }
 
 func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
@@ -194,12 +194,12 @@ func (s *Server) Ready() {
 	}
 
 	if s.Protocol == nil {
-		s.Protocol = &tcp.DefaultProtocol{}
+		s.Protocol = &protocol.DefaultTcpProtocol{}
 	}
 
 	if s.PingHandler == nil {
-		s.PingHandler = func(connection Conn) func(appData string) error {
-			return func(appData string) error {
+		s.PingHandler = func(connection Conn) func(data string) error {
+			return func(data string) error {
 				var t = time.Now()
 				connection.SetLastPing(t)
 				var err = connection.Conn().SetReadDeadline(t.Add(s.HeartBeatTimeout))
@@ -211,8 +211,8 @@ func (s *Server) Ready() {
 
 	// no answer
 	if s.PongHandler == nil {
-		s.PongHandler = func(connection Conn) func(appData string) error {
-			return func(appData string) error {
+		s.PongHandler = func(connection Conn) func(data string) error {
+			return func(data string) error {
 				return nil
 			}
 		}
@@ -368,7 +368,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 		s.OnMessage(conn, message)
 	}
 
-	if messageType == socket.Unknown {
+	if s.Protocol.IsUnknown(messageType) {
 		if s.OnUnknown != nil {
 			s.OnUnknown(conn, message, s.middleware)
 		}
@@ -376,12 +376,12 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	}
 
 	// Ping
-	if messageType == socket.Ping {
+	if s.Protocol.IsPing(messageType) {
 		return s.PingHandler(conn)("")
 	}
 
 	// Pong
-	if messageType == socket.Pong {
+	if s.Protocol.IsPong(messageType) {
 		return s.PongHandler(conn)("")
 	}
 

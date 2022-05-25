@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/v2/socket/protocol"
 )
 
 type Conn interface {
@@ -47,7 +48,7 @@ type conn struct {
 }
 
 func (c *conn) Emit(pack socket.Pack) error {
-	return c.protocol(socket.Bin, []byte(pack.Event), pack.Data)
+	return c.protocol(protocol.Bin, []byte(pack.Event), pack.Data)
 }
 
 func (c *conn) JsonEmit(pack socket.JsonPack) error {
@@ -55,7 +56,7 @@ func (c *conn) JsonEmit(pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(socket.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(pack.Event), data)
 }
 
 func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
@@ -63,7 +64,7 @@ func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(socket.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(pack.Event), data)
 }
 
 func (c *conn) Client() *Client {
@@ -87,11 +88,13 @@ func (c *conn) RemoteAddr() net.Addr {
 }
 
 func (c *conn) Ping() error {
-	return c.protocol(socket.Ping, nil, nil)
+	err := c.Push(c.client.Protocol.Ping())
+	return err
 }
 
 func (c *conn) Pong() error {
-	return c.protocol(socket.Pong, nil, nil)
+	err := c.Push(c.client.Protocol.Pong())
+	return err
 }
 
 func (c *conn) Close() error {
@@ -99,7 +102,7 @@ func (c *conn) Close() error {
 }
 
 func (c *conn) Push(message []byte) error {
-	_, err := c.Write(int(socket.Bin), message)
+	_, err := c.Write(int(protocol.Bin), message)
 	return err
 }
 
@@ -117,6 +120,6 @@ func (c *conn) protocol(messageType byte, route []byte, body []byte) error {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	var message = c.client.Protocol.Encode(messageType, 0, route, body)
-	err := c.conn.WriteMessage(int(socket.Bin), message)
+	err := c.conn.WriteMessage(int(protocol.Bin), message)
 	return err
 }

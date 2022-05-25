@@ -9,8 +9,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
-
-	"github.com/lemonyxk/kitty/v2/socket/tcp"
+	"github.com/lemonyxk/kitty/v2/socket/protocol"
 )
 
 type Client struct {
@@ -36,10 +35,10 @@ type Client struct {
 	OnReconnecting func()
 	OnUnknown      func(conn Conn, message []byte, next Middle)
 
-	PingHandler func(conn Conn) func(appData string) error
-	PongHandler func(conn Conn) func(appData string) error
+	PingHandler func(conn Conn) func(data string) error
+	PongHandler func(conn Conn) func(data string) error
 
-	Protocol tcp.Protocol
+	Protocol protocol.Protocol
 
 	router                *router.Router[*socket.Stream[Conn]]
 	middle                []func(Middle) Middle
@@ -150,7 +149,7 @@ func (c *Client) Connect() {
 	}
 
 	if c.Protocol == nil {
-		c.Protocol = &tcp.DefaultProtocol{}
+		c.Protocol = &protocol.DefaultTcpProtocol{}
 	}
 
 	// 连接服务器
@@ -194,16 +193,16 @@ func (c *Client) Connect() {
 
 	// no answer
 	if c.PingHandler == nil {
-		c.PingHandler = func(conn Conn) func(appData string) error {
-			return func(appData string) error {
+		c.PingHandler = func(conn Conn) func(data string) error {
+			return func(data string) error {
 				return nil
 			}
 		}
 	}
 
 	if c.PongHandler == nil {
-		c.PongHandler = func(connection Conn) func(appData string) error {
-			return func(appData string) error {
+		c.PongHandler = func(connection Conn) func(data string) error {
+			return func(data string) error {
 				c.Conn.SetLastPong(time.Now())
 				if c.HeartBeatTimeout != 0 {
 					c.pongTimer.Reset(c.HeartBeatTimeout)
@@ -310,7 +309,7 @@ func (c *Client) decodeMessage(message []byte) error {
 		c.OnMessage(c.Conn, message)
 	}
 
-	if messageType == socket.Unknown {
+	if c.Protocol.IsUnknown(messageType) {
 		if c.OnUnknown != nil {
 			c.OnUnknown(c.Conn, message, c.middleware)
 		}
@@ -318,12 +317,12 @@ func (c *Client) decodeMessage(message []byte) error {
 	}
 
 	// Ping
-	if messageType == socket.Ping {
+	if c.Protocol.IsPing(messageType) {
 		return c.PingHandler(c.Conn)("")
 	}
 
 	// Pong
-	if messageType == socket.Pong {
+	if c.Protocol.IsPong(messageType) {
 		return c.PongHandler(c.Conn)("")
 	}
 

@@ -12,13 +12,12 @@ import (
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
+	"github.com/lemonyxk/kitty/v2/socket/protocol"
 	hash "github.com/lemonyxk/structure/v3/map"
-
-	"github.com/lemonyxk/kitty/v2/socket"
-	websocket2 "github.com/lemonyxk/kitty/v2/socket/websocket"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
+	"github.com/lemonyxk/kitty/v2/socket"
 )
 
 type Server struct {
@@ -48,9 +47,9 @@ type Server struct {
 	WriteBufferSize int
 	CheckOrigin     func(r *http.Request) bool
 
-	PingHandler func(conn Conn) func(appData string) error
-	PongHandler func(conn Conn) func(appData string) error
-	Protocol    websocket2.Protocol
+	PingHandler func(conn Conn) func(data string) error
+	PongHandler func(conn Conn) func(data string) error
+	Protocol    protocol.Protocol
 
 	upgrade websocket.Upgrader
 
@@ -87,12 +86,12 @@ func (s *Server) Push(fd int64, msg []byte) error {
 		return errors.ClientClosed
 	}
 
-	_, err := conn.Write(int(socket.Bin), msg)
+	_, err := conn.Write(int(protocol.Bin), msg)
 	return err
 }
 
 func (s *Server) Emit(fd int64, pack socket.Pack) error {
-	return s.protocol(fd, socket.Bin, []byte(pack.Event), pack.Data)
+	return s.protocol(fd, protocol.Bin, []byte(pack.Event), pack.Data)
 }
 
 func (s *Server) EmitAll(pack socket.Pack) (int, int) {
@@ -115,7 +114,7 @@ func (s *Server) JsonEmit(fd int64, pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return s.protocol(fd, socket.Bin, []byte(pack.Event), data)
+	return s.protocol(fd, protocol.Bin, []byte(pack.Event), data)
 }
 
 func (s *Server) JsonEmitAll(pack socket.JsonPack) (int, int) {
@@ -138,7 +137,7 @@ func (s *Server) ProtoBufEmit(fd int64, pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return s.protocol(fd, socket.Bin, []byte(pack.Event), data)
+	return s.protocol(fd, protocol.Bin, []byte(pack.Event), data)
 }
 
 func (s *Server) ProtoBufEmitAll(msg socket.ProtoBufPack) (int, int) {
@@ -263,12 +262,12 @@ func (s *Server) Ready() {
 	}
 
 	if s.Protocol == nil {
-		s.Protocol = &websocket2.DefaultProtocol{}
+		s.Protocol = &protocol.DefaultWsProtocol{}
 	}
 
 	if s.PingHandler == nil {
-		s.PingHandler = func(connection Conn) func(appData string) error {
-			return func(appData string) error {
+		s.PingHandler = func(connection Conn) func(data string) error {
+			return func(data string) error {
 				var t = time.Now()
 				connection.SetLastPing(t)
 				var err = connection.Conn().SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
@@ -280,8 +279,8 @@ func (s *Server) Ready() {
 
 	// no answer
 	if s.PongHandler == nil {
-		s.PongHandler = func(connection Conn) func(appData string) error {
-			return func(appData string) error {
+		s.PongHandler = func(connection Conn) func(data string) error {
+			return func(data string) error {
 				return nil
 			}
 		}
@@ -376,7 +375,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 		s.OnMessage(conn, message)
 	}
 
-	if messageType == socket.Unknown {
+	if s.Protocol.IsUnknown(messageType) {
 		if s.OnUnknown != nil {
 			s.OnUnknown(conn, message, s.middleware)
 		}
@@ -384,12 +383,12 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	}
 
 	// Ping
-	if messageType == socket.Ping {
+	if s.Protocol.IsPing(messageType) {
 		return s.PingHandler(conn)("")
 	}
 
 	// Pong
-	if messageType == socket.Pong {
+	if s.Protocol.IsPong(messageType) {
 		return s.PongHandler(conn)("")
 	}
 

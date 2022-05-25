@@ -21,7 +21,7 @@ import (
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/socket"
-	"github.com/lemonyxk/kitty/v2/socket/udp"
+	"github.com/lemonyxk/kitty/v2/socket/protocol"
 )
 
 type Conn interface {
@@ -29,6 +29,8 @@ type Conn interface {
 	ClientIP() string
 	Ping() error
 	Pong() error
+	SendClose() error
+	SendOpen() error
 	Close() error
 	Push(data []byte) error
 	Emit(pack socket.Pack) error
@@ -113,11 +115,23 @@ func (c *conn) ClientIP() string {
 }
 
 func (c *conn) Ping() error {
-	return c.protocol(socket.Ping, nil, nil)
+	_, err := c.Write(c.server.Protocol.Ping())
+	return err
 }
 
 func (c *conn) Pong() error {
-	return c.protocol(socket.Pong, nil, nil)
+	_, err := c.Write(c.server.Protocol.Pong())
+	return err
+}
+
+func (c *conn) SendClose() error {
+	_, err := c.Write(c.server.Protocol.SendClose())
+	return err
+}
+
+func (c *conn) SendOpen() error {
+	_, err := c.Write(c.server.Protocol.SendOpen())
+	return err
 }
 
 func (c *conn) Push(msg []byte) error {
@@ -126,7 +140,7 @@ func (c *conn) Push(msg []byte) error {
 }
 
 func (c *conn) Emit(pack socket.Pack) error {
-	return c.protocol(socket.Bin, []byte(pack.Event), pack.Data)
+	return c.protocol(protocol.Bin, []byte(pack.Event), pack.Data)
 }
 
 func (c *conn) JsonEmit(pack socket.JsonPack) error {
@@ -134,7 +148,7 @@ func (c *conn) JsonEmit(pack socket.JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(socket.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(pack.Event), data)
 }
 
 func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
@@ -142,16 +156,15 @@ func (c *conn) ProtoBufEmit(pack socket.ProtoBufPack) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(socket.Bin, []byte(pack.Event), data)
+	return c.protocol(protocol.Bin, []byte(pack.Event), data)
 }
 
 func (c *conn) Close() error {
-	_, err := c.Write(udp.CloseMessage)
-	return err
+	return c.SendClose()
 }
 
 func (c *conn) Write(msg []byte) (int, error) {
-	if len(msg) > c.server.ReadBufferSize+udp.HeadLen {
+	if len(msg) > c.server.ReadBufferSize+c.server.Protocol.HeadLen() {
 		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.server.ReadBufferSize))
 	}
 
@@ -162,7 +175,7 @@ func (c *conn) Write(msg []byte) (int, error) {
 }
 
 func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
-	if len(msg) > c.server.ReadBufferSize+udp.HeadLen {
+	if len(msg) > c.server.ReadBufferSize+c.server.Protocol.HeadLen() {
 		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.server.ReadBufferSize))
 	}
 
@@ -175,7 +188,7 @@ func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
 func (c *conn) protocol(messageType byte, route []byte, body []byte) error {
 	var msg = c.server.Protocol.Encode(messageType, 0, route, body)
 
-	if len(msg) > c.server.ReadBufferSize+udp.HeadLen {
+	if len(msg) > c.server.ReadBufferSize+c.server.Protocol.HeadLen() {
 		return errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.server.ReadBufferSize))
 	}
 

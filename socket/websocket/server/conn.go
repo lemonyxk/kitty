@@ -42,6 +42,8 @@ type Conn interface {
 	LastPing() time.Time
 	Conn() *websocket.Conn
 	Server() *Server
+	Response() http.ResponseWriter
+	Request() *http.Request
 	protocol(messageType byte, route []byte, body []byte) error
 }
 
@@ -54,6 +56,14 @@ type conn struct {
 	response http.ResponseWriter
 	request  *http.Request
 	mux      sync.Mutex
+}
+
+func (c *conn) Response() http.ResponseWriter {
+	return c.response
+}
+
+func (c *conn) Request() *http.Request {
+	return c.request
 }
 
 func (c *conn) Name() string {

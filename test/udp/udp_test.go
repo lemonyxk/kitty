@@ -374,8 +374,6 @@ func Test_UDP_Ping_Pong(t *testing.T) {
 	<-ready
 
 	assert.True(t, pingCount == pongCount, fmt.Sprintf("pingCount:%d, pongCount:%d", pingCount, pongCount))
-
-	assert.True(t, pingCount == 123, pingCount)
 }
 
 func Test_UDP_Shutdown(t *testing.T) {

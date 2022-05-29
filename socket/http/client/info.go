@@ -11,7 +11,6 @@
 package client
 
 import (
-	"crypto/tls"
 	"net/http"
 	"net/textproto"
 	"net/url"
@@ -33,7 +32,6 @@ type info struct {
 	clientTimeout   time.Duration
 	proxy           func(*http.Request) (*url.URL, error)
 	dialerKeepAlive time.Duration
-	tlsConfig       *tls.Config
 }
 
 func (h *info) Progress(progress *Progress) *info {
@@ -105,11 +103,6 @@ func (h *info) AddCookie(cookie *http.Cookie) *info {
 		}
 	}
 	h.cookies = append(h.cookies, cookie)
-	return h
-}
-
-func (h *info) TSLConfig(tlsConfig *tls.Config) *info {
-	h.tlsConfig = tlsConfig
 	return h
 }
 

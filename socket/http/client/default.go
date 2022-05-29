@@ -28,7 +28,7 @@ var defaultDialer = net.Dialer{
 	KeepAlive: dialerKeepAlive,
 }
 
-var defaultTlsConfig = tls.Config{}
+var defaultTlsConfig = &tls.Config{}
 
 var defaultTransport = http.Transport{
 	Proxy:                 http.ProxyFromEnvironment,
@@ -41,7 +41,7 @@ var defaultTransport = http.Transport{
 	MaxIdleConnsPerHost:   runtime.NumCPU() * 2,
 	MaxConnsPerHost:       runtime.NumCPU() * 2,
 	DialContext:           defaultDialer.DialContext,
-	TLSClientConfig:       &defaultTlsConfig,
+	TLSClientConfig:       defaultTlsConfig,
 }
 
 var defaultClient = http.Client{

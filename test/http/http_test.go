@@ -35,7 +35,8 @@ var httpServer *server.Server
 var ts *httptest.Server
 
 var httpsServer *server.Server
-var tss *httptest.Server
+
+// var tss *httptest.Server
 
 // create by mkcert
 var certFile = "../../example/ssl/localhost+2.pem"

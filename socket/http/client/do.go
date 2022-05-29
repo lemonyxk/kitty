@@ -303,10 +303,6 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 		defaultDialer.KeepAlive = info.dialerKeepAlive
 	}
 
-	if info.tlsConfig != nil {
-		defaultTransport.TLSClientConfig = info.tlsConfig
-	}
-
 	if info.proxy != nil {
 		defaultTransport.Proxy = info.proxy
 	}
@@ -322,7 +318,6 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 		defaultDialer.KeepAlive = dialerKeepAlive
 		defaultTransport.Proxy = http.ProxyFromEnvironment
 		defaultTransport.DisableCompression = false
-		defaultTransport.TLSClientConfig = &defaultTlsConfig
 	}()
 
 	response, err := defaultClient.Do(req)

@@ -10,6 +10,10 @@
 
 package client
 
+import (
+	"crypto/tls"
+)
+
 func Post(url string) *info {
 	var c = &Client{}
 	return c.Post(url)
@@ -48,4 +52,8 @@ func Delete(url string) *info {
 func Options(url string) *info {
 	var c = &Client{}
 	return c.Options(url)
+}
+
+func TSLConfig(tlsConfig *tls.Config) {
+	defaultTlsConfig = tlsConfig
 }

@@ -30,8 +30,8 @@ func runWsServer() {
 	var ready = make(chan struct{})
 
 	wsServer = kitty.NewWebSocketServer("127.0.0.1:8888")
-	wsServer.CertFile = "example/ssl/localhost+2.pem"
-	wsServer.KeyFile = "example/ssl/localhost+2-key.pem"
+	// wsServer.CertFile = "example/ssl/localhost+2.pem"
+	// wsServer.KeyFile = "example/ssl/localhost+2-key.pem"
 
 	wsServer.HeartBeatTimeout = time.Second * 3
 
@@ -59,8 +59,8 @@ func runWsClient() {
 	var isRun = false
 
 	wsClient = kitty.NewWebSocketClient("wss://127.0.0.1:8888")
-	wsClient.CertFile = "example/ssl/localhost+2.pem"
-	wsClient.KeyFile = "example/ssl/localhost+2-key.pem"
+	// wsClient.CertFile = "example/ssl/localhost+2.pem"
+	// wsClient.KeyFile = "example/ssl/localhost+2-key.pem"
 
 	wsClient.HeartBeatTimeout = time.Second * 5
 	wsClient.HeartBeatInterval = time.Second * 2

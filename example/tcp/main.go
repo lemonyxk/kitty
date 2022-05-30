@@ -33,8 +33,8 @@ func runTcpServer() {
 
 	tcpServer.HeartBeatTimeout = time.Second * 5
 
-	tcpServer.CertFile = "example/ssl/localhost+2.pem"
-	tcpServer.KeyFile = "example/ssl/localhost+2-key.pem"
+	// tcpServer.CertFile = "example/ssl/localhost+2.pem"
+	// tcpServer.KeyFile = "example/ssl/localhost+2-key.pem"
 
 	var tcpServerRouter = kitty.NewTcpServerRouter()
 
@@ -64,8 +64,8 @@ func runTcpClient() {
 	tcpClient.HeartBeatTimeout = time.Second * 3
 	// tcpClient.HeartBeatInterval = time.Second * 1
 
-	tcpClient.CertFile = "example/ssl/localhost+2.pem"
-	tcpClient.KeyFile = "example/ssl/localhost+2-key.pem"
+	// tcpClient.CertFile = "example/ssl/localhost+2.pem"
+	// tcpClient.KeyFile = "example/ssl/localhost+2-key.pem"
 
 	var clientRouter = kitty.NewTcpClientRouter()
 

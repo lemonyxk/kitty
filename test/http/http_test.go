@@ -39,8 +39,8 @@ var httpsServer *server.Server
 // var tss *httptest.Server
 
 // create by mkcert
-var certFile = "../../example/ssl/localhost+2.pem"
-var keyFile = "../../example/ssl/localhost+2-key.pem"
+// var certFile = "../../example/ssl/localhost+2.pem"
+// var keyFile = "../../example/ssl/localhost+2-key.pem"
 
 // can not share the ca file
 // var caFile = `/Users/lemo/Library/Application Support/mkcert/rootCA.pem`
@@ -87,8 +87,8 @@ func TestMain(t *testing.M) {
 	// tss.StartTLS()
 
 	// run the real server without ca file
-	httpsServer.CertFile = certFile
-	httpsServer.KeyFile = keyFile
+	// httpsServer.CertFile = certFile
+	// httpsServer.KeyFile = keyFile
 	httpsServer.Use(func(next server.Middle) server.Middle {
 		return func(stream *http.Stream) {
 			stream.AutoParse()
@@ -123,7 +123,7 @@ func Test_HTTPS_Get(t *testing.T) {
 
 	// assert.True(t, strings.HasPrefix(tss.URL, "https"), tss.URL)
 
-	var res = client.Get(`https://127.0.0.1:12346` + "/hello").Query(kitty2.M{"a": 1}).Send()
+	var res = client.Get(`http://127.0.0.1:12346` + "/hello").Query(kitty2.M{"a": 1}).Send()
 	assert.True(t, res.String() == "hello world!", res.LastError())
 }
 

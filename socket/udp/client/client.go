@@ -145,20 +145,20 @@ func (c *Client) Connect() {
 		c.WriteBufferSize = 512
 	}
 
-	// 定时心跳间隔
-	if c.HeartBeatInterval == 0 {
-		c.HeartBeatInterval = 3 * time.Second
-	}
-
-	// 服务器返回PONG超时
-	if c.HeartBeatTimeout == 0 {
-		c.HeartBeatTimeout = 6 * time.Second
-	}
-
-	// 自动重连间隔
-	if c.ReconnectInterval == 0 {
-		c.ReconnectInterval = time.Second
-	}
+	// // 定时心跳间隔
+	// if c.HeartBeatInterval == 0 {
+	// 	c.HeartBeatInterval = 3 * time.Second
+	// }
+	//
+	// // 服务器返回PONG超时
+	// if c.HeartBeatTimeout == 0 {
+	// 	c.HeartBeatTimeout = 6 * time.Second
+	// }
+	//
+	// // 自动重连间隔
+	// if c.ReconnectInterval == 0 {
+	// 	c.ReconnectInterval = time.Second
+	// }
 
 	if c.Protocol == nil {
 		c.Protocol = &protocol.DefaultUdpProtocol{}
@@ -181,13 +181,18 @@ func (c *Client) Connect() {
 		return
 	}
 
+	var heartBeatTimeout = c.HeartBeatTimeout
+	if c.HeartBeatTimeout == 0 {
+		heartBeatTimeout = time.Second
+	}
+
 	var netConn = &conn{
 		addr:     addr,
 		conn:     handler,
 		client:   c,
 		lastPong: time.Now(),
 		// PONG
-		timeoutTimer:       time.NewTimer(c.HeartBeatTimeout),
+		timeoutTimer:       time.NewTimer(heartBeatTimeout),
 		cancelTimeoutTimer: make(chan struct{}),
 	}
 
@@ -229,7 +234,12 @@ func (c *Client) Connect() {
 	c.isStop = false
 
 	// 定时器 心跳
-	c.heartbeatTicker = time.NewTicker(c.HeartBeatInterval)
+	var heartBeatInterval = c.HeartBeatInterval
+	if c.HeartBeatInterval == 0 {
+		heartBeatInterval = time.Second
+	}
+
+	c.heartbeatTicker = time.NewTicker(heartBeatInterval)
 	c.cancelHeartbeatTicker = make(chan struct{})
 
 	// heartbeat function

@@ -165,13 +165,13 @@ func (s *Server) Ready() {
 		s.DailTimeout = time.Second * 3
 	}
 
-	if s.HeartBeatTimeout == 0 {
-		s.HeartBeatTimeout = 6 * time.Second
-	}
-
-	if s.HeartBeatInterval == 0 {
-		s.HeartBeatInterval = 3 * time.Second
-	}
+	// if s.HeartBeatTimeout == 0 {
+	// 	s.HeartBeatTimeout = 6 * time.Second
+	// }
+	//
+	// if s.HeartBeatInterval == 0 {
+	// 	s.HeartBeatInterval = 3 * time.Second
+	// }
 
 	if s.ReadBufferSize == 0 {
 		s.ReadBufferSize = 1024

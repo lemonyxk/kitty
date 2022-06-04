@@ -167,13 +167,13 @@ func (s *Server) Ready() {
 		s.HandshakeTimeout = 2 * time.Second
 	}
 
-	if s.HeartBeatTimeout == 0 {
-		s.HeartBeatTimeout = 6 * time.Second
-	}
-
-	if s.HeartBeatInterval == 0 {
-		s.HeartBeatInterval = 3 * time.Second
-	}
+	// if s.HeartBeatTimeout == 0 {
+	// 	s.HeartBeatTimeout = 6 * time.Second
+	// }
+	//
+	// if s.HeartBeatInterval == 0 {
+	// 	s.HeartBeatInterval = 3 * time.Second
+	// }
 
 	if s.ReadBufferSize == 0 {
 		s.ReadBufferSize = 512
@@ -383,7 +383,16 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 			close:    make(chan struct{}, 1),
 		}
 
-		conn.timeoutTimer = time.NewTimer(s.HeartBeatTimeout)
+		var heartBeatTimeout = s.HeartBeatTimeout
+		if s.HeartBeatTimeout == 0 {
+			heartBeatTimeout = time.Second
+		}
+
+		conn.timeoutTimer = time.NewTimer(heartBeatTimeout)
+
+		if s.HeartBeatTimeout == 0 {
+			conn.timeoutTimer.Stop()
+		}
 
 		// make sure this goroutine will run over
 		go func() {

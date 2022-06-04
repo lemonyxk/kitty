@@ -58,7 +58,7 @@ func runWsClient() {
 	var ready = make(chan struct{})
 	var isRun = false
 
-	wsClient = kitty.NewWebSocketClient("wss://127.0.0.1:8888")
+	wsClient = kitty.NewWebSocketClient("ws://127.0.0.1:8888")
 	// wsClient.CertFile = "example/ssl/localhost+2.pem"
 	// wsClient.KeyFile = "example/ssl/localhost+2-key.pem"
 

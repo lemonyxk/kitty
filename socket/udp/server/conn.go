@@ -44,6 +44,7 @@ type Conn interface {
 	CloseChan() chan struct{}
 	AcceptChan() chan []byte
 	Name() string
+	SetName(name string)
 	Server() *Server
 	Conn() *net.UDPAddr
 	SetReadDeadline(t time.Time) error
@@ -69,6 +70,10 @@ func (c *conn) SetReadDeadline(t time.Time) error {
 
 func (c *conn) Name() string {
 	return c.name
+}
+
+func (c *conn) SetName(name string) {
+	c.name = name
 }
 
 func (c *conn) Server() *Server {

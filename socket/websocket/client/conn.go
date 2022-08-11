@@ -22,6 +22,8 @@ import (
 )
 
 type Conn interface {
+	Name() string
+	SetName(name string)
 	LocalAddr() net.Addr
 	RemoteAddr() net.Addr
 	Close() error
@@ -41,10 +43,19 @@ type Conn interface {
 }
 
 type conn struct {
+	name     string
 	conn     *websocket.Conn
 	client   *Client
 	lastPong time.Time
 	mux      sync.RWMutex
+}
+
+func (c *conn) Name() string {
+	return c.name
+}
+
+func (c *conn) SetName(name string) {
+	c.name = name
 }
 
 func (c *conn) Conn() *websocket.Conn {

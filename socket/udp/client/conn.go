@@ -23,6 +23,8 @@ import (
 )
 
 type Conn interface {
+	Name() string
+	SetName(name string)
 	LocalAddr() net.Addr
 	RemoteAddr() net.Addr
 	Read(b []byte) (n int, addr *net.UDPAddr, err error)
@@ -46,6 +48,7 @@ type Conn interface {
 }
 
 type conn struct {
+	name               string
 	conn               *net.UDPConn
 	addr               *net.UDPAddr
 	client             *Client
@@ -53,6 +56,14 @@ type conn struct {
 	timeoutTimer       *time.Timer
 	cancelTimeoutTimer chan struct{}
 	mux                sync.RWMutex
+}
+
+func (c *conn) Name() string {
+	return c.name
+}
+
+func (c *conn) SetName(name string) {
+	c.name = name
 }
 
 func (c *conn) SetReadDeadline(t time.Time) error {

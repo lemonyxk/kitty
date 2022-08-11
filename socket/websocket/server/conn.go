@@ -26,6 +26,7 @@ import (
 
 type Conn interface {
 	Name() string
+	SetName(name string)
 	FD() int64
 	SetFD(int64)
 	Host() string
@@ -68,6 +69,10 @@ func (c *conn) Request() *http.Request {
 
 func (c *conn) Name() string {
 	return c.name
+}
+
+func (c *conn) SetName(name string) {
+	c.name = name
 }
 
 func (c *conn) Server() *Server {

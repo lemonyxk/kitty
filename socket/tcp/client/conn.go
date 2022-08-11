@@ -21,6 +21,8 @@ import (
 )
 
 type Conn interface {
+	Name() string
+	SetName(name string)
 	Conn() net.Conn
 	LocalAddr() net.Addr
 	RemoteAddr() net.Addr
@@ -40,10 +42,19 @@ type Conn interface {
 }
 
 type conn struct {
+	name     string
 	conn     net.Conn
 	client   *Client
 	lastPong time.Time
 	mux      sync.RWMutex
+}
+
+func (c *conn) Name() string {
+	return c.name
+}
+
+func (c *conn) SetName(name string) {
+	c.name = name
 }
 
 func (c *conn) Emit(event string, data []byte) error {

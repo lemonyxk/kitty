@@ -36,6 +36,7 @@ type Conn interface {
 	LastPing() time.Time
 	SetLastPing(t time.Time)
 	Name() string
+	SetName(name string)
 	Server() *Server
 	Conn() net.Conn
 	protocol(messageType byte, route []byte, body []byte) error
@@ -52,6 +53,10 @@ type conn struct {
 
 func (c *conn) Name() string {
 	return c.name
+}
+
+func (c *conn) SetName(name string) {
+	c.name = name
 }
 
 func (c *conn) Server() *Server {

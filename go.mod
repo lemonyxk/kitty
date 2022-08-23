@@ -1,14 +1,14 @@
 module github.com/lemonyxk/kitty/v2
 
-go 1.18
+go 1.19
 
 require (
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
 	github.com/json-iterator/go v1.1.12
 	github.com/lemonyxk/caller v0.0.0-20220509170816-21e0d3de952f
-	github.com/lemonyxk/structure/v3 v3.0.1-0.20220518152418-c644a5099734
-	github.com/stretchr/testify v1.7.1
+	github.com/lemonyxk/structure/v3 v3.0.1-0.20220609021509-a0ead7f1c916
+	github.com/stretchr/testify v1.8.0
 )
 
 require (
@@ -17,5 +17,5 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

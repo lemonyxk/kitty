@@ -14,11 +14,13 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/errors"
+	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
 )
 
@@ -29,8 +31,7 @@ type Conn interface {
 	RemoteAddr() net.Addr
 	Read(b []byte) (n int, addr *net.UDPAddr, err error)
 	Write(b []byte) (int, error)
-	WriteToAddr(b []byte, addr *net.UDPAddr) (int, error)
-	Push(msg []byte) error
+	WriteToUDP(b []byte, addr *net.UDPAddr) (int, error)
 	Close() error
 	Conn() *net.UDPConn
 	LastPong() time.Time
@@ -40,11 +41,9 @@ type Conn interface {
 	Pong() error
 	SendClose() error
 	SendOpen() error
-	JsonEmit(event string, data any) error
-	ProtoBufEmit(event string, data proto.Message) error
-	Emit(event string, data []byte) error
 	SetReadDeadline(t time.Time) error
-	protocol(messageType byte, route []byte, body []byte) error
+	socket.Emitter
+	protocol.UDPProtocol
 }
 
 type conn struct {
@@ -56,6 +55,8 @@ type conn struct {
 	timeoutTimer       *time.Timer
 	cancelTimeoutTimer chan struct{}
 	mux                sync.RWMutex
+	messageID          int64
+	protocol.UDPProtocol
 }
 
 func (c *conn) Name() string {
@@ -72,7 +73,7 @@ func (c *conn) SetReadDeadline(t time.Time) error {
 }
 
 func (c *conn) Emit(event string, data []byte) error {
-	return c.protocol(protocol.Bin, []byte(event), data)
+	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), data)
 }
 
 func (c *conn) JsonEmit(event string, data any) error {
@@ -80,7 +81,7 @@ func (c *conn) JsonEmit(event string, data any) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(event), msg)
+	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
 }
 
 func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
@@ -88,7 +89,7 @@ func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(event), msg)
+	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
 }
 
 func (c *conn) Client() *Client {
@@ -130,56 +131,40 @@ func (c *conn) Read(b []byte) (n int, addr *net.UDPAddr, err error) {
 }
 
 func (c *conn) Ping() error {
-	_, err := c.Write(c.client.Protocol.Ping())
+	_, err := c.Write(c.PackPing())
 	return err
 }
 
 func (c *conn) Pong() error {
-	_, err := c.Write(c.client.Protocol.Pong())
+	_, err := c.Write(c.PackPong())
 	return err
 }
 
 func (c *conn) SendClose() error {
-	_, err := c.Write(c.client.Protocol.SendClose())
+	_, err := c.Write(c.PackClose())
 	return err
 }
 
 func (c *conn) SendOpen() error {
-	_, err := c.Write(c.client.Protocol.SendOpen())
+	_, err := c.Write(c.PackOpen())
 	return err
 }
 
 func (c *conn) Write(msg []byte) (int, error) {
-	if len(msg) > c.client.ReadBufferSize+c.client.Protocol.HeadLen() {
-		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.client.ReadBufferSize))
-	}
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
-
-	return c.conn.WriteToUDP(msg, c.addr)
+	return c.WriteToUDP(msg, c.addr)
 }
 
-func (c *conn) WriteToAddr(msg []byte, addr *net.UDPAddr) (int, error) {
-	if len(msg) > c.client.ReadBufferSize+c.client.Protocol.HeadLen() {
+func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
+	if len(msg) > c.client.ReadBufferSize+c.HeadLen() {
 		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.client.ReadBufferSize))
 	}
-
 	c.mux.Lock()
 	defer c.mux.Unlock()
-
 	return c.conn.WriteToUDP(msg, addr)
 }
 
-func (c *conn) protocol(messageType byte, route []byte, body []byte) error {
-	var msg = c.client.Protocol.Encode(messageType, 0, route, body)
-	if len(msg) > c.client.ReadBufferSize+c.client.Protocol.HeadLen() {
-		return errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.client.ReadBufferSize))
-	}
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
-
-	_, err := c.conn.WriteToUDP(msg, c.addr)
+func (c *conn) Pack(messageType byte, messageID int64, route []byte, body []byte) error {
+	var msg = c.Encode(messageType, messageID, route, body)
+	_, err := c.WriteToUDP(msg, c.addr)
 	return err
 }

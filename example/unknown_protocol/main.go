@@ -47,13 +47,13 @@ func asyncWsServer() {
 		var route = message[:index]
 		var data = message[index+1:]
 
-		next(&socket.Stream[server.Conn]{Conn: conn, Event: string(route), Data: data})
+		next(socket.NewStream(conn, 0, string(route), data))
 	}
 
 	wsServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data))
-			return stream.Conn.Push(packMessage(stream.Event, string(stream.Data)))
+			return stream.Push(packMessage(stream.Event, string(stream.Data)))
 		})
 	})
 
@@ -88,13 +88,13 @@ func asyncWsClient() {
 		var route = message[:index]
 		var data = message[index+1:]
 
-		next(&socket.Stream[client.Conn]{Conn: conn, Event: string(route), Data: data})
+		next(socket.NewStream(conn, 0, string(route), data))
 	}
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
-			return stream.Conn.Push(packMessage(stream.Event, string(stream.Data)))
+			return stream.Push(packMessage(stream.Event, string(stream.Data)))
 		})
 	})
 

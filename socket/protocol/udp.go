@@ -25,31 +25,31 @@ var CloseMessage = []byte{0x0, 0x0, 0x6, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
 type UDPProtocol interface {
 	Protocol
 	GetMessageType([]byte) byte
-	SendClose() []byte
-	SendOpen() []byte
+	PackClose() []byte
+	PackOpen() []byte
 	IsClose(byte) bool
 	IsOpen(byte) bool
 }
 
 type DefaultUdpProtocol struct{}
 
-func (DefaultUdpProtocol) GetMessageType(message []byte) byte {
+func (d *DefaultUdpProtocol) GetMessageType(message []byte) byte {
 	return message[2]
 }
 
-func (d *DefaultUdpProtocol) Pong() []byte {
+func (d *DefaultUdpProtocol) PackPong() []byte {
 	return PongMessage
 }
 
-func (d *DefaultUdpProtocol) Ping() []byte {
+func (d *DefaultUdpProtocol) PackPing() []byte {
 	return PingMessage
 }
 
-func (d *DefaultUdpProtocol) SendClose() []byte {
+func (d *DefaultUdpProtocol) PackClose() []byte {
 	return CloseMessage
 }
 
-func (d *DefaultUdpProtocol) SendOpen() []byte {
+func (d *DefaultUdpProtocol) PackOpen() []byte {
 	return OpenMessage
 }
 

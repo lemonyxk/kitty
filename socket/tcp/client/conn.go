@@ -13,10 +13,12 @@ package client
 import (
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
+	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
 )
 
@@ -29,24 +31,23 @@ type Conn interface {
 	Close() error
 	Write([]byte) (int, error)
 	Read([]byte) (int, error)
-	Push(message []byte) error
 	LastPong() time.Time
 	SetLastPong(time.Time)
 	Client() *Client
 	Ping() error
 	Pong() error
-	JsonEmit(event string, data any) error
-	ProtoBufEmit(event string, data proto.Message) error
-	Emit(event string, data []byte) error
-	protocol(messageType byte, route []byte, body []byte) error
+	socket.Emitter
+	protocol.Protocol
 }
 
 type conn struct {
-	name     string
-	conn     net.Conn
-	client   *Client
-	lastPong time.Time
-	mux      sync.RWMutex
+	name      string
+	conn      net.Conn
+	client    *Client
+	lastPong  time.Time
+	mux       sync.RWMutex
+	messageID int64
+	protocol.Protocol
 }
 
 func (c *conn) Name() string {
@@ -58,7 +59,7 @@ func (c *conn) SetName(name string) {
 }
 
 func (c *conn) Emit(event string, data []byte) error {
-	return c.protocol(protocol.Bin, []byte(event), data)
+	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), data)
 }
 
 func (c *conn) JsonEmit(event string, data any) error {
@@ -66,7 +67,7 @@ func (c *conn) JsonEmit(event string, data any) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(event), msg)
+	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
 }
 
 func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
@@ -74,7 +75,7 @@ func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(event), msg)
+	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
 }
 
 func (c *conn) Conn() net.Conn {
@@ -86,12 +87,12 @@ func (c *conn) Client() *Client {
 }
 
 func (c *conn) Ping() error {
-	_, err := c.Write(c.client.Protocol.Ping())
+	_, err := c.Write(c.PackPing())
 	return err
 }
 
 func (c *conn) Pong() error {
-	_, err := c.Write(c.client.Protocol.Pong())
+	_, err := c.Write(c.PackPong())
 	return err
 }
 
@@ -122,11 +123,9 @@ func (c *conn) Write(message []byte) (int, error) {
 	return c.conn.Write(message)
 }
 
-func (c *conn) protocol(messageType byte, route []byte, body []byte) error {
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	var message = c.client.Protocol.Encode(messageType, 0, route, body)
-	_, err := c.conn.Write(message)
+func (c *conn) Pack(messageType byte, messageID int64, route []byte, body []byte) error {
+	var message = c.Encode(messageType, messageID, route, body)
+	_, err := c.Write(message)
 	return err
 }
 

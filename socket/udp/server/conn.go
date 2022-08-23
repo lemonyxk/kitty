@@ -15,11 +15,13 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/errors"
+	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
 )
 
@@ -31,10 +33,6 @@ type Conn interface {
 	SendClose() error
 	SendOpen() error
 	Close() error
-	Push(data []byte) error
-	JsonEmit(event string, data any) error
-	ProtoBufEmit(event string, data proto.Message) error
-	Emit(event string, data []byte) error
 	Write(msg []byte) (int, error)
 	WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error)
 	FD() int64
@@ -48,7 +46,8 @@ type Conn interface {
 	Server() *Server
 	Conn() *net.UDPAddr
 	SetReadDeadline(t time.Time) error
-	protocol(messageType byte, route []byte, body []byte) error
+	socket.Emitter
+	protocol.UDPProtocol
 }
 
 type conn struct {
@@ -61,6 +60,8 @@ type conn struct {
 	timeoutTimer *time.Timer
 	accept       chan []byte
 	close        chan struct{}
+	messageID    int64
+	protocol.UDPProtocol
 }
 
 func (c *conn) SetReadDeadline(t time.Time) error {
@@ -120,22 +121,22 @@ func (c *conn) ClientIP() string {
 }
 
 func (c *conn) Ping() error {
-	_, err := c.Write(c.server.Protocol.Ping())
+	_, err := c.Write(c.PackPing())
 	return err
 }
 
 func (c *conn) Pong() error {
-	_, err := c.Write(c.server.Protocol.Pong())
+	_, err := c.Write(c.PackPong())
 	return err
 }
 
 func (c *conn) SendClose() error {
-	_, err := c.Write(c.server.Protocol.SendClose())
+	_, err := c.Write(c.PackClose())
 	return err
 }
 
 func (c *conn) SendOpen() error {
-	_, err := c.Write(c.server.Protocol.SendOpen())
+	_, err := c.Write(c.PackOpen())
 	return err
 }
 
@@ -145,7 +146,7 @@ func (c *conn) Push(msg []byte) error {
 }
 
 func (c *conn) Emit(event string, data []byte) error {
-	return c.protocol(protocol.Bin, []byte(event), data)
+	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), data)
 }
 
 func (c *conn) JsonEmit(event string, data any) error {
@@ -153,7 +154,7 @@ func (c *conn) JsonEmit(event string, data any) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(event), msg)
+	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
 }
 
 func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
@@ -161,7 +162,7 @@ func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
 	if err != nil {
 		return err
 	}
-	return c.protocol(protocol.Bin, []byte(event), msg)
+	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
 }
 
 func (c *conn) Close() error {
@@ -169,18 +170,11 @@ func (c *conn) Close() error {
 }
 
 func (c *conn) Write(msg []byte) (int, error) {
-	if len(msg) > c.server.ReadBufferSize+c.server.Protocol.HeadLen() {
-		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.server.ReadBufferSize))
-	}
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
-
-	return c.server.netListen.WriteToUDP(msg, c.conn)
+	return c.WriteToUDP(msg, c.conn)
 }
 
 func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
-	if len(msg) > c.server.ReadBufferSize+c.server.Protocol.HeadLen() {
+	if len(msg) > c.server.ReadBufferSize+c.HeadLen() {
 		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.server.ReadBufferSize))
 	}
 
@@ -190,16 +184,8 @@ func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
 	return c.server.netListen.WriteToUDP(msg, addr)
 }
 
-func (c *conn) protocol(messageType byte, route []byte, body []byte) error {
-	var msg = c.server.Protocol.Encode(messageType, 0, route, body)
-
-	if len(msg) > c.server.ReadBufferSize+c.server.Protocol.HeadLen() {
-		return errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.server.ReadBufferSize))
-	}
-
-	c.mux.Lock()
-	defer c.mux.Unlock()
-
-	_, err := c.server.netListen.WriteToUDP(msg, c.conn)
+func (c *conn) Pack(messageType byte, messageID int64, route []byte, body []byte) error {
+	var msg = c.Encode(messageType, messageID, route, body)
+	_, err := c.WriteToUDP(msg, c.conn)
 	return err
 }

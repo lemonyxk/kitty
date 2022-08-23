@@ -20,20 +20,18 @@ import (
 	"github.com/lemonyxk/kitty/v2/socket"
 )
 
-type Server[T any] interface {
-	JsonEmit(fd int64, event string, data any) error
-	ProtoBufEmit(fd int64, event string, data proto.Message) error
-	Emit(fd int64, event string, data []byte) error
+type Server[T socket.Emitter] interface {
+	Conn(fd int64) (T, error)
 	GetDailTimeout() time.Duration
 	GetRouter() *router.Router[*socket.Stream[T]]
 }
 
-type asyncServer[T any] struct {
+type asyncServer[T socket.Emitter] struct {
 	server Server[T]
 	mux    sync.Mutex
 }
 
-func NewServer[T any](server Server[T]) *asyncServer[T] {
+func NewServer[T socket.Emitter](server Server[T]) *asyncServer[T] {
 	return &asyncServer[T]{server: server}
 }
 
@@ -49,7 +47,12 @@ func (a *asyncServer[T]) Emit(fd int64, event string, data []byte) (*socket.Stre
 
 	defer func() { a.server.GetRouter().Remove(event) }()
 
-	var err = a.server.Emit(fd, event, data)
+	var conn, err = a.server.Conn(fd)
+	if err != nil {
+		return nil, err
+	}
+
+	err = conn.Emit(event, data)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +79,12 @@ func (a *asyncServer[T]) JsonEmit(fd int64, event string, data any) (*socket.Str
 
 	defer func() { a.server.GetRouter().Remove(event) }()
 
-	var err = a.server.JsonEmit(fd, event, data)
+	var conn, err = a.server.Conn(fd)
+	if err != nil {
+		return nil, err
+	}
+
+	err = conn.JsonEmit(event, data)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +111,12 @@ func (a *asyncServer[T]) ProtoBufEmit(fd int64, event string, data proto.Message
 
 	defer func() { a.server.GetRouter().Remove(event) }()
 
-	var err = a.server.ProtoBufEmit(fd, event, data)
+	var conn, err = a.server.Conn(fd)
+	if err != nil {
+		return nil, err
+	}
+
+	err = conn.ProtoBufEmit(event, data)
 	if err != nil {
 		return nil, err
 	}

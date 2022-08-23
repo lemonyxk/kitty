@@ -83,7 +83,7 @@ func initServer() {
 		if route == "" {
 			return
 		}
-		next(&socket.Stream[server.Conn]{Conn: conn, Event: route, Data: []byte(data)})
+		next(socket.NewStream(conn, 0, route, []byte(data)))
 	}
 
 	// create router
@@ -92,15 +92,19 @@ func initServer() {
 	// set group route
 	webSocketServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			return ServerJson(stream.Conn, JsonPack{
-				Event: "/hello/world",
-				Data:  "i am server",
-			})
+			return stream.JsonEmit("/hello/world", "i am server")
+		})
+	})
+
+	webSocketServerRouter.Route("/unknown").Handler(func(stream *socket.Stream[server.Conn]) error {
+		return ServerJson(stream, JsonPack{
+			Event: stream.Event,
+			Data:  string(stream.Data),
 		})
 	})
 
 	webSocketServerRouter.Route("/asyncClient").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return ServerJson(stream.Conn, JsonPack{
+		return ServerJson(stream, JsonPack{
 			Event: "/asyncClient",
 			Data:  string(stream.Data),
 		})
@@ -110,17 +114,17 @@ func initServer() {
 	wsRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res kitty2.M
 		_ = jsoniter.Unmarshal(stream.Data, &res)
-		return stream.Conn.JsonEmit(stream.Event, res)
+		return stream.JsonEmit(stream.Event, res)
 	})
 
 	wsRouter.Route("/Emit").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Conn.Emit(stream.Event, stream.Data)
+		return stream.Emit(stream.Event, stream.Data)
 	})
 
 	wsRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res awesomepackage.AwesomeMessage
 		_ = proto.Unmarshal(stream.Data, &res)
-		return stream.Conn.ProtoBufEmit(stream.Event, &res)
+		return stream.ProtoBufEmit(stream.Event, &res)
 	})
 
 	go webSocketServer.SetRouter(webSocketServerRouter).Start()
@@ -159,14 +163,14 @@ func initClient() {
 		if route == "" {
 			return
 		}
-		next(&socket.Stream[client.Conn]{Conn: c, Event: route, Data: []byte(data)})
+		next(socket.NewStream(c, 0, route, []byte(data)))
 	}
 
 	// create router
 	clientRouter = kitty.NewWebSocketClientRouter()
 
 	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
-		return stream.Conn.Client().JsonEmit(stream.Event, string(stream.Data))
+		return stream.JsonEmit(stream.Event, string(stream.Data))
 	})
 
 	go webSocketClient.SetRouter(clientRouter).Connect()
@@ -199,6 +203,50 @@ func TestMain(t *testing.M) {
 	t.Run()
 }
 
+func Test_WS_Client(t *testing.T) {
+
+	var count = 10000
+
+	var flag = true
+
+	var mux sync.WaitGroup
+
+	mux.Add(count)
+
+	var total int64 = 0
+	var messageIDTotal int64 = 0
+
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
+			defer mux.Add(-1)
+			messageIDTotal += stream.MessageID()
+			assert.True(t, string(stream.Data) == `"i am server"`, string(stream.Data))
+			return nil
+		})
+	})
+
+	for i := 0; i < count; i++ {
+		total += int64(i + 1)
+		go func() {
+			_ = webSocketClient.JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
+		}()
+	}
+
+	go func() {
+		<-time.After(3 * time.Second)
+		mux.Done()
+		flag = false
+	}()
+
+	mux.Wait()
+
+	assert.True(t, total == messageIDTotal, "message id not equal", total, messageIDTotal)
+
+	if !flag {
+		t.Fatal("timeout")
+	}
+}
+
 func Test_WS_Client_Async(t *testing.T) {
 
 	var asyncClient = async.NewClient[client.Conn](webSocketClient)
@@ -223,44 +271,6 @@ func Test_WS_Client_Async(t *testing.T) {
 	}
 
 	wait.Wait()
-}
-
-func Test_WS_Client(t *testing.T) {
-
-	var count = 10000
-
-	var flag = true
-
-	var mux sync.WaitGroup
-
-	mux.Add(count)
-
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
-		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
-			defer mux.Add(-1)
-			assert.True(t, string(stream.Data) == "i am server", "stream is nil")
-			return nil
-		})
-	})
-
-	for i := 0; i < count; i++ {
-		_ = ClientJson(webSocketClient, JsonPack{
-			Event: "/hello/world",
-			Data:  strings.Repeat("hello world!", 1),
-		})
-	}
-
-	go func() {
-		<-time.After(3 * time.Second)
-		mux.Done()
-		flag = false
-	}()
-
-	mux.Wait()
-
-	if !flag {
-		t.Fatal("timeout")
-	}
 }
 
 func Test_WS_JsonEmit(t *testing.T) {
@@ -362,6 +372,29 @@ func Test_WS_Server_Async(t *testing.T) {
 	wait.Wait()
 }
 
+func Test_WS_Unknown(t *testing.T) {
+
+	var mux = sync.WaitGroup{}
+
+	mux.Add(1)
+
+	var wsRouter = clientRouter.Create()
+
+	wsRouter.Route("/unknown").Handler(func(stream *socket.Stream[client.Conn]) error {
+		assert.True(t, string(stream.Data) == `{"name":"unknown","age":18}`, string(stream.Data))
+		mux.Done()
+		return nil
+	})
+
+	var err = ClientJson(webSocketClient, JsonPack{
+		Event: "/unknown",
+		Data:  `{"name":"unknown","age":18}`,
+	})
+	assert.True(t, err == nil, err)
+
+	mux.Wait()
+}
+
 func Test_WS_Ping_Pong(t *testing.T) {
 
 	var pingCount int32 = 0
@@ -424,10 +457,10 @@ func ClientJson(c *client.Client, pack JsonPack) error {
 	return c.Push(data)
 }
 
-func ServerJson(conn server.Conn, pack JsonPack) error {
+func ServerJson(stream *socket.Stream[server.Conn], pack JsonPack) error {
 	data, err := jsoniter.Marshal(pack)
 	if err != nil {
 		return err
 	}
-	return conn.Server().Push(conn.FD(), data)
+	return stream.Push(data)
 }

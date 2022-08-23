@@ -27,8 +27,6 @@ type Client struct {
 	Name string
 	Addr string
 
-	Conn Conn
-
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
 	ReconnectInterval time.Duration
@@ -51,6 +49,7 @@ type Client struct {
 
 	Protocol protocol.UDPProtocol
 
+	conn                  Conn
 	router                *router.Router[*socket.Stream[Conn]]
 	middle                []func(Middle) Middle
 	addr                  *net.UDPAddr
@@ -63,11 +62,11 @@ type Client struct {
 type Middle router.Middle[*socket.Stream[Conn]]
 
 func (c *Client) LocalAddr() net.Addr {
-	return c.Conn.LocalAddr()
+	return c.conn.LocalAddr()
 }
 
 func (c *Client) RemoteAddr() net.Addr {
-	return c.Conn.RemoteAddr()
+	return c.conn.RemoteAddr()
 }
 
 func (c *Client) Use(middle ...func(Middle) Middle) {
@@ -75,28 +74,32 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 }
 
 func (c *Client) Emit(event string, data []byte) error {
-	return c.Conn.Emit(event, data)
+	return c.conn.Emit(event, data)
 }
 
 func (c *Client) JsonEmit(event string, data any) error {
-	return c.Conn.JsonEmit(event, data)
+	return c.conn.JsonEmit(event, data)
 }
 
 func (c *Client) ProtoBufEmit(event string, data proto.Message) error {
-	return c.Conn.ProtoBufEmit(event, data)
+	return c.conn.ProtoBufEmit(event, data)
 }
 
 func (c *Client) Push(message []byte) error {
-	return c.Conn.Push(message)
+	return c.conn.Push(message)
 }
 
-func (c *Client) PushAddr(message []byte, addr *net.UDPAddr) error {
-	_, err := c.Conn.WriteToAddr(message, addr)
+func (c *Client) PushUDP(message []byte, addr *net.UDPAddr) error {
+	_, err := c.conn.WriteToUDP(message, addr)
 	return err
 }
 
 func (c *Client) Close() error {
-	return c.Conn.Close()
+	return c.conn.Close()
+}
+
+func (c *Client) Conn() Conn {
+	return c.conn
 }
 
 func (c *Client) reconnecting() {
@@ -194,12 +197,13 @@ func (c *Client) Connect() {
 		// PONG
 		timeoutTimer:       time.NewTimer(heartBeatTimeout),
 		cancelTimeoutTimer: make(chan struct{}),
+		UDPProtocol:        c.Protocol,
 	}
 
-	c.Conn = netConn
+	c.conn = netConn
 
 	// send open message
-	err = c.Conn.SendOpen()
+	err = c.conn.SendOpen()
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()
@@ -213,7 +217,7 @@ func (c *Client) Connect() {
 	})
 
 	var msg = make([]byte, c.Protocol.HeadLen())
-	_, _, err = c.Conn.Read(msg)
+	_, _, err = c.conn.Read(msg)
 	if err != nil {
 		c.OnError(err)
 		c.reconnecting()
@@ -262,7 +266,7 @@ func (c *Client) Connect() {
 		c.PongHandler = func(conn Conn) func(data string) error {
 			return func(data string) error {
 				var t = time.Now()
-				c.Conn.SetLastPong(t)
+				c.conn.SetLastPong(t)
 				if c.HeartBeatTimeout != 0 {
 					return netConn.SetReadDeadline(t.Add(c.HeartBeatTimeout))
 				}
@@ -280,7 +284,7 @@ func (c *Client) Connect() {
 		for {
 			select {
 			case <-c.heartbeatTicker.C:
-				if err := c.HeartBeat(c.Conn); err != nil {
+				if err := c.HeartBeat(c.conn); err != nil {
 					c.OnError(err)
 				}
 			case <-c.cancelHeartbeatTicker:
@@ -312,7 +316,7 @@ func (c *Client) Connect() {
 	}
 
 	// 连接成功
-	c.OnOpen(c.Conn)
+	c.OnOpen(c.conn)
 
 	var reader = c.Protocol.Reader()
 
@@ -320,7 +324,7 @@ func (c *Client) Connect() {
 
 	go func() {
 		for {
-			n, _, err := c.Conn.Read(buffer)
+			n, _, err := c.conn.Read(buffer)
 			// close error
 			if err != nil {
 				if !c.isStop {
@@ -355,7 +359,7 @@ func (c *Client) Connect() {
 	// 关闭连接
 	_ = c.Close()
 	// 触发回调
-	c.OnClose(c.Conn)
+	c.OnClose(c.conn)
 	// 触发重连设置
 	c.reconnecting()
 }
@@ -381,28 +385,29 @@ func (c *Client) decodeMessage(message []byte) error {
 	_ = id
 
 	if c.OnMessage != nil {
-		c.OnMessage(c.Conn, message)
+		c.OnMessage(c.conn, message)
 	}
 
 	if c.Protocol.IsUnknown(messageType) {
 		if c.OnUnknown != nil {
-			c.OnUnknown(c.Conn, message, c.middleware)
+			c.OnUnknown(c.conn, message, c.middleware)
 		}
 		return nil
 	}
 
 	// Ping
 	if c.Protocol.IsPing(messageType) {
-		return c.PingHandler(c.Conn)("")
+		return c.PingHandler(c.conn)("")
 	}
 
 	// Pong
 	if c.Protocol.IsPong(messageType) {
-		return c.PongHandler(c.Conn)("")
+		return c.PongHandler(c.conn)("")
 	}
 
 	// on router
-	c.middleware(&socket.Stream[Conn]{Conn: c.Conn, Event: string(route), Data: body})
+
+	c.middleware(socket.NewStream(c.conn, id, string(route), body))
 
 	return nil
 }

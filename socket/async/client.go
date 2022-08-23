@@ -20,20 +20,18 @@ import (
 	"github.com/lemonyxk/kitty/v2/socket"
 )
 
-type Client[T any] interface {
-	JsonEmit(event string, data any) error
-	ProtoBufEmit(event string, data proto.Message) error
-	Emit(event string, data []byte) error
+type Client[T socket.Emitter] interface {
+	Conn() T
 	GetRouter() *router.Router[*socket.Stream[T]]
 	GetDailTimeout() time.Duration
 }
 
-type asyncClient[T any] struct {
+type asyncClient[T socket.Emitter] struct {
 	client Client[T]
 	mux    sync.Mutex
 }
 
-func NewClient[T any](client Client[T]) *asyncClient[T] {
+func NewClient[T socket.Emitter](client Client[T]) *asyncClient[T] {
 	return &asyncClient[T]{client: client}
 }
 
@@ -49,7 +47,7 @@ func (a *asyncClient[T]) Emit(event string, data []byte) (*socket.Stream[T], err
 
 	defer func() { a.client.GetRouter().Remove(event) }()
 
-	var err = a.client.Emit(event, data)
+	var err = a.client.Conn().Emit(event, data)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +74,7 @@ func (a *asyncClient[T]) JsonEmit(event string, data any) (*socket.Stream[T], er
 
 	defer func() { a.client.GetRouter().Remove(event) }()
 
-	var err = a.client.JsonEmit(event, data)
+	var err = a.client.Conn().JsonEmit(event, data)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +101,7 @@ func (a *asyncClient[T]) ProtoBufEmit(event string, data proto.Message) (*socket
 
 	defer func() { a.client.GetRouter().Remove(event) }()
 
-	var err = a.client.ProtoBufEmit(event, data)
+	var err = a.client.Conn().ProtoBufEmit(event, data)
 	if err != nil {
 		return nil, err
 	}

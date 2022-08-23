@@ -75,29 +75,29 @@ func initServer() {
 	// set group route
 	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			return stream.Conn.JsonEmit(stream.Event, "i am server")
+			return stream.JsonEmit(stream.Event, "i am server")
 		})
 	})
 
 	tcpServerRouter.Route("/asyncClient").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Conn.JsonEmit(stream.Event, string(stream.Data))
+		return stream.JsonEmit(stream.Event, string(stream.Data))
 	})
 
 	var tcpRouter = tcpServerRouter.Create()
 	tcpRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res kitty2.M
 		_ = jsoniter.Unmarshal(stream.Data, &res)
-		return stream.Conn.JsonEmit(stream.Event, res)
+		return stream.JsonEmit(stream.Event, res)
 	})
 
 	tcpRouter.Route("/Emit").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Conn.Emit(stream.Event, stream.Data)
+		return stream.Emit(stream.Event, stream.Data)
 	})
 
 	tcpRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res awesomepackage.AwesomeMessage
 		_ = proto.Unmarshal(stream.Data, &res)
-		return stream.Conn.ProtoBufEmit(stream.Event, &res)
+		return stream.ProtoBufEmit(stream.Event, &res)
 	})
 
 	go tcpServer.SetRouter(tcpServerRouter).Start()
@@ -129,7 +129,7 @@ func initClient() {
 	clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
 
 	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
-		return stream.Conn.JsonEmit(stream.Event, string(stream.Data))
+		return stream.JsonEmit(stream.Event, string(stream.Data))
 	})
 
 	go tcpClient.SetRouter(clientRouter).Connect()
@@ -162,6 +162,50 @@ func TestMain(t *testing.M) {
 	t.Run()
 }
 
+func Test_TCP_Client(t *testing.T) {
+
+	var count = 10000
+
+	var flag = true
+
+	var mux sync.WaitGroup
+
+	mux.Add(count)
+
+	var total int64 = 0
+	var messageIDTotal int64 = 0
+
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
+			defer mux.Add(-1)
+			messageIDTotal += stream.MessageID()
+			assert.True(t, string(stream.Data) == `"i am server"`, "stream is nil")
+			return nil
+		})
+	})
+
+	for i := 0; i < count; i++ {
+		total += int64(i + 1)
+		go func() {
+			_ = tcpClient.JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
+		}()
+	}
+
+	go func() {
+		<-time.After(3 * time.Second)
+		mux.Done()
+		flag = false
+	}()
+
+	mux.Wait()
+
+	assert.True(t, total == messageIDTotal, "message id not equal", total, messageIDTotal)
+
+	if !flag {
+		t.Fatal("timeout")
+	}
+}
+
 func Test_TCP_Client_Async(t *testing.T) {
 
 	var asyncClient = async.NewClient[client.Conn](tcpClient)
@@ -186,41 +230,6 @@ func Test_TCP_Client_Async(t *testing.T) {
 	}
 
 	wait.Wait()
-}
-
-func Test_TCP_Client(t *testing.T) {
-
-	var count = 10000
-
-	var flag = true
-
-	var mux sync.WaitGroup
-
-	mux.Add(count)
-
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
-		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
-			defer mux.Add(-1)
-			assert.True(t, string(stream.Data) == `"i am server"`, "stream is nil")
-			return nil
-		})
-	})
-
-	for i := 0; i < count; i++ {
-		_ = tcpClient.JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
-	}
-
-	go func() {
-		<-time.After(3 * time.Second)
-		mux.Done()
-		flag = false
-	}()
-
-	mux.Wait()
-
-	if !flag {
-		t.Fatal("timeout")
-	}
 }
 
 func Test_TCP_JsonEmit(t *testing.T) {

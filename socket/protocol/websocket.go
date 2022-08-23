@@ -20,11 +20,11 @@ func (d *DefaultWsProtocol) HeadLen() int {
 	return 16
 }
 
-func (d *DefaultWsProtocol) Pong() []byte {
+func (d *DefaultWsProtocol) PackPong() []byte {
 	return PongMessage
 }
 
-func (d *DefaultWsProtocol) Ping() []byte {
+func (d *DefaultWsProtocol) PackPing() []byte {
 	return PingMessage
 }
 

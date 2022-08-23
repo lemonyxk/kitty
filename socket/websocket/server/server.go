@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
@@ -71,50 +70,19 @@ func (s *Server) Use(middle ...func(next Middle) Middle) {
 	s.middle = append(s.middle, middle...)
 }
 
-func (s *Server) protocol(fd int64, messageType byte, route []byte, body []byte) error {
-	var conn = s.GetConnection(fd)
-	if conn == nil {
-		return errors.ClientClosed
-	}
-
-	return conn.protocol(messageType, route, body)
-}
-
-func (s *Server) Push(fd int64, msg []byte) error {
-	var conn = s.GetConnection(fd)
-	if conn == nil {
-		return errors.ClientClosed
-	}
-
-	_, err := conn.Write(int(protocol.Bin), msg)
-	return err
-}
-
-func (s *Server) Emit(fd int64, event string, data []byte) error {
-	return s.protocol(fd, protocol.Bin, []byte(event), data)
-}
-
 func (s *Server) EmitAll(event string, data []byte) (int, int) {
 	var counter = 0
 	var success = 0
 
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
-		if s.Emit(fd, event, data) == nil {
+		if conn.Emit(event, data) == nil {
 			success++
 		}
 		return true
 	})
 
 	return counter, success
-}
-
-func (s *Server) JsonEmit(fd int64, event string, data any) error {
-	msg, err := jsoniter.Marshal(data)
-	if err != nil {
-		return err
-	}
-	return s.protocol(fd, protocol.Bin, []byte(event), msg)
 }
 
 func (s *Server) JsonEmitAll(event string, data any) (int, int) {
@@ -123,7 +91,7 @@ func (s *Server) JsonEmitAll(event string, data any) (int, int) {
 
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
-		if s.JsonEmit(fd, event, data) == nil {
+		if conn.JsonEmit(event, data) == nil {
 			success++
 		}
 		return true
@@ -132,20 +100,12 @@ func (s *Server) JsonEmitAll(event string, data any) (int, int) {
 	return counter, success
 }
 
-func (s *Server) ProtoBufEmit(fd int64, event string, data proto.Message) error {
-	msg, err := proto.Marshal(data)
-	if err != nil {
-		return err
-	}
-	return s.protocol(fd, protocol.Bin, []byte(event), msg)
-}
-
 func (s *Server) ProtoBufEmitAll(event string, data proto.Message) (int, int) {
 	var counter = 0
 	var success = 0
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		counter++
-		if s.ProtoBufEmit(fd, event, data) == nil {
+		if conn.ProtoBufEmit(event, data) == nil {
 			success++
 		}
 		return true
@@ -163,28 +123,23 @@ func (s *Server) delConnect(conn Conn) {
 	s.connections.Delete(conn.FD())
 }
 
-func (s *Server) GetConnections(fn func(conn Conn)) {
+func (s *Server) Range(fn func(conn Conn)) {
 	s.connections.Range(func(fd int64, conn Conn) bool {
 		fn(conn)
 		return true
 	})
 }
 
-func (s *Server) GetConnection(fd int64) Conn {
+func (s *Server) Conn(fd int64) (Conn, error) {
 	conn := s.connections.Get(fd)
-	return conn
-}
-
-func (s *Server) GetConnectionsCount() int {
-	return s.connections.Len()
-}
-
-func (s *Server) Close(fd int64) error {
-	conn := s.GetConnection(fd)
 	if conn == nil {
-		return errors.ConnNotFount
+		return nil, errors.ConnNotFount
 	}
-	return conn.Close()
+	return conn, nil
+}
+
+func (s *Server) ConnLen() int {
+	return s.connections.Len()
 }
 
 func (s *Server) onOpen(conn Conn) {
@@ -326,6 +281,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		response: w,
 		request:  r,
 		lastPing: time.Now(),
+		Protocol: s.Protocol,
 	}
 
 	// 设置PING处理函数
@@ -398,7 +354,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	}
 
 	// on router
-	s.middleware(&socket.Stream[Conn]{Conn: conn, Event: string(route), Data: body})
+	s.middleware(socket.NewStream(conn, id, string(route), body))
 
 	return nil
 }

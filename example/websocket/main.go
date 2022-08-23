@@ -39,8 +39,8 @@ func runWsServer() {
 
 	wsServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			log.Println(string(stream.Data))
-			return stream.Conn.Emit(stream.Event, stream.Data)
+			log.Println(string(stream.Data), stream.MessageID())
+			return stream.Emit(stream.Event, stream.Data)
 		})
 	})
 
@@ -69,8 +69,8 @@ func runWsClient() {
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
-			time.Sleep(time.Second)
-			return stream.Conn.Emit(stream.Event, stream.Data)
+			return nil
+			// return stream.Emit(stream.Event, stream.Data)
 		})
 	})
 
@@ -91,9 +91,14 @@ func main() {
 	runWsServer()
 	runWsClient()
 
-	var err = wsClient.Emit("/hello/world", []byte("hello world"))
-
-	log.Println(err)
+	for {
+		var err = wsClient.Emit("/hello/world", []byte("hello world"))
+		if err != nil {
+			log.Println(err)
+			break
+		}
+		time.Sleep(time.Second)
+	}
 
 	select {}
 }

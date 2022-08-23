@@ -33,11 +33,11 @@ func (d *CustomTcp) HeadLen() int {
 	return 4
 }
 
-func (d *CustomTcp) Pong() []byte {
+func (d *CustomTcp) PackPong() []byte {
 	return CustomPongMessage
 }
 
-func (d *CustomTcp) Ping() []byte {
+func (d *CustomTcp) PackPing() []byte {
 	return CustomPingMessage
 }
 

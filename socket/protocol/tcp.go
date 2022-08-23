@@ -22,11 +22,11 @@ func (d *DefaultTcpProtocol) HeadLen() int {
 	return 16
 }
 
-func (d *DefaultTcpProtocol) Pong() []byte {
+func (d *DefaultTcpProtocol) PackPong() []byte {
 	return PongMessage
 }
 
-func (d *DefaultTcpProtocol) Ping() []byte {
+func (d *DefaultTcpProtocol) PackPing() []byte {
 	return PingMessage
 }
 

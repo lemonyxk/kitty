@@ -37,7 +37,7 @@ func asyncTcpServer() {
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			return stream.Conn.Emit(stream.Event, stream.Data)
+			return stream.Emit(stream.Event, stream.Data)
 		})
 	})
 

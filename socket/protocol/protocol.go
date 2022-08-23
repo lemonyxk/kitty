@@ -40,8 +40,8 @@ type Protocol interface {
 	Encode(messageType byte, id int64, route []byte, body []byte) []byte
 	Reader() func(n int, buf []byte, fn func(bytes []byte)) error
 	HeadLen() int
-	Ping() []byte
-	Pong() []byte
+	PackPing() []byte
+	PackPong() []byte
 	IsPong(messageType byte) bool
 	IsPing(messageType byte) bool
 	IsUnknown(messageType byte) bool

@@ -54,7 +54,7 @@ func (e *errString) Format(s fmt.State, verb rune) {
 }
 
 func New(text string) error {
-	return &errString{message: text}
+	return &errString{message: text, err: nil, stack: stack(2)}
 }
 
 func NewWithStack(text string) error {
@@ -84,15 +84,20 @@ func WithStack(err error) error {
 	if err == nil {
 		return nil
 	}
-	var e = &errString{message: err.Error()}
-	e.stack = stack(2)
-	return e
+	return &errString{message: err.Error(), stack: stack(2)}
 }
 
 func Wrap(err error, text string) error {
 	if err == nil {
 		return nil
 	}
+
+	if e, ok := err.(*errString); ok {
+		e.message = text + ": " + err.Error()
+		e.err = err
+		return e
+	}
+
 	return &errString{
 		message: text + ": " + err.Error(),
 		err:     err,

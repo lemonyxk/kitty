@@ -20,7 +20,8 @@ func main() {
 
 	var err = test1()
 
-	fmt.Printf("%+v\n", err)
+	fmt.Printf("%+v\n", errors.Unwrap(errors.Unwrap(err)))
+	fmt.Println(err)
 }
 
 func test1() error {
@@ -40,5 +41,5 @@ func test2() error {
 }
 
 func test3() error {
-	return fmt.Errorf("test3 error")
+	return errors.NewWithStack("test3 error")
 }

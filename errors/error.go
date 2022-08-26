@@ -40,7 +40,7 @@ func (e *errString) Format(s fmt.State, verb rune) {
 		if s.Flag('+') {
 			_, _ = io.WriteString(s, e.message+"\n")
 			for _, f := range e.stack {
-				var str = f.funcName + "\n\t" + f.file + ":" + strconv.Itoa(f.line) + "\n"
+				var str = f.funcName + "\n  " + f.file + ":" + strconv.Itoa(f.line) + "\n"
 				_, _ = io.WriteString(s, str)
 			}
 			return
@@ -54,13 +54,11 @@ func (e *errString) Format(s fmt.State, verb rune) {
 }
 
 func New(text string) error {
-	return &errString{message: text, err: nil, stack: stack(2)}
+	return &errString{message: text}
 }
 
 func NewWithStack(text string) error {
-	var e = &errString{message: text}
-	e.stack = stack(2)
-	return e
+	return &errString{message: text, stack: stack(2)}
 }
 
 func stack(deep int) []info {
@@ -92,17 +90,17 @@ func Wrap(err error, text string) error {
 		return nil
 	}
 
-	if e, ok := err.(*errString); ok {
-		e.message = text + ": " + err.Error()
-		e.err = err
-		return e
-	}
-
-	return &errString{
+	var r = &errString{
 		message: text + ": " + err.Error(),
 		err:     err,
-		stack:   stack(2),
 	}
+
+	if e, ok := err.(*errString); ok {
+		r.stack = e.stack
+		return r
+	}
+
+	return r
 }
 
 func Is(err, target error) bool {

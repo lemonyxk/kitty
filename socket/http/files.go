@@ -16,6 +16,21 @@ type Files struct {
 	files map[string][]*multipart.FileHeader
 }
 
+func (f *Files) Has(fileName string) bool {
+	for name := range f.files {
+		if fileName == name {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (f *Files) Empty(fileName string) bool {
+	var v = f.First(fileName)
+	return v == nil
+}
+
 func (f *Files) Files() map[string][]*multipart.FileHeader {
 	return f.files
 }

@@ -33,6 +33,7 @@ type StaticRouter struct {
 	staticGlobalDirMiddle  func(w http.ResponseWriter, r *http.Request, f http.File, i fs.FileInfo) error
 	staticDownload         bool
 	openDir                []int
+	allowMethod            []string
 }
 
 func (r *StaticRouter) SetDefaultIndex(index ...string) {
@@ -41,6 +42,19 @@ func (r *StaticRouter) SetDefaultIndex(index ...string) {
 
 func (r *StaticRouter) SetOpenDir(dirIndex ...int) {
 	r.openDir = dirIndex
+}
+
+func (r *StaticRouter) SetAllowMethod(methods ...string) {
+	r.allowMethod = methods
+}
+
+func (r *StaticRouter) IsAllowMethod(method string) bool {
+	for i := 0; i < len(r.allowMethod); i++ {
+		if r.allowMethod[i] == method {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *StaticRouter) SetStaticDownload(flag bool) {
@@ -83,6 +97,7 @@ func (r *StaticRouter) SetStaticPath(prefixPath string, fixPath string, fileSyst
 	r.static = append(r.static, static)
 	r.staticFileMiddle = make(map[string]func(w http.ResponseWriter, r *http.Request, f http.File, i fs.FileInfo) error)
 	r.staticDirMiddle = make(map[string]func(w http.ResponseWriter, r *http.Request, f http.File, i fs.FileInfo) error)
+	r.allowMethod = []string{http.MethodGet, http.MethodOptions, http.MethodHead}
 
 	return static.index
 }

@@ -189,7 +189,7 @@ func (s *Server) staticDefaultFileMiddle(w http.ResponseWriter, err error, file 
 }
 
 func (s *Server) staticDefaultDirMiddle(w http.ResponseWriter, r *http.Request, file http.File) error {
-	dir, err := file.Readdir(0)
+	dir, err := file.Readdir(-1)
 	if err != nil {
 		return nil
 	}

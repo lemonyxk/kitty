@@ -202,18 +202,17 @@ func (s *Server) Shutdown() error {
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	if s.router == nil && s.staticRouter == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
 	// static file
-	if s.staticRouter != nil && r.Method == http.MethodGet {
+	if s.staticRouter != nil && s.staticRouter.IsAllowMethod(r.Method) {
 		if s.staticHandler(w, r) == nil {
 			return
 		}
 	}
 
-	s.process(w, r)
+	if s.router != nil {
+		s.process(w, r)
+		return
+	}
+
 	return
 }

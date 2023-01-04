@@ -90,7 +90,15 @@ func (s *Server) handler(stream *http2.Stream) {
 		return
 	}
 
-	if n.Data.Method != method {
+	var allowMethod = false
+	for i := 0; i < len(n.Data.Method); i++ {
+		if method == n.Data.Method[i] {
+			allowMethod = true
+			break
+		}
+	}
+
+	if !allowMethod {
 		stream.Response.WriteHeader(http.StatusMethodNotAllowed)
 		var err = errors.Wrap(errors.MethodNotAllowed, stream.Request.URL.Path)
 		if s.OnError != nil {

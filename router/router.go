@@ -66,12 +66,21 @@ func (r *Router[T]) Create() *Handler[T] {
 	return &Handler[T]{group: r.Group("")}
 }
 
-func (r *Router[T]) RouteMethod(method string, path ...string) *Route[T] {
-	return (&Handler[T]{group: r.Group("")}).RouteMethod(method, path...)
-}
-
 func (r *Router[T]) Route(path ...string) *Route[T] {
 	return (&Handler[T]{group: r.Group("")}).Route(path...)
+}
+
+func (r *Router[T]) Method(method ...string) *MethodsRouter[T] {
+	return &MethodsRouter[T]{router: r, method: method}
+}
+
+type MethodsRouter[T any] struct {
+	router *Router[T]
+	method []string
+}
+
+func (m *MethodsRouter[T]) Route(path ...string) *Route[T] {
+	return (&Handler[T]{group: m.router.Group("")}).Method(m.method...).Route(path...)
 }
 
 func (r *Router[T]) GetRoute(path string) (*tire.Tire[*Node[T]], []byte) {

@@ -14,40 +14,49 @@ import "strings"
 
 // type GroupFunc[T any] func(handler *RouteHandler[T])
 
+type MethodsHandler[T any] struct {
+	method []string
+	group  *Group[T]
+}
+
+func (m *MethodsHandler[T]) Route(path ...string) *Route[T] {
+	return &Route[T]{method: m.method, path: path, group: m.group}
+}
+
 type Handler[T any] struct {
 	group *Group[T]
 }
 
 func (rh *Handler[T]) Route(path ...string) *Route[T] {
-	return &Route[T]{method: "GET", path: path, group: rh.group}
+	return &Route[T]{method: []string{"GET"}, path: path, group: rh.group}
 }
 
-func (rh *Handler[T]) RouteMethod(method string, path ...string) *Route[T] {
-	return &Route[T]{method: method, path: path, group: rh.group}
+func (rh *Handler[T]) Method(method ...string) *MethodsHandler[T] {
+	return &MethodsHandler[T]{method: method, group: rh.group}
 }
 
 func (rh *Handler[T]) Get(path ...string) *Route[T] {
-	return rh.RouteMethod("GET", path...)
+	return rh.Method("GET").Route(path...)
 }
 
 func (rh *Handler[T]) Post(path ...string) *Route[T] {
-	return rh.RouteMethod("POST", path...)
+	return rh.Method("POST").Route(path...)
 }
 
 func (rh *Handler[T]) Delete(path ...string) *Route[T] {
-	return rh.RouteMethod("DELETE", path...)
+	return rh.Method("DELETE").Route(path...)
 }
 
 func (rh *Handler[T]) Put(path ...string) *Route[T] {
-	return rh.RouteMethod("PUT", path...)
+	return rh.Method("PUT").Route(path...)
 }
 
 func (rh *Handler[T]) Patch(path ...string) *Route[T] {
-	return rh.RouteMethod("PATCH", path...)
+	return rh.Method("PATCH").Route(path...)
 }
 
 func (rh *Handler[T]) Option(path ...string) *Route[T] {
-	return rh.RouteMethod("OPTION", path...)
+	return rh.Method("OPTION").Route(path...)
 }
 
 func (rh *Handler[T]) Remove(path ...string) {

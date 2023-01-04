@@ -113,7 +113,7 @@ func Test_HTTPS_Get(t *testing.T) {
 
 	var httpServerRouter = &router.Router[*http.Stream]{}
 
-	httpServerRouter.RouteMethod("GET", "/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream) error {
 		var res = stream.Query.First("a").String()
 		assert.True(t, res == "1", res)
 		return stream.EndString("hello world!")
@@ -131,7 +131,7 @@ func Test_HTTP_Get(t *testing.T) {
 
 	var httpServerRouter = &router.Router[*http.Stream]{}
 
-	httpServerRouter.RouteMethod("GET", "/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream) error {
 		assert.True(t, stream.Query.First("a").String() == "1")
 		return stream.EndString("hello world!")
 	})
@@ -146,7 +146,7 @@ func Test_HTTP_Post(t *testing.T) {
 
 	var httpServerRouter = &router.Router[*http.Stream]{}
 
-	httpServerRouter.RouteMethod("POST", "/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream) error {
 		assert.True(t, stream.Form.First("a").String() == "2")
 		return stream.End("hello group!")
 	})
@@ -162,7 +162,7 @@ func Test_HTTP_Protobuf(t *testing.T) {
 
 	var httpServerRouter = &router.Router[*http.Stream]{}
 
-	httpServerRouter.RouteMethod("POST", "/proto").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream) error {
 		var res awesomepackage.AwesomeMessage
 		var msg = stream.Protobuf.Bytes()
 		var err = proto.Unmarshal(msg, &res)

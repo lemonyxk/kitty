@@ -16,5 +16,5 @@ type Node[T any] struct {
 	Function Func[T]
 	Before   []Before[T]
 	After    []After[T]
-	Method   string
+	Method   []string
 }

@@ -87,7 +87,7 @@ func runHttpServer() {
 	})
 
 	// or you can just use original router
-	httpServerRouter.RouteMethod("POST", "/proto").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		log.Println(stream.AutoGet("name").String())
 		var res awesomepackage.AwesomeMessage

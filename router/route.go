@@ -20,7 +20,7 @@ import (
 
 type Route[T any] struct {
 	path        []string
-	method      string
+	method      []string
 	before      []Before[T]
 	after       []After[T]
 	passBefore  bool
@@ -72,7 +72,10 @@ func (r *Route[T]) Handler(fn Func[T]) {
 
 	var g = r.group
 
-	var method = strings.ToUpper(r.method)
+	var method []string
+	for i := 0; i < len(r.method); i++ {
+		method = append(method, strings.ToUpper(r.method[i]))
+	}
 
 	if g == nil {
 		g = new(Group[T])

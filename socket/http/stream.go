@@ -369,16 +369,16 @@ func (s *Stream) String() string {
 	}
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		return s.Form.String()
-	}
-
-	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
 		var filesStr = s.Files.String()
 		var formStr = s.Form.String()
 		if filesStr == "" {
 			return formStr
 		}
 		return formStr + " " + filesStr
+	}
+
+	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
+		return s.Form.String()
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationJson) {

@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/json-iterator/go"
@@ -372,7 +373,12 @@ func (s *Stream) String() string {
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
-		return s.Form.String()
+		var filesStr = s.Files.String()
+		var formStr = s.Form.String()
+		if filesStr == "" {
+			return formStr
+		}
+		return formStr + " " + filesStr
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationJson) {
@@ -380,7 +386,7 @@ func (s *Stream) String() string {
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
-		return string(s.Protobuf.Bytes())
+		return "<Protobuf: " + strconv.Itoa(len(s.Protobuf.Bytes())) + " >"
 	}
 
 	return ""

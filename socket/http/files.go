@@ -10,7 +10,10 @@
 
 package http
 
-import "mime/multipart"
+import (
+	"bytes"
+	"mime/multipart"
+)
 
 type Files struct {
 	files map[string][]*multipart.FileHeader
@@ -54,4 +57,28 @@ func (f *Files) All(fileName string) []*multipart.FileHeader {
 		return file
 	}
 	return nil
+}
+
+func (f *Files) String() string {
+
+	var buff bytes.Buffer
+
+	for name := range f.files {
+		buff.WriteString(name + ":")
+		for j := 0; j < len(f.files[name]); j++ {
+			buff.WriteString(f.files[name][j].Filename)
+			if j != len(f.files[name])-1 {
+				buff.WriteString(",")
+			}
+		}
+		buff.WriteString(" ")
+	}
+
+	if buff.Len() == 0 {
+		return ""
+	}
+
+	var res = buff.String()
+
+	return res[:len(res)-1]
 }

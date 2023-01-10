@@ -13,10 +13,15 @@ package errors
 import (
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strconv"
+	"strings"
 )
+
+var pwd, _ = os.Getwd()
 
 type info struct {
 	file     string
@@ -39,8 +44,12 @@ func (e *errString) Format(s fmt.State, verb rune) {
 	case 'v':
 		if s.Flag('+') {
 			_, _ = io.WriteString(s, e.message+"\n")
-			for _, f := range e.stack {
-				var str = f.funcName + "\n  " + f.file + ":" + strconv.Itoa(f.line) + "\n"
+			for i, f := range e.stack {
+				// var str = f.funcName + "\n\t" + f.file + ":" + strconv.Itoa(f.line) + "\n"
+				var str = strings.Repeat(" ", 4) + "at " + filepath.Base(f.funcName) + " " + f.file + ":" + strconv.Itoa(f.line)
+				if i != len(e.stack)-1 {
+					str = str + "\n"
+				}
 				_, _ = io.WriteString(s, str)
 			}
 			return
@@ -68,6 +77,10 @@ func stack(deep int) []info {
 		if !ok {
 			break
 		}
+		// if !strings.HasPrefix(codePath, pwd) {
+			// continue
+		// }
+		// codePath = strings.ReplaceAll(codePath, pwd+"/", "")
 		prevFunc := runtime.FuncForPC(pc).Name()
 		res = append(res, info{
 			file:     codePath,

@@ -12,7 +12,8 @@ package server
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
+	"io/fs"
 	"mime"
 	"net/http"
 	"path/filepath"
@@ -162,24 +163,18 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	return s.staticDefaultFileMiddle(w, err, file, ext)
+	return s.staticDefaultFileMiddle(w, err, file, info, ext)
 }
 
-func (s *Server) staticDefaultFileMiddle(w http.ResponseWriter, err error, file http.File, ext string) error {
-	bts, err := ioutil.ReadAll(file)
-	if err != nil {
-		w.WriteHeader(http.StatusForbidden)
-		return nil
-	}
-
+func (s *Server) staticDefaultFileMiddle(w http.ResponseWriter, err error, file http.File, info fs.FileInfo, ext string) error {
 	var contentType = mime.TypeByExtension(ext)
 	if contentType == "" {
 		contentType = kitty.TextPlain
 	}
 
 	w.Header().Set(kitty.ContentType, contentType)
-	w.Header().Set(kitty.ContentLength, strconv.Itoa(len(bts)))
-	_, err = w.Write(bts)
+	w.Header().Set(kitty.ContentLength, strconv.Itoa(int(info.Size())))
+	_, err = io.Copy(w, file)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		return nil

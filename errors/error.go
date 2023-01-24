@@ -21,7 +21,7 @@ import (
 	"strings"
 )
 
-var pwd, _ = os.Getwd()
+// var pwd, _ = os.Getwd()
 
 type info struct {
 	file     string
@@ -45,8 +45,7 @@ func (e *errString) Format(s fmt.State, verb rune) {
 		if s.Flag('+') {
 			_, _ = io.WriteString(s, e.message+"\n")
 			for i, f := range e.stack {
-				// var str = f.funcName + "\n\t" + f.file + ":" + strconv.Itoa(f.line) + "\n"
-				var str = strings.Repeat(" ", 4) + "at " + filepath.Base(f.funcName) + " " + f.file + ":" + strconv.Itoa(f.line)
+				var str = strings.Repeat(" ", 4) + "at " + filepath.Base(f.funcName) + " in " + f.file + ":" + strconv.Itoa(f.line)
 				if i != len(e.stack)-1 {
 					str = str + "\n"
 				}
@@ -77,10 +76,20 @@ func stack(deep int) []info {
 		if !ok {
 			break
 		}
-		// if !strings.HasPrefix(codePath, pwd) {
-			// continue
-		// }
-		// codePath = strings.ReplaceAll(codePath, pwd+"/", "")
+
+		var index = 0
+		var count = 0
+		for i := len(codePath) - 1; i >= 0; i-- {
+			if codePath[i] == os.PathSeparator {
+				count++
+			}
+			if count == 3 {
+				index = i + 1
+				break
+			}
+		}
+
+		codePath = codePath[index:]
 		prevFunc := runtime.FuncForPC(pc).Name()
 		res = append(res, info{
 			file:     codePath,

@@ -15,7 +15,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -326,7 +325,7 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 	}
 	defer func() { _ = response.Body.Close() }()
 
-	var dataBytes []byte
+	var buf = new(bytes.Buffer)
 
 	if info.progress != nil {
 		var total, _ = strconv.ParseInt(response.Header.Get(kitty.ContentLength), 10, 64)
@@ -336,16 +335,16 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 			rate:       info.progress.rate,
 		}
 
-		dataBytes, err = ioutil.ReadAll(io.TeeReader(response.Body, writer))
+		_, err = io.Copy(buf, io.TeeReader(response.Body, writer))
 		if err != nil {
 			return &Req{err: err}
 		}
 	} else {
-		dataBytes, err = ioutil.ReadAll(response.Body)
+		_, err = io.Copy(buf, response.Body)
 		if err != nil {
 			return &Req{err: err}
 		}
 	}
 
-	return &Req{code: response.StatusCode, data: dataBytes, req: response}
+	return &Req{code: response.StatusCode, buf: buf, req: response}
 }

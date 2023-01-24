@@ -15,6 +15,7 @@ import (
 	"log"
 	http2 "net/http"
 	"os"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/v2"
@@ -86,6 +87,11 @@ func runHttpServer() {
 		return stream.EndString("hello world!")
 	})
 
+	httpRouter.Post("/post").Before(before).After(after).Handler(func(stream *http.Stream) error {
+		log.Println(stream.Form.String())
+		return stream.EndString("hello world!")
+	})
+
 	// or you can just use original router
 	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
@@ -103,6 +109,7 @@ func runHttpServer() {
 	// create group router
 	var group = httpServerRouter.Group("/hello").Create()
 	group.Get("/world").Handler(func(t *http.Stream) error {
+		time.Sleep(time.Second * 3)
 		return t.JsonFormat("SUCCESS", 200, os.Getpid())
 	})
 
@@ -149,12 +156,20 @@ func main() {
 
 	log.Println("res:", res.String())
 
-	res = client.Get("http://127.0.0.1:8666/hello/world").Query(kitty2.M{"a": 1}).Send()
-	if res.LastError() != nil {
-		log.Println(res.LastError())
-	}
+	var h = client.Get("http://127.0.0.1:8666/hello/world").Query(kitty2.M{"a": 1})
 
-	log.Println("res:", res.String())
+	time.AfterFunc(time.Second, func() {
+		h.Abort()
+	})
+
+	go func() {
+		res = h.Send()
+		if res.LastError() != nil {
+			log.Println(res.LastError())
+		}
+
+		log.Println("res:", res.String())
+	}()
 
 	select {}
 }

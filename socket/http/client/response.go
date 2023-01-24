@@ -10,21 +10,24 @@
 
 package client
 
-import "net/http"
+import (
+	"bytes"
+	"net/http"
+)
 
 type Req struct {
 	err  error
 	code int
-	data []byte
+	buf  *bytes.Buffer
 	req  *http.Response
 }
 
 func (r *Req) String() string {
-	return string(r.data)
+	return r.buf.String()
 }
 
 func (r *Req) Bytes() []byte {
-	return r.data
+	return r.buf.Bytes()
 }
 
 func (r *Req) Code() int {

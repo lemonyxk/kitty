@@ -3,7 +3,7 @@ package http
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -94,10 +94,11 @@ func (s *Stream) EndBytes(data []byte) error {
 	return err
 }
 
-func (s *Stream) EndFile(fileName string, content any) error {
+func (s *Stream) EndFile(fileName string, file io.Reader) error {
 	s.SetHeader(kitty.ContentType, kitty.ApplicationOctetStream)
 	s.SetHeader(kitty.ContentDisposition, "attachment;filename="+fileName)
-	return s.End(content)
+	_, err := io.Copy(s.Response, file)
+	return err
 }
 
 func (s *Stream) Host() string {
@@ -132,7 +133,7 @@ func (s *Stream) ParseJson() *Json {
 
 	s.hasParseJson = true
 
-	jsonBody, err := ioutil.ReadAll(s.Request.Body)
+	jsonBody, err := io.ReadAll(s.Request.Body)
 	if err != nil {
 		return s.Json
 	}
@@ -151,7 +152,7 @@ func (s *Stream) ParseProtobuf() *Protobuf {
 
 	s.hasParseProtobuf = true
 
-	protobufBody, err := ioutil.ReadAll(s.Request.Body)
+	protobufBody, err := io.ReadAll(s.Request.Body)
 	if err != nil {
 		return s.Protobuf
 	}

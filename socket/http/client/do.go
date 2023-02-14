@@ -100,47 +100,82 @@ func doFormData(method string, url string, info *info) (*http.Request, context.C
 		return nil, nil, errors.Wrap(errors.AssertionFailed, "map[string]interface{}")
 	}
 
-	var buf = new(bytes.Buffer)
-	part := multipart.NewWriter(buf)
+	out, in := io.Pipe()
+	part := multipart.NewWriter(in)
+	var ctx, cancel = context.WithCancel(context.Background())
+	pCtx, pCancel := context.WithCancel(ctx)
+	go func() {
+		defer func() {
+			// if close in first then the part will close too before read.
+			// so you can not read the part.
+			_ = part.Close()
+			_ = in.Close()
+			pCancel()
+		}()
 
-	for i := 0; i < len(body); i++ {
-		for key, value := range body[i] {
-			switch value.(type) {
-			case string:
-				if err := part.WriteField(key, value.(string)); err != nil {
-					return nil, nil, err
-				}
-			case int:
-				if err := part.WriteField(key, strconv.Itoa(value.(int))); err != nil {
-					return nil, nil, err
-				}
-			case float64:
-				if err := part.WriteField(key, strconv.FormatFloat(value.(float64), 'f', -1, 64)); err != nil {
-					return nil, nil, err
-				}
-			case *os.File:
-				ff, err := part.CreateFormFile(key, value.(*os.File).Name())
-				if err != nil {
-					return nil, nil, err
-				}
-				_, err = io.Copy(ff, value.(*os.File))
-				if err != nil {
-					return nil, nil, err
-				}
-			default:
-				if err := part.WriteField(key, fmt.Sprintf("%v", value)); err != nil {
-					return nil, nil, err
+		for i := 0; i < len(body); i++ {
+			for key, value := range body[i] {
+				switch value.(type) {
+				case string:
+					w, err := part.CreateFormField(key)
+					if err != nil {
+						return
+					}
+					if _, err := io.Copy(w, strings.NewReader(value.(string))); err != nil {
+						return
+					}
+				case int:
+					w, err := part.CreateFormField(key)
+					if err != nil {
+						return
+					}
+					str := strconv.Itoa(value.(int))
+					if _, err := io.Copy(w, strings.NewReader(str)); err != nil {
+						return
+					}
+				case float64:
+					w, err := part.CreateFormField(key)
+					if err != nil {
+						return
+					}
+					str := strconv.FormatFloat(value.(float64), 'f', -1, 64)
+					if _, err := io.Copy(w, strings.NewReader(str)); err != nil {
+						return
+					}
+				case *os.File:
+					w, err := part.CreateFormFile(key, value.(*os.File).Name())
+					if err != nil {
+						return
+					}
+					if _, err = io.Copy(w, value.(*os.File)); err != nil {
+						return
+					}
+				default:
+					w, err := part.CreateFormField(key)
+					if err != nil {
+						return
+					}
+					str := fmt.Sprintf("%v", value)
+					if _, err := io.Copy(w, strings.NewReader(str)); err != nil {
+						return
+					}
 				}
 			}
 		}
-	}
+	}()
 
-	if err := part.Close(); err != nil {
-		return nil, nil, err
-	}
+	go func() {
+		for {
+			select {
+			case <-pCtx.Done():
+				_ = in.Close()
+				_ = part.Close()
+				return
+			}
+		}
+	}()
 
-	var ctx, cancel = context.WithCancel(context.Background())
-	request, err := http.NewRequestWithContext(ctx, method, url, buf)
+	request, err := http.NewRequestWithContext(ctx, method, url, out)
 	if err != nil {
 		cancel()
 		return nil, nil, err
@@ -278,6 +313,15 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 
 	defer cancel()
 
+	// NOT SAFE FOR GOROUTINE IF YOU SET TIMEOUT OR KEEPALIVE OR PROXY OR PROGRESS
+	// MAKE SURE ONE BY ONE
+	defer func() {
+		defaultClient.Timeout = clientTimeout
+		defaultDialer.KeepAlive = dialerKeepAlive
+		defaultTransport.Proxy = http.ProxyFromEnvironment
+		defaultTransport.DisableCompression = false
+	}()
+
 	if req == nil {
 		return &Req{err: errors.Invalid}
 	}
@@ -309,15 +353,6 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 	if info.progress != nil {
 		defaultTransport.DisableCompression = true
 	}
-
-	// NOT SAFE FOR GOROUTINE IF YOU SET TIMEOUT OR KEEPALIVE OR PROXY OR PROGRESS
-	// MAKE SURE ONE BY ONE
-	defer func() {
-		defaultClient.Timeout = clientTimeout
-		defaultDialer.KeepAlive = dialerKeepAlive
-		defaultTransport.Proxy = http.ProxyFromEnvironment
-		defaultTransport.DisableCompression = false
-	}()
 
 	response, err := defaultClient.Do(req)
 	if err != nil {

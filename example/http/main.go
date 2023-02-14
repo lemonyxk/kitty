@@ -92,6 +92,12 @@ func runHttpServer() {
 		return stream.EndString("hello world!")
 	})
 
+	httpRouter.Post("/file").Before(before).After(after).Handler(func(stream *http.Stream) error {
+		log.Println(stream.Multipart.Files.String())
+		log.Println(stream.Multipart.Form.String())
+		return stream.EndString("hello world!")
+	})
+
 	// or you can just use original router
 	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
@@ -169,6 +175,25 @@ func main() {
 		}
 
 		log.Println("res:", res.String())
+	}()
+
+
+	go func() {
+		var f, err = os.Open("./new.go")
+		if err != nil {
+			panic(err)
+		}
+
+		var res = client.Post("http://127.0.0.1:8666/file").Multipart(kitty2.M{
+			"file": f,"a":1,
+		}).Send()
+
+		if res.LastError() != nil {
+			log.Println(res.LastError())
+		} else{
+			log.Println("res:", res.String())
+		}
+
 	}()
 
 	select {}

@@ -12,8 +12,6 @@ package client
 
 import (
 	"net/http"
-
-	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
 type Client struct {
@@ -25,7 +23,6 @@ func (h *Client) Post(url string) *info {
 	h.method = http.MethodPost
 	h.url = url
 	var info = &info{handler: h}
-	info.SetHeader(kitty.ContentType, kitty.ApplicationFormUrlencoded)
 	return info
 }
 

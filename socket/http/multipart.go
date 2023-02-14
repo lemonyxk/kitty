@@ -15,6 +15,11 @@ import (
 	"mime/multipart"
 )
 
+type Multipart struct {
+	Form  *Store
+	Files *Files
+}
+
 type Files struct {
 	files map[string][]*multipart.FileHeader
 }

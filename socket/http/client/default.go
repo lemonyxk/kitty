@@ -30,7 +30,7 @@ var defaultDialer = net.Dialer{
 
 var defaultTlsConfig = &tls.Config{}
 
-var defaultTransport = http.Transport{
+var defaultTransport = &http.Transport{
 	Proxy:                 http.ProxyFromEnvironment,
 	DisableCompression:    false,
 	DisableKeepAlives:     false,
@@ -46,5 +46,5 @@ var defaultTransport = http.Transport{
 
 var defaultClient = http.Client{
 	Timeout:   clientTimeout,
-	Transport: &defaultTransport,
+	Transport: defaultTransport,
 }

@@ -16,34 +16,34 @@ import (
 
 type Stream struct {
 	// Server   *Server
-	Response http.ResponseWriter
-	Request  *http.Request
-	Query    *Store
-	Form     *Store
-	Json     *Json
-	Protobuf *Protobuf
-	Files    *Files
+	Response  http.ResponseWriter
+	Request   *http.Request
+	Query     *Store
+	Form      *Store
+	Multipart *Multipart
+	Json      *Json
+	Protobuf  *Protobuf
 
 	Params  kitty.Params
 	Context kitty.Context
 	Logger  kitty.Logger
 
-	maxMemory        int64
-	hasParseQuery    bool
-	hasParseForm     bool
-	hasParseJson     bool
-	hasParseProtobuf bool
-	hasParseFiles    bool
+	maxMemory         int64
+	hasParseQuery     bool
+	hasParseForm      bool
+	hasParseMultipart bool
+	hasParseJson      bool
+	hasParseProtobuf  bool
 }
 
 func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
 	return &Stream{
 		Response: w, Request: r,
-		Protobuf: &Protobuf{},
-		Query:    &Store{},
-		Form:     &Store{},
-		Json:     &Json{},
-		Files:    &Files{},
+		Protobuf:  &Protobuf{},
+		Query:     &Store{},
+		Form:      &Store{},
+		Json:      &Json{},
+		Multipart: &Multipart{Files: &Files{}, Form: &Store{}},
 	}
 }
 
@@ -162,47 +162,31 @@ func (s *Stream) ParseProtobuf() *Protobuf {
 	return s.Protobuf
 }
 
-func (s *Stream) ParseFiles() *Files {
+func (s *Stream) ParseMultipart() *Multipart {
 
-	if s.hasParseFiles {
-		return s.Files
+	if s.hasParseMultipart {
+		return s.Multipart
 	}
 
-	s.hasParseFiles = true
+	s.hasParseMultipart = true
 
 	err := s.Request.ParseMultipartForm(s.maxMemory)
 	if err != nil {
-		return s.Files
-	}
-
-	var data = s.Request.MultipartForm.File
-
-	s.Files.files = data
-
-	return s.Files
-}
-
-func (s *Stream) ParseMultipart() *Store {
-
-	if s.hasParseForm {
-		return s.Form
-	}
-
-	s.hasParseForm = true
-
-	err := s.Request.ParseMultipartForm(s.maxMemory)
-	if err != nil {
-		return s.Form
+		return s.Multipart
 	}
 
 	var parse = s.Request.MultipartForm.Value
 
 	for k, v := range parse {
-		s.Form.keys = append(s.Form.keys, k)
-		s.Form.values = append(s.Form.values, v)
+		s.Multipart.Form.keys = append(s.Multipart.Form.keys, k)
+		s.Multipart.Form.values = append(s.Multipart.Form.values, v)
 	}
 
-	return s.Form
+	var data = s.Request.MultipartForm.File
+
+	s.Multipart.Files.files = data
+
+	return s.Multipart
 }
 
 func (s *Stream) ParseQuery() *Store {
@@ -262,7 +246,6 @@ func (s *Stream) AutoParse() {
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
 		s.ParseMultipart()
-		s.ParseFiles()
 		return
 	}
 
@@ -290,7 +273,7 @@ func (s *Stream) Has(key string) bool {
 	var header = s.Request.Header.Get(kitty.ContentType)
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		return s.Form.Has(key)
+		return s.Multipart.Form.Has(key)
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
@@ -312,7 +295,7 @@ func (s *Stream) Empty(key string) bool {
 	var header = s.Request.Header.Get(kitty.ContentType)
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		return s.Form.Empty(key)
+		return s.Multipart.Form.Empty(key)
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
@@ -334,7 +317,7 @@ func (s *Stream) AutoGet(key string) Value {
 	var header = s.Request.Header.Get(kitty.ContentType)
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		return s.Form.First(key)
+		return s.Multipart.Form.First(key)
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
@@ -370,8 +353,8 @@ func (s *Stream) String() string {
 	}
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		var filesStr = s.Files.String()
-		var formStr = s.Form.String()
+		var filesStr = s.Multipart.Files.String()
+		var formStr = s.Multipart.Form.String()
 		if filesStr == "" {
 			return formStr
 		}

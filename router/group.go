@@ -44,11 +44,23 @@ func (g *Group[T]) Remove(path ...string) {
 }
 
 func (g *Group[T]) Handler(fn func(handler *Handler[T])) {
-	fn(&Handler[T]{group: g})
+	fn(&Handler[T]{group: &Group[T]{
+		Path:        g.Path,
+		Description: g.Description,
+		BeforeList:  g.BeforeList,
+		AftersList:  g.AftersList,
+		Router:      g.Router,
+	}})
 }
 
 func (g *Group[T]) Create() *Handler[T] {
-	return &Handler[T]{group: g}
+	return &Handler[T]{group: &Group[T]{
+		Path:        g.Path,
+		Description: g.Description,
+		BeforeList:  g.BeforeList,
+		AftersList:  g.AftersList,
+		Router:      g.Router,
+	}}
 }
 
 func (g *Group[T]) Desc(desc ...string) *Group[T] {

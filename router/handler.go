@@ -28,8 +28,13 @@ type Handler[T any] struct {
 }
 
 func (rh *Handler[T]) Group(path ...string) *Group[T] {
-	rh.group.Path = rh.group.Path + strings.Join(path, "")
-	return rh.group
+	return &Group[T]{
+		Path:        rh.group.Path + strings.Join(path, ""),
+		Description: rh.group.Description,
+		BeforeList:  rh.group.BeforeList,
+		AftersList:  rh.group.AftersList,
+		Router:      rh.group.Router,
+	}
 }
 
 func (rh *Handler[T]) Route(path ...string) *Route[T] {

@@ -13,10 +13,11 @@ package router
 import "strings"
 
 type Group[T any] struct {
-	Path       string
-	BeforeList []Before[T]
-	AftersList []After[T]
-	Router     *Router[T]
+	Path        string
+	Description []string
+	BeforeList  []Before[T]
+	AftersList  []After[T]
+	Router      *Router[T]
 }
 
 func (g *Group[T]) Before(before ...Before[T]) *Group[T] {
@@ -48,4 +49,9 @@ func (g *Group[T]) Handler(fn func(handler *Handler[T])) {
 
 func (g *Group[T]) Create() *Handler[T] {
 	return &Handler[T]{group: g}
+}
+
+func (g *Group[T]) Desc(desc ...string) *Group[T] {
+	g.Description = append(g.Description, desc...)
+	return g
 }

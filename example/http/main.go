@@ -126,6 +126,14 @@ func runHttpServer() {
 		})
 	})
 
+	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream]) {
+		handler.Group("/hello").Handler(func(handler *router.Handler[*http.Stream]) {
+			handler.Get("/hello").Handler(func(t *http.Stream) error {
+				return t.JsonFormat("SUCCESS", 200, os.Getpid())
+			})
+		})
+	})
+
 	httpServer.OnSuccess = func() {
 		ready <- struct{}{}
 		log.Println(httpServer.LocalAddr())
@@ -177,7 +185,6 @@ func main() {
 		log.Println("res:", res.String())
 	}()
 
-
 	go func() {
 		var f, err = os.Open("./new.go")
 		if err != nil {
@@ -185,12 +192,12 @@ func main() {
 		}
 
 		var res = client.Post("http://127.0.0.1:8666/file").Multipart(kitty2.M{
-			"file": f,"a":1,
+			"file": f, "a": 1,
 		}).Send()
 
 		if res.LastError() != nil {
 			log.Println(res.LastError())
-		} else{
+		} else {
 			log.Println("res:", res.String())
 		}
 

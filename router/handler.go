@@ -27,6 +27,11 @@ type Handler[T any] struct {
 	group *Group[T]
 }
 
+func (rh *Handler[T]) Group(path ...string) *Group[T] {
+	rh.group.Path = rh.group.Path + strings.Join(path, "")
+	return rh.group
+}
+
 func (rh *Handler[T]) Route(path ...string) *Route[T] {
 	return &Route[T]{method: []string{"GET"}, path: path, group: rh.group}
 }

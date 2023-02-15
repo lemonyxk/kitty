@@ -28,6 +28,12 @@ type Route[T any] struct {
 	passAfter   bool
 	forceAfter  bool
 	group       *Group[T]
+	desc        []string
+}
+
+func (r *Route[T]) Desc(desc ...string) *Route[T] {
+	r.desc = append(r.desc, desc...)
+	return r
 }
 
 func (r *Route[T]) Before(before ...Before[T]) *Route[T] {
@@ -91,6 +97,8 @@ func (r *Route[T]) Handler(fn Func[T]) {
 		var cba = &Node[T]{}
 
 		cba.Info = ci.File + ":" + strconv.Itoa(ci.Line)
+
+		cba.Desc = append(g.Description, r.desc...)
 
 		cba.Function = fn
 

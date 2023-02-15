@@ -12,6 +12,7 @@ package router
 
 type Node[T any] struct {
 	Info     string
+	Desc     []string
 	Route    []byte
 	Function Func[T]
 	Before   []Before[T]

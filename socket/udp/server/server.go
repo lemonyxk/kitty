@@ -354,10 +354,9 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 
 		// make sure this goroutine will run over
 		go func() {
-			for range conn.timeoutTimer.C {
-				_ = conn.SendClose()
-				s.onClose(conn)
-			}
+			<-conn.timeoutTimer.C
+			_ = conn.SendClose()
+			s.onClose(conn)
 		}()
 
 		// make sure this goroutine will run over

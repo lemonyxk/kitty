@@ -118,8 +118,8 @@ func (r *Route[T]) Handler(fn Func[T]) {
 			cba.After = r.after
 		}
 
-		cba.Before = append(cba.Before, router.globalBefore...)
-		cba.After = append(cba.After, router.globalAfter...)
+		cba.Before = append(router.globalBefore, cba.Before...)
+		cba.After = append(router.globalAfter, cba.After...)
 
 		cba.Method = method
 

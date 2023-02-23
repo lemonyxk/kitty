@@ -12,6 +12,9 @@ package client
 
 import (
 	"crypto/tls"
+	"net/http"
+	url2 "net/url"
+	"time"
 )
 
 func Post(url string) *info {
@@ -56,4 +59,20 @@ func Options(url string) *info {
 
 func TSLConfig(tlsConfig *tls.Config) {
 	defaultTlsConfig = tlsConfig
+}
+
+func Proxy(url string) {
+	var fixUrl, err = url2.Parse(url)
+	if err != nil {
+		panic(err)
+	}
+	defaultProxy = http.ProxyURL(fixUrl)
+}
+
+func KeepAlive(keepalive time.Duration) {
+	defaultDialer.KeepAlive = keepalive
+}
+
+func Timeout(timeout time.Duration) {
+	defaultClient.Timeout = timeout
 }

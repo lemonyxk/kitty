@@ -56,7 +56,7 @@ func doRaw(method string, url string, info *info) (*http.Request, context.Cancel
 		rawBody = append(rawBody, body[i]...)
 	}
 
-	var ctx, cancel = context.WithCancel(context.Background())
+	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
 	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(rawBody))
 	if err != nil {
 		cancel()
@@ -81,7 +81,7 @@ func doXProtobuf(method string, url string, info *info) (*http.Request, context.
 		protobufBody = append(protobufBody, b...)
 	}
 
-	var ctx, cancel = context.WithCancel(context.Background())
+	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
 	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(protobufBody))
 	if err != nil {
 		cancel()
@@ -102,7 +102,7 @@ func doFormData(method string, url string, info *info) (*http.Request, context.C
 
 	out, in := io.Pipe()
 	part := multipart.NewWriter(in)
-	var ctx, cancel = context.WithCancel(context.Background())
+	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
 	pCtx, pCancel := context.WithCancel(ctx)
 	go func() {
 		defer func() {
@@ -200,7 +200,7 @@ func doJson(method string, url string, info *info) (*http.Request, context.Cance
 		jsonBody = append(jsonBody, b...)
 	}
 
-	var ctx, cancel = context.WithCancel(context.Background())
+	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
 	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(jsonBody))
 	if err != nil {
 		cancel()
@@ -240,7 +240,7 @@ func doFormUrlencoded(method string, url string, info *info) (*http.Request, con
 		b = b[:len(b)-1]
 	}
 
-	var ctx, cancel = context.WithCancel(context.Background())
+	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
 	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(b))
 	if err != nil {
 		cancel()
@@ -291,7 +291,7 @@ func doUrl(method string, u string, info *info) (*http.Request, context.CancelFu
 		}
 	}
 
-	var ctx, cancel = context.WithCancel(context.Background())
+	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
 	request, err := http.NewRequestWithContext(ctx, method, Url.String(), nil)
 	if err != nil {
 		cancel()
@@ -313,14 +313,13 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 
 	defer cancel()
 
-	// NOT SAFE FOR GOROUTINE IF YOU SET TIMEOUT OR KEEPALIVE OR PROXY OR PROGRESS
-	// MAKE SURE ONE BY ONE
-	defer func() {
-		defaultClient.Timeout = clientTimeout
-		defaultDialer.KeepAlive = dialerKeepAlive
-		defaultTransport.Proxy = http.ProxyFromEnvironment
-		defaultTransport.DisableCompression = false
-	}()
+	// // NOT SAFE FOR GOROUTINE IF YOU SET TIMEOUT OR KEEPALIVE OR PROXY OR PROGRESS
+	// // MAKE SURE ONE BY ONE
+	// defer func() {
+	// 	defaultClient.Timeout = clientTimeout
+	// 	defaultDialer.KeepAlive = dialerKeepAlive
+	// 	defaultTransport.Proxy = http.ProxyFromEnvironment
+	// }()
 
 	if req == nil {
 		return &Req{err: errors.Invalid}
@@ -336,22 +335,6 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 
 	if info.userName != "" || info.passWord != "" {
 		req.SetBasicAuth(info.userName, info.passWord)
-	}
-
-	if info.clientTimeout != 0 {
-		defaultClient.Timeout = info.clientTimeout
-	}
-
-	if info.dialerKeepAlive != 0 {
-		defaultDialer.KeepAlive = info.dialerKeepAlive
-	}
-
-	if info.proxy != nil {
-		defaultTransport.Proxy = info.proxy
-	}
-
-	if info.progress != nil {
-		defaultTransport.DisableCompression = true
 	}
 
 	response, err := defaultClient.Do(req)

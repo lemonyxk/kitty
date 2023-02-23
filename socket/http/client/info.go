@@ -13,7 +13,6 @@ package client
 import (
 	"net/http"
 	"net/textproto"
-	"net/url"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -21,17 +20,15 @@ import (
 )
 
 type info struct {
-	handler         *Client
-	headerKey       []string
-	headerValue     []string
-	cookies         []*http.Cookie
-	body            any
-	progress        *Progress
-	userName        string
-	passWord        string
+	handler     *Client
+	headerKey   []string
+	headerValue []string
+	cookies     []*http.Cookie
+	body        any
+	progress    *Progress
+	userName    string
+	passWord    string
 	clientTimeout   time.Duration
-	proxy           func(*http.Request) (*url.URL, error)
-	dialerKeepAlive time.Duration
 }
 
 func (h *info) Progress(progress *Progress) *info {
@@ -41,17 +38,6 @@ func (h *info) Progress(progress *Progress) *info {
 
 func (h *info) Timeout(timeout time.Duration) *info {
 	h.clientTimeout = timeout
-	return h
-}
-
-func (h *info) Proxy(u string) *info {
-	var fixUrl, _ = url.Parse(u)
-	h.proxy = http.ProxyURL(fixUrl)
-	return h
-}
-
-func (h *info) KeepAlive(keepalive time.Duration) *info {
-	h.dialerKeepAlive = keepalive
 	return h
 }
 

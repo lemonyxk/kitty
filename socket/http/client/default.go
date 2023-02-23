@@ -30,8 +30,10 @@ var defaultDialer = net.Dialer{
 
 var defaultTlsConfig = &tls.Config{}
 
+var defaultProxy = http.ProxyFromEnvironment
+
 var defaultTransport = &http.Transport{
-	Proxy:                 http.ProxyFromEnvironment,
+	Proxy:                 defaultProxy,
 	DisableCompression:    false,
 	DisableKeepAlives:     false,
 	TLSHandshakeTimeout:   10 * time.Second,

@@ -12,6 +12,7 @@ package tcp
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -212,9 +213,11 @@ func Test_TCP_Client_Async(t *testing.T) {
 
 	var wait = sync.WaitGroup{}
 
-	wait.Add(100)
+	var random = rand.Intn(1001) + 5000
 
-	for i := 0; i < 100; i++ {
+	wait.Add(random)
+
+	for i := 0; i < random; i++ {
 		var index = i
 		go func() {
 			stream, err := asyncClient.JsonEmit("/asyncClient", index)
@@ -314,9 +317,11 @@ func Test_TCP_Server_Async(t *testing.T) {
 
 	var wait = sync.WaitGroup{}
 
-	wait.Add(100)
+	var random = rand.Intn(1001) + 5000
 
-	for i := 0; i < 100; i++ {
+	wait.Add(random)
+
+	for i := 0; i < random; i++ {
 		var index = i
 		go func() {
 

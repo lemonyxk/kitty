@@ -12,6 +12,7 @@ package websocket
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -253,9 +254,11 @@ func Test_WS_Client_Async(t *testing.T) {
 
 	var wait = sync.WaitGroup{}
 
-	wait.Add(100)
+	var random = rand.Intn(1001) + 5000
 
-	for i := 0; i < 100; i++ {
+	wait.Add(random)
+
+	for i := 0; i < random; i++ {
 		var index = i
 		go func() {
 			stream, err := asyncClient.JsonEmit("/asyncClient", fmt.Sprintf("%d", index))
@@ -352,9 +355,11 @@ func Test_WS_Server_Async(t *testing.T) {
 
 	var wait = sync.WaitGroup{}
 
-	wait.Add(100)
+	var random = rand.Intn(1001) + 5000
 
-	for i := 0; i < 100; i++ {
+	wait.Add(random)
+
+	for i := 0; i < random; i++ {
 		var index = i
 		go func() {
 			stream, err := asyncServer.JsonEmit(fd, "/asyncServer", index)

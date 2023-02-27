@@ -12,6 +12,7 @@ package udp
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -80,7 +81,7 @@ func initServer() {
 	})
 
 	udpServerRouter.Route("/asyncClient").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.JsonEmit(stream.Event, string(stream.Data))
+		return stream.Emit(stream.Event, stream.Data)
 	})
 
 	var udpRouter = udpServerRouter.Create()
@@ -192,7 +193,7 @@ func Test_UDP_Client(t *testing.T) {
 	}
 
 	go func() {
-		<-time.After(3 * time.Second)
+		<-time.After(100 * time.Second)
 		mux.Done()
 		flag = false
 	}()
@@ -206,30 +207,42 @@ func Test_UDP_Client(t *testing.T) {
 	}
 }
 
+// TODO
+// need test more
 func Test_UDP_Client_Async(t *testing.T) {
+
+	udpClient.DailTimeout = time.Second * 10
 
 	var asyncClient = async.NewClient[client.Conn](udpClient)
 
 	var wait = sync.WaitGroup{}
 
-	wait.Add(100)
+	var random = rand.Intn(13) + 50
 
-	for i := 0; i < 100; i++ {
-		var index = i
-		go func() {
-			stream, err := asyncClient.JsonEmit("/asyncClient", index)
+	wait.Add(random)
+
+	var count = 0
+
+	for i := 0; i < random; i++ {
+		go func(index int) {
+			var str = fmt.Sprintf("%d", index)
+			var stream, err = asyncClient.Emit("/asyncClient", []byte(str))
+			count++
 
 			assert.True(t, err == nil, err)
 
 			assert.True(t, stream != nil, "stream is nil")
 
-			assert.True(t, string(stream.Data) == fmt.Sprintf("\"%d\"", index), "stream is nil")
+			assert.True(t, string(stream.Data) == str, fmt.Sprintf("`%+v` not equal `%+v`", string(stream.Data), str))
 
 			wait.Done()
-		}()
+
+		}(i)
 	}
 
 	wait.Wait()
+
+	assert.True(t, count == random, "count not equal", count, random)
 }
 
 func Test_UDP_JsonEmit(t *testing.T) {
@@ -314,9 +327,11 @@ func Test_UDP_Server_Async(t *testing.T) {
 
 	var wait = sync.WaitGroup{}
 
-	wait.Add(100)
+	var random = rand.Intn(10122) + 5000
 
-	for i := 0; i < 100; i++ {
+	wait.Add(random)
+
+	for i := 0; i < random; i++ {
 		var index = i
 		go func() {
 

@@ -15,29 +15,29 @@ import (
 	"net/http"
 )
 
-type Req struct {
+type Response struct {
 	err  error
 	code int
 	buf  *bytes.Buffer
 	req  *http.Response
 }
 
-func (r *Req) String() string {
+func (r *Response) String() string {
 	return r.buf.String()
 }
 
-func (r *Req) Bytes() []byte {
+func (r *Response) Bytes() []byte {
 	return r.buf.Bytes()
 }
 
-func (r *Req) Code() int {
+func (r *Response) Code() int {
 	return r.code
 }
 
-func (r *Req) LastError() error {
+func (r *Response) LastError() error {
 	return r.err
 }
 
-func (r *Req) Response() *http.Response {
+func (r *Response) Response() *http.Response {
 	return r.req
 }

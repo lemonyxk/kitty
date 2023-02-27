@@ -19,7 +19,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
-type info struct {
+type Request struct {
 	handler     *Client
 	headerKey   []string
 	headerValue []string
@@ -31,23 +31,23 @@ type info struct {
 	clientTimeout   time.Duration
 }
 
-func (h *info) Progress(progress *Progress) *info {
+func (h *Request) Progress(progress *Progress) *Request {
 	h.progress = progress
 	return h
 }
 
-func (h *info) Timeout(timeout time.Duration) *info {
+func (h *Request) Timeout(timeout time.Duration) *Request {
 	h.clientTimeout = timeout
 	return h
 }
 
-func (h *info) SetBasicAuth(userName, passWord string) *info {
+func (h *Request) SetBasicAuth(userName, passWord string) *Request {
 	h.userName = userName
 	h.passWord = passWord
 	return h
 }
 
-func (h *info) SetHeaders(headers map[string]string) *info {
+func (h *Request) SetHeaders(headers map[string]string) *Request {
 	h.headerKey = nil
 	h.headerValue = nil
 	for key, value := range headers {
@@ -57,13 +57,13 @@ func (h *info) SetHeaders(headers map[string]string) *info {
 	return h
 }
 
-func (h *info) AddHeader(key string, value string) *info {
+func (h *Request) AddHeader(key string, value string) *Request {
 	h.headerKey = append(h.headerKey, textproto.CanonicalMIMEHeaderKey(key))
 	h.headerValue = append(h.headerValue, value)
 	return h
 }
 
-func (h *info) SetHeader(key string, value string) *info {
+func (h *Request) SetHeader(key string, value string) *Request {
 	for i := 0; i < len(h.headerKey); i++ {
 		if textproto.CanonicalMIMEHeaderKey(h.headerKey[i]) == textproto.CanonicalMIMEHeaderKey(key) {
 			h.headerValue[i] = value
@@ -76,12 +76,12 @@ func (h *info) SetHeader(key string, value string) *info {
 	return h
 }
 
-func (h *info) SetCookies(cookies []*http.Cookie) *info {
+func (h *Request) SetCookies(cookies []*http.Cookie) *Request {
 	h.cookies = cookies
 	return h
 }
 
-func (h *info) AddCookie(cookie *http.Cookie) *info {
+func (h *Request) AddCookie(cookie *http.Cookie) *Request {
 	for i := 0; i < len(h.cookies); i++ {
 		if h.cookies[i].String() == cookie.String() {
 			h.cookies[i] = cookie
@@ -92,60 +92,60 @@ func (h *info) AddCookie(cookie *http.Cookie) *info {
 	return h
 }
 
-func (h *info) Protobuf(body ...proto.Message) *params {
+func (h *Request) Protobuf(body ...proto.Message) *Sender {
 	h.SetHeader(kitty.ContentType, kitty.ApplicationProtobuf)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
-		return &params{err: err}
+		return &Sender{err: err}
 	}
-	return &params{info: h, req: request, cancel: cancel}
+	return &Sender{info: h, req: request, cancel: cancel}
 }
 
-func (h *info) Json(body ...any) *params {
+func (h *Request) Json(body ...any) *Sender {
 	h.SetHeader(kitty.ContentType, kitty.ApplicationJson)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
-		return &params{err: err}
+		return &Sender{err: err}
 	}
-	return &params{info: h, req: request, cancel: cancel}
+	return &Sender{info: h, req: request, cancel: cancel}
 }
 
-func (h *info) Query(body ...kitty.M) *params {
+func (h *Request) Query(body ...kitty.M) *Sender {
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
-		return &params{err: err}
+		return &Sender{err: err}
 	}
-	return &params{info: h, req: request, cancel: cancel}
+	return &Sender{info: h, req: request, cancel: cancel}
 }
 
-func (h *info) Form(body ...kitty.M) *params {
+func (h *Request) Form(body ...kitty.M) *Sender {
 	h.SetHeader(kitty.ContentType, kitty.ApplicationFormUrlencoded)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
-		return &params{err: err}
+		return &Sender{err: err}
 	}
-	return &params{info: h, req: request, cancel: cancel}
+	return &Sender{info: h, req: request, cancel: cancel}
 }
 
-func (h *info) Multipart(body ...kitty.M) *params {
+func (h *Request) Multipart(body ...kitty.M) *Sender {
 	h.SetHeader(kitty.ContentType, kitty.MultipartFormData)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
-		return &params{err: err}
+		return &Sender{err: err}
 	}
-	return &params{info: h, req: request, cancel: cancel}
+	return &Sender{info: h, req: request, cancel: cancel}
 }
 
-func (h *info) Raw(body ...[]byte) *params {
+func (h *Request) Raw(body ...[]byte) *Sender {
 	h.body = body
 	request, cancel, err := doRaw(h.handler.method, h.handler.url, h)
 	if err != nil {
-		return &params{err: err}
+		return &Sender{err: err}
 	}
-	return &params{info: h, req: request, cancel: cancel}
+	return &Sender{info: h, req: request, cancel: cancel}
 }

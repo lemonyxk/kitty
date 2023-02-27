@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/lemonyxk/kitty/v2/errors"
-	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
 	"github.com/lemonyxk/kitty/v2/ssl"
@@ -407,7 +406,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	var nodeData = n.Data
 
-	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
+	stream.Params = socket.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		if err := nodeData.Before[i](stream); err != nil {

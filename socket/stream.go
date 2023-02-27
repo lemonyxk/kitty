@@ -34,7 +34,7 @@ type Stream[T Emitter] struct {
 	Event string
 
 	Context kitty.Context
-	Params  kitty.Params
+	Params  Params
 	Logger  kitty.Logger
 
 	conn      T

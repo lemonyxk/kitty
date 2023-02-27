@@ -17,6 +17,7 @@ import (
 	"log"
 	http2 "net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -75,7 +76,7 @@ func TestMain(t *testing.M) {
 
 	httpServer.Use(func(next server.Middle) server.Middle {
 		return func(stream *http.Stream) {
-			stream.AutoParse()
+			stream.Parser.Auto()
 			next(stream)
 		}
 	})
@@ -91,7 +92,7 @@ func TestMain(t *testing.M) {
 	// httpsServer.KeyFile = keyFile
 	httpsServer.Use(func(next server.Middle) server.Middle {
 		return func(stream *http.Stream) {
-			stream.AutoParse()
+			stream.Parser.Auto()
 			next(stream)
 		}
 	})
@@ -116,7 +117,7 @@ func Test_HTTPS_Get(t *testing.T) {
 	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream) error {
 		var res = stream.Query.First("a").String()
 		assert.True(t, res == "1", res)
-		return stream.EndString("hello world!")
+		return stream.Sender.String("hello world!")
 	})
 
 	httpsServer.SetRouter(httpServerRouter)
@@ -133,7 +134,7 @@ func Test_HTTP_Get(t *testing.T) {
 
 	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream) error {
 		assert.True(t, stream.Query.First("a").String() == "1")
-		return stream.EndString("hello world!")
+		return stream.Sender.String("hello world!")
 	})
 
 	httpServer.SetRouter(httpServerRouter)
@@ -148,7 +149,7 @@ func Test_HTTP_Post(t *testing.T) {
 
 	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream) error {
 		assert.True(t, stream.Form.First("a").String() == "2")
-		return stream.End("hello group!")
+		return stream.Sender.String("hello group!")
 	})
 
 	httpServer.SetRouter(httpServerRouter)
@@ -156,6 +157,46 @@ func Test_HTTP_Post(t *testing.T) {
 	var res = client.Post(ts.URL + "/hello").Form(kitty2.M{"a": 2}).Send()
 
 	assert.True(t, res.String() == "hello group!")
+}
+
+func Test_HTTP_Multipart(t *testing.T) {
+
+	var httpServerRouter = &router.Router[*http.Stream]{}
+
+	httpServerRouter.Method("POST").Route("/PostFile").Handler(func(stream *http.Stream) error {
+		assert.True(t, stream.Multipart.Files.First("file").Filename == "1.png")
+		assert.True(t, stream.Multipart.Files.First("file").Size == 2853516)
+		assert.True(t, stream.Multipart.Files.First("file1") == nil)
+		assert.True(t, stream.Multipart.Form.First("a").Int() == 1)
+		return stream.Sender.String("hello PostFile!")
+	})
+
+	httpServer.SetRouter(httpServerRouter)
+
+	var f, err = os.Open("../../example/http/public/1.png")
+	assert.True(t, err == nil, err)
+
+	var res = client.Post(ts.URL + "/PostFile").Multipart(kitty2.M{"file": f, "a": 1}).Send()
+
+	assert.True(t, res.String() == "hello PostFile!")
+}
+
+func Test_HTTP_Params(t *testing.T) {
+
+	var httpServerRouter = &router.Router[*http.Stream]{}
+
+	httpServerRouter.Method("POST").Route("/Params/:id/hello").Handler(func(stream *http.Stream) error {
+		assert.True(t, stream.Params.Get("id") == stream.Form.First("a").String())
+		return stream.Sender.String("hello Params!")
+	})
+
+	httpServer.SetRouter(httpServerRouter)
+
+	var res = client.Post(ts.URL + "/Params/1/hello").Form(kitty2.M{"a": "1"}).Send()
+	assert.True(t, res.String() == "hello Params!")
+
+	res = client.Post(ts.URL + "/Params/2/hello").Form(kitty2.M{"a": "2"}).Send()
+	assert.True(t, res.String() == "hello Params!")
 }
 
 func Test_HTTP_Protobuf(t *testing.T) {
@@ -167,13 +208,13 @@ func Test_HTTP_Protobuf(t *testing.T) {
 		var msg = stream.Protobuf.Bytes()
 		var err = proto.Unmarshal(msg, &res)
 		if err != nil {
-			return stream.EndString(err.Error())
+			return stream.Sender.String(err.Error())
 		}
 
 		assert.True(t, res.AwesomeField == "1", res)
 		assert.True(t, res.AwesomeKey == "2", res)
 
-		return stream.EndString("hello proto!")
+		return stream.Sender.String("hello proto!")
 	})
 
 	httpServer.SetRouter(httpServerRouter)

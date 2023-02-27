@@ -17,42 +17,42 @@ import (
 	"time"
 )
 
-func Post(url string) *info {
+func Post(url string) *Request {
 	var c = &Client{}
 	return c.Post(url)
 }
 
-func Get(url string) *info {
+func Get(url string) *Request {
 	var c = &Client{}
 	return c.Get(url)
 }
 
-func Head(url string) *info {
+func Head(url string) *Request {
 	var c = &Client{}
 	return c.Head(url)
 }
 
-func Trace(url string) *info {
+func Trace(url string) *Request {
 	var c = &Client{}
 	return c.Trace(url)
 }
 
-func Patch(url string) *info {
+func Patch(url string) *Request {
 	var c = &Client{}
 	return c.Patch(url)
 }
 
-func Put(url string) *info {
+func Put(url string) *Request {
 	var c = &Client{}
 	return c.Put(url)
 }
 
-func Delete(url string) *info {
+func Delete(url string) *Request {
 	var c = &Client{}
 	return c.Delete(url)
 }
 
-func Options(url string) *info {
+func Options(url string) *Request {
 	var c = &Client{}
 	return c.Options(url)
 }

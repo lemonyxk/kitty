@@ -2,103 +2,58 @@ package http
 
 import (
 	"bytes"
-	"fmt"
-	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 
-	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/v2/socket"
 )
 
 type Stream struct {
 	// Server   *Server
-	Response  http.ResponseWriter
-	Request   *http.Request
+	Response http.ResponseWriter
+	Request  *http.Request
+
 	Query     *Store
 	Form      *Store
 	Multipart *Multipart
 	Json      *Json
 	Protobuf  *Protobuf
 
-	Params  kitty.Params
+	Params  socket.Params
 	Context kitty.Context
 	Logger  kitty.Logger
 
-	maxMemory         int64
-	hasParseQuery     bool
-	hasParseForm      bool
-	hasParseMultipart bool
-	hasParseJson      bool
-	hasParseProtobuf  bool
+	Sender *Sender
+
+	Parser *Parser
 }
 
 func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
-	return &Stream{
+	var stream =  &Stream{
 		Response: w, Request: r,
 		Protobuf:  &Protobuf{},
 		Query:     &Store{},
 		Form:      &Store{},
 		Json:      &Json{},
 		Multipart: &Multipart{Files: &Files{}, Form: &Store{}},
+		Sender:    &Sender{response: w, request: r},
+		Parser:    &Parser{response: w, request: r},
 	}
+
+	stream.Parser.stream = stream
+
+	return stream
 }
 
 func (s *Stream) Forward(fn func(stream *Stream) error) error {
 	return fn(s)
 }
 
-func (s *Stream) SetMaxMemory(maxMemory int64) {
-	s.maxMemory = maxMemory
-}
-
 func (s *Stream) SetHeader(header string, content string) {
 	s.Response.Header().Set(header, content)
-}
-
-func (s *Stream) JsonFormat(status string, code int, msg any) error {
-	return s.EndJson(JsonFormat{Status: status, Code: code, Msg: msg})
-}
-
-func (s *Stream) End(data any) error {
-	switch data.(type) {
-	case []byte:
-		return s.EndBytes(data.([]byte))
-	case string:
-		return s.EndString(data.(string))
-	default:
-		return s.EndString(fmt.Sprintf("%v", data))
-	}
-}
-
-func (s *Stream) EndJson(data any) error {
-	s.SetHeader(kitty.ContentType, kitty.ApplicationJson)
-	bts, err := jsoniter.Marshal(data)
-	if err != nil {
-		return err
-	}
-	_, err = s.Response.Write(bts)
-	return err
-}
-
-func (s *Stream) EndString(data string) error {
-	_, err := s.Response.Write([]byte(data))
-	return err
-}
-
-func (s *Stream) EndBytes(data []byte) error {
-	_, err := s.Response.Write(data)
-	return err
-}
-
-func (s *Stream) EndFile(fileName string, file io.Reader) error {
-	s.SetHeader(kitty.ContentType, kitty.ApplicationOctetStream)
-	s.SetHeader(kitty.ContentDisposition, "attachment;filename="+fileName)
-	_, err := io.Copy(s.Response, file)
-	return err
 }
 
 func (s *Stream) Host() string {
@@ -123,146 +78,6 @@ func (s *Stream) ClientIP() string {
 	}
 
 	return ""
-}
-
-func (s *Stream) ParseJson() *Json {
-
-	if s.hasParseJson {
-		return s.Json
-	}
-
-	s.hasParseJson = true
-
-	jsonBody, err := io.ReadAll(s.Request.Body)
-	if err != nil {
-		return s.Json
-	}
-
-	s.Json.any = jsoniter.Get(jsonBody)
-	s.Json.bts = jsonBody
-
-	return s.Json
-}
-
-func (s *Stream) ParseProtobuf() *Protobuf {
-
-	if s.hasParseProtobuf {
-		return s.Protobuf
-	}
-
-	s.hasParseProtobuf = true
-
-	protobufBody, err := io.ReadAll(s.Request.Body)
-	if err != nil {
-		return s.Protobuf
-	}
-
-	s.Protobuf.bts = protobufBody
-
-	return s.Protobuf
-}
-
-func (s *Stream) ParseMultipart() *Multipart {
-
-	if s.hasParseMultipart {
-		return s.Multipart
-	}
-
-	s.hasParseMultipart = true
-
-	err := s.Request.ParseMultipartForm(s.maxMemory)
-	if err != nil {
-		return s.Multipart
-	}
-
-	var parse = s.Request.MultipartForm.Value
-
-	for k, v := range parse {
-		s.Multipart.Form.keys = append(s.Multipart.Form.keys, k)
-		s.Multipart.Form.values = append(s.Multipart.Form.values, v)
-	}
-
-	var data = s.Request.MultipartForm.File
-
-	s.Multipart.Files.files = data
-
-	return s.Multipart
-}
-
-func (s *Stream) ParseQuery() *Store {
-
-	if s.hasParseQuery {
-		return s.Query
-	}
-
-	s.hasParseQuery = true
-
-	var params = s.Request.URL.RawQuery
-
-	parse, err := url.ParseQuery(params)
-	if err != nil {
-		return s.Query
-	}
-
-	for k, v := range parse {
-		s.Query.keys = append(s.Query.keys, k)
-		s.Query.values = append(s.Query.values, v)
-	}
-
-	return s.Query
-}
-
-func (s *Stream) ParseForm() *Store {
-
-	if s.hasParseForm {
-		return s.Form
-	}
-
-	s.hasParseForm = true
-
-	err := s.Request.ParseForm()
-	if err != nil {
-		return s.Form
-	}
-
-	var parse = s.Request.PostForm
-
-	for k, v := range parse {
-		s.Form.keys = append(s.Form.keys, k)
-		s.Form.values = append(s.Form.values, v)
-	}
-
-	return s.Form
-}
-
-func (s *Stream) AutoParse() {
-
-	var header = s.Request.Header.Get(kitty.ContentType)
-
-	if strings.ToUpper(s.Request.Method) == "GET" {
-		s.ParseQuery()
-		return
-	}
-
-	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		s.ParseMultipart()
-		return
-	}
-
-	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
-		s.ParseForm()
-		return
-	}
-
-	if strings.HasPrefix(header, kitty.ApplicationJson) {
-		s.ParseJson()
-		return
-	}
-
-	if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
-		s.ParseProtobuf()
-		return
-	}
 }
 
 func (s *Stream) Has(key string) bool {

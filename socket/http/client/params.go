@@ -15,21 +15,21 @@ import (
 	"net/http"
 )
 
-type params struct {
-	info *info
+type Sender struct {
+	info *Request
 	err  error
 	req  *http.Request
 
 	cancel context.CancelFunc
 }
 
-func (p *params) Send() *Req {
+func (p *Sender) Send() *Response {
 	if p.err != nil {
-		return &Req{err: p.err}
+		return &Response{err: p.err}
 	}
 	return send(p.info, p.req, p.cancel)
 }
 
-func (p *params) Abort() {
+func (p *Sender) Abort() {
 	p.cancel()
 }

@@ -47,7 +47,7 @@ func runHttpServer() {
 	// middleware
 	httpServer.Use(func(next server.Middle) server.Middle {
 		return func(stream *http.Stream) {
-			stream.AutoParse()
+			stream.Parser.Auto()
 			log.Println("middleware1 start")
 			next(stream)
 			log.Println("middleware1 end")
@@ -84,18 +84,18 @@ func runHttpServer() {
 	var httpRouter = httpServerRouter.Create()
 	httpRouter.Get("/hello").Before(before).After(after).Handler(func(stream *http.Stream) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
-		return stream.EndString("hello world!")
+		return stream.Sender.String("hello world!")
 	})
 
 	httpRouter.Post("/post").Before(before).After(after).Handler(func(stream *http.Stream) error {
 		log.Println(stream.Form.String())
-		return stream.EndString("hello world!")
+		return stream.Sender.String("hello world!")
 	})
 
 	httpRouter.Post("/file").Before(before).After(after).Handler(func(stream *http.Stream) error {
 		log.Println(stream.Multipart.Files.String())
 		log.Println(stream.Multipart.Form.String())
-		return stream.EndString("hello world!")
+		return stream.Sender.String("hello world!")
 	})
 
 	// or you can just use original router
@@ -106,30 +106,30 @@ func runHttpServer() {
 		var msg = stream.Protobuf.Bytes()
 		var err = proto.Unmarshal(msg, &res)
 		if err != nil {
-			return stream.EndString(err.Error())
+			return stream.Sender.String(err.Error())
 		}
 		log.Printf("%+v", res)
-		return stream.EndString("hello proto!")
+		return stream.Sender.String("hello proto!")
 	})
 
 	// create group router
 	var group = httpServerRouter.Group("/hello").Create()
 	group.Get("/world").Handler(func(t *http.Stream) error {
 		time.Sleep(time.Second * 3)
-		return t.JsonFormat("SUCCESS", 200, os.Getpid())
+		return t.Sender.Any(os.Getpid())
 	})
 
 	// another way to use group router
 	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream]) {
 		handler.Get("/hello").Handler(func(t *http.Stream) error {
-			return t.JsonFormat("SUCCESS", 200, os.Getpid())
+			return t.Sender.Any(os.Getpid())
 		})
 	})
 
 	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream]) {
 		handler.Group("/hello").Handler(func(handler *router.Handler[*http.Stream]) {
 			handler.Get("/hello").Handler(func(t *http.Stream) error {
-				return t.JsonFormat("SUCCESS", 200, os.Getpid())
+				return t.Sender.Any(os.Getpid())
 			})
 		})
 	})

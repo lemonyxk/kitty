@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/lemonyxk/kitty/v2/errors"
-	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
+	"github.com/lemonyxk/kitty/v2/socket"
 	http2 "github.com/lemonyxk/kitty/v2/socket/http"
 )
 
@@ -110,7 +110,7 @@ func (s *Server) handler(stream *http2.Stream) {
 		return
 	}
 
-	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
+	stream.Params = socket.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
 	var nodeData = n.Data
 

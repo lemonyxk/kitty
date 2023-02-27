@@ -28,7 +28,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/kitty"
 )
 
-func getRequest(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func getRequest(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
 	var contentType = strings.ToLower(getContentType(info))
 	switch contentType {
 	case kitty.ApplicationFormUrlencoded:
@@ -44,7 +44,7 @@ func getRequest(method string, url string, info *info) (*http.Request, context.C
 	}
 }
 
-func doRaw(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doRaw(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([][]byte)
 	if !ok {
 		return nil, nil, errors.Wrap(errors.AssertionFailed, "[]byte")
@@ -65,7 +65,7 @@ func doRaw(method string, url string, info *info) (*http.Request, context.Cancel
 	return request, cancel, err
 }
 
-func doXProtobuf(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doXProtobuf(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([]proto.Message)
 	if !ok {
 		return nil, nil, errors.Wrap(errors.AssertionFailed, "proto.Message")
@@ -90,7 +90,7 @@ func doXProtobuf(method string, url string, info *info) (*http.Request, context.
 	return request, cancel, err
 }
 
-func doFormData(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doFormData(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
 	if info.body == nil {
 		info.body = []kitty.M{}
 	}
@@ -155,7 +155,7 @@ func doFormData(method string, url string, info *info) (*http.Request, context.C
 					if err != nil {
 						return
 					}
-					str := fmt.Sprintf("%v", value)
+					str := fmt.Sprintf("%+v", value)
 					if _, err := io.Copy(w, strings.NewReader(str)); err != nil {
 						return
 					}
@@ -184,7 +184,7 @@ func doFormData(method string, url string, info *info) (*http.Request, context.C
 	return request, cancel, err
 }
 
-func doJson(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doJson(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
 	body, ok := info.body.([]any)
 	if !ok {
 		return nil, nil, errors.Wrap(errors.AssertionFailed, "interface{}")
@@ -209,7 +209,7 @@ func doJson(method string, url string, info *info) (*http.Request, context.Cance
 	return request, cancel, err
 }
 
-func doFormUrlencoded(method string, url string, info *info) (*http.Request, context.CancelFunc, error) {
+func doFormUrlencoded(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
 	if info.body == nil {
 		info.body = []kitty.M{}
 	}
@@ -230,7 +230,7 @@ func doFormUrlencoded(method string, url string, info *info) (*http.Request, con
 			case float64:
 				buff.WriteString(key + "=" + strconv.FormatFloat(value.(float64), 'f', -1, 64) + "&")
 			default:
-				buff.WriteString(key + "=" + fmt.Sprintf("%v", value) + "&")
+				buff.WriteString(key + "=" + fmt.Sprintf("%+v", value) + "&")
 			}
 		}
 	}
@@ -249,7 +249,7 @@ func doFormUrlencoded(method string, url string, info *info) (*http.Request, con
 	return request, cancel, err
 }
 
-func doUrl(method string, u string, info *info) (*http.Request, context.CancelFunc, error) {
+func doUrl(method string, u string, info *Request) (*http.Request, context.CancelFunc, error) {
 	Url, err := url.Parse(u)
 	if err != nil {
 		return nil, nil, err
@@ -276,7 +276,7 @@ func doUrl(method string, u string, info *info) (*http.Request, context.CancelFu
 			case float64:
 				params.Set(key, strconv.FormatFloat(value.(float64), 'f', -1, 64))
 			default:
-				params.Set(key, fmt.Sprintf("%v", value))
+				params.Set(key, fmt.Sprintf("%+v", value))
 			}
 		}
 	}
@@ -300,7 +300,7 @@ func doUrl(method string, u string, info *info) (*http.Request, context.CancelFu
 	return request, cancel, err
 }
 
-func getContentType(info *info) string {
+func getContentType(info *Request) string {
 	for i := 0; i < len(info.headerKey); i++ {
 		if info.headerKey[i] == kitty.ContentType {
 			return info.headerValue[i]
@@ -309,7 +309,7 @@ func getContentType(info *info) string {
 	return ""
 }
 
-func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
+func send(info *Request, req *http.Request, cancel context.CancelFunc) *Response {
 
 	defer cancel()
 
@@ -322,7 +322,7 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 	// }()
 
 	if req == nil {
-		return &Req{err: errors.Invalid}
+		return &Response{err: errors.Invalid}
 	}
 
 	for i := 0; i < len(info.headerKey); i++ {
@@ -339,7 +339,7 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 
 	response, err := defaultClient.Do(req)
 	if err != nil {
-		return &Req{err: err}
+		return &Response{err: err}
 	}
 	defer func() { _ = response.Body.Close() }()
 
@@ -355,14 +355,14 @@ func send(info *info, req *http.Request, cancel context.CancelFunc) *Req {
 
 		_, err = io.Copy(buf, io.TeeReader(response.Body, writer))
 		if err != nil {
-			return &Req{err: err}
+			return &Response{err: err}
 		}
 	} else {
 		_, err = io.Copy(buf, response.Body)
 		if err != nil {
-			return &Req{err: err}
+			return &Response{err: err}
 		}
 	}
 
-	return &Req{code: response.StatusCode, buf: buf, req: response}
+	return &Response{code: response.StatusCode, buf: buf, req: response}
 }

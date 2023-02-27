@@ -10,7 +10,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"
 	"github.com/lemonyxk/kitty/v2/errors"
-	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
@@ -384,7 +383,7 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 
 	var nodeData = n.Data
 
-	stream.Params = kitty.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
+	stream.Params = socket.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		if err := nodeData.Before[i](stream); err != nil {

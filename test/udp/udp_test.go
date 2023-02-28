@@ -238,6 +238,13 @@ func Test_UDP_Client_Async(t *testing.T) {
 
 			assert.True(t, err == nil, err)
 			assert.True(t, stream != nil, "stream is nil")
+			// go func will deal params from the last to the first,
+			// if the params is expression will be calculated,
+			// and func expression will be calculated first and finally call the func.
+			// so you will see the error message like
+			// 80725%!(EXTRA string=80725) if the body use the same []byte,
+			// cuz the right string(stream.Data)'s value and str is 80725,
+			// but left string(stream.Data)'s value was changed by the next loop.
 			assert.True(t, string(stream.Data) == str, fmt.Sprintf("`%+v` not equal `%+v`", string(stream.Data), str))
 
 			wait.Done()

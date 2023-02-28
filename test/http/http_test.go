@@ -159,6 +159,113 @@ func Test_HTTP_Post(t *testing.T) {
 	assert.True(t, res.String() == "hello group!")
 }
 
+func Test_HTTP_PostJson(t *testing.T) {
+
+	var httpServerRouter = &router.Router[*http.Stream]{}
+
+	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream) error {
+		assert.True(t, stream.Json.Get("a").String() == "2")
+		return stream.Sender.String("hello group!")
+	})
+
+	httpServer.SetRouter(httpServerRouter)
+
+	var res = client.Post(ts.URL + "/hello").Json(kitty2.M{"a": 2}).Send()
+
+	assert.True(t, res.String() == "hello group!")
+}
+
+func Test_HTTP_Head(t *testing.T) {
+
+	var httpServerRouter = &router.Router[*http.Stream]{}
+
+	httpServerRouter.Method("HEAD").Route("/hello").Handler(func(stream *http.Stream) error {
+		assert.True(t, stream.Query.First("a").String() == "1")
+		return stream.Sender.String("hello world!")
+	})
+
+	httpServer.SetRouter(httpServerRouter)
+
+	var res = client.Head(ts.URL + "/hello").Query(kitty2.M{"a": 1}).Send()
+	assert.True(t, res.String() == "", res.Response())
+	assert.True(t, res.Response().ContentLength == 12)
+}
+
+func Test_HTTP_Put(t *testing.T) {
+
+	var httpServerRouter = &router.Router[*http.Stream]{}
+
+	httpServerRouter.Method("PUT").Route("/hello").Handler(func(stream *http.Stream) error {
+		assert.True(t, stream.Form.First("a").String() == "1")
+		return stream.Sender.String("hello world!")
+	})
+
+	httpServer.SetRouter(httpServerRouter)
+
+	var res = client.Put(ts.URL + "/hello").Form(kitty2.M{"a": 1}).Send()
+	assert.True(t, res.String() == "hello world!")
+}
+
+func Test_HTTP_Patch(t *testing.T) {
+
+	var httpServerRouter = &router.Router[*http.Stream]{}
+
+	httpServerRouter.Method("PATCH").Route("/hello").Handler(func(stream *http.Stream) error {
+		assert.True(t, stream.Form.First("a").String() == "1")
+		return stream.Sender.String("hello world!")
+	})
+
+	httpServer.SetRouter(httpServerRouter)
+
+	var res = client.Patch(ts.URL + "/hello").Form(kitty2.M{"a": 1}).Send()
+	assert.True(t, res.String() == "hello world!")
+}
+
+func Test_HTTP_Delete(t *testing.T) {
+
+	var httpServerRouter = &router.Router[*http.Stream]{}
+
+	httpServerRouter.Method("DELETE").Route("/hello").Handler(func(stream *http.Stream) error {
+		assert.True(t, stream.Query.First("a").String() == "1")
+		return stream.Sender.String("hello world!")
+	})
+
+	httpServer.SetRouter(httpServerRouter)
+
+	var res = client.Delete(ts.URL + "/hello").Query(kitty2.M{"a": 1}).Send()
+	assert.True(t, res.String() == "hello world!")
+}
+
+func Test_HTTP_Options(t *testing.T) {
+
+	var httpServerRouter = &router.Router[*http.Stream]{}
+
+	httpServerRouter.Method("OPTIONS").Route("/hello").Handler(func(stream *http.Stream) error {
+		assert.True(t, stream.Query.First("a").String() == "1",stream.Query.String())
+		return stream.Sender.Respond(http2.StatusNoContent, "hello world!")
+	})
+
+	httpServer.SetRouter(httpServerRouter)
+
+	var res = client.Options(ts.URL + "/hello").Query(kitty2.M{"a": 1}).Send()
+	assert.True(t, res.Response().StatusCode == http2.StatusNoContent)
+}
+
+func Test_HTTP_Trace(t *testing.T) {
+
+	var httpServerRouter = &router.Router[*http.Stream]{}
+
+	httpServerRouter.Method("TRACE").Route("/hello").Handler(func(stream *http.Stream) error {
+		assert.True(t, stream.Query.First("a").String() == "1")
+		return stream.Sender.Respond(http2.StatusNoContent, "hello world!")
+	})
+
+	httpServer.SetRouter(httpServerRouter)
+
+	var res = client.Trace(ts.URL + "/hello").Query(kitty2.M{"a": 1}).Send()
+	assert.True(t, res.Response().StatusCode == http2.StatusNoContent)
+}
+
 func Test_HTTP_Multipart(t *testing.T) {
 
 	var httpServerRouter = &router.Router[*http.Stream]{}

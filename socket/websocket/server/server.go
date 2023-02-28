@@ -11,7 +11,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
-	hash "github.com/lemonyxk/structure/v3/map"
+	hash "github.com/lemonyxk/structure/map"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/websocket"

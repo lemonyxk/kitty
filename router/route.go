@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/lemonyxk/caller"
-	"github.com/lemonyxk/structure/v3/tire"
+	"github.com/lemonyxk/structure/tire"
 )
 
 type Route[T any] struct {

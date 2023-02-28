@@ -74,3 +74,10 @@ func (h *Client) Patch(url string) *Request {
 	var info = &Request{handler: h, clientTimeout: clientTimeout}
 	return info
 }
+
+func (h *Client) Connect(url string) *Request {
+	h.method = http.MethodConnect
+	h.url = url
+	var info = &Request{handler: h, clientTimeout: clientTimeout}
+	return info
+}

@@ -110,8 +110,11 @@ func (d *DefaultUdpProtocol) Encode(messageType byte, id int64, route []byte, bo
 }
 
 func (d *DefaultUdpProtocol) Reader() func(n int, buf []byte, fn func(bytes []byte)) error {
+	var message []byte
 	return func(n int, buf []byte, fn func(bytes []byte)) error {
-		fn(buf[:n])
+		message = append(message, buf[0:n]...)
+		fn(message)
+		message = message[n:]
 		return nil
 	}
 }

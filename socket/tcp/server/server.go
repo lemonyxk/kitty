@@ -21,7 +21,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
 	"github.com/lemonyxk/kitty/v2/ssl"
-	"github.com/lemonyxk/structure/v3/map"
+	"github.com/lemonyxk/structure/map"
 
 	"github.com/golang/protobuf/proto"
 

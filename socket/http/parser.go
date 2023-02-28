@@ -152,10 +152,33 @@ func (s *Parser) Auto() {
 
 	var header = s.request.Header.Get(kitty.ContentType)
 
-	if strings.ToUpper(s.request.Method) == "GET" {
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/GET
+	if strings.ToUpper(s.request.Method) == http.MethodGet {
 		s.Query()
 		return
 	}
+
+	if strings.ToUpper(s.request.Method) == http.MethodHead {
+		s.Query()
+		return
+	}
+
+	if strings.ToUpper(s.request.Method) == http.MethodTrace {
+		s.Query()
+		return
+	}
+
+	// May have a request body
+	if strings.ToUpper(s.request.Method) == http.MethodDelete {
+		s.Query()
+		return
+	}
+
+	if strings.ToUpper(s.request.Method) == http.MethodOptions {
+		s.Query()
+		return
+	}
+
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
 		s.Multipart()

@@ -165,84 +165,88 @@ func TestMain(t *testing.M) {
 
 func Test_UDP_Client(t *testing.T) {
 
-	var count = 10000
+	var count = 100000
 
 	var flag = true
 
-	var mux = new(sync.WaitGroup)
+	var mux = sync.WaitGroup{}
 
-	mux.Add(count)
+	mux.Add(1)
 
 	var total int64 = 0
 	var messageIDTotal int64 = 0
+	var countTotal int64 = 0
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
-			defer mux.Add(-1)
+			if atomic.AddInt64(&countTotal, 1) == int64(count) {
+				mux.Done()
+			}
 			messageIDTotal += stream.MessageID()
 			assert.True(t, string(stream.Data) == `"i am server"`, "stream is nil")
 			return nil
 		})
 	})
 
-	for i := 0; i < count; i++ {
-		total += int64(i + 1)
-		go func() {
-			_ = udpClient.JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
-		}()
-	}
-
 	go func() {
-		<-time.After(100 * time.Second)
+		<-time.After(60 * time.Second)
 		mux.Done()
 		flag = false
 	}()
 
+	for i := 0; i < count; i++ {
+		// NOTICE: To avoid the problem of UDP packet loss,
+		// the interval between packets must be greater than 1 microsecond.
+		// And wo can not use goroutine to send packet,
+		// cuz it can make the chance of packet loss greater,
+		// Although this is thread safe.
+		time.Sleep(time.Microsecond * 1)
+		var err = udpClient.JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
+		assert.True(t, err == nil, err)
+		total += int64(i + 1)
+	}
+
 	mux.Wait()
 
-	assert.True(t, total == messageIDTotal, "message id not equal", total, messageIDTotal)
+	assert.True(t, total == messageIDTotal, "message id not equal", total, messageIDTotal, countTotal)
 
 	if !flag {
-		t.Fatal("timeout")
+		t.Fatal("timeout: maybe udp packet loss, you can increase the interval between packets")
 	}
 }
 
-// TODO
-// need test more
 func Test_UDP_Client_Async(t *testing.T) {
-
-	udpClient.DailTimeout = time.Second * 10
 
 	var asyncClient = async.NewClient[client.Conn](udpClient)
 
 	var wait = sync.WaitGroup{}
 
-	var random = rand.Intn(13) + 50
+	var random = rand.Intn(1300) + 100000
 
 	wait.Add(random)
 
-	var count = 0
+	var count int32 = 0
 
 	for i := 0; i < random; i++ {
-		go func(index int) {
+		var index = i
+		go func() {
 			var str = fmt.Sprintf("%d", index)
+
 			var stream, err = asyncClient.Emit("/asyncClient", []byte(str))
-			count++
+
+			atomic.AddInt32(&count, 1)
 
 			assert.True(t, err == nil, err)
-
 			assert.True(t, stream != nil, "stream is nil")
-
 			assert.True(t, string(stream.Data) == str, fmt.Sprintf("`%+v` not equal `%+v`", string(stream.Data), str))
 
 			wait.Done()
-
-		}(i)
+		}()
 	}
 
 	wait.Wait()
 
-	assert.True(t, count == random, "count not equal", count, random)
+	assert.True(t, int(count) == random, "count not equal", count, random)
 }
 
 func Test_UDP_JsonEmit(t *testing.T) {
@@ -327,7 +331,7 @@ func Test_UDP_Server_Async(t *testing.T) {
 
 	var wait = sync.WaitGroup{}
 
-	var random = rand.Intn(10122) + 5000
+	var random = rand.Intn(1122) + 100000
 
 	wait.Add(random)
 

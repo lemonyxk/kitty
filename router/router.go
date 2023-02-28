@@ -13,7 +13,7 @@ package router
 import (
 	"strings"
 
-	"github.com/lemonyxk/structure/v3/tire"
+	"github.com/lemonyxk/structure/tire"
 )
 
 type Router[T any] struct {

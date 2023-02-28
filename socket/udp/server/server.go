@@ -21,7 +21,7 @@ import (
 	"github.com/lemonyxk/kitty/v2/errors"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
-	"github.com/lemonyxk/structure/v3/map"
+	"github.com/lemonyxk/structure/map"
 
 	"github.com/lemonyxk/kitty/v2/socket"
 )
@@ -277,16 +277,17 @@ func (s *Server) Start() {
 
 	// var reader = s.Protocol.Reader()
 
+	var buffer = make([]byte, s.ReadBufferSize+s.Protocol.HeadLen())
+
 	for {
 
-		var buffer = make([]byte, s.ReadBufferSize+s.Protocol.HeadLen())
 		n, addr, err := netListen.ReadFromUDP(buffer)
 
 		if err != nil {
 			break
 		}
 
-		go s.process(addr, buffer[:n])
+		s.process(addr, buffer[:n])
 
 		// split the message
 		// create scheduler for every addr

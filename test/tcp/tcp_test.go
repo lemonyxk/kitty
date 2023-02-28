@@ -81,7 +81,7 @@ func initServer() {
 	})
 
 	tcpServerRouter.Route("/asyncClient").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.JsonEmit(stream.Event, string(stream.Data))
+		return stream.Emit(stream.Event, stream.Data)
 	})
 
 	var tcpRouter = tcpServerRouter.Create()
@@ -165,25 +165,34 @@ func TestMain(t *testing.M) {
 
 func Test_TCP_Client(t *testing.T) {
 
-	var count = 10000
+	var count = 100000
 
 	var flag = true
 
-	var mux sync.WaitGroup
+	var mux = sync.WaitGroup{}
 
-	mux.Add(count)
+	mux.Add(1)
 
 	var total int64 = 0
 	var messageIDTotal int64 = 0
+	var countTotal int64 = 0
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
-			defer mux.Add(-1)
+			if atomic.AddInt64(&countTotal, 1) == int64(count) {
+				mux.Done()
+			}
 			messageIDTotal += stream.MessageID()
 			assert.True(t, string(stream.Data) == `"i am server"`, "stream is nil")
 			return nil
 		})
 	})
+
+	go func() {
+		<-time.After(60 * time.Second)
+		mux.Done()
+		flag = false
+	}()
 
 	for i := 0; i < count; i++ {
 		total += int64(i + 1)
@@ -192,15 +201,9 @@ func Test_TCP_Client(t *testing.T) {
 		}()
 	}
 
-	go func() {
-		<-time.After(3 * time.Second)
-		mux.Done()
-		flag = false
-	}()
-
 	mux.Wait()
 
-	assert.True(t, total == messageIDTotal, "message id not equal", total, messageIDTotal)
+	assert.True(t, total == messageIDTotal, "message id not equal", total, messageIDTotal, countTotal)
 
 	if !flag {
 		t.Fatal("timeout")
@@ -213,26 +216,32 @@ func Test_TCP_Client_Async(t *testing.T) {
 
 	var wait = sync.WaitGroup{}
 
-	var random = rand.Intn(1001) + 5000
+	var random = rand.Intn(1300) + 100000
 
 	wait.Add(random)
+
+	var count int32 = 0
 
 	for i := 0; i < random; i++ {
 		var index = i
 		go func() {
-			stream, err := asyncClient.JsonEmit("/asyncClient", index)
+			var str = fmt.Sprintf("%d", index)
+
+			var stream, err = asyncClient.Emit("/asyncClient", []byte(str))
+
+			atomic.AddInt32(&count, 1)
 
 			assert.True(t, err == nil, err)
-
 			assert.True(t, stream != nil, "stream is nil")
-
-			assert.True(t, string(stream.Data) == fmt.Sprintf("\"%d\"", index), "stream is nil")
+			assert.True(t, string(stream.Data) == str, fmt.Sprintf("`%+v` not equal `%+v`", string(stream.Data), str))
 
 			wait.Done()
 		}()
 	}
 
 	wait.Wait()
+
+	assert.True(t, int(count) == random, "count not equal", count, random)
 }
 
 func Test_TCP_JsonEmit(t *testing.T) {
@@ -317,7 +326,7 @@ func Test_TCP_Server_Async(t *testing.T) {
 
 	var wait = sync.WaitGroup{}
 
-	var random = rand.Intn(1001) + 5000
+	var random = rand.Intn(1001) + 100000
 
 	wait.Add(random)
 

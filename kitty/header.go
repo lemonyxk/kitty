@@ -17,6 +17,7 @@ const (
 	ContentType        = "Content-Type"
 	ContentLength      = "Content-Length"
 	ContentDisposition = "Content-Disposition"
+	Authorization      = "Authorization"
 
 	ApplicationFormUrlencoded = "application/x-www-form-urlencoded"
 	ApplicationProtobuf       = "application/x-protobuf"

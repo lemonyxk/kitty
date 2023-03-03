@@ -25,6 +25,7 @@ type Client struct {
 	KeyFile string
 
 	Response *http.Response
+	Header   http.Header
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
@@ -182,7 +183,7 @@ func (c *Client) Connect() {
 	}
 
 	// 连接服务器
-	handler, response, err := dialer.Dial(c.Addr, nil)
+	handler, response, err := dialer.Dial(c.Addr, c.Header)
 	if err != nil {
 		fmt.Println(err)
 		c.OnError(err)

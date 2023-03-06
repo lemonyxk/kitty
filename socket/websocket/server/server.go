@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/lemonyxk/kitty/v2/errors"
+	"github.com/lemonyxk/kitty/v2/kitty"
 	"github.com/lemonyxk/kitty/v2/router"
 	"github.com/lemonyxk/kitty/v2/socket/protocol"
 	hash "github.com/lemonyxk/structure/map"
@@ -43,13 +45,13 @@ type Server struct {
 
 	ReadBufferSize  int
 	WriteBufferSize int
-	CheckOrigin     func(r *http.Request) bool
 
-	PingHandler func(conn Conn) func(data string) error
-	PongHandler func(conn Conn) func(data string) error
-	Protocol    protocol.Protocol
+	SubProtocols []string
+	CheckOrigin  func(r *http.Request) bool
+	PingHandler  func(conn Conn) func(data string) error
+	PongHandler  func(conn Conn) func(data string) error
 
-	upgrade websocket.Upgrader
+	Protocol protocol.Protocol
 
 	fd          int64
 	connections *hash.Hash[int64, Conn]
@@ -243,20 +245,26 @@ func (s *Server) Ready() {
 		}
 	}
 
-	s.upgrade = websocket.Upgrader{
-		HandshakeTimeout: s.HandshakeTimeout,
-		ReadBufferSize:   s.ReadBufferSize,
-		WriteBufferSize:  s.WriteBufferSize,
-		CheckOrigin:      s.CheckOrigin,
-	}
-
 	s.connections = hash.New[int64, Conn]()
 }
 
 func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 
+	var upgrade = websocket.Upgrader{
+		HandshakeTimeout: s.HandshakeTimeout,
+		ReadBufferSize:   s.ReadBufferSize,
+		WriteBufferSize:  s.WriteBufferSize,
+		CheckOrigin:      s.CheckOrigin,
+		Subprotocols:     s.SubProtocols,
+	}
+
+	var swp = strings.Split(r.Header.Get(kitty.SecWebsocketProtocol), ",")
+	for i := 0; i < len(swp); i++ {
+		upgrade.Subprotocols = append(upgrade.Subprotocols, strings.TrimSpace(swp[i]))
+	}
+
 	// 升级协议
-	netConn, err := s.upgrade.Upgrade(w, r, nil)
+	netConn, err := upgrade.Upgrade(w, r, nil)
 
 	// 错误处理
 	if err != nil {
@@ -274,13 +282,14 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var conn = &conn{
-		fd:       0,
-		conn:     netConn,
-		server:   s,
-		response: w,
-		request:  r,
-		lastPing: time.Now(),
-		Protocol: s.Protocol,
+		fd:           0,
+		conn:         netConn,
+		server:       s,
+		response:     w,
+		request:      r,
+		lastPing:     time.Now(),
+		subProtocols: upgrade.Subprotocols,
+		Protocol:     s.Protocol,
 	}
 
 	// 设置PING处理函数

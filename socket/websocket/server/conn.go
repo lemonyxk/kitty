@@ -43,20 +43,22 @@ type Conn interface {
 	Server() *Server
 	Response() http.ResponseWriter
 	Request() *http.Request
+	SubProtocols() []string
 	socket.Emitter
 	protocol.Protocol
 }
 
 type conn struct {
-	name      string
-	fd        int64
-	conn      *websocket.Conn
-	lastPing  time.Time
-	server    *Server
-	response  http.ResponseWriter
-	request   *http.Request
-	mux       sync.Mutex
-	messageID int64
+	name         string
+	fd           int64
+	conn         *websocket.Conn
+	lastPing     time.Time
+	server       *Server
+	response     http.ResponseWriter
+	request      *http.Request
+	mux          sync.Mutex
+	messageID    int64
+	subProtocols []string
 	protocol.Protocol
 }
 
@@ -122,6 +124,10 @@ func (c *conn) ClientIP() string {
 	}
 
 	return ""
+}
+
+func (c *conn) SubProtocols() []string {
+	return c.subProtocols
 }
 
 func (c *conn) Ping() error {

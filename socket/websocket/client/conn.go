@@ -37,17 +37,19 @@ type Conn interface {
 	Ping() error
 	Pong() error
 	Conn() *websocket.Conn
+	SubProtocols() []string
 	socket.Emitter
 	protocol.Protocol
 }
 
 type conn struct {
-	name      string
-	conn      *websocket.Conn
-	client    *Client
-	lastPong  time.Time
-	mux       sync.RWMutex
-	messageID int64
+	name         string
+	conn         *websocket.Conn
+	client       *Client
+	lastPong     time.Time
+	mux          sync.RWMutex
+	messageID    int64
+	subProtocols []string
 	protocol.Protocol
 }
 
@@ -85,6 +87,10 @@ func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
 
 func (c *conn) Client() *Client {
 	return c.client
+}
+
+func (c *conn) SubProtocols() []string {
+	return c.subProtocols
 }
 
 func (c *conn) LastPong() time.Time {

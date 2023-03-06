@@ -11,13 +11,14 @@
 package kitty
 
 const (
-	XForwardedFor      = "X-Forwarded-For"
-	XRealIP            = "X-Real-IP"
-	Host               = "Host"
-	ContentType        = "Content-Type"
-	ContentLength      = "Content-Length"
-	ContentDisposition = "Content-Disposition"
-	Authorization      = "Authorization"
+	XForwardedFor        = "X-Forwarded-For"
+	XRealIP              = "X-Real-IP"
+	Host                 = "Host"
+	ContentType          = "Content-Type"
+	ContentLength        = "Content-Length"
+	ContentDisposition   = "Content-Disposition"
+	Authorization        = "Authorization"
+	SecWebsocketProtocol = "Sec-Websocket-Protocol"
 
 	ApplicationFormUrlencoded = "application/x-www-form-urlencoded"
 	ApplicationProtobuf       = "application/x-protobuf"

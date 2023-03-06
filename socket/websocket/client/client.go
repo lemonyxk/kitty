@@ -35,6 +35,7 @@ type Client struct {
 	WriteBufferSize int
 	ReadBufferSize  int
 	DailTimeout     time.Duration
+	SubProtocols    []string
 
 	OnOpen         func(conn Conn)
 	OnClose        func(conn Conn)
@@ -42,13 +43,13 @@ type Client struct {
 	OnError        func(err error)
 	OnSuccess      func()
 	OnReconnecting func()
-	OnUnknown      func(conn Conn, message []byte, next Middle)
 
+	OnUnknown   func(conn Conn, message []byte, next Middle)
 	PingHandler func(conn Conn) func(data string) error
+
 	PongHandler func(conn Conn) func(data string) error
 
-	Protocol protocol.Protocol
-
+	Protocol              protocol.Protocol
 	conn                  Conn
 	router                *router.Router[*socket.Stream[Conn]]
 	middle                []func(Middle) Middle
@@ -180,6 +181,7 @@ func (c *Client) Connect() {
 		WriteBufferSize:  c.WriteBufferSize,
 		ReadBufferSize:   c.ReadBufferSize,
 		TLSClientConfig:  config,
+		Subprotocols:     c.SubProtocols,
 	}
 
 	// 连接服务器
@@ -194,10 +196,11 @@ func (c *Client) Connect() {
 	c.Response = response
 
 	c.conn = &conn{
-		conn:     handler,
-		client:   c,
-		lastPong: time.Now(),
-		Protocol: c.Protocol,
+		conn:         handler,
+		client:       c,
+		lastPong:     time.Now(),
+		subProtocols: c.SubProtocols,
+		Protocol:     c.Protocol,
 	}
 
 	c.stopCh = make(chan struct{})

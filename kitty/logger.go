@@ -15,4 +15,9 @@ type Logger interface {
 	Warningf(format string, args ...any)
 	Infof(format string, args ...any)
 	Debugf(format string, args ...any)
+
+	Error(args ...any)
+	Warning(args ...any)
+	Info(args ...any)
+	Debug(args ...any)
 }

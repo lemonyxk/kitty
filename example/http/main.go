@@ -143,7 +143,7 @@ func runHttpServer() {
 	httpStaticServerRouter.SetStaticPath("/", "public", http2.FS(fileSystem))
 	// second file system
 	httpStaticServerRouter.SetStaticPath("/protobuf", "protobuf", http2.Dir("./example"))
-
+	// httpStaticServerRouter.SetStaticDownload(true)
 	// allow access directory in first and second file system
 	httpStaticServerRouter.SetOpenDir(0, 1)
 

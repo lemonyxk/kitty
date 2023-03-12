@@ -191,25 +191,45 @@ func (s *Server) staticDefaultDirMiddle(w http.ResponseWriter, r *http.Request, 
 
 	var bts bytes.Buffer
 
+	// title
+	bts.WriteString(`<title>Index of ` + r.URL.Path + `</title>`)
+	bts.WriteString(`<h1>Index of ` + r.URL.Path + `</h1>`)
+	bts.WriteString(`<hr/>`)
+	// pre
+	bts.WriteString(`<pre>`)
+	// back
+	bts.WriteString(`<a href="../">` + "../" + `</a>` + "\n")
+
 	for i := 0; i < len(dir); i++ {
-		var download = ""
-		var empty = ""
-		if s.staticRouter.staticDownload {
-			download = `<a class="file" download href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + downloadSVG + `</a>`
-			empty = emptySVG
-		}
+		var p = filepath.Join(r.URL.Path, dir[i].Name())
+		var name = dir[i].Name()
+		var size = strconv.Itoa(int(dir[i].Size()))
 		if dir[i].IsDir() {
-			bts.WriteString(`<div class="list">` + empty + dirSVG + `<a class="dir" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a></div>`)
-		} else {
-			bts.WriteString(`<div class="list">` + download + fileSVG + `<a class="file" href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + dir[i].Name() + `</a>` + `</div>`)
+			name = name + "/"
+			p = p + "/"
+			size = "-"
 		}
+
+		if len(name) > 50 {
+			name = name[:47] + "..>"
+		}
+		var l = 50 - len(name)
+		bts.WriteString(`<a href="` + p + `">` + name + `</a>` + strings.Repeat(" ", l))
+		bts.WriteString(" " + dir[i].ModTime().Format("02-Jan-2006 15:04") + strings.Repeat(" ", 20-len(size)) + size)
+
+		if s.staticRouter.staticDownload && !dir[i].IsDir() {
+			bts.WriteString("  " + `<a download href="` + filepath.Join(r.URL.Path, dir[i].Name()) + `">` + "download" + `</a>`)
+		}
+
+		bts.WriteString("\n")
 	}
 
-	var str = strings.ReplaceAll(html, `{{body}}`, bts.String())
+	bts.WriteString(`</pre>`)
+	bts.WriteString(`<hr/>`)
 
 	w.Header().Set(kitty.ContentType, kitty.TextHtml)
-	w.Header().Set(kitty.ContentLength, strconv.Itoa(len(str)))
-	_, err = w.Write([]byte(str))
+	w.Header().Set(kitty.ContentLength, strconv.Itoa(len(bts.String())))
+	_, err = w.Write([]byte(bts.String()))
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
 		return nil

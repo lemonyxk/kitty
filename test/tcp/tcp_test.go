@@ -60,7 +60,7 @@ func initServer() {
 	// event
 	tcpServer.OnOpen = func(conn server.Conn) { fd++ }
 	tcpServer.OnClose = func(conn server.Conn) {}
-	tcpServer.OnError = func(err error) {}
+	tcpServer.OnError = func(stream *socket.Stream[server.Conn], err error) {}
 	tcpServer.OnMessage = func(conn server.Conn, msg []byte) {}
 
 	// middleware
@@ -123,7 +123,7 @@ func initClient() {
 	// event
 	tcpClient.OnClose = func(c client.Conn) {}
 	tcpClient.OnOpen = func(c client.Conn) {}
-	tcpClient.OnError = func(err error) {}
+	tcpClient.OnError = func(stream *socket.Stream[client.Conn], err error) {}
 	tcpClient.OnMessage = func(client client.Conn, msg []byte) {}
 
 	// create router

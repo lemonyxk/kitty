@@ -66,7 +66,7 @@ func initServer() {
 	// event
 	webSocketServer.OnOpen = func(conn server.Conn) { fd++ }
 	webSocketServer.OnClose = func(conn server.Conn) {}
-	webSocketServer.OnError = func(err error) {}
+	webSocketServer.OnError = func(stream *socket.Stream[server.Conn], err error) {}
 	webSocketServer.OnMessage = func(conn server.Conn, msg []byte) {}
 
 	// middleware
@@ -150,7 +150,7 @@ func initClient() {
 	// event
 	webSocketClient.OnClose = func(c client.Conn) {}
 	webSocketClient.OnOpen = func(c client.Conn) {}
-	webSocketClient.OnError = func(err error) {}
+	webSocketClient.OnError = func(stream *socket.Stream[client.Conn], err error) {}
 	webSocketClient.OnMessage = func(c client.Conn, messageType int, msg []byte) {}
 
 	// handle unknown proto

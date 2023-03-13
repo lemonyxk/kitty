@@ -39,7 +39,7 @@ type Server struct {
 	OnClose   func(conn Conn)
 	OnMessage func(conn Conn, msg []byte)
 	OnOpen    func(conn Conn)
-	OnError   func(err error)
+	OnError   func(stream *socket.Stream[Conn], err error)
 	OnSuccess func()
 	OnUnknown func(conn Conn, message []byte, next Middle)
 
@@ -153,7 +153,7 @@ func (s *Server) Ready() {
 	}
 
 	if s.OnError == nil {
-		s.OnError = func(err error) {
+		s.OnError = func(stream *socket.Stream[Conn], err error) {
 			fmt.Println("tcp server:", err)
 		}
 	}
@@ -200,8 +200,8 @@ func (s *Server) onClose(conn Conn) {
 	s.OnClose(conn)
 }
 
-func (s *Server) onError(err error) {
-	s.OnError(err)
+func (s *Server) onError(stream *socket.Stream[Conn], err error) {
+	s.OnError(stream, err)
 }
 
 func (s *Server) addConnect(conn Conn) {
@@ -278,12 +278,10 @@ func (s *Server) Shutdown() error {
 }
 
 func (s *Server) process(netConn net.Conn) {
-	// 超时时间
 	if s.HeartBeatTimeout != 0 {
 		err := netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
 		if err != nil {
-			s.onError(err)
-			return
+			panic(err)
 		}
 	}
 
@@ -338,7 +336,7 @@ func (s *Server) process(netConn net.Conn) {
 		})
 
 		if err != nil {
-			s.onError(err)
+			fmt.Println(err)
 			break
 		}
 
@@ -391,7 +389,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	if s.router == nil {
 		if s.OnError != nil {
-			s.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
+			s.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}
@@ -399,7 +397,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	var n, formatPath = s.router.GetRoute(stream.Event)
 	if n == nil {
 		if s.OnError != nil {
-			s.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
+			s.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}
@@ -411,7 +409,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	for i := 0; i < len(nodeData.Before); i++ {
 		if err := nodeData.Before[i](stream); err != nil {
 			if s.OnError != nil {
-				s.OnError(err)
+				s.OnError(stream, err)
 			}
 			return
 		}
@@ -420,7 +418,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	err := nodeData.Function(stream)
 	if err != nil {
 		if s.OnError != nil {
-			s.OnError(err)
+			s.OnError(stream, err)
 		}
 		return
 	}
@@ -428,7 +426,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	for i := 0; i < len(nodeData.After); i++ {
 		if err := nodeData.After[i](stream); err != nil {
 			if s.OnError != nil {
-				s.OnError(err)
+				s.OnError(stream, err)
 			}
 			return
 		}

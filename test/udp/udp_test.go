@@ -60,7 +60,7 @@ func initServer() {
 	// event
 	udpServer.OnOpen = func(conn server.Conn) { fd++ }
 	udpServer.OnClose = func(conn server.Conn) {}
-	udpServer.OnError = func(err error) {}
+	udpServer.OnError = func(stream *socket.Stream[server.Conn], err error) {}
 	udpServer.OnMessage = func(conn server.Conn, msg []byte) {}
 
 	// middleware
@@ -123,7 +123,7 @@ func initClient() {
 	// event
 	udpClient.OnClose = func(c client.Conn) {}
 	udpClient.OnOpen = func(c client.Conn) {}
-	udpClient.OnError = func(err error) {}
+	udpClient.OnError = func(stream *socket.Stream[client.Conn], err error) {}
 	udpClient.OnMessage = func(client client.Conn, msg []byte) {}
 
 	// create router

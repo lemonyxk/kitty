@@ -78,7 +78,7 @@ func asyncTcpClient() {
 
 	var clientRouter = kitty.NewTcpClientRouter()
 
-	tcpClient.OnError = func(err error) {
+	tcpClient.OnError = func(stream *socket.Stream[client.Conn], err error) {
 		log.Println(err)
 	}
 

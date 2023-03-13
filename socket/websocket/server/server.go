@@ -33,7 +33,7 @@ type Server struct {
 	OnOpen    func(conn Conn)
 	OnMessage func(conn Conn, msg []byte)
 	OnClose   func(conn Conn)
-	OnError   func(err error)
+	OnError   func(stream *socket.Stream[Conn], err error)
 	OnSuccess func()
 	OnRaw     func(w http.ResponseWriter, r *http.Request)
 	OnUnknown func(conn Conn, message []byte, next Middle)
@@ -154,8 +154,8 @@ func (s *Server) onClose(conn Conn) {
 	s.OnClose(conn)
 }
 
-func (s *Server) onError(err error) {
-	s.OnError(err)
+func (s *Server) onError(stream *socket.Stream[Conn], err error) {
+	s.OnError(stream, err)
 }
 
 func (s *Server) Ready() {
@@ -212,7 +212,7 @@ func (s *Server) Ready() {
 	}
 
 	if s.OnError == nil {
-		s.OnError = func(err error) {
+		s.OnError = func(stream *socket.Stream[Conn], err error) {
 			fmt.Println("webSocket server:", err)
 		}
 	}
@@ -263,20 +263,17 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		upgrade.Subprotocols = append(upgrade.Subprotocols, strings.TrimSpace(swp[i]))
 	}
 
-	// 升级协议
 	netConn, err := upgrade.Upgrade(w, r, nil)
 
-	// 错误处理
 	if err != nil {
-		s.onError(err)
+		fmt.Println(err)
 		return
 	}
 
-	// 超时时间
 	if s.HeartBeatTimeout != 0 {
 		err = netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
 		if err != nil {
-			s.onError(err)
+			fmt.Println(err)
 			return
 		}
 	}
@@ -292,18 +289,14 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		Protocol:     s.Protocol,
 	}
 
-	// 设置PING处理函数
 	netConn.SetPingHandler(s.PingHandler(conn))
 
-	// 设置PONG处理函数
 	netConn.SetPongHandler(s.PongHandler(conn))
 
-	// 打开连接 记录
 	s.onOpen(conn)
 
 	var reader = s.Protocol.Reader()
 
-	// 收到消息 处理 单一连接接受不冲突 但是不能并发写入
 	for {
 
 		// read message
@@ -324,7 +317,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err != nil {
-			s.onError(err)
+			fmt.Println(err)
 			break
 		}
 	}
@@ -379,7 +372,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	if s.router == nil {
 		if s.OnError != nil {
-			s.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
+			s.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}
@@ -387,7 +380,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	var n, formatPath = s.router.GetRoute(stream.Event)
 	if n == nil {
 		if s.OnError != nil {
-			s.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
+			s.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}
@@ -399,7 +392,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	for i := 0; i < len(nodeData.Before); i++ {
 		if err := nodeData.Before[i](stream); err != nil {
 			if s.OnError != nil {
-				s.OnError(err)
+				s.OnError(stream, err)
 			}
 			return
 		}
@@ -408,7 +401,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	err := nodeData.Function(stream)
 	if err != nil {
 		if s.OnError != nil {
-			s.OnError(err)
+			s.OnError(stream, err)
 		}
 		return
 	}
@@ -416,7 +409,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	for i := 0; i < len(nodeData.After); i++ {
 		if err := nodeData.After[i](stream); err != nil {
 			if s.OnError != nil {
-				s.OnError(err)
+				s.OnError(stream, err)
 			}
 			return
 		}

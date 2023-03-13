@@ -75,7 +75,7 @@ func asyncWsClient() {
 
 	var clientRouter = kitty.NewWebSocketClientRouter()
 
-	wsClient.OnError = func(err error) {
+	wsClient.OnError = func(stream *socket.Stream[client.Conn], err error) {
 		log.Println(err)
 	}
 

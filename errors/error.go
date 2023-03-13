@@ -21,7 +21,8 @@ import (
 	"strings"
 )
 
-// var pwd, _ = os.Getwd()
+var pwd, _ = os.Getwd()
+var goRoot, _ = os.LookupEnv("GOROOT")
 
 type info struct {
 	file     string
@@ -71,7 +72,8 @@ func NewWithStack(text string) error {
 
 func stack(deep int) []info {
 	var res []info
-	for skip := deep; true; skip++ {
+	for skip := 2; true; skip++ {
+
 		pc, codePath, codeLine, ok := runtime.Caller(skip)
 		if !ok {
 			break
@@ -89,7 +91,14 @@ func stack(deep int) []info {
 			}
 		}
 
-		codePath = codePath[index:]
+		if codePath[:len(pwd)] == pwd {
+			codePath = codePath[len(pwd)+1:]
+		} else if codePath[:len(goRoot)] == goRoot {
+			// codePath = codePath[len(goRoot)+1:]
+		} else {
+			codePath = "@" + codePath[index:]
+		}
+
 		prevFunc := runtime.FuncForPC(pc).Name()
 		res = append(res, info{
 			file:     codePath,

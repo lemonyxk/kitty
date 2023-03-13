@@ -40,7 +40,7 @@ type Client struct {
 	OnOpen         func(conn Conn)
 	OnClose        func(conn Conn)
 	OnMessage      func(conn Conn, messageType int, msg []byte)
-	OnError        func(err error)
+	OnError        func(stream *socket.Stream[Conn], err error)
 	OnSuccess      func()
 	OnReconnecting func()
 
@@ -107,7 +107,6 @@ func (c *Client) reconnecting() {
 	}
 }
 
-// Connect 连接服务器
 func (c *Client) Connect() {
 
 	if c.Addr == "" {
@@ -127,37 +126,31 @@ func (c *Client) Connect() {
 	}
 
 	if c.OnError == nil {
-		c.OnError = func(err error) {
+		c.OnError = func(stream *socket.Stream[Conn], err error) {
 			fmt.Println("webSocket client:", err)
 		}
 	}
 
-	// 握手
 	if c.DailTimeout == 0 {
 		c.DailTimeout = 3 * time.Second
 	}
 
-	// 写入BUF大小
 	if c.WriteBufferSize == 0 {
 		c.WriteBufferSize = 1024
 	}
 
-	// 读出BUF大小
 	if c.ReadBufferSize == 0 {
 		c.ReadBufferSize = 1024
 	}
 
-	// // 定时心跳间隔
 	// if c.HeartBeatInterval == 0 {
 	// 	c.HeartBeatInterval = 3 * time.Second
 	// }
 	//
-	// // 服务器返回PONG超时
 	// if c.HeartBeatTimeout == 0 {
 	// 	c.HeartBeatTimeout = 6 * time.Second
 	// }
 	//
-	// // 自动重连间隔
 	// if c.ReconnectInterval == 0 {
 	// 	c.ReconnectInterval = time.Second
 	// }
@@ -184,11 +177,9 @@ func (c *Client) Connect() {
 		Subprotocols:     c.SubProtocols,
 	}
 
-	// 连接服务器
 	handler, response, err := dialer.Dial(c.Addr, c.Header)
 	if err != nil {
 		fmt.Println(err)
-		c.OnError(err)
 		c.reconnecting()
 		return
 	}
@@ -206,7 +197,6 @@ func (c *Client) Connect() {
 	c.stopCh = make(chan struct{})
 	c.isStop = false
 
-	// 定时器 心跳
 	var heartBeatInterval = c.HeartBeatInterval
 	if c.HeartBeatInterval == 0 {
 		heartBeatInterval = time.Second
@@ -244,13 +234,10 @@ func (c *Client) Connect() {
 		}
 	}
 
-	// 设置PING处理函数
 	handler.SetPingHandler(c.PingHandler(c.conn))
 
-	// 设置PONG处理函数
 	handler.SetPongHandler(c.PongHandler(c.conn))
 
-	// 如果有心跳设置
 	if c.HeartBeatInterval == 0 {
 		c.heartbeatTicker.Stop()
 	}
@@ -260,7 +247,7 @@ func (c *Client) Connect() {
 			select {
 			case <-c.heartbeatTicker.C:
 				if err := c.HeartBeat(c.conn); err != nil {
-					c.OnError(err)
+					fmt.Println(err)
 				}
 			case <-c.cancelHeartbeatTicker:
 				return
@@ -272,7 +259,6 @@ func (c *Client) Connect() {
 		err = c.conn.Conn().SetReadDeadline(time.Now().Add(c.HeartBeatTimeout))
 		if err != nil {
 			fmt.Println(err)
-			c.OnError(err)
 			c.reconnecting()
 			return
 		}
@@ -283,7 +269,6 @@ func (c *Client) Connect() {
 		c.OnSuccess()
 	}
 
-	// 连接成功
 	c.OnOpen(c.conn)
 
 	var reader = c.Protocol.Reader()
@@ -304,7 +289,7 @@ func (c *Client) Connect() {
 			})
 
 			if err != nil {
-				c.OnError(err)
+				fmt.Println(err)
 				if !c.isStop {
 					c.stopCh <- struct{}{}
 				}
@@ -319,13 +304,9 @@ func (c *Client) Connect() {
 	c.heartbeatTicker.Stop()
 	c.cancelHeartbeatTicker <- struct{}{}
 
-	// 关闭连接
 	_ = c.Close()
-	// 触发回调
 	c.OnClose(c.conn)
-	// 触发重连设置
 	c.reconnecting()
-
 }
 
 func (c *Client) decodeMessage(messageFrame int, message []byte) error {
@@ -372,7 +353,7 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 
 	if c.router == nil {
 		if c.OnError != nil {
-			c.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
+			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}
@@ -380,7 +361,7 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 	var n, formatPath = c.router.GetRoute(stream.Event)
 	if n == nil {
 		if c.OnError != nil {
-			c.OnError(errors.Wrap(errors.RouteNotFount, stream.Event))
+			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
 		}
 		return
 	}
@@ -392,7 +373,7 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 	for i := 0; i < len(nodeData.Before); i++ {
 		if err := nodeData.Before[i](stream); err != nil {
 			if c.OnError != nil {
-				c.OnError(err)
+				c.OnError(stream, err)
 			}
 			return
 		}
@@ -401,7 +382,7 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 	err := nodeData.Function(stream)
 	if err != nil {
 		if c.OnError != nil {
-			c.OnError(err)
+			c.OnError(stream, err)
 		}
 		return
 	}
@@ -409,7 +390,7 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 	for i := 0; i < len(nodeData.After); i++ {
 		if err := nodeData.After[i](stream); err != nil {
 			if c.OnError != nil {
-				c.OnError(err)
+				c.OnError(stream, err)
 			}
 			return
 		}

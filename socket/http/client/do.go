@@ -18,7 +18,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 
@@ -90,6 +89,11 @@ func doXProtobuf(method string, url string, info *Request) (*http.Request, conte
 	return request, cancel, err
 }
 
+type file interface {
+	io.Reader
+	Name() string
+}
+
 func doFormData(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
 	if info.body == nil {
 		info.body = []kitty.M{}
@@ -106,8 +110,11 @@ func doFormData(method string, url string, info *Request) (*http.Request, contex
 	pCtx, pCancel := context.WithCancel(ctx)
 	go func() {
 		defer func() {
-			// if close in first then the part will close too before read.
-			// so you can not read the part.
+			// if close in first then the part will close too before read,
+			// cuz when in close the part will be clean up,
+			// then you can not read the part.
+			// NOTICE: we need to close the part to write the last boundary
+			// or the message will be broken.
 			_ = part.Close()
 			_ = in.Close()
 			pCancel()
@@ -142,12 +149,12 @@ func doFormData(method string, url string, info *Request) (*http.Request, contex
 					if _, err := io.Copy(w, strings.NewReader(str)); err != nil {
 						return
 					}
-				case *os.File:
-					w, err := part.CreateFormFile(key, value.(*os.File).Name())
+				case file:
+					w, err := part.CreateFormFile(key, value.(file).Name())
 					if err != nil {
 						return
 					}
-					if _, err = io.Copy(w, value.(*os.File)); err != nil {
+					if _, err = io.Copy(w, value.(file)); err != nil {
 						return
 					}
 				default:

@@ -20,15 +20,15 @@ import (
 )
 
 type Request struct {
-	handler     *Client
-	headerKey   []string
-	headerValue []string
-	cookies     []*http.Cookie
-	body        any
-	progress    *Progress
-	userName    string
-	passWord    string
-	clientTimeout   time.Duration
+	handler       *Client
+	headerKey     []string
+	headerValue   []string
+	cookies       []*http.Cookie
+	body          any
+	progress      *Progress
+	userName      string
+	passWord      string
+	clientTimeout time.Duration
 }
 
 func (h *Request) Progress(progress *Progress) *Request {

@@ -179,7 +179,6 @@ func (s *Parser) Auto() {
 		return
 	}
 
-
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
 		s.Multipart()
 		return

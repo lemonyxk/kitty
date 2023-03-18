@@ -11,7 +11,9 @@
 package main
 
 import (
+	"bytes"
 	"embed"
+	"io"
 	"log"
 	http2 "net/http"
 	"os"
@@ -30,6 +32,10 @@ import (
 
 //go:embed public/**
 var fileSystem embed.FS
+
+func init() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+}
 
 func runHttpServer() {
 
@@ -95,6 +101,17 @@ func runHttpServer() {
 	httpRouter.Post("/file").Before(before).After(after).Handler(func(stream *http.Stream) error {
 		log.Println(stream.Multipart.Files.String())
 		log.Println(stream.Multipart.Form.String())
+		return stream.Sender.String("hello world!")
+	})
+
+	httpRouter.Post("/OctetStream").Before(before).After(after).Handler(func(stream *http.Stream) error {
+		var b bytes.Buffer
+		var body = stream.Request.Body
+		i, err := io.Copy(&b, body)
+		if err != nil {
+			return stream.Sender.String(err.Error())
+		}
+		log.Println(i, b.Len())
 		return stream.Sender.String("hello world!")
 	})
 
@@ -191,9 +208,29 @@ func main() {
 			panic(err)
 		}
 
+		defer func() { _ = f.Close() }()
+
 		var res = client.Post("http://127.0.0.1:8666/file").Multipart(kitty2.M{
 			"file": f, "a": 1,
 		}).Send()
+
+		if res.LastError() != nil {
+			log.Println(res.LastError())
+		} else {
+			log.Println("res:", res.String())
+		}
+
+	}()
+
+	go func() {
+		var f, err = os.Open("./output_filename")
+		if err != nil {
+			panic(err)
+		}
+
+		defer func() { _ = f.Close() }()
+
+		var res = client.Post("http://127.0.0.1:8666/OctetStream").OctetStream(f).Send()
 
 		if res.LastError() != nil {
 			log.Println(res.LastError())

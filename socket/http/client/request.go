@@ -11,6 +11,7 @@
 package client
 
 import (
+	"io"
 	"net/http"
 	"net/textproto"
 	"time"
@@ -141,8 +142,18 @@ func (h *Request) Multipart(body ...kitty.M) *Sender {
 	return &Sender{info: h, req: request, cancel: cancel}
 }
 
-func (h *Request) Raw(body ...[]byte) *Sender {
-	h.body = body
+func (h *Request) OctetStream(r io.Reader) *Sender {
+	h.SetHeader(kitty.ContentType, kitty.ApplicationOctetStream)
+	h.body = r
+	request, cancel, err := doRaw(h.handler.method, h.handler.url, h)
+	if err != nil {
+		return &Sender{err: err}
+	}
+	return &Sender{info: h, req: request, cancel: cancel}
+}
+
+func (h *Request) Raw(r io.Reader) *Sender {
+	h.body = r
 	request, cancel, err := doRaw(h.handler.method, h.handler.url, h)
 	if err != nil {
 		return &Sender{err: err}

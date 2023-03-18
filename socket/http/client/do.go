@@ -44,19 +44,45 @@ func getRequest(method string, url string, info *Request) (*http.Request, contex
 }
 
 func doRaw(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
-	body, ok := info.body.([][]byte)
+	if info.body == nil {
+		info.body = new(bytes.Buffer)
+	}
+
+	body, ok := info.body.(io.Reader)
 	if !ok {
-		return nil, nil, errors.Wrap(errors.AssertionFailed, "[]byte")
+		return nil, nil, errors.Wrap(errors.AssertionFailed, "io.Reader")
 	}
 
-	var rawBody []byte
-
-	for i := 0; i < len(body); i++ {
-		rawBody = append(rawBody, body[i]...)
-	}
-
+	out, in := io.Pipe()
 	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
-	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(rawBody))
+	pCtx, pCancel := context.WithCancel(ctx)
+	go func() {
+		defer func() {
+			// if close in first then the part will close too before read,
+			// cuz when in close the part will be clean up,
+			// then you can not read the part.
+			// NOTICE: we need to close the part to write the last boundary
+			// or the message will be broken.
+			_ = in.Close()
+			pCancel()
+		}()
+
+		if _, err := io.Copy(in, body); err != nil {
+			return
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-pCtx.Done():
+				_ = in.Close()
+				return
+			}
+		}
+	}()
+
+	request, err := http.NewRequestWithContext(ctx, method, url, out)
 	if err != nil {
 		cancel()
 		return nil, nil, err

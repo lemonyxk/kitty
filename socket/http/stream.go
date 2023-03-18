@@ -32,7 +32,7 @@ type Stream struct {
 }
 
 func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
-	var stream =  &Stream{
+	var stream = &Stream{
 		Response: w, Request: r,
 		Protobuf:  &Protobuf{},
 		Query:     &Store{},
@@ -40,7 +40,7 @@ func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
 		Json:      &Json{},
 		Multipart: &Multipart{Files: &Files{}, Form: &Store{}},
 		Sender:    &Sender{response: w, request: r},
-		Parser:    &Parser{response: w, request: r},
+		Parser:    &Parser{response: w, request: r, maxMemory: 6 * 1024 * 1024},
 	}
 
 	stream.Parser.stream = stream

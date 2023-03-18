@@ -32,7 +32,7 @@ func (j *Json) getAny() jsoniter.Any {
 	return j.any
 }
 
-func (j *Json) Iter() jsoniter.Any {
+func (j *Json) Any() jsoniter.Any {
 	return j.getAny()
 }
 

@@ -53,7 +53,18 @@ func runHttpServer() {
 	// middleware
 	httpServer.Use(func(next server.Middle) server.Middle {
 		return func(stream *http.Stream) {
+			// cors
+			stream.Response.Header().Set("Access-Control-Allow-Origin", "*")
+			stream.Response.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			stream.Response.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+
+			if stream.Request.Method == "OPTIONS" {
+				stream.Response.WriteHeader(http2.StatusOK)
+				return
+			}
+
 			stream.Parser.Auto()
+
 			log.Println("middleware1 start")
 			next(stream)
 			log.Println("middleware1 end")
@@ -107,6 +118,8 @@ func runHttpServer() {
 	httpRouter.Post("/OctetStream").Before(before).After(after).Handler(func(stream *http.Stream) error {
 		var b bytes.Buffer
 		var body = stream.Request.Body
+		log.Println("stream.Request.ContentLength:", stream.Request.ContentLength)
+		time.Sleep(time.Second * 3)
 		i, err := io.Copy(&b, body)
 		if err != nil {
 			return stream.Sender.String(err.Error())

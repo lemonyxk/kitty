@@ -30,21 +30,24 @@ type info struct {
 	funcName string
 }
 
-type errString struct {
+type Error struct {
 	message string
 	err     error
 	stack   []info
 }
 
-func (e *errString) Error() string {
+func (e *Error) Error() string {
 	return e.message
 }
 
-func (e *errString) Format(s fmt.State, verb rune) {
+func (e *Error) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			_, _ = io.WriteString(s, e.message+"\n")
+			_, _ = io.WriteString(s, e.message)
+			if len(e.stack) != 0 {
+				_, _ = io.WriteString(s, "\n")
+			}
 			for i, f := range e.stack {
 				var str = strings.Repeat(" ", 4) + "at " + filepath.Base(f.funcName) + " in " + f.file + ":" + strconv.Itoa(f.line)
 				if i != len(e.stack)-1 {
@@ -62,12 +65,79 @@ func (e *errString) Format(s fmt.State, verb rune) {
 	}
 }
 
-func New(text string) error {
-	return &errString{message: text}
+func (e *Error) Unwrap() error {
+	return e.err
+}
+
+func (e *Error) Stack() error {
+	e.stack = stack(2)
+	return e
+}
+
+func New(text string) *Error {
+	return &Error{message: text}
+}
+
+func Errorf(f string, args ...any) *Error {
+	return &Error{message: fmt.Sprintf(f, args...)}
 }
 
 func NewWithStack(text string) error {
-	return &errString{message: text, stack: stack(2)}
+	return &Error{message: text, stack: stack(2)}
+}
+
+func WithStack(err error) error {
+	if err == nil {
+		return nil
+	}
+	return &Error{message: err.Error(), stack: stack(2)}
+}
+
+func Wrap(err error, text string) error {
+	if err == nil {
+		return nil
+	}
+
+	var r = &Error{
+		message: text + ": " + err.Error(),
+		err:     err,
+	}
+
+	if e, ok := err.(*Error); ok {
+		r.stack = e.stack
+		return r
+	}
+
+	return r
+}
+
+func Is(err, target error) bool {
+	if target == nil {
+		return err == target
+	}
+
+	isComparable := reflect.TypeOf(target).Comparable()
+	for {
+		if isComparable && err == target {
+			return true
+		}
+		if x, ok := err.(interface{ Is(error) bool }); ok && x.Is(target) {
+			return true
+		}
+		if err = Unwrap(err); err == nil {
+			return false
+		}
+	}
+}
+
+func Unwrap(err error) error {
+	u, ok := err.(interface {
+		Unwrap() error
+	})
+	if !ok {
+		return nil
+	}
+	return u.Unwrap()
 }
 
 func stack(deep int) []info {
@@ -107,62 +177,4 @@ func stack(deep int) []info {
 		})
 	}
 	return res
-}
-
-func WithStack(err error) error {
-	if err == nil {
-		return nil
-	}
-	return &errString{message: err.Error(), stack: stack(2)}
-}
-
-func Wrap(err error, text string) error {
-	if err == nil {
-		return nil
-	}
-
-	var r = &errString{
-		message: text + ": " + err.Error(),
-		err:     err,
-	}
-
-	if e, ok := err.(*errString); ok {
-		r.stack = e.stack
-		return r
-	}
-
-	return r
-}
-
-func Is(err, target error) bool {
-	if target == nil {
-		return err == target
-	}
-
-	isComparable := reflect.TypeOf(target).Comparable()
-	for {
-		if isComparable && err == target {
-			return true
-		}
-		if x, ok := err.(interface{ Is(error) bool }); ok && x.Is(target) {
-			return true
-		}
-		if err = Unwrap(err); err == nil {
-			return false
-		}
-	}
-}
-
-func Unwrap(err error) error {
-	u, ok := err.(interface {
-		Unwrap() error
-	})
-	if !ok {
-		return nil
-	}
-	return u.Unwrap()
-}
-
-func (e *errString) Unwrap() error {
-	return e.err
 }

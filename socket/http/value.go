@@ -32,6 +32,21 @@ func (v Values) Int() []int {
 	return res
 }
 
+func (v Values) Int64() []int64 {
+	var res []int64
+
+	if len(v) == 0 {
+		return res
+	}
+
+	for i := 0; i < len(v); i++ {
+		r, _ := strconv.ParseInt(v[i], 10, 64)
+		res = append(res, r)
+	}
+
+	return res
+}
+
 func (v Values) Float64() []float64 {
 	var res []float64
 
@@ -95,6 +110,14 @@ func (v Value) Int() int {
 		return 0
 	}
 	r, _ := strconv.Atoi(*v.v)
+	return r
+}
+
+func (v Value) Int64() int64 {
+	if v.v == nil {
+		return 0
+	}
+	r, _ := strconv.ParseInt(*v.v, 10, 64)
 	return r
 }
 

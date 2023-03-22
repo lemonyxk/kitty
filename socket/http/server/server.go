@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lemonyxk/kitty/v2/errors"
-	"github.com/lemonyxk/kitty/v2/router"
-	"github.com/lemonyxk/kitty/v2/socket"
-	http2 "github.com/lemonyxk/kitty/v2/socket/http"
+	"github.com/lemonyxk/kitty/errors"
+	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket"
+	http2 "github.com/lemonyxk/kitty/socket/http"
 )
 
 type Server struct {

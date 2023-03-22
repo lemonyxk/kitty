@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/json-iterator/go"
-	"github.com/lemonyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/kitty"
 )
 
 type Parser struct {

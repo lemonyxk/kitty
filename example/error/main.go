@@ -13,7 +13,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/lemonyxk/kitty/v2/errors"
+	"github.com/lemonyxk/kitty/errors"
 )
 
 func main() {

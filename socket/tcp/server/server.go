@@ -17,15 +17,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lemonyxk/kitty/v2/errors"
-	"github.com/lemonyxk/kitty/v2/router"
-	"github.com/lemonyxk/kitty/v2/socket/protocol"
-	"github.com/lemonyxk/kitty/v2/ssl"
+	"github.com/lemonyxk/kitty/errors"
+	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket/protocol"
+	"github.com/lemonyxk/kitty/ssl"
 	"github.com/lemonyxk/structure/map"
 
 	"github.com/golang/protobuf/proto"
 
-	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/socket"
 )
 
 type Server struct {

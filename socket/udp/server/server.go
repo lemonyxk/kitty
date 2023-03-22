@@ -18,12 +18,12 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lemonyxk/kitty/v2/errors"
-	"github.com/lemonyxk/kitty/v2/router"
-	"github.com/lemonyxk/kitty/v2/socket/protocol"
+	"github.com/lemonyxk/kitty/errors"
+	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket/protocol"
 	"github.com/lemonyxk/structure/map"
 
-	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/socket"
 )
 
 type Server struct {

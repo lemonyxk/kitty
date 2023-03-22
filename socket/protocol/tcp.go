@@ -13,7 +13,7 @@ package protocol
 import (
 	"encoding/binary"
 
-	"github.com/lemonyxk/kitty/v2/errors"
+	"github.com/lemonyxk/kitty/errors"
 )
 
 type DefaultTcpProtocol struct{}

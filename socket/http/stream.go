@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lemonyxk/kitty/v2/kitty"
-	"github.com/lemonyxk/kitty/v2/socket"
+	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/socket"
 )
 
 type Stream struct {

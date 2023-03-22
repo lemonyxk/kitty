@@ -20,14 +20,14 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lemonyxk/kitty/v2"
-	"github.com/lemonyxk/kitty/v2/errors"
-	"github.com/lemonyxk/kitty/v2/example/protobuf"
-	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
-	"github.com/lemonyxk/kitty/v2/router"
-	"github.com/lemonyxk/kitty/v2/socket/http"
-	"github.com/lemonyxk/kitty/v2/socket/http/client"
-	"github.com/lemonyxk/kitty/v2/socket/http/server"
+	"github.com/lemonyxk/kitty"
+	"github.com/lemonyxk/kitty/errors"
+	"github.com/lemonyxk/kitty/example/protobuf"
+	kitty2 "github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket/http"
+	"github.com/lemonyxk/kitty/socket/http/client"
+	"github.com/lemonyxk/kitty/socket/http/server"
 )
 
 //go:embed public/**
@@ -125,6 +125,10 @@ func runHttpServer() {
 			return stream.Sender.String(err.Error())
 		}
 		log.Println(i, b.Len())
+		return stream.Sender.String("hello world!")
+	})
+
+	httpRouter.Post("/test").Handler(func(stream *http.Stream) error {
 		return stream.Sender.String("hello world!")
 	})
 

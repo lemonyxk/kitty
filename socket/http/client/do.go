@@ -23,8 +23,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
-	"github.com/lemonyxk/kitty/v2/errors"
-	"github.com/lemonyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/errors"
+	"github.com/lemonyxk/kitty/kitty"
 )
 
 func getRequest(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {

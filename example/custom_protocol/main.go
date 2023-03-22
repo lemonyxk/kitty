@@ -14,11 +14,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/lemonyxk/kitty/v2"
-	"github.com/lemonyxk/kitty/v2/router"
-	"github.com/lemonyxk/kitty/v2/socket"
-	"github.com/lemonyxk/kitty/v2/socket/tcp/client"
-	"github.com/lemonyxk/kitty/v2/socket/tcp/server"
+	"github.com/lemonyxk/kitty"
+	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket"
+	"github.com/lemonyxk/kitty/socket/tcp/client"
+	"github.com/lemonyxk/kitty/socket/tcp/server"
 )
 
 // The same as websocket and udp.

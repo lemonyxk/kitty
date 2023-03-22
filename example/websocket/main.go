@@ -14,11 +14,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/lemonyxk/kitty/v2"
-	"github.com/lemonyxk/kitty/v2/router"
-	"github.com/lemonyxk/kitty/v2/socket"
-	"github.com/lemonyxk/kitty/v2/socket/websocket/client"
-	"github.com/lemonyxk/kitty/v2/socket/websocket/server"
+	"github.com/lemonyxk/kitty"
+	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket"
+	"github.com/lemonyxk/kitty/socket/websocket/client"
+	"github.com/lemonyxk/kitty/socket/websocket/server"
 )
 
 var wsServer *server.Server

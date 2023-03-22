@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lemonyxk/kitty/v2/kitty"
+	"github.com/lemonyxk/kitty/kitty"
 )
 
 type Request struct {

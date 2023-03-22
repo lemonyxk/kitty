@@ -11,17 +11,17 @@
 package kitty
 
 import (
-	"github.com/lemonyxk/kitty/v2/router"
-	"github.com/lemonyxk/kitty/v2/socket"
-	"github.com/lemonyxk/kitty/v2/socket/http"
-	httpClient "github.com/lemonyxk/kitty/v2/socket/http/client"
-	httpServer "github.com/lemonyxk/kitty/v2/socket/http/server"
-	tcpClient "github.com/lemonyxk/kitty/v2/socket/tcp/client"
-	tcpServer "github.com/lemonyxk/kitty/v2/socket/tcp/server"
-	udpClient "github.com/lemonyxk/kitty/v2/socket/udp/client"
-	udpServer "github.com/lemonyxk/kitty/v2/socket/udp/server"
-	webSocketClient "github.com/lemonyxk/kitty/v2/socket/websocket/client"
-	webSocketServer "github.com/lemonyxk/kitty/v2/socket/websocket/server"
+	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket"
+	"github.com/lemonyxk/kitty/socket/http"
+	httpClient "github.com/lemonyxk/kitty/socket/http/client"
+	httpServer "github.com/lemonyxk/kitty/socket/http/server"
+	tcpClient "github.com/lemonyxk/kitty/socket/tcp/client"
+	tcpServer "github.com/lemonyxk/kitty/socket/tcp/server"
+	udpClient "github.com/lemonyxk/kitty/socket/udp/client"
+	udpServer "github.com/lemonyxk/kitty/socket/udp/server"
+	webSocketClient "github.com/lemonyxk/kitty/socket/websocket/client"
+	webSocketServer "github.com/lemonyxk/kitty/socket/websocket/server"
 )
 
 // HTTP

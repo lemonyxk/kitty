@@ -21,16 +21,16 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
-	"github.com/lemonyxk/kitty/v2"
-	"github.com/lemonyxk/kitty/v2/example/protobuf"
-	kitty2 "github.com/lemonyxk/kitty/v2/kitty"
-	"github.com/lemonyxk/kitty/v2/router"
-	"github.com/lemonyxk/kitty/v2/socket/async"
-	"github.com/lemonyxk/kitty/v2/socket/websocket/client"
+	"github.com/lemonyxk/kitty"
+	"github.com/lemonyxk/kitty/example/protobuf"
+	kitty2 "github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket/async"
+	"github.com/lemonyxk/kitty/socket/websocket/client"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lemonyxk/kitty/v2/socket"
-	"github.com/lemonyxk/kitty/v2/socket/websocket/server"
+	"github.com/lemonyxk/kitty/socket"
+	"github.com/lemonyxk/kitty/socket/websocket/server"
 )
 
 type JsonPack struct {

@@ -30,6 +30,13 @@ func (p *Sender) Send() *Response {
 	return send(p.info, p.req, p.cancel)
 }
 
+func (p *Sender) Do() (*http.Response, error) {
+	if p.err != nil {
+		return nil, p.err
+	}
+	return do(p.info, p.req, p.cancel)
+}
+
 func (p *Sender) Abort() {
 	p.cancel()
 }

@@ -399,3 +399,39 @@ func send(info *Request, req *http.Request, cancel context.CancelFunc) *Response
 
 	return &Response{code: response.StatusCode, buf: buf, req: response}
 }
+
+func do(info *Request, req *http.Request, cancel context.CancelFunc) (*http.Response, error) {
+
+	// // NOT SAFE FOR GOROUTINE IF YOU SET TIMEOUT OR KEEPALIVE OR PROXY OR PROGRESS
+	// // MAKE SURE ONE BY ONE
+	// defer func() {
+	// 	defaultClient.Timeout = clientTimeout
+	// 	defaultDialer.KeepAlive = dialerKeepAlive
+	// 	defaultTransport.Proxy = http.ProxyFromEnvironment
+	// }()
+
+	if req == nil {
+		cancel()
+		return nil, errors.Invalid
+	}
+
+	for i := 0; i < len(info.headerKey); i++ {
+		req.Header.Add(info.headerKey[i], info.headerValue[i])
+	}
+
+	for i := 0; i < len(info.cookies); i++ {
+		req.AddCookie(info.cookies[i])
+	}
+
+	if info.userName != "" || info.passWord != "" {
+		req.SetBasicAuth(info.userName, info.passWord)
+	}
+
+	res,err := defaultClient.Do(req)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	return res, nil
+}

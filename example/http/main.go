@@ -110,8 +110,8 @@ func runHttpServer() {
 	})
 
 	httpRouter.Post("/file").Before(before).After(after).Handler(func(stream *http.Stream) error {
-		log.Println(stream.Multipart.Files.String())
-		log.Println(stream.Multipart.Form.String())
+		log.Println(stream.Files.String())
+		log.Println(stream.Form.String())
 		return stream.Sender.String("hello world!")
 	})
 
@@ -129,6 +129,11 @@ func runHttpServer() {
 	})
 
 	httpRouter.Post("/test").Handler(func(stream *http.Stream) error {
+		return stream.Sender.String("hello world!")
+	})
+
+	httpRouter.Delete("/delete").Handler(func(stream *http.Stream) error {
+		log.Println(stream.Form.String())
 		return stream.Sender.String("hello world!")
 	})
 
@@ -198,8 +203,8 @@ func main() {
 	}
 
 	var res = client.Post("http://127.0.0.1:8666/proto").Protobuf(&msg).Send()
-	if res.LastError() != nil {
-		log.Println(res.LastError())
+	if res.Error() != nil {
+		log.Println(res.Error())
 	}
 
 	log.Println("res:", res.String())
@@ -210,10 +215,15 @@ func main() {
 		h.Abort()
 	})
 
+	res = client.Delete("http://127.0.0.1:8666/delete?b=2").Form(kitty2.M{"a": 1}).Send()
+	if res.Error() != nil {
+		log.Println(res.Error())
+	}
+
 	go func() {
 		res = h.Send()
-		if res.LastError() != nil {
-			log.Println(res.LastError())
+		if res.Error() != nil {
+			log.Println(res.Error())
 		}
 
 		log.Println("res:", res.String())
@@ -231,8 +241,8 @@ func main() {
 			"file": f, "a": 1,
 		}).Send()
 
-		if res.LastError() != nil {
-			log.Println(res.LastError())
+		if res.Error() != nil {
+			log.Println(res.Error())
 		} else {
 			log.Println("res:", res.String())
 		}
@@ -240,7 +250,7 @@ func main() {
 	}()
 
 	go func() {
-		var f, err = os.Open("./output_filename")
+		var f, err = os.Open("./new.go")
 		if err != nil {
 			panic(err)
 		}
@@ -249,8 +259,8 @@ func main() {
 
 		var res = client.Post("http://127.0.0.1:8666/OctetStream").OctetStream(f).Send()
 
-		if res.LastError() != nil {
-			log.Println(res.LastError())
+		if res.Error() != nil {
+			log.Println(res.Error())
 		} else {
 			log.Println("res:", res.String())
 		}

@@ -16,11 +16,11 @@ type Stream struct {
 	Response http.ResponseWriter
 	Request  *http.Request
 
-	Query     *Store
-	Form      *Store
-	Multipart *Multipart
-	Json      *Json
-	Protobuf  *Protobuf
+	Query    *Store
+	Form     *Store
+	Files    *Files
+	Json     *Json
+	Protobuf *Protobuf
 
 	Params  socket.Params
 	Context kitty.Context
@@ -34,13 +34,13 @@ type Stream struct {
 func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
 	var stream = &Stream{
 		Response: w, Request: r,
-		Protobuf:  &Protobuf{},
-		Query:     &Store{},
-		Form:      &Store{},
-		Json:      &Json{},
-		Multipart: &Multipart{Files: &Files{}, Form: &Store{}},
-		Sender:    &Sender{response: w, request: r},
-		Parser:    &Parser{response: w, request: r, maxMemory: 6 * 1024 * 1024},
+		Protobuf: &Protobuf{},
+		Query:    &Store{},
+		Form:     &Store{},
+		Json:     &Json{},
+		Files:    &Files{},
+		Sender:   &Sender{response: w, request: r},
+		Parser:   &Parser{response: w, request: r, maxMemory: 6 * 1024 * 1024},
 	}
 
 	stream.Parser.stream = stream
@@ -81,14 +81,35 @@ func (s *Stream) ClientIP() string {
 }
 
 func (s *Stream) Has(key string) bool {
-	if strings.ToUpper(s.Request.Method) == "GET" {
+	if !s.Parser.HasParse() {
+		return false
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodGet {
+		return s.Query.Has(key)
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodHead {
+		return s.Query.Has(key)
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodTrace {
+		return s.Query.Has(key)
+	}
+
+	// May have a request body
+	if strings.ToUpper(s.Request.Method) == http.MethodDelete {
+		return s.Form.Has(key)
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodOptions {
 		return s.Query.Has(key)
 	}
 
 	var header = s.Request.Header.Get(kitty.ContentType)
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		return s.Multipart.Form.Has(key)
+		return s.Form.Has(key) || s.Files.Has(key)
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
@@ -99,18 +120,45 @@ func (s *Stream) Has(key string) bool {
 		return s.Json.Has(key)
 	}
 
+	// Don't support protobuf
+	// if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
+	//
+	// }
+
 	return false
 }
 
 func (s *Stream) Empty(key string) bool {
-	if strings.ToUpper(s.Request.Method) == "GET" {
+
+	if !s.Parser.HasParse() {
+		return false
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodGet {
+		return s.Query.Empty(key)
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodHead {
+		return s.Query.Empty(key)
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodTrace {
+		return s.Query.Empty(key)
+	}
+
+	// May have a request body
+	if strings.ToUpper(s.Request.Method) == http.MethodDelete {
+		return s.Form.Empty(key)
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodOptions {
 		return s.Query.Empty(key)
 	}
 
 	var header = s.Request.Header.Get(kitty.ContentType)
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		return s.Multipart.Form.Empty(key)
+		return s.Form.Empty(key) || s.Files.Empty(key)
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
@@ -121,18 +169,48 @@ func (s *Stream) Empty(key string) bool {
 		return s.Json.Empty(key)
 	}
 
+	// Don't support protobuf
+	// if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
+	//
+	// }
+
 	return false
 }
 
 func (s *Stream) AutoGet(key string) Value {
-	if strings.ToUpper(s.Request.Method) == "GET" {
+	if !s.Parser.HasParse() {
+		return Value{}
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodGet {
+		return s.Query.First(key)
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodHead {
+		return s.Query.First(key)
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodTrace {
+		return s.Query.First(key)
+	}
+
+	// May have a request body
+	if strings.ToUpper(s.Request.Method) == http.MethodDelete {
+		return s.Form.First(key)
+	}
+
+	if strings.ToUpper(s.Request.Method) == http.MethodOptions {
 		return s.Query.First(key)
 	}
 
 	var header = s.Request.Header.Get(kitty.ContentType)
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		return s.Multipart.Form.First(key)
+		var res = s.Form.First(key)
+		if res.v != nil && *res.v != "" {
+			return res
+		}
+		return s.Files.Name(key)
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
@@ -142,6 +220,11 @@ func (s *Stream) AutoGet(key string) Value {
 	if strings.HasPrefix(header, kitty.ApplicationJson) {
 		return s.Json.Get(key)
 	}
+
+	// Don't support protobuf
+	// if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
+	//
+	// }
 
 	return Value{}
 }
@@ -168,12 +251,7 @@ func (s *Stream) String() string {
 	}
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
-		var filesStr = s.Multipart.Files.String()
-		var formStr = s.Multipart.Form.String()
-		if filesStr == "" {
-			return formStr
-		}
-		return formStr + " " + filesStr
+		return strings.Join([]string{s.Form.String(), s.Files.String()}, " ")
 	}
 
 	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {

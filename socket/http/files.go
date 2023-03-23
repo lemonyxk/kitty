@@ -15,11 +15,6 @@ import (
 	"mime/multipart"
 )
 
-type Multipart struct {
-	Form  *Store
-	Files *Files
-}
-
 type Files struct {
 	files map[string][]*multipart.FileHeader
 }
@@ -48,6 +43,15 @@ func (f *Files) First(fileName string) *multipart.FileHeader {
 		return file[0]
 	}
 	return nil
+}
+
+func (f *Files) Name(fileName string) Value {
+	var res Value
+	if file, ok := f.files[fileName]; ok {
+		res.v = &file[0].Filename
+		return res
+	}
+	return res
 }
 
 func (f *Files) Index(fileName string, index int) *multipart.FileHeader {

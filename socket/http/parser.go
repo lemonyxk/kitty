@@ -32,80 +32,98 @@ type Parser struct {
 	hasParseMultipart bool
 	hasParseJson      bool
 	hasParseProtobuf  bool
+
+	err error
+}
+
+func (s *Parser) HasParse() bool {
+	return s.hasParseQuery || s.hasParseForm || s.hasParseMultipart || s.hasParseJson || s.hasParseProtobuf
+}
+
+func (s *Parser) Error() error {
+	return s.err
 }
 
 func (s *Parser) SetMaxMemory(maxMemory int64) {
 	s.maxMemory = maxMemory
 }
 
-func (s *Parser) Json() *Json {
+func (s *Parser) Json() {
 
 	if s.hasParseJson {
-		return s.stream.Json
+		return
 	}
 
 	s.hasParseJson = true
 
 	jsonBody, err := io.ReadAll(s.request.Body)
 	if err != nil {
-		return s.stream.Json
+		s.err = err
+		return
 	}
 
 	s.stream.Json.any = jsoniter.Get(jsonBody)
 	s.stream.Json.bts = jsonBody
 
-	return s.stream.Json
+	return
 }
 
-func (s *Parser) Protobuf() *Protobuf {
+func (s *Parser) Protobuf() {
 
 	if s.hasParseProtobuf {
-		return s.stream.Protobuf
+		return
 	}
 
 	s.hasParseProtobuf = true
 
 	protobufBody, err := io.ReadAll(s.request.Body)
 	if err != nil {
-		return s.stream.Protobuf
+		s.err = err
+		return
 	}
 
 	s.stream.Protobuf.bts = protobufBody
 
-	return s.stream.Protobuf
+	return
 }
 
-func (s *Parser) Multipart() *Multipart {
+func (s *Parser) Multipart() {
 
 	if s.hasParseMultipart {
-		return s.stream.Multipart
+		return
 	}
 
 	s.hasParseMultipart = true
 
 	err := s.request.ParseMultipartForm(s.maxMemory)
 	if err != nil {
-		return s.stream.Multipart
+		s.err = err
+		return
 	}
 
-	var parse = s.request.MultipartForm.Value
+	// PostForm includes only post form,
+	// Form includes both url query and post form.
+	// but only when Content-Type is application/x-www-form-urlencoded
+	// and method is POST | PUT | PATCH
+	// that url query will be parsed into Form.
+	// only when Content-Type is multipart/form-data
+	// that file will be parsed into MultipartForm.File
+	var parse = s.request.Form
 
 	for k, v := range parse {
-		s.stream.Multipart.Form.keys = append(s.stream.Multipart.Form.keys, k)
-		s.stream.Multipart.Form.values = append(s.stream.Multipart.Form.values, v)
+		s.stream.Form.keys = append(s.stream.Form.keys, k)
+		s.stream.Form.values = append(s.stream.Form.values, v)
 	}
 
-	var data = s.request.MultipartForm.File
+	s.stream.Files.files = s.request.MultipartForm.File
 
-	s.stream.Multipart.Files.files = data
-
-	return s.stream.Multipart
+	return
 }
 
-func (s *Parser) Query() *Store {
+func (s *Parser) Query() {
 
 	if s.hasParseQuery {
-		return s.stream.Query
+		return
 	}
 
 	s.hasParseQuery = true
@@ -114,7 +132,8 @@ func (s *Parser) Query() *Store {
 
 	parse, err := url.ParseQuery(params)
 	if err != nil {
-		return s.stream.Query
+		s.err = err
+		return
 	}
 
 	for k, v := range parse {
@@ -122,37 +141,34 @@ func (s *Parser) Query() *Store {
 		s.stream.Query.values = append(s.stream.Query.values, v)
 	}
 
-	return s.stream.Query
+	return
 }
 
-func (s *Parser) Form() *Store {
+func (s *Parser) Form() {
 
 	if s.hasParseForm {
-		return s.stream.Form
+		return
 	}
 
 	s.hasParseForm = true
 
 	err := s.request.ParseForm()
 	if err != nil {
-		return s.stream.Form
+		s.err = err
+		return
 	}
 
-	var parse = s.request.PostForm
+	var parse = s.request.Form
 
 	for k, v := range parse {
 		s.stream.Form.keys = append(s.stream.Form.keys, k)
 		s.stream.Form.values = append(s.stream.Form.values, v)
 	}
 
-	return s.stream.Form
+	return
 }
 
 func (s *Parser) Auto() {
-
-	var header = s.request.Header.Get(kitty.ContentType)
-
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/GET
 	if strings.ToUpper(s.request.Method) == http.MethodGet {
 		s.Query()
 		return
@@ -169,8 +185,16 @@ func (s *Parser) Auto() {
 	}
 
 	// May have a request body
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE
 	if strings.ToUpper(s.request.Method) == http.MethodDelete {
-		s.Query()
+		// cuz DELETE method may have a request body,
+		// so we need to parse it.
+		// but we need to change the method to post,
+		// cuz ParseForm() only support post | put | patch.
+		// https://golang.org/pkg/net/http/#Request.ParseForm
+		s.request.Method = http.MethodPost
+		s.Form()
+		s.request.Method = http.MethodDelete
 		return
 	}
 
@@ -178,6 +202,8 @@ func (s *Parser) Auto() {
 		s.Query()
 		return
 	}
+
+	var header = s.request.Header.Get(kitty.ContentType)
 
 	if strings.HasPrefix(header, kitty.MultipartFormData) {
 		s.Multipart()

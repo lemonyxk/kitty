@@ -11,6 +11,7 @@
 package main
 
 import (
+	errors2 "errors"
 	"fmt"
 
 	"github.com/lemonyxk/kitty/errors"
@@ -30,9 +31,11 @@ func main() {
 	// main.main()
 	// /Users/lemo/lemo-hub/kitty/example/error/main.go:21 +0x1d
 
-	var e = errors.New("hello")
+	var e = errors2.New("new error")
+	var w = errors.WrapWithStack(e, "wrap error")
 
-	fmt.Printf("%+v\n", e.Stack())
+
+	fmt.Printf("%+v\n", w)
 
 	var err = test1()
 

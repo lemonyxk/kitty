@@ -125,7 +125,7 @@ func Test_HTTPS_Get(t *testing.T) {
 	// assert.True(t, strings.HasPrefix(tss.URL, "https"), tss.URL)
 
 	var res = client.Get(`http://127.0.0.1:12346` + "/hello").Query(kitty2.M{"a": 1}).Send()
-	assert.True(t, res.String() == "hello world!", res.LastError())
+	assert.True(t, res.String() == "hello world!", res.Error())
 }
 
 func Test_HTTP_Get(t *testing.T) {
@@ -226,13 +226,14 @@ func Test_HTTP_Delete(t *testing.T) {
 	var httpServerRouter = &router.Router[*http.Stream]{}
 
 	httpServerRouter.Method("DELETE").Route("/hello").Handler(func(stream *http.Stream) error {
-		assert.True(t, stream.Query.First("a").String() == "1")
+		assert.True(t, stream.Form.First("a").String() == "1", stream.Form.String())
+		assert.True(t, stream.Form.First("b").String() == "2", stream.Form.String())
 		return stream.Sender.String("hello world!")
 	})
 
 	httpServer.SetRouter(httpServerRouter)
 
-	var res = client.Delete(ts.URL + "/hello").Query(kitty2.M{"a": 1}).Send()
+	var res = client.Delete(ts.URL + "/hello?b=2").Form(kitty2.M{"a": 1}).Send()
 	assert.True(t, res.String() == "hello world!")
 }
 
@@ -241,7 +242,7 @@ func Test_HTTP_Options(t *testing.T) {
 	var httpServerRouter = &router.Router[*http.Stream]{}
 
 	httpServerRouter.Method("OPTIONS").Route("/hello").Handler(func(stream *http.Stream) error {
-		assert.True(t, stream.Query.First("a").String() == "1",stream.Query.String())
+		assert.True(t, stream.Query.First("a").String() == "1", stream.Query.String())
 		return stream.Sender.Respond(http2.StatusNoContent, "hello world!")
 	})
 
@@ -271,10 +272,10 @@ func Test_HTTP_Multipart(t *testing.T) {
 	var httpServerRouter = &router.Router[*http.Stream]{}
 
 	httpServerRouter.Method("POST").Route("/PostFile").Handler(func(stream *http.Stream) error {
-		assert.True(t, stream.Multipart.Files.First("file").Filename == "1.png")
-		assert.True(t, stream.Multipart.Files.First("file").Size == 2853516)
-		assert.True(t, stream.Multipart.Files.First("file1") == nil)
-		assert.True(t, stream.Multipart.Form.First("a").Int() == 1)
+		assert.True(t, stream.Files.First("file").Filename == "1.png")
+		assert.True(t, stream.Files.First("file").Size == 2853516)
+		assert.True(t, stream.Files.First("file1") == nil)
+		assert.True(t, stream.Form.First("a").Int() == 1)
 		return stream.Sender.String("hello PostFile!")
 	})
 

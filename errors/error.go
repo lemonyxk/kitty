@@ -93,7 +93,7 @@ func WithStack(err error) error {
 	return &Error{message: err.Error(), stack: stack(2)}
 }
 
-func Wrap(err error, text string) error {
+func Wrap(err error, text string) *Error {
 	if err == nil {
 		return nil
 	}
@@ -107,6 +107,26 @@ func Wrap(err error, text string) error {
 		r.stack = e.stack
 		return r
 	}
+
+	return r
+}
+
+func WrapWithStack(err error, text string) *Error {
+	if err == nil {
+		return nil
+	}
+
+	var r = &Error{
+		message: text + ": " + err.Error(),
+		err:     err,
+	}
+
+	if e, ok := err.(*Error); ok {
+		r.stack = e.stack
+		return r
+	}
+
+	r.stack = stack(2)
 
 	return r
 }

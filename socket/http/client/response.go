@@ -34,7 +34,7 @@ func (r *Response) Code() int {
 	return r.code
 }
 
-func (r *Response) LastError() error {
+func (r *Response) Error() error {
 	return r.err
 }
 

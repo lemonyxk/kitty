@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/fasthttp/websocket"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/router"
@@ -16,7 +17,6 @@ import (
 	hash "github.com/lemonyxk/structure/map"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/gorilla/websocket"
 	"github.com/lemonyxk/kitty/socket"
 )
 
@@ -228,7 +228,7 @@ func (s *Server) Ready() {
 				var t = time.Now()
 				conn.SetLastPing(t)
 				if s.HeartBeatTimeout != 0 {
-					err = conn.Conn().SetReadDeadline(t.Add(s.HeartBeatTimeout))
+					err = conn.SetReadDeadline(t.Add(s.HeartBeatTimeout))
 				}
 				err = conn.Pong()
 				return err

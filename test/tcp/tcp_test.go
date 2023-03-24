@@ -48,7 +48,7 @@ var clientRouter *router.Router[*socket.Stream[client.Conn]]
 
 var addr = "127.0.0.1:8667"
 
-var fd int64 = 0
+var fd int64 = 1
 
 func initServer() {
 
@@ -56,9 +56,10 @@ func initServer() {
 
 	// create server
 	tcpServer = kitty.NewTcpServer(addr)
+	tcpServer.HeartBeatTimeout = 5 * time.Second
 
 	// event
-	tcpServer.OnOpen = func(conn server.Conn) { fd++ }
+	tcpServer.OnOpen = func(conn server.Conn) {}
 	tcpServer.OnClose = func(conn server.Conn) {}
 	tcpServer.OnError = func(stream *socket.Stream[server.Conn], err error) {}
 	tcpServer.OnMessage = func(conn server.Conn, msg []byte) {}
@@ -119,6 +120,7 @@ func initClient() {
 	// create client
 	tcpClient = kitty.NewTcpClient(addr)
 	tcpClient.ReconnectInterval = time.Second
+	tcpClient.HeartBeatInterval = time.Second
 
 	// event
 	tcpClient.OnClose = func(c client.Conn) {}
@@ -397,6 +399,42 @@ func Test_TCP_Ping_Pong(t *testing.T) {
 	<-ready
 
 	assert.True(t, pingCount == pongCount, fmt.Sprintf("pingCount:%d, pongCount:%d", pingCount, pongCount))
+}
+
+func Test_TCP_Multi_Client(t *testing.T) {
+
+	var count int32 = 0
+
+	for i := 0; i < 100; i++ {
+		go func() {
+			// create client
+			var tClient = kitty.NewTcpClient(addr)
+			tClient.ReconnectInterval = time.Second
+			tClient.HeartBeatInterval = time.Millisecond * 1000 / 60
+
+			// event
+			tClient.OnClose = func(c client.Conn) {}
+			tClient.OnOpen = func(c client.Conn) {}
+			tClient.OnError = func(stream *socket.Stream[client.Conn], err error) {}
+			tClient.OnMessage = func(client client.Conn, msg []byte) {}
+
+			// create router
+			var clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
+
+			clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
+				return stream.JsonEmit(stream.Event, string(stream.Data))
+			})
+
+			go tClient.SetRouter(clientRouter).Connect()
+
+			tClient.OnSuccess = func() {
+				atomic.AddInt32(&count, 1)
+			}
+		}()
+	}
+
+	time.Sleep(time.Second * 3)
+	assert.True(t, count == 100, fmt.Sprintf("count:%d", count))
 }
 
 func Test_TCP_Shutdown(t *testing.T) {

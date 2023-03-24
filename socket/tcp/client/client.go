@@ -236,7 +236,7 @@ func (c *Client) Connect() {
 				var t = time.Now()
 				conn.SetLastPong(t)
 				if c.HeartBeatTimeout != 0 {
-					return conn.Conn().SetReadDeadline(t.Add(c.HeartBeatTimeout))
+					return conn.SetReadDeadline(t.Add(c.HeartBeatTimeout))
 				}
 				return nil
 			}
@@ -261,7 +261,7 @@ func (c *Client) Connect() {
 	}()
 
 	if c.HeartBeatTimeout != 0 {
-		err = c.conn.Conn().SetReadDeadline(time.Now().Add(c.HeartBeatTimeout))
+		err = c.conn.SetReadDeadline(time.Now().Add(c.HeartBeatTimeout))
 		if err != nil {
 			fmt.Println(err)
 			c.reconnecting()

@@ -18,8 +18,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/fasthttp/websocket"
 	"github.com/golang/protobuf/proto"
-	"github.com/gorilla/websocket"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/socket"
@@ -44,6 +44,7 @@ type Conn interface {
 	Response() http.ResponseWriter
 	Request() *http.Request
 	SubProtocols() []string
+	SetReadDeadline(t time.Time) error
 	socket.Emitter
 	protocol.Protocol
 }
@@ -60,6 +61,10 @@ type conn struct {
 	messageID    int64
 	subProtocols []string
 	protocol.Protocol
+}
+
+func (c *conn) SetReadDeadline(t time.Time) error {
+	return c.conn.SetReadDeadline(t)
 }
 
 func (c *conn) Response() http.ResponseWriter {

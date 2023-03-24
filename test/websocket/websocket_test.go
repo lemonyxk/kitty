@@ -54,7 +54,7 @@ var clientRouter *router.Router[*socket.Stream[client.Conn]]
 
 var addr = "127.0.0.1:8669"
 
-var fd int64 = 0
+var fd int64 = 1
 
 func initServer() {
 
@@ -62,9 +62,10 @@ func initServer() {
 
 	// create server
 	webSocketServer = kitty.NewWebSocketServer(addr)
+	webSocketServer.HeartBeatTimeout = 5 * time.Second
 
 	// event
-	webSocketServer.OnOpen = func(conn server.Conn) { fd++ }
+	webSocketServer.OnOpen = func(conn server.Conn) {}
 	webSocketServer.OnClose = func(conn server.Conn) {}
 	webSocketServer.OnError = func(stream *socket.Stream[server.Conn], err error) {}
 	webSocketServer.OnMessage = func(conn server.Conn, msg []byte) {}
@@ -454,6 +455,53 @@ func Test_WS_Ping_Pong(t *testing.T) {
 	<-ready
 
 	assert.True(t, pingCount == pongCount, fmt.Sprintf("pingCount:%d, pongCount:%d", pingCount, pongCount))
+}
+
+func Test_WS_Multi_Client(t *testing.T) {
+
+	var count int32 = 0
+
+	for i := 0; i < 100; i++ {
+		go func() {
+			// create client
+			var wClient = kitty.NewWebSocketClient("ws://" + addr)
+			wClient.ReconnectInterval = time.Second
+			wClient.HeartBeatInterval = time.Millisecond * 1000 / 60
+
+			// event
+			wClient.OnClose = func(c client.Conn) {}
+			wClient.OnOpen = func(c client.Conn) {}
+			wClient.OnError = func(stream *socket.Stream[client.Conn], err error) {}
+			wClient.OnMessage = func(c client.Conn, messageType int, msg []byte) {}
+
+			// handle unknown proto
+			wClient.OnUnknown = func(c client.Conn, message []byte, next client.Middle) {
+				var j = jsoniter.Get(message)
+				var route = j.Get("event").ToString()
+				var data = j.Get("data").ToString()
+				if route == "" {
+					return
+				}
+				next(socket.NewStream(c, 0, route, []byte(data)))
+			}
+
+			// create router
+			var clientRouter = kitty.NewWebSocketClientRouter()
+
+			clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
+				return stream.JsonEmit(stream.Event, string(stream.Data))
+			})
+
+			go wClient.SetRouter(clientRouter).Connect()
+
+			wClient.OnSuccess = func() {
+				atomic.AddInt32(&count, 1)
+			}
+		}()
+	}
+
+	time.Sleep(time.Second * 3)
+	assert.True(t, count == 100, fmt.Sprintf("count:%d", count))
 }
 
 func Test_WS_Shutdown(t *testing.T) {

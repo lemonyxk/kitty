@@ -48,7 +48,7 @@ var clientRouter *router.Router[*socket.Stream[client.Conn]]
 
 var addr = "127.0.0.1:8668"
 
-var fd int64 = 0
+var fd int64 = 1
 
 func initServer() {
 
@@ -56,9 +56,10 @@ func initServer() {
 
 	// create server
 	udpServer = kitty.NewUdpServer(addr)
+	udpServer.HeartBeatTimeout = 5 * time.Second
 
 	// event
-	udpServer.OnOpen = func(conn server.Conn) { fd++ }
+	udpServer.OnOpen = func(conn server.Conn) { }
 	udpServer.OnClose = func(conn server.Conn) {}
 	udpServer.OnError = func(stream *socket.Stream[server.Conn], err error) {}
 	udpServer.OnMessage = func(conn server.Conn, msg []byte) {}
@@ -409,6 +410,42 @@ func Test_UDP_Ping_Pong(t *testing.T) {
 	<-ready
 
 	assert.True(t, pingCount == pongCount, fmt.Sprintf("pingCount:%d, pongCount:%d", pingCount, pongCount))
+}
+
+func Test_UDP_Multi_Client(t *testing.T) {
+
+	var count int32 = 0
+
+	for i := 0; i < 100; i++ {
+		go func() {
+			// create client
+			var uClient = kitty.NewUdpClient(addr)
+			uClient.ReconnectInterval = time.Second
+			uClient.HeartBeatInterval = time.Millisecond * 1000 / 60
+
+			// event
+			uClient.OnClose = func(c client.Conn) {}
+			uClient.OnOpen = func(c client.Conn) {}
+			uClient.OnError = func(stream *socket.Stream[client.Conn], err error) {}
+			uClient.OnMessage = func(client client.Conn, msg []byte) {}
+
+			// create router
+			var clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
+
+			clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
+				return stream.JsonEmit(stream.Event, string(stream.Data))
+			})
+
+			go uClient.SetRouter(clientRouter).Connect()
+
+			uClient.OnSuccess = func() {
+				atomic.AddInt32(&count, 1)
+			}
+		}()
+	}
+
+	time.Sleep(time.Second * 3)
+	assert.True(t, count == 100, fmt.Sprintf("count:%d", count))
 }
 
 func Test_UDP_Shutdown(t *testing.T) {

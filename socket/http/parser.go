@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/json-iterator/go"
-	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/kitty/header"
 )
 
 type Parser struct {
@@ -184,6 +184,11 @@ func (s *Parser) Auto() {
 		return
 	}
 
+	if strings.ToUpper(s.request.Method) == http.MethodConnect {
+		s.Query()
+		return
+	}
+
 	// May have a request body
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE
 	if strings.ToUpper(s.request.Method) == http.MethodDelete {
@@ -203,24 +208,24 @@ func (s *Parser) Auto() {
 		return
 	}
 
-	var header = s.request.Header.Get(kitty.ContentType)
+	var contentType = s.request.Header.Get(header.ContentType)
 
-	if strings.HasPrefix(header, kitty.MultipartFormData) {
+	if strings.HasPrefix(contentType, header.MultipartFormData) {
 		s.Multipart()
 		return
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
 		s.Form()
 		return
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationJson) {
+	if strings.HasPrefix(contentType, header.ApplicationJson) {
 		s.Json()
 		return
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
+	if strings.HasPrefix(contentType, header.ApplicationProtobuf) {
 		s.Protobuf()
 		return
 	}

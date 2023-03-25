@@ -21,7 +21,7 @@ import (
 	"github.com/fasthttp/websocket"
 	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
-	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/kitty/header"
 	"github.com/lemonyxk/kitty/socket"
 	"github.com/lemonyxk/kitty/socket/protocol"
 )
@@ -108,7 +108,7 @@ func (c *conn) SetFD(fd int64) {
 }
 
 func (c *conn) Host() string {
-	if host := c.request.Header.Get(kitty.Host); host != "" {
+	if host := c.request.Header.Get(header.Host); host != "" {
 		return host
 	}
 	return c.request.Host
@@ -116,11 +116,11 @@ func (c *conn) Host() string {
 
 func (c *conn) ClientIP() string {
 
-	if ip := strings.Split(c.request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
+	if ip := strings.Split(c.request.Header.Get(header.XForwardedFor), ",")[0]; ip != "" {
 		return ip
 	}
 
-	if ip := c.request.Header.Get(kitty.XRealIP); ip != "" {
+	if ip := c.request.Header.Get(header.XRealIP); ip != "" {
 		return ip
 	}
 

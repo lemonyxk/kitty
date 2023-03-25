@@ -16,7 +16,7 @@ import (
 	"net/http"
 
 	"github.com/json-iterator/go"
-	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/kitty/header"
 )
 
 type Sender struct {
@@ -42,7 +42,7 @@ func (s *Sender) Any(data any) error {
 }
 
 func (s *Sender) Json(data any) error {
-	s.response.Header().Set(kitty.ContentType, kitty.ApplicationJson)
+	s.response.Header().Set(header.ContentType, header.ApplicationJson)
 	bts, err := jsoniter.Marshal(data)
 	if err != nil {
 		return err
@@ -70,8 +70,8 @@ func (s *Sender) Error(err error) error {
 }
 
 func (s *Sender) File(fileName string, file io.Reader) error {
-	s.response.Header().Set(kitty.ContentType, kitty.ApplicationOctetStream)
-	s.response.Header().Set(kitty.ContentDisposition, "attachment;filename="+fileName)
+	s.response.Header().Set(header.ContentType, header.ApplicationOctetStream)
+	s.response.Header().Set(header.ContentDisposition, "attachment;filename="+fileName)
 	_, err := io.Copy(s.response, file)
 	return err
 }

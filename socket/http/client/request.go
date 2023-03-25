@@ -18,6 +18,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/kitty/header"
 )
 
 type Request struct {
@@ -94,7 +95,7 @@ func (h *Request) AddCookie(cookie *http.Cookie) *Request {
 }
 
 func (h *Request) Protobuf(body ...proto.Message) *Sender {
-	h.SetHeader(kitty.ContentType, kitty.ApplicationProtobuf)
+	h.SetHeader(header.ContentType, header.ApplicationProtobuf)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
@@ -104,7 +105,7 @@ func (h *Request) Protobuf(body ...proto.Message) *Sender {
 }
 
 func (h *Request) Json(body ...any) *Sender {
-	h.SetHeader(kitty.ContentType, kitty.ApplicationJson)
+	h.SetHeader(header.ContentType, header.ApplicationJson)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
@@ -123,7 +124,7 @@ func (h *Request) Query(body ...kitty.M) *Sender {
 }
 
 func (h *Request) Form(body ...kitty.M) *Sender {
-	h.SetHeader(kitty.ContentType, kitty.ApplicationFormUrlencoded)
+	h.SetHeader(header.ContentType, header.ApplicationFormUrlencoded)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
@@ -133,7 +134,7 @@ func (h *Request) Form(body ...kitty.M) *Sender {
 }
 
 func (h *Request) Multipart(body ...kitty.M) *Sender {
-	h.SetHeader(kitty.ContentType, kitty.MultipartFormData)
+	h.SetHeader(header.ContentType, header.MultipartFormData)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
@@ -143,7 +144,7 @@ func (h *Request) Multipart(body ...kitty.M) *Sender {
 }
 
 func (h *Request) OctetStream(r io.Reader) *Sender {
-	h.SetHeader(kitty.ContentType, kitty.ApplicationOctetStream)
+	h.SetHeader(header.ContentType, header.ApplicationOctetStream)
 	h.body = r
 	request, cancel, err := doRaw(h.handler.method, h.handler.url, h)
 	if err != nil {

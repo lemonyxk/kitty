@@ -11,7 +11,7 @@ import (
 
 	"github.com/fasthttp/websocket"
 	"github.com/lemonyxk/kitty/errors"
-	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/kitty/header"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket/protocol"
 	hash "github.com/lemonyxk/structure/map"
@@ -258,7 +258,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		Subprotocols:     s.SubProtocols,
 	}
 
-	var swp = strings.Split(r.Header.Get(kitty.SecWebsocketProtocol), ",")
+	var swp = strings.Split(r.Header.Get(header.SecWebsocketProtocol), ",")
 	for i := 0; i < len(swp); i++ {
 		upgrade.Subprotocols = append(upgrade.Subprotocols, strings.TrimSpace(swp[i]))
 	}

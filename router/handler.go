@@ -10,7 +10,10 @@
 
 package router
 
-import "strings"
+import (
+	http2 "net/http"
+	"strings"
+)
 
 // type GroupFunc[T any] func(handler *RouteHandler[T])
 
@@ -46,27 +49,39 @@ func (rh *Handler[T]) Method(method ...string) *MethodsHandler[T] {
 }
 
 func (rh *Handler[T]) Get(path ...string) *Route[T] {
-	return rh.Method("GET").Route(path...)
+	return rh.Method(http2.MethodGet).Route(path...)
 }
 
 func (rh *Handler[T]) Post(path ...string) *Route[T] {
-	return rh.Method("POST").Route(path...)
+	return rh.Method(http2.MethodPost).Route(path...)
 }
 
 func (rh *Handler[T]) Delete(path ...string) *Route[T] {
-	return rh.Method("DELETE").Route(path...)
+	return rh.Method(http2.MethodDelete).Route(path...)
 }
 
 func (rh *Handler[T]) Put(path ...string) *Route[T] {
-	return rh.Method("PUT").Route(path...)
+	return rh.Method(http2.MethodPut).Route(path...)
 }
 
 func (rh *Handler[T]) Patch(path ...string) *Route[T] {
-	return rh.Method("PATCH").Route(path...)
+	return rh.Method(http2.MethodPatch).Route(path...)
 }
 
-func (rh *Handler[T]) Option(path ...string) *Route[T] {
-	return rh.Method("OPTION").Route(path...)
+func (rh *Handler[T]) Head(path ...string) *Route[T] {
+	return rh.Method(http2.MethodHead).Route(path...)
+}
+
+func (rh *Handler[T]) Options(path ...string) *Route[T] {
+	return rh.Method(http2.MethodOptions).Route(path...)
+}
+
+func (rh *Handler[T]) Connect(path ...string) *Route[T] {
+	return rh.Method(http2.MethodConnect).Route(path...)
+}
+
+func (rh *Handler[T]) Trace(path ...string) *Route[T] {
+	return rh.Method(http2.MethodTrace).Route(path...)
 }
 
 func (rh *Handler[T]) Remove(path ...string) {

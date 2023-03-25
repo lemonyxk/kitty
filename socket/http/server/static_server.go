@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/lemonyxk/kitty/errors"
-	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/kitty/header"
 )
 
 func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
@@ -169,11 +169,11 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 func (s *Server) staticDefaultFileMiddle(w http.ResponseWriter, err error, file http.File, info fs.FileInfo, ext string) error {
 	var contentType = mime.TypeByExtension(ext)
 	if contentType == "" {
-		contentType = kitty.TextPlain
+		contentType = header.TextPlain
 	}
 
-	w.Header().Set(kitty.ContentType, contentType)
-	w.Header().Set(kitty.ContentLength, strconv.Itoa(int(info.Size())))
+	w.Header().Set(header.ContentType, contentType)
+	w.Header().Set(header.ContentLength, strconv.Itoa(int(info.Size())))
 	_, err = io.Copy(w, file)
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)
@@ -227,8 +227,8 @@ func (s *Server) staticDefaultDirMiddle(w http.ResponseWriter, r *http.Request, 
 	bts.WriteString(`</pre>`)
 	bts.WriteString(`<hr/>`)
 
-	w.Header().Set(kitty.ContentType, kitty.TextHtml)
-	w.Header().Set(kitty.ContentLength, strconv.Itoa(len(bts.String())))
+	w.Header().Set(header.ContentType, header.TextHtml)
+	w.Header().Set(header.ContentLength, strconv.Itoa(len(bts.String())))
 	_, err = w.Write([]byte(bts.String()))
 	if err != nil {
 		w.WriteHeader(http.StatusForbidden)

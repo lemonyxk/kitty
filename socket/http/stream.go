@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/kitty/header"
 	"github.com/lemonyxk/kitty/socket"
 )
 
@@ -57,7 +58,7 @@ func (s *Stream) SetHeader(header string, content string) {
 }
 
 func (s *Stream) Host() string {
-	if host := s.Request.Header.Get(kitty.Host); host != "" {
+	if host := s.Request.Header.Get(header.Host); host != "" {
 		return host
 	}
 	return s.Request.Host
@@ -65,11 +66,11 @@ func (s *Stream) Host() string {
 
 func (s *Stream) ClientIP() string {
 
-	if ip := strings.Split(s.Request.Header.Get(kitty.XForwardedFor), ",")[0]; ip != "" {
+	if ip := strings.Split(s.Request.Header.Get(header.XForwardedFor), ",")[0]; ip != "" {
 		return ip
 	}
 
-	if ip := s.Request.Header.Get(kitty.XRealIP); ip != "" {
+	if ip := s.Request.Header.Get(header.XRealIP); ip != "" {
 		return ip
 	}
 
@@ -106,17 +107,21 @@ func (s *Stream) Has(key string) bool {
 		return s.Query.Has(key)
 	}
 
-	var header = s.Request.Header.Get(kitty.ContentType)
+	if strings.ToUpper(s.Request.Method) == http.MethodConnect {
+		return s.Query.Has(key)
+	}
 
-	if strings.HasPrefix(header, kitty.MultipartFormData) {
+	var contentType = s.Request.Header.Get(header.ContentType)
+
+	if strings.HasPrefix(contentType, header.MultipartFormData) {
 		return s.Form.Has(key) || s.Files.Has(key)
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
 		return s.Form.Has(key)
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationJson) {
+	if strings.HasPrefix(contentType, header.ApplicationJson) {
 		return s.Json.Has(key)
 	}
 
@@ -155,17 +160,21 @@ func (s *Stream) Empty(key string) bool {
 		return s.Query.Empty(key)
 	}
 
-	var header = s.Request.Header.Get(kitty.ContentType)
+	if strings.ToUpper(s.Request.Method) == http.MethodConnect {
+		return s.Query.Empty(key)
+	}
 
-	if strings.HasPrefix(header, kitty.MultipartFormData) {
+	var contentType = s.Request.Header.Get(header.ContentType)
+
+	if strings.HasPrefix(contentType, header.MultipartFormData) {
 		return s.Form.Empty(key) || s.Files.Empty(key)
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
 		return s.Form.Empty(key)
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationJson) {
+	if strings.HasPrefix(contentType, header.ApplicationJson) {
 		return s.Json.Empty(key)
 	}
 
@@ -203,9 +212,13 @@ func (s *Stream) AutoGet(key string) Value {
 		return s.Query.First(key)
 	}
 
-	var header = s.Request.Header.Get(kitty.ContentType)
+	if strings.ToUpper(s.Request.Method) == http.MethodConnect {
+		return s.Query.First(key)
+	}
 
-	if strings.HasPrefix(header, kitty.MultipartFormData) {
+	var contentType = s.Request.Header.Get(header.ContentType)
+
+	if strings.HasPrefix(contentType, header.MultipartFormData) {
 		var res = s.Form.First(key)
 		if res.v != nil && *res.v != "" {
 			return res
@@ -213,11 +226,11 @@ func (s *Stream) AutoGet(key string) Value {
 		return s.Files.Name(key)
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
 		return s.Form.First(key)
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationJson) {
+	if strings.HasPrefix(contentType, header.ApplicationJson) {
 		return s.Json.Get(key)
 	}
 
@@ -244,25 +257,25 @@ func (s *Stream) Url() string {
 
 func (s *Stream) String() string {
 
-	var header = s.Request.Header.Get(kitty.ContentType)
+	var contentType = s.Request.Header.Get(header.ContentType)
 
 	if strings.ToUpper(s.Request.Method) == "GET" {
 		return s.Query.String()
 	}
 
-	if strings.HasPrefix(header, kitty.MultipartFormData) {
+	if strings.HasPrefix(contentType, header.MultipartFormData) {
 		return strings.Join([]string{s.Form.String(), s.Files.String()}, " ")
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationFormUrlencoded) {
+	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
 		return s.Form.String()
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationJson) {
+	if strings.HasPrefix(contentType, header.ApplicationJson) {
 		return s.Json.String()
 	}
 
-	if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
+	if strings.HasPrefix(contentType, header.ApplicationProtobuf) {
 		return "<Protobuf: " + strconv.Itoa(len(s.Protobuf.Bytes())) + " >"
 	}
 

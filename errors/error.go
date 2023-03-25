@@ -112,6 +112,24 @@ func Wrap(err error, text string) *Error {
 	return r
 }
 
+func Wrapf(err error, f string, args ...any) *Error {
+	if err == nil {
+		return nil
+	}
+
+	var r = &Error{
+		message: fmt.Sprintf(f, args...) + ": " + err.Error(),
+		err:     err,
+	}
+
+	if e, ok := err.(*Error); ok {
+		r.stack = e.stack
+		return r
+	}
+
+	return r
+}
+
 func WrapWithStack(err error, text string) *Error {
 	if err == nil {
 		return nil

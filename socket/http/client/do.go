@@ -25,18 +25,19 @@ import (
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/kitty/header"
 )
 
 func getRequest(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
 	var contentType = strings.ToLower(getContentType(info))
 	switch contentType {
-	case kitty.ApplicationFormUrlencoded:
+	case header.ApplicationFormUrlencoded:
 		return doFormUrlencoded(method, url, info)
-	case kitty.ApplicationJson:
+	case header.ApplicationJson:
 		return doJson(method, url, info)
-	case kitty.MultipartFormData:
+	case header.MultipartFormData:
 		return doFormData(method, url, info)
-	case kitty.ApplicationProtobuf:
+	case header.ApplicationProtobuf:
 		return doXProtobuf(method, url, info)
 	default:
 		return doUrl(method, url, info)
@@ -213,7 +214,7 @@ func doFormData(method string, url string, info *Request) (*http.Request, contex
 		cancel()
 		return nil, nil, err
 	}
-	info.SetHeader(kitty.ContentType, part.FormDataContentType())
+	info.SetHeader(header.ContentType, part.FormDataContentType())
 	return request, cancel, err
 }
 
@@ -335,7 +336,7 @@ func doUrl(method string, u string, info *Request) (*http.Request, context.Cance
 
 func getContentType(info *Request) string {
 	for i := 0; i < len(info.headerKey); i++ {
-		if info.headerKey[i] == kitty.ContentType {
+		if info.headerKey[i] == header.ContentType {
 			return info.headerValue[i]
 		}
 	}
@@ -379,7 +380,7 @@ func send(info *Request, req *http.Request, cancel context.CancelFunc) *Response
 	var buf = new(bytes.Buffer)
 
 	if info.progress != nil {
-		var total, _ = strconv.ParseInt(response.Header.Get(kitty.ContentLength), 10, 64)
+		var total, _ = strconv.ParseInt(response.Header.Get(header.ContentLength), 10, 64)
 		var writer = &writer{
 			total:      total,
 			onProgress: info.progress.progress,

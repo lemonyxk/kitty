@@ -44,7 +44,7 @@ var httpsServer *server.Server
 // var keyFile = "../../example/ssl/localhost+2-key.pem"
 
 // can not share the ca file
-// var caFile = `/Users/lemo/Library/Application Support/mkcert/rootCA.pem`
+// var caFile = `/Users/lemon/Library/Application Support/mkcert/rootCA.pem`
 
 func newTls(certFile, keyFile, caFile string) *tls.Config {
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)

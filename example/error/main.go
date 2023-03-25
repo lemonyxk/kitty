@@ -3,7 +3,7 @@
 *
 * @description:
 *
-* @author: lemo
+* @author: lemon
 *
 * @create: 2022-08-24 04:36
 **/
@@ -18,18 +18,6 @@ import (
 )
 
 func main() {
-
-	// panic: 1
-	//
-	// goroutine 1 [running]:
-	// main.test3(...)
-	// /Users/lemo/lemo-hub/kitty/example/error/main.go:44
-	// main.test2()
-	// /Users/lemo/lemo-hub/kitty/example/error/main.go:36 +0x27
-	// main.test1()
-	// /Users/lemo/lemo-hub/kitty/example/error/main.go:28 +0x19
-	// main.main()
-	// /Users/lemo/lemo-hub/kitty/example/error/main.go:21 +0x1d
 
 	var e = errors2.New("new error")
 	var w = errors.WrapWithStack(e, "wrap error")

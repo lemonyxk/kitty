@@ -114,7 +114,7 @@ func (s *Server) ProtoBufEmitAll(event string, data proto.Message) (int, int) {
 func (s *Server) Ready() {
 
 	if s.Addr == "" {
-		panic("Addr must set")
+		panic("addr can not be empty")
 	}
 
 	if s.DailTimeout == 0 {

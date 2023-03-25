@@ -161,7 +161,7 @@ func (s *Server) onError(stream *socket.Stream[Conn], err error) {
 func (s *Server) Ready() {
 
 	if s.Addr == "" {
-		panic("Addr must set")
+		panic("addr can not be empty")
 	}
 
 	if s.Path == "" {

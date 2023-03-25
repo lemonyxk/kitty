@@ -114,7 +114,7 @@ func (c *Client) reconnecting() {
 func (c *Client) Connect() {
 
 	if c.Addr == "" {
-		panic("Addr must set")
+		panic("addr can not be empty")
 	}
 
 	if c.OnOpen == nil {

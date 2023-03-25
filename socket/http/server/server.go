@@ -43,7 +43,7 @@ type Middle router.Middle[*http2.Stream]
 
 func (s *Server) Ready() {
 	if s.Addr == "" {
-		panic("Addr must set")
+		panic("addr can not be empty")
 	}
 }
 

@@ -23,6 +23,7 @@ import (
 
 var pwd, _ = os.Getwd()
 var goRoot, _ = os.LookupEnv("GOROOT")
+var space = strings.Repeat(" ", 4) + "at "
 
 type info struct {
 	file     string
@@ -49,7 +50,7 @@ func (e *Error) Format(s fmt.State, verb rune) {
 				_, _ = io.WriteString(s, "\n")
 			}
 			for i, f := range e.stack {
-				var str = strings.Repeat(" ", 4) + "at " + filepath.Base(f.funcName) + " in " + f.file + ":" + strconv.Itoa(f.line)
+				var str = space + filepath.Base(f.funcName) + " in " + f.file + ":" + strconv.Itoa(f.line)
 				if i != len(e.stack)-1 {
 					str = str + "\n"
 				}

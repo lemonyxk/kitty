@@ -215,3 +215,28 @@ func Test_Router_Params(t *testing.T) {
 	assert.True(t, a.Keys[0] == "id")
 	assert.True(t, a.Keys[1] == "name")
 }
+
+func Test_Router_StrictMode(t *testing.T) {
+	var r = &Router[*http.Stream]{}
+	r.StrictMode = true
+	var g = r.Create()
+	var f = func(stream *http.Stream) error { return nil }
+	g.Post("/Test/:id/:name").Handler(f)
+
+	a, b := r.GetRoute("/test/1/tiny")
+	assert.True(t, a == nil)
+	assert.True(t, len(b) == 0)
+
+	r = &Router[*http.Stream]{}
+	r.StrictMode = false
+	g = r.Create()
+	g.Post("/Test/:id/:name").Handler(f)
+
+	a, b = r.GetRoute("/test/1/tiny")
+	assert.True(t, a != nil)
+	assert.True(t, len(b) > 0)
+
+	a, b = r.GetRoute("/Test/1/tiny")
+	assert.True(t, a != nil)
+	assert.True(t, len(b) > 0)
+}

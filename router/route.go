@@ -88,7 +88,10 @@ func (r *Route[T]) Handler(fn Func[T]) {
 	}
 
 	for i := 0; i < len(r.path); i++ {
-		var path = router.formatPath(g.Path + r.path[i])
+
+		var originPath = g.Path + r.path[i]
+
+		var path = router.formatPath(originPath)
 
 		if router.tire == nil {
 			router.tire = tire.New[*Node[T]]()
@@ -123,7 +126,7 @@ func (r *Route[T]) Handler(fn Func[T]) {
 
 		cba.Method = method
 
-		cba.Route = []byte(path)
+		cba.Route = []byte(originPath)
 
 		router.tire.Insert(path, cba)
 	}

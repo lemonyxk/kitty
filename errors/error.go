@@ -83,6 +83,10 @@ func Errorf(f string, args ...any) *Error {
 	return &Error{message: fmt.Sprintf(f, args...)}
 }
 
+func ErrorfWithStack(f string, args ...any) *Error {
+	return &Error{message: fmt.Sprintf(f, args...), stack: stack(2)}
+}
+
 func NewWithStack(text string) error {
 	return &Error{message: text, stack: stack(2)}
 }
@@ -91,16 +95,30 @@ func WithStack(err error) error {
 	if err == nil {
 		return nil
 	}
+	if e, ok := err.(*Error); ok {
+		return e
+	}
 	return &Error{message: err.Error(), stack: stack(2)}
 }
 
-func Wrap(err error, text string) *Error {
+func NewError(text any) error {
+	if e, ok := text.(*Error); ok {
+		return e
+	}
+	return &Error{message: fmt.Sprintf("%v", text), stack: stack(2)}
+}
+
+func NewErrorf(f string, args ...any) error {
+	return &Error{message: fmt.Sprintf(f, args...), stack: stack(2)}
+}
+
+func Wrap(err error, text any) *Error {
 	if err == nil {
 		return nil
 	}
 
 	var r = &Error{
-		message: text + ": " + err.Error(),
+		message: fmt.Sprintf("%v", text) + ": " + err.Error(),
 		err:     err,
 	}
 
@@ -130,13 +148,13 @@ func Wrapf(err error, f string, args ...any) *Error {
 	return r
 }
 
-func WrapWithStack(err error, text string) *Error {
+func WrapWithStack(err error, text any) *Error {
 	if err == nil {
 		return nil
 	}
 
 	var r = &Error{
-		message: text + ": " + err.Error(),
+		message: fmt.Sprintf("%v", text) + ": " + err.Error(),
 		err:     err,
 	}
 

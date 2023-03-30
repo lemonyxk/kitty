@@ -24,6 +24,11 @@ import (
 var pwd, _ = os.Getwd()
 var goRoot, _ = os.LookupEnv("GOROOT")
 var space = strings.Repeat(" ", 4) + "at "
+var withStack = true
+
+func WithStack(b bool) {
+	withStack = b
+}
 
 type info struct {
 	file     string
@@ -70,49 +75,26 @@ func (e *Error) Unwrap() error {
 	return e.err
 }
 
-func (e *Error) Stack() error {
-	e.stack = stack(2)
-	return e
-}
-
-func New(text string) *Error {
-	return &Error{message: text}
-}
-
-func Errorf(f string, args ...any) *Error {
-	return &Error{message: fmt.Sprintf(f, args...)}
-}
-
-func ErrorfWithStack(f string, args ...any) *Error {
-	return &Error{message: fmt.Sprintf(f, args...), stack: stack(2)}
-}
-
-func NewWithStack(text string) error {
-	return &Error{message: text, stack: stack(2)}
-}
-
-func WithStack(err error) error {
-	if err == nil {
-		return nil
-	}
-	if e, ok := err.(*Error); ok {
-		return e
-	}
-	return &Error{message: err.Error(), stack: stack(2)}
-}
-
-func NewError(text any) error {
+func New(text any) error {
 	if e, ok := text.(*Error); ok {
 		return e
 	}
-	return &Error{message: fmt.Sprintf("%v", text), stack: stack(2)}
+	var r = &Error{message: fmt.Sprintf("%v", text)}
+	if withStack {
+		r.stack = stack(2)
+	}
+	return r
 }
 
-func NewErrorf(f string, args ...any) error {
-	return &Error{message: fmt.Sprintf(f, args...), stack: stack(2)}
+func Errorf(f string, args ...any) error {
+	var r = &Error{message: fmt.Sprintf(f, args...)}
+	if withStack {
+		r.stack = stack(2)
+	}
+	return r
 }
 
-func Wrap(err error, text any) *Error {
+func Wrap(err error, text any) error {
 	if err == nil {
 		return nil
 	}
@@ -127,10 +109,14 @@ func Wrap(err error, text any) *Error {
 		return r
 	}
 
+	if withStack {
+		r.stack = stack(2)
+	}
+
 	return r
 }
 
-func Wrapf(err error, f string, args ...any) *Error {
+func Wrapf(err error, f string, args ...any) error {
 	if err == nil {
 		return nil
 	}
@@ -145,25 +131,9 @@ func Wrapf(err error, f string, args ...any) *Error {
 		return r
 	}
 
-	return r
-}
-
-func WrapWithStack(err error, text any) *Error {
-	if err == nil {
-		return nil
+	if withStack {
+		r.stack = stack(2)
 	}
-
-	var r = &Error{
-		message: fmt.Sprintf("%v", text) + ": " + err.Error(),
-		err:     err,
-	}
-
-	if e, ok := err.(*Error); ok {
-		r.stack = e.stack
-		return r
-	}
-
-	r.stack = stack(2)
 
 	return r
 }

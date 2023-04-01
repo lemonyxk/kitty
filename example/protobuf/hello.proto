@@ -1,9 +1,13 @@
 // awesome.proto
+// protoc -I=./protobuf --go_out=./protobuf protobuf/hello.proto
+// protoc -I=./protobuf --ts_out=./protobuf protobuf/hello.proto
 syntax = "proto3";
 
-package awesomepackage;
+option go_package = "./hello";
+
+package hello;
 
 message AwesomeMessage {
-    string awesomeField = 1; // becomes awesomeField 
-    string awesomeKey = 2; // becomes awesomeField
+  string awesomeField = 1; // becomes awesomeField
+  string awesomeKey = 2; // becomes awesomeField
 }

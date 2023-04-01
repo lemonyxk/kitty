@@ -13,22 +13,21 @@ package http
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"io/ioutil"
 	"log"
 	http2 "net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty"
-	"github.com/lemonyxk/kitty/example/protobuf"
+	"github.com/lemonyxk/kitty/example/protobuf/hello"
 	kitty2 "github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket/http"
 	"github.com/lemonyxk/kitty/socket/http/client"
 	"github.com/lemonyxk/kitty/socket/http/server"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 var httpServer *server.Server
@@ -53,7 +52,7 @@ func newTls(certFile, keyFile, caFile string) *tls.Config {
 	}
 
 	// Load CA cert
-	caCert, err := ioutil.ReadFile(caFile)
+	caCert, err := os.ReadFile(caFile)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -312,22 +311,22 @@ func Test_HTTP_Protobuf(t *testing.T) {
 	var httpServerRouter = &router.Router[*http.Stream]{}
 
 	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream) error {
-		var res awesomepackage.AwesomeMessage
+		var res hello.AwesomeMessage
 		var msg = stream.Protobuf.Bytes()
 		var err = proto.Unmarshal(msg, &res)
 		if err != nil {
 			return stream.Sender.String(err.Error())
 		}
 
-		assert.True(t, res.AwesomeField == "1", res)
-		assert.True(t, res.AwesomeKey == "2", res)
+		assert.True(t, res.AwesomeField == "1", res.String())
+		assert.True(t, res.AwesomeKey == "2", res.String())
 
 		return stream.Sender.String("hello proto!")
 	})
 
 	httpServer.SetRouter(httpServerRouter)
 
-	var msg = awesomepackage.AwesomeMessage{
+	var msg = hello.AwesomeMessage{
 		AwesomeField: "1",
 		AwesomeKey:   "2",
 	}

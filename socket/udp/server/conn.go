@@ -18,11 +18,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/socket"
 	"github.com/lemonyxk/kitty/socket/protocol"
+	"google.golang.org/protobuf/proto"
 )
 
 type Conn interface {

@@ -11,10 +11,10 @@
 package socket
 
 import (
-	"github.com/golang/protobuf/proto"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/socket/protocol"
+	"google.golang.org/protobuf/proto"
 )
 
 type Emitter interface {

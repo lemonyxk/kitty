@@ -16,8 +16,8 @@ import (
 	"github.com/lemonyxk/kitty/socket/protocol"
 	hash "github.com/lemonyxk/structure/map"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/socket"
+	"google.golang.org/protobuf/proto"
 )
 
 type Server struct {

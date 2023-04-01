@@ -14,10 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket"
+	"google.golang.org/protobuf/proto"
 )
 
 type Client[T socket.Emitter] interface {

@@ -19,15 +19,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty"
 	"github.com/lemonyxk/kitty/errors"
-	"github.com/lemonyxk/kitty/example/protobuf"
+	"github.com/lemonyxk/kitty/example/protobuf/hello"
 	kitty2 "github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket/http"
 	"github.com/lemonyxk/kitty/socket/http/client"
 	"github.com/lemonyxk/kitty/socket/http/server"
+	"google.golang.org/protobuf/proto"
 )
 
 //go:embed public/**
@@ -88,7 +88,7 @@ func runHttpServer() {
 	var after = func(stream *http.Stream) error {
 		log.Println("after start")
 		// handle this error by set OnError
-		return errors.NewWithStack("after error")
+		return errors.New("after error")
 	}
 
 	httpServer.OnError = func(stream *http.Stream, err error) {
@@ -141,13 +141,13 @@ func runHttpServer() {
 	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		log.Println(stream.AutoGet("name").String())
-		var res awesomepackage.AwesomeMessage
+		var res hello.AwesomeMessage
 		var msg = stream.Protobuf.Bytes()
 		var err = proto.Unmarshal(msg, &res)
 		if err != nil {
 			return stream.Sender.String(err.Error())
 		}
-		log.Printf("%+v", res)
+		log.Printf("%+v", res.String())
 		return stream.Sender.String("hello proto!")
 	})
 
@@ -197,7 +197,7 @@ func runHttpServer() {
 func main() {
 	runHttpServer()
 
-	var msg = awesomepackage.AwesomeMessage{
+	var msg = hello.AwesomeMessage{
 		AwesomeField: "1",
 		AwesomeKey:   "2",
 	}

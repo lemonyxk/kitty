@@ -11,5 +11,4 @@
 package http
 
 type Validator interface {
-
 }

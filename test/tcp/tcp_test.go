@@ -19,10 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty"
-	"github.com/lemonyxk/kitty/example/protobuf"
+	"github.com/lemonyxk/kitty/example/protobuf/hello"
 	kitty2 "github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket"
@@ -30,6 +29,7 @@ import (
 	"github.com/lemonyxk/kitty/socket/tcp/client"
 	"github.com/lemonyxk/kitty/socket/tcp/server"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/proto"
 )
 
 var stop = make(chan bool)
@@ -97,7 +97,7 @@ func initServer() {
 	})
 
 	tcpRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[server.Conn]) error {
-		var res awesomepackage.AwesomeMessage
+		var res hello.AwesomeMessage
 		_ = proto.Unmarshal(stream.Data, &res)
 		return stream.ProtoBufEmit(stream.Event, &res)
 	})
@@ -302,15 +302,15 @@ func Test_TCP_ProtobufEmit(t *testing.T) {
 	var tcpRouter = clientRouter.Create()
 
 	tcpRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[client.Conn]) error {
-		var res awesomepackage.AwesomeMessage
+		var res hello.AwesomeMessage
 		_ = proto.Unmarshal(stream.Data, &res)
-		assert.True(t, res.AwesomeField == "1", res)
-		assert.True(t, res.AwesomeKey == "2", res)
+		assert.True(t, res.AwesomeField == "1", res.String())
+		assert.True(t, res.AwesomeKey == "2", res.String())
 		mux.Done()
 		return nil
 	})
 
-	var buf = awesomepackage.AwesomeMessage{
+	var buf = hello.AwesomeMessage{
 		AwesomeField: "1",
 		AwesomeKey:   "2",
 	}

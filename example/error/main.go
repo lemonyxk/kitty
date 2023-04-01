@@ -20,8 +20,7 @@ import (
 func main() {
 
 	var e = errors2.New("new error")
-	var w = errors.WrapWithStack(e, "wrap error")
-
+	var w = errors.Wrap(e, "wrap error")
 
 	fmt.Printf("%+v\n", w)
 
@@ -48,5 +47,5 @@ func test2() error {
 }
 
 func test3() error {
-	return errors.NewWithStack("test3 error")
+	return errors.New("test3 error")
 }

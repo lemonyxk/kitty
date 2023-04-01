@@ -21,11 +21,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/kitty/header"
+	"google.golang.org/protobuf/proto"
 )
 
 func getRequest(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
@@ -428,7 +428,7 @@ func do(info *Request, req *http.Request, cancel context.CancelFunc) (*http.Resp
 		req.SetBasicAuth(info.userName, info.passWord)
 	}
 
-	res,err := defaultClient.Do(req)
+	res, err := defaultClient.Do(req)
 	if err != nil {
 		cancel()
 		return nil, err

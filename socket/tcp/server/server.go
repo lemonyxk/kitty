@@ -23,7 +23,7 @@ import (
 	"github.com/lemonyxk/kitty/ssl"
 	"github.com/lemonyxk/structure/map"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/lemonyxk/kitty/socket"
 )

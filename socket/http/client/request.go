@@ -16,9 +16,9 @@ import (
 	"net/textproto"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/kitty/header"
+	"google.golang.org/protobuf/proto"
 )
 
 type Request struct {

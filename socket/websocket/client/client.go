@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/fasthttp/websocket"
-	"github.com/golang/protobuf/proto"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket"
 	"github.com/lemonyxk/kitty/socket/protocol"
 	"github.com/lemonyxk/kitty/ssl"
+	"google.golang.org/protobuf/proto"
 )
 
 type Client struct {

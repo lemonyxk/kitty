@@ -26,6 +26,9 @@ type Sender struct {
 
 func (s *Sender) Respond(code int, msg any) error {
 	s.response.WriteHeader(code)
+	if msg == nil {
+		return nil
+	}
 	switch msg.(type) {
 	case string:
 		return s.String(msg.(string))
@@ -37,7 +40,11 @@ func (s *Sender) Respond(code int, msg any) error {
 }
 
 func (s *Sender) Any(data any) error {
-	var _, err = s.response.Write([]byte(fmt.Sprintf("%+v", data)))
+	var res []byte
+	if data != nil {
+		res = []byte(fmt.Sprintf("%+v", data))
+	}
+	var _, err = s.response.Write(res)
 	return err
 }
 

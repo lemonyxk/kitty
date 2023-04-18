@@ -188,9 +188,9 @@ func stack(deep int) []info {
 			}
 		}
 
-		if codePath[:len(pwd)] == pwd {
+		if len(codePath) > len(pwd) && codePath[:len(pwd)] == pwd {
 			codePath = codePath[len(pwd)+1:]
-		} else if codePath[:len(goRoot)] == goRoot {
+		} else if len(codePath) > len(goRoot) && codePath[:len(goRoot)] == goRoot {
 			// codePath = codePath[len(goRoot)+1:]
 		} else {
 			codePath = "@" + codePath[index:]

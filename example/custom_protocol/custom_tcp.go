@@ -53,25 +53,26 @@ func (d *CustomTcp) IsUnknown(messageType byte) bool {
 	return messageType == protocol.Unknown
 }
 
-func (d *CustomTcp) Decode(message []byte) (messageType byte, id int64, route []byte, body []byte) {
+func (d *CustomTcp) Decode(message []byte) (messageType byte, code int, id int64, route []byte, body []byte) {
 	if !d.isHeaderInvalid(message) {
-		return 0, 0, nil, nil
+		return 0, 0, 0, nil, nil
 	}
 
 	var index = bytes.IndexByte(message, ':')
 	if index == -1 {
-		return 0, 0, nil, nil
+		return 0, 0, 0, nil, nil
 	}
 
 	messageType = message[0]
 	id = 0
+	code = 0
 	route = message[1:index]
 	body = message[index+1:]
 
-	return messageType, id, route, body
+	return messageType, code, id, route, body
 }
 
-func (d *CustomTcp) Encode(messageType byte, id int64, route []byte, body []byte) []byte {
+func (d *CustomTcp) Encode(messageType byte, code int, id int64, route []byte, body []byte) []byte {
 	switch messageType {
 	case protocol.Bin:
 		return d.packBin(id, route, body)

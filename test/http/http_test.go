@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/lemonyxk/kitty"
-	"github.com/lemonyxk/kitty/example/protobuf/hello"
+	hello "github.com/lemonyxk/kitty/example/protobuf"
 	kitty2 "github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket/http"

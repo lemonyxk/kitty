@@ -21,7 +21,7 @@ import (
 
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty"
-	"github.com/lemonyxk/kitty/example/protobuf/hello"
+	hello "github.com/lemonyxk/kitty/example/protobuf"
 	kitty2 "github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket/async"
@@ -82,10 +82,13 @@ func initServer() {
 		var j = jsoniter.Get(message)
 		var route = j.Get("event").ToString()
 		var data = j.Get("data").ToString()
+		var messageID = j.Get("message_id").ToInt64()
+		var code = j.Get("code").ToInt()
+
 		if route == "" {
 			return
 		}
-		next(socket.NewStream(conn, 0, route, []byte(data)))
+		next(socket.NewStream(conn, code, messageID, route, []byte(data)))
 	}
 
 	// create router
@@ -159,10 +162,12 @@ func initClient() {
 		var j = jsoniter.Get(message)
 		var route = j.Get("event").ToString()
 		var data = j.Get("data").ToString()
+		var messageID = j.Get("message_id").ToInt64()
+		var code = j.Get("code").ToInt()
 		if route == "" {
 			return
 		}
-		next(socket.NewStream(c, 0, route, []byte(data)))
+		next(socket.NewStream(c, code, messageID, route, []byte(data)))
 	}
 
 	// create router
@@ -479,10 +484,12 @@ func Test_WS_Multi_Client(t *testing.T) {
 				var j = jsoniter.Get(message)
 				var route = j.Get("event").ToString()
 				var data = j.Get("data").ToString()
+				var messageID = j.Get("message_id").ToInt64()
+				var code = j.Get("code").ToInt()
 				if route == "" {
 					return
 				}
-				next(socket.NewStream(c, 0, route, []byte(data)))
+				next(socket.NewStream(c, code, messageID, route, []byte(data)))
 			}
 
 			// create router

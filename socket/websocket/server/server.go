@@ -330,7 +330,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 func (s *Server) decodeMessage(conn Conn, message []byte) error {
 
 	// unpack
-	messageType, id, route, body := s.Protocol.Decode(message)
+	messageType, code, id, route, body := s.Protocol.Decode(message)
 	_ = id
 
 	if s.OnMessage != nil {
@@ -355,7 +355,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	}
 
 	// on router
-	s.middleware(socket.NewStream(conn, id, string(route), body))
+	s.middleware(socket.NewStream(conn, code, id, string(route), body))
 
 	return nil
 }

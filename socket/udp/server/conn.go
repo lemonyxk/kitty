@@ -146,7 +146,7 @@ func (c *conn) Push(msg []byte) error {
 }
 
 func (c *conn) Emit(event string, data []byte) error {
-	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), data)
+	return c.Pack(protocol.Bin, 0, atomic.AddInt64(&c.messageID, 1), []byte(event), data)
 }
 
 func (c *conn) JsonEmit(event string, data any) error {
@@ -154,7 +154,7 @@ func (c *conn) JsonEmit(event string, data any) error {
 	if err != nil {
 		return err
 	}
-	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
+	return c.Pack(protocol.Bin, 0, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
 }
 
 func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
@@ -162,7 +162,7 @@ func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
 	if err != nil {
 		return err
 	}
-	return c.Pack(protocol.Bin, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
+	return c.Pack(protocol.Bin, 0, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
 }
 
 func (c *conn) Close() error {
@@ -184,8 +184,8 @@ func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
 	return c.server.netListen.WriteToUDP(msg, addr)
 }
 
-func (c *conn) Pack(messageType byte, messageID int64, route []byte, body []byte) error {
-	var msg = c.Encode(messageType, messageID, route, body)
+func (c *conn) Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error {
+	var msg = c.Encode(messageType, code, messageID, route, body)
 	_, err := c.WriteToUDP(msg, c.conn)
 	return err
 }

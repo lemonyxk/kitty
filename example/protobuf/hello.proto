@@ -3,7 +3,7 @@
 // protoc -I=./protobuf --ts_out=./protobuf protobuf/hello.proto
 syntax = "proto3";
 
-option go_package = "./hello";
+option go_package = ".;hello";
 
 package hello;
 

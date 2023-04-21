@@ -21,12 +21,12 @@ type Emitter interface {
 	JsonEmit(event string, data any) error
 	ProtoBufEmit(event string, data proto.Message) error
 	Emit(event string, data []byte) error
-	Pack(messageType byte, messageID int64, route []byte, body []byte) error
+	Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error
 	Push(msg []byte) error
 }
 
-func NewStream[T Emitter](conn T, messageID int64, event string, data []byte) *Stream[T] {
-	return &Stream[T]{conn: conn, messageID: messageID, Event: event, Data: data}
+func NewStream[T Emitter](conn T, code int, messageID int64, event string, data []byte) *Stream[T] {
+	return &Stream[T]{conn: conn, code: code, messageID: messageID, Event: event, Data: data}
 }
 
 type Stream[T Emitter] struct {
@@ -38,6 +38,7 @@ type Stream[T Emitter] struct {
 	Logger  kitty.Logger
 
 	conn      T
+	code      int
 	messageID int64
 }
 
@@ -49,8 +50,20 @@ func (s *Stream[T]) MessageID() int64 {
 	return s.messageID
 }
 
+func (s *Stream[T]) SetMessageID(messageID int64) {
+	s.messageID = messageID
+}
+
+func (s *Stream[T]) Code() int {
+	return s.code
+}
+
+func (s *Stream[T]) SetCode(code int) {
+	s.code = code
+}
+
 func (s *Stream[T]) Emit(event string, data []byte) error {
-	return s.conn.Pack(protocol.Bin, s.messageID, []byte(event), data)
+	return s.conn.Pack(protocol.Bin, s.code, s.messageID, []byte(event), data)
 }
 
 func (s *Stream[T]) JsonEmit(event string, data any) error {
@@ -58,7 +71,7 @@ func (s *Stream[T]) JsonEmit(event string, data any) error {
 	if err != nil {
 		return err
 	}
-	return s.conn.Pack(protocol.Bin, s.messageID, []byte(event), msg)
+	return s.conn.Pack(protocol.Bin, s.code, s.messageID, []byte(event), msg)
 }
 
 func (s *Stream[T]) ProtoBufEmit(event string, data proto.Message) error {
@@ -66,9 +79,13 @@ func (s *Stream[T]) ProtoBufEmit(event string, data proto.Message) error {
 	if err != nil {
 		return err
 	}
-	return s.conn.Pack(protocol.Bin, s.messageID, []byte(event), msg)
+	return s.conn.Pack(protocol.Bin, s.code, s.messageID, []byte(event), msg)
 }
 
 func (s *Stream[T]) Push(message []byte) error {
 	return s.conn.Push(message)
+}
+
+func (s *Stream[T]) Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error {
+	return s.conn.Pack(messageType, code, messageID, route, body)
 }

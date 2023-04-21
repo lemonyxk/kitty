@@ -19,8 +19,8 @@ const (
 	Close byte = 6
 )
 
-var OpenMessage = []byte{0x0, 0x0, 0x5, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
-var CloseMessage = []byte{0x0, 0x0, 0x6, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
+var OpenMessage = []byte{0x0, 0x0, 0x5, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
+var CloseMessage = []byte{0x0, 0x0, 0x6, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 
 type UDPProtocol interface {
 	Protocol
@@ -74,29 +74,30 @@ func (d *DefaultUdpProtocol) IsUnknown(messageType byte) bool {
 }
 
 func (d *DefaultUdpProtocol) HeadLen() int {
-	return 16
+	return 20
 }
 
-func (d *DefaultUdpProtocol) Decode(message []byte) (messageType byte, id int64, route []byte, body []byte) {
+func (d *DefaultUdpProtocol) Decode(message []byte) (messageType byte, code int, id int64, route []byte, body []byte) {
 	if !d.isHeaderInvalid(message) {
-		return 0, 0, nil, nil
+		return 0, 0, 0, nil, nil
 	}
 
 	if d.getLen(message) != len(message) {
-		return 0, 0, nil, nil
+		return 0, 0, 0, nil, nil
 	}
 
 	headLen := d.HeadLen()
 
 	return message[2],
-		int64(binary.BigEndian.Uint64(message[8:headLen])),
+		int(binary.BigEndian.Uint16(message[8:12])),
+		int64(binary.BigEndian.Uint64(message[12:headLen])),
 		message[headLen : headLen+int(message[3])], message[headLen+int(message[3]):]
 }
 
-func (d *DefaultUdpProtocol) Encode(messageType byte, id int64, route []byte, body []byte) []byte {
+func (d *DefaultUdpProtocol) Encode(messageType byte, code int, id int64, route []byte, body []byte) []byte {
 	switch messageType {
 	case Bin:
-		return d.packBin(id, route, body)
+		return d.packBin(code, id, route, body)
 	case Ping:
 		return PingMessage
 	case Pong:
@@ -161,7 +162,7 @@ func (d *DefaultUdpProtocol) getLen(message []byte) int {
 	return rl + int(bl) + headLen
 }
 
-func (d *DefaultUdpProtocol) packBin(id int64, route []byte, body []byte) []byte {
+func (d *DefaultUdpProtocol) packBin(code int, id int64, route []byte, body []byte) []byte {
 
 	var rl = len(route)
 
@@ -187,8 +188,11 @@ func (d *DefaultUdpProtocol) packBin(id int64, route []byte, body []byte) []byte
 	// 4 - 7 body len
 	binary.BigEndian.PutUint32(data[4:8], uint32(bl))
 
-	// 8 - 15 id
-	binary.BigEndian.PutUint64(data[8:headLen], uint64(id))
+	// 8 - 11 code
+	binary.BigEndian.PutUint32(data[8:12], uint32(code))
+
+	// 12 - 19 id
+	binary.BigEndian.PutUint64(data[12:headLen], uint64(id))
 
 	copy(data[headLen:headLen+rl], route)
 

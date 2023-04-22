@@ -203,7 +203,7 @@ func Test_UDP_Client(t *testing.T) {
 		// And wo can not use goroutine to send packet,
 		// cuz it can make the chance of packet loss greater,
 		// Although this is thread safe.
-		time.Sleep(time.Microsecond * 10)
+		time.Sleep(time.Microsecond * 20)
 		var err = udpClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
 		assert.True(t, err == nil, err)
 		total += uint64(i + 1)

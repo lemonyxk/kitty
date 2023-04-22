@@ -13,16 +13,14 @@ package errors
 import (
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/lemonyxk/caller"
 )
 
-var pwd, _ = os.Getwd()
-var goRoot, _ = os.LookupEnv("GOROOT")
 var space = strings.Repeat(" ", 4) + "at "
 var withStack = true
 
@@ -30,16 +28,10 @@ func WithStack(b bool) {
 	withStack = b
 }
 
-type info struct {
-	file     string
-	line     int
-	funcName string
-}
-
 type Error struct {
 	message string
 	err     error
-	stack   []info
+	stack   []caller.Info
 }
 
 func (e *Error) Error() string {
@@ -55,7 +47,7 @@ func (e *Error) Format(s fmt.State, verb rune) {
 				_, _ = io.WriteString(s, "\n")
 			}
 			for i, f := range e.stack {
-				var str = space + filepath.Base(f.funcName) + " in " + f.file + ":" + strconv.Itoa(f.line)
+				var str = space + filepath.Base(f.Func) + " in " + f.File + ":" + strconv.Itoa(f.Line)
 				if i != len(e.stack)-1 {
 					str = str + "\n"
 				}
@@ -81,7 +73,7 @@ func New(text any) error {
 	}
 	var r = &Error{message: fmt.Sprintf("%v", text)}
 	if withStack {
-		r.stack = stack(2)
+		r.stack = caller.Deeps(2)
 	}
 	return r
 }
@@ -89,7 +81,7 @@ func New(text any) error {
 func Errorf(f string, args ...any) error {
 	var r = &Error{message: fmt.Sprintf(f, args...)}
 	if withStack {
-		r.stack = stack(2)
+		r.stack = caller.Deeps(2)
 	}
 	return r
 }
@@ -110,7 +102,7 @@ func Wrap(err error, text any) error {
 	}
 
 	if withStack {
-		r.stack = stack(2)
+		r.stack = caller.Deeps(2)
 	}
 
 	return r
@@ -132,7 +124,7 @@ func Wrapf(err error, f string, args ...any) error {
 	}
 
 	if withStack {
-		r.stack = stack(2)
+		r.stack = caller.Deeps(2)
 	}
 
 	return r
@@ -165,43 +157,4 @@ func Unwrap(err error) error {
 		return nil
 	}
 	return u.Unwrap()
-}
-
-func stack(deep int) []info {
-	var res []info
-	for skip := 2; true; skip++ {
-
-		pc, codePath, codeLine, ok := runtime.Caller(skip)
-		if !ok {
-			break
-		}
-
-		var index = 0
-		var count = 0
-		for i := len(codePath) - 1; i >= 0; i-- {
-			if codePath[i] == os.PathSeparator {
-				count++
-			}
-			if count == 3 {
-				index = i + 1
-				break
-			}
-		}
-
-		if len(codePath) > len(pwd) && codePath[:len(pwd)] == pwd {
-			codePath = codePath[len(pwd)+1:]
-		} else if len(codePath) > len(goRoot) && codePath[:len(goRoot)] == goRoot {
-			// codePath = codePath[len(goRoot)+1:]
-		} else {
-			codePath = "@" + codePath[index:]
-		}
-
-		prevFunc := runtime.FuncForPC(pc).Name()
-		res = append(res, info{
-			file:     codePath,
-			line:     codeLine,
-			funcName: prevFunc,
-		})
-	}
-	return res
 }

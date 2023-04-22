@@ -56,7 +56,7 @@ func initServer() {
 
 	// create server
 	tcpServer = kitty.NewTcpServer(addr)
-	tcpServer.HeartBeatTimeout = 5 * time.Second
+	// tcpServer.HeartBeatTimeout = 5 * time.Second
 
 	// event
 	tcpServer.OnOpen = func(conn server.Conn) {}
@@ -120,7 +120,7 @@ func initClient() {
 	// create client
 	tcpClient = kitty.NewTcpClient(addr)
 	tcpClient.ReconnectInterval = time.Second
-	tcpClient.HeartBeatInterval = time.Second
+	// tcpClient.HeartBeatInterval = time.Second
 
 	// event
 	tcpClient.OnClose = func(c client.Conn) {}

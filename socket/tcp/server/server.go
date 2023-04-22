@@ -97,11 +97,11 @@ func (s *Server) Ready() {
 	// }
 
 	if s.ReadBufferSize == 0 {
-		s.ReadBufferSize = 1024
+		s.ReadBufferSize = 8192
 	}
 
 	if s.WriteBufferSize == 0 {
-		s.WriteBufferSize = 1024
+		s.WriteBufferSize = 8192
 	}
 
 	if s.OnOpen == nil {
@@ -216,8 +216,6 @@ func (s *Server) Start() {
 	} else {
 		netListen, err = net.Listen("tcp", s.Addr)
 	}
-
-	// netListen, err = net.Listen("tcp", s.Addr)
 
 	if err != nil {
 		panic(err)

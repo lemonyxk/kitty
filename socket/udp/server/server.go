@@ -40,8 +40,9 @@ type Server struct {
 	HandshakeTimeout  time.Duration
 	DailTimeout       time.Duration
 
-	ReadBufferSize  int
-	WriteBufferSize int
+	Mtu             int
+	ReadBufferSize  int // not use yet
+	WriteBufferSize int // not use yet
 
 	PingHandler func(conn Conn) func(data string) error
 	PongHandler func(conn Conn) func(data string) error
@@ -98,11 +99,15 @@ func (s *Server) Ready() {
 	// }
 
 	if s.ReadBufferSize == 0 {
-		s.ReadBufferSize = 512
+		s.ReadBufferSize = 8192
 	}
 
 	if s.WriteBufferSize == 0 {
-		s.WriteBufferSize = 512
+		s.WriteBufferSize = 8192
+	}
+
+	if s.Mtu == 0 {
+		s.Mtu = 512
 	}
 
 	if s.OnOpen == nil {
@@ -244,7 +249,7 @@ func (s *Server) Start() {
 
 	// var reader = s.Protocol.Reader()
 
-	var buffer = make([]byte, s.ReadBufferSize+s.Protocol.HeadLen())
+	var buffer = make([]byte, s.Mtu+s.Protocol.HeadLen())
 
 	for {
 

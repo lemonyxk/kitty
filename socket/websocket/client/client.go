@@ -129,11 +129,11 @@ func (c *Client) Connect() {
 	}
 
 	if c.WriteBufferSize == 0 {
-		c.WriteBufferSize = 1024
+		c.WriteBufferSize = 4096
 	}
 
 	if c.ReadBufferSize == 0 {
-		c.ReadBufferSize = 1024
+		c.ReadBufferSize = 4096
 	}
 
 	// if c.HeartBeatInterval == 0 {

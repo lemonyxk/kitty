@@ -30,6 +30,7 @@ type Client struct {
 	ReconnectInterval time.Duration
 	HeartBeat         func(conn Conn) error
 
+	Mtu             int
 	ReadBufferSize  int
 	WriteBufferSize int
 	DailTimeout     time.Duration
@@ -132,11 +133,15 @@ func (c *Client) Connect() {
 	}
 
 	if c.ReadBufferSize == 0 {
-		c.ReadBufferSize = 512
+		c.ReadBufferSize = 8192
 	}
 
 	if c.WriteBufferSize == 0 {
-		c.WriteBufferSize = 512
+		c.WriteBufferSize = 8192
+	}
+
+	if c.Mtu == 0 {
+		c.Mtu = 512
 	}
 
 	// if c.HeartBeatInterval == 0 {
@@ -168,6 +173,16 @@ func (c *Client) Connect() {
 		fmt.Println(err)
 		c.reconnecting()
 		return
+	}
+
+	err = handler.SetWriteBuffer(c.WriteBufferSize)
+	if err != nil {
+		panic(err)
+	}
+
+	err = handler.SetReadBuffer(c.ReadBufferSize)
+	if err != nil {
+		panic(err)
 	}
 
 	var heartBeatTimeout = c.HeartBeatTimeout
@@ -304,7 +319,7 @@ func (c *Client) Connect() {
 
 	var reader = c.Protocol.Reader()
 
-	var buffer = make([]byte, c.ReadBufferSize+c.Protocol.HeadLen())
+	var buffer = make([]byte, c.Mtu+c.Protocol.HeadLen())
 
 	go func() {
 		for {

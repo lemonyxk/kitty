@@ -153,11 +153,11 @@ func (s *Server) Ready() {
 
 	// suggest 4096
 	if s.ReadBufferSize == 0 {
-		s.ReadBufferSize = 1024
+		s.ReadBufferSize = 4096
 	}
 	// suggest 4096
 	if s.WriteBufferSize == 0 {
-		s.WriteBufferSize = 1024
+		s.WriteBufferSize = 4096
 	}
 
 	if s.CheckOrigin == nil {

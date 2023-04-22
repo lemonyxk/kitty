@@ -145,8 +145,8 @@ func (c *conn) Write(msg []byte) (int, error) {
 }
 
 func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
-	if len(msg) > c.server.ReadBufferSize+c.HeadLen() {
-		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.server.ReadBufferSize))
+	if len(msg) > c.server.Mtu+c.HeadLen() {
+		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.server.Mtu))
 	}
 
 	c.mux.Lock()

@@ -53,7 +53,7 @@ func asyncWsServer() {
 	wsServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data))
-			return stream.Push(packMessage(stream.Event, string(stream.Data)))
+			return stream.Conn().Push(packMessage(stream.Event, string(stream.Data)))
 		})
 	})
 
@@ -94,7 +94,7 @@ func asyncWsClient() {
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
-			return stream.Push(packMessage(stream.Event, string(stream.Data)))
+			return stream.Conn().Push(packMessage(stream.Event, string(stream.Data)))
 		})
 	})
 

@@ -199,7 +199,7 @@ func Test_TCP_Client(t *testing.T) {
 	for i := 0; i < count; i++ {
 		total += int64(i + 1)
 		go func() {
-			_ = tcpClient.JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
+			_ = tcpClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
 		}()
 	}
 
@@ -263,7 +263,7 @@ func Test_TCP_JsonEmit(t *testing.T) {
 		return nil
 	})
 
-	var err = tcpClient.JsonEmit("/JsonFormat", kitty2.M{
+	var err = tcpClient.Sender().JsonEmit("/JsonFormat", kitty2.M{
 		"name": "kitty",
 		"age":  "18",
 	})
@@ -287,7 +287,7 @@ func Test_TCP_Emit(t *testing.T) {
 		return nil
 	})
 
-	var err = tcpClient.Emit("/Emit", []byte(`{"name":"kitty","age":18}`))
+	var err = tcpClient.Sender().Emit("/Emit", []byte(`{"name":"kitty","age":18}`))
 
 	assert.True(t, err == nil, err)
 
@@ -315,7 +315,7 @@ func Test_TCP_ProtobufEmit(t *testing.T) {
 		AwesomeKey:   "2",
 	}
 
-	var err = tcpClient.ProtoBufEmit("/ProtoBufEmit", &buf)
+	var err = tcpClient.Sender().ProtoBufEmit("/ProtoBufEmit", &buf)
 
 	assert.True(t, err == nil, err)
 

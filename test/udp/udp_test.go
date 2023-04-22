@@ -202,7 +202,7 @@ func Test_UDP_Client(t *testing.T) {
 		// cuz it can make the chance of packet loss greater,
 		// Although this is thread safe.
 		time.Sleep(time.Microsecond * 1)
-		var err = udpClient.JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
+		var err = udpClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
 		assert.True(t, err == nil, err)
 		total += int64(i + 1)
 	}
@@ -274,7 +274,7 @@ func Test_UDP_JsonEmit(t *testing.T) {
 		return nil
 	})
 
-	var err = udpClient.JsonEmit("/JsonFormat", kitty2.M{
+	var err = udpClient.Sender().JsonEmit("/JsonFormat", kitty2.M{
 		"name": "kitty",
 		"age":  "18",
 	})
@@ -298,7 +298,7 @@ func Test_UDP_Emit(t *testing.T) {
 		return nil
 	})
 
-	var err = udpClient.Emit("/Emit", []byte(`{"name":"kitty","age":18}`))
+	var err = udpClient.Sender().Emit("/Emit", []byte(`{"name":"kitty","age":18}`))
 
 	assert.True(t, err == nil, err)
 
@@ -326,7 +326,7 @@ func Test_UDP_ProtobufEmit(t *testing.T) {
 		AwesomeKey:   "2",
 	}
 
-	var err = udpClient.ProtoBufEmit("/ProtoBufEmit", &buf)
+	var err = udpClient.Sender().ProtoBufEmit("/ProtoBufEmit", &buf)
 
 	assert.True(t, err == nil, err)
 

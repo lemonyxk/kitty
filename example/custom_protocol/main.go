@@ -106,7 +106,7 @@ func main() {
 	asyncTcpServer()
 	asyncTcpClient()
 
-	var err = tcpClient.Emit("/hello/world", []byte("hello world"))
+	var err = tcpClient.Sender().Emit("/hello/world", []byte("hello world"))
 
 	log.Println(err)
 

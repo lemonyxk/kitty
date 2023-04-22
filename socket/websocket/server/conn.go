@@ -15,15 +15,12 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/fasthttp/websocket"
-	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/kitty/header"
 	"github.com/lemonyxk/kitty/socket"
 	"github.com/lemonyxk/kitty/socket/protocol"
-	"google.golang.org/protobuf/proto"
 )
 
 type Conn interface {
@@ -45,7 +42,7 @@ type Conn interface {
 	Request() *http.Request
 	SubProtocols() []string
 	SetReadDeadline(t time.Time) error
-	socket.Emitter
+	socket.Packer
 	protocol.Protocol
 }
 
@@ -58,7 +55,6 @@ type conn struct {
 	response     http.ResponseWriter
 	request      *http.Request
 	mux          sync.Mutex
-	messageID    int64
 	subProtocols []string
 	protocol.Protocol
 }
@@ -148,26 +144,6 @@ func (c *conn) Pong() error {
 func (c *conn) Push(msg []byte) error {
 	_, err := c.Write(int(protocol.Bin), msg)
 	return err
-}
-
-func (c *conn) Emit(event string, data []byte) error {
-	return c.Pack(protocol.Bin, 0, atomic.AddInt64(&c.messageID, 1), []byte(event), data)
-}
-
-func (c *conn) JsonEmit(event string, data any) error {
-	msg, err := jsoniter.Marshal(data)
-	if err != nil {
-		return err
-	}
-	return c.Pack(protocol.Bin, 0, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
-}
-
-func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
-	msg, err := proto.Marshal(data)
-	if err != nil {
-		return err
-	}
-	return c.Pack(protocol.Bin, 0, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
 }
 
 func (c *conn) Close() error {

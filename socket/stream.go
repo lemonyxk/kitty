@@ -17,19 +17,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Emitter interface {
-	JsonEmit(event string, data any) error
-	ProtoBufEmit(event string, data proto.Message) error
-	Emit(event string, data []byte) error
-	Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error
-	Push(msg []byte) error
+func NewStream[T Packer](conn T, code int, messageID int64, event string, data []byte) *Stream[T] {
+	return &Stream[T]{
+		sender: &sender[T]{conn: conn, code: code, messageID: messageID},
+		Event:  event, Data: data,
+	}
 }
 
-func NewStream[T Emitter](conn T, code int, messageID int64, event string, data []byte) *Stream[T] {
-	return &Stream[T]{conn: conn, code: code, messageID: messageID, Event: event, Data: data}
-}
-
-type Stream[T Emitter] struct {
+type Stream[T Packer] struct {
 	Data  []byte
 	Event string
 
@@ -37,29 +32,7 @@ type Stream[T Emitter] struct {
 	Params  Params
 	Logger  kitty.Logger
 
-	conn      T
-	code      int
-	messageID int64
-}
-
-func (s *Stream[T]) Conn() T {
-	return s.conn
-}
-
-func (s *Stream[T]) MessageID() int64 {
-	return s.messageID
-}
-
-func (s *Stream[T]) SetMessageID(messageID int64) {
-	s.messageID = messageID
-}
-
-func (s *Stream[T]) Code() int {
-	return s.code
-}
-
-func (s *Stream[T]) SetCode(code int) {
-	s.code = code
+	*sender[T]
 }
 
 func (s *Stream[T]) Emit(event string, data []byte) error {
@@ -80,12 +53,4 @@ func (s *Stream[T]) ProtoBufEmit(event string, data proto.Message) error {
 		return err
 	}
 	return s.conn.Pack(protocol.Bin, s.code, s.messageID, []byte(event), msg)
-}
-
-func (s *Stream[T]) Push(message []byte) error {
-	return s.conn.Push(message)
-}
-
-func (s *Stream[T]) Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error {
-	return s.conn.Pack(messageType, code, messageID, route, body)
 }

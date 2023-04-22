@@ -19,11 +19,9 @@ import (
 
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket"
 	"github.com/lemonyxk/kitty/socket/protocol"
 	"github.com/lemonyxk/structure/map"
-	"google.golang.org/protobuf/proto"
-
-	"github.com/lemonyxk/kitty/socket"
 )
 
 type Server struct {
@@ -50,6 +48,7 @@ type Server struct {
 	Protocol    protocol.UDPProtocol
 
 	fd          int64
+	senders     *hash.Hash[int64, socket.Emitter[Conn]]
 	connections *hash.Hash[int64, Conn]
 	addrMap     *hash.Hash[string, int64]
 	router      *router.Router[*socket.Stream[Conn]]
@@ -68,47 +67,12 @@ func (s *Server) Use(middle ...func(Middle) Middle) {
 	s.middle = append(s.middle, middle...)
 }
 
-func (s *Server) EmitAll(event string, data []byte) (int, int) {
-	var counter = 0
-	var success = 0
-	s.connections.Range(func(fd int64, conn Conn) bool {
-		counter++
-		if conn.Emit(event, data) == nil {
-			success++
-		}
-		return true
-	})
-	return counter, success
-}
-
-func (s *Server) JsonEmitAll(event string, data any) (int, int) {
-	var counter = 0
-	var success = 0
-
-	s.connections.Range(func(fd int64, conn Conn) bool {
-		counter++
-		if conn.JsonEmit(event, data) == nil {
-			success++
-		}
-		return true
-	})
-
-	return counter, success
-}
-
-func (s *Server) ProtoBufEmitAll(event string, data proto.Message) (int, int) {
-	var counter = 0
-	var success = 0
-
-	s.connections.Range(func(fd int64, conn Conn) bool {
-		counter++
-		if conn.ProtoBufEmit(event, data) == nil {
-			success++
-		}
-		return true
-	})
-
-	return counter, success
+func (s *Server) Sender(fd int64) (socket.Emitter[Conn], error) {
+	var sender = s.senders.Get(fd)
+	if sender == nil {
+		return nil, errors.ConnNotFount
+	}
+	return sender, nil
 }
 
 func (s *Server) Ready() {
@@ -188,6 +152,7 @@ func (s *Server) Ready() {
 	}
 
 	s.connections = hash.New[int64, Conn]()
+	s.senders = hash.New[int64, socket.Emitter[Conn]]()
 	s.addrMap = hash.New[string, int64]()
 }
 
@@ -209,12 +174,14 @@ func (s *Server) onError(stream *socket.Stream[Conn], err error) {
 func (s *Server) addConnect(conn Conn) {
 	var fd = atomic.AddInt64(&s.fd, 1)
 	s.connections.Set(fd, conn)
+	s.senders.Set(fd, socket.NewSender(conn))
 	s.addrMap.Set(conn.Host(), fd)
 	conn.SetFD(fd)
 }
 
 func (s *Server) delConnect(conn Conn) {
 	s.connections.Delete(conn.FD())
+	s.senders.Delete(conn.FD())
 	s.addrMap.Delete(conn.Host())
 }
 

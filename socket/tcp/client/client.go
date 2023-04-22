@@ -11,7 +11,6 @@ import (
 	"github.com/lemonyxk/kitty/socket"
 	"github.com/lemonyxk/kitty/socket/protocol"
 	"github.com/lemonyxk/kitty/ssl"
-	"google.golang.org/protobuf/proto"
 )
 
 type Client struct {
@@ -45,6 +44,7 @@ type Client struct {
 	Protocol protocol.Protocol
 
 	conn                  Conn
+	sender                socket.Emitter[Conn]
 	router                *router.Router[*socket.Stream[Conn]]
 	middle                []func(Middle) Middle
 	isStop                bool
@@ -67,16 +67,8 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 	c.middle = append(c.middle, middle...)
 }
 
-func (c *Client) Emit(event string, data []byte) error {
-	return c.conn.Emit(event, data)
-}
-
-func (c *Client) JsonEmit(event string, data any) error {
-	return c.conn.JsonEmit(event, data)
-}
-
-func (c *Client) ProtoBufEmit(event string, data proto.Message) error {
-	return c.conn.ProtoBufEmit(event, data)
+func (c *Client) Sender() socket.Emitter[Conn] {
+	return c.sender
 }
 
 func (c *Client) Push(message []byte) error {
@@ -196,12 +188,15 @@ func (c *Client) Connect() {
 		}
 	}
 
-	c.conn = &conn{
+	var netConn = &conn{
 		conn:     handler,
 		client:   c,
 		lastPong: time.Now(),
 		Protocol: c.Protocol,
 	}
+
+	c.conn = netConn
+	c.sender = socket.NewSender(c.conn)
 
 	c.stopCh = make(chan struct{})
 	c.isStop = false

@@ -92,7 +92,7 @@ func main() {
 	runWsClient()
 
 	for {
-		var err = wsClient.Emit("/hello/world", []byte("hello world"))
+		var err = wsClient.Sender().Emit("/hello/world", []byte("hello world"))
 		if err != nil {
 			log.Println(err)
 			break

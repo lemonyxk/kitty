@@ -88,7 +88,7 @@ func main() {
 	runUdpServer()
 	runUdpClient()
 
-	var err = udpClient.Emit("/hello/world", []byte("hello world"))
+	var err = udpClient.Sender().Emit("/hello/world", []byte("hello world"))
 
 	log.Println(err)
 

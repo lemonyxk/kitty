@@ -19,7 +19,6 @@ import (
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket"
 	"github.com/lemonyxk/kitty/socket/protocol"
-	"google.golang.org/protobuf/proto"
 )
 
 type Client struct {
@@ -49,6 +48,7 @@ type Client struct {
 	Protocol protocol.UDPProtocol
 
 	conn                  Conn
+	sender                socket.Emitter[Conn]
 	router                *router.Router[*socket.Stream[Conn]]
 	middle                []func(Middle) Middle
 	addr                  *net.UDPAddr
@@ -72,16 +72,8 @@ func (c *Client) Use(middle ...func(Middle) Middle) {
 	c.middle = append(c.middle, middle...)
 }
 
-func (c *Client) Emit(event string, data []byte) error {
-	return c.conn.Emit(event, data)
-}
-
-func (c *Client) JsonEmit(event string, data any) error {
-	return c.conn.JsonEmit(event, data)
-}
-
-func (c *Client) ProtoBufEmit(event string, data proto.Message) error {
-	return c.conn.ProtoBufEmit(event, data)
+func (c *Client) Sender() socket.Emitter[Conn] {
+	return c.sender
 }
 
 func (c *Client) Push(message []byte) error {
@@ -195,6 +187,7 @@ func (c *Client) Connect() {
 	}
 
 	c.conn = netConn
+	c.sender = socket.NewSender(c.conn)
 
 	// send open message
 	err = c.conn.SendOpen()
@@ -369,7 +362,7 @@ func (c *Client) process(message []byte) error {
 
 func (c *Client) decodeMessage(message []byte) error {
 	// unpack
-	messageType,code, id, route, body := c.Protocol.Decode(message)
+	messageType, code, id, route, body := c.Protocol.Decode(message)
 	_ = id
 
 	if c.OnMessage != nil {
@@ -395,7 +388,7 @@ func (c *Client) decodeMessage(message []byte) error {
 
 	// on router
 
-	c.middleware(socket.NewStream(c.conn,code, id, string(route), body))
+	c.middleware(socket.NewStream(c.conn, code, id, string(route), body))
 
 	return nil
 }

@@ -17,7 +17,6 @@ import (
 	hash "github.com/lemonyxk/structure/map"
 
 	"github.com/lemonyxk/kitty/socket"
-	"google.golang.org/protobuf/proto"
 )
 
 type Server struct {
@@ -54,6 +53,7 @@ type Server struct {
 	Protocol protocol.Protocol
 
 	fd          int64
+	senders     *hash.Hash[int64, socket.Emitter[Conn]]
 	connections *hash.Hash[int64, Conn]
 	router      *router.Router[*socket.Stream[Conn]]
 	middle      []func(next Middle) Middle
@@ -71,57 +71,24 @@ func (s *Server) Use(middle ...func(next Middle) Middle) {
 	s.middle = append(s.middle, middle...)
 }
 
-func (s *Server) EmitAll(event string, data []byte) (int, int) {
-	var counter = 0
-	var success = 0
-
-	s.connections.Range(func(fd int64, conn Conn) bool {
-		counter++
-		if conn.Emit(event, data) == nil {
-			success++
-		}
-		return true
-	})
-
-	return counter, success
-}
-
-func (s *Server) JsonEmitAll(event string, data any) (int, int) {
-	var counter = 0
-	var success = 0
-
-	s.connections.Range(func(fd int64, conn Conn) bool {
-		counter++
-		if conn.JsonEmit(event, data) == nil {
-			success++
-		}
-		return true
-	})
-
-	return counter, success
-}
-
-func (s *Server) ProtoBufEmitAll(event string, data proto.Message) (int, int) {
-	var counter = 0
-	var success = 0
-	s.connections.Range(func(fd int64, conn Conn) bool {
-		counter++
-		if conn.ProtoBufEmit(event, data) == nil {
-			success++
-		}
-		return true
-	})
-	return counter, success
+func (s *Server) Sender(fd int64) (socket.Emitter[Conn], error) {
+	var sender = s.senders.Get(fd)
+	if sender == nil {
+		return nil, errors.ConnNotFount
+	}
+	return sender, nil
 }
 
 func (s *Server) addConnect(conn Conn) {
 	var fd = atomic.AddInt64(&s.fd, 1)
 	s.connections.Set(fd, conn)
+	s.senders.Set(fd, socket.NewSender(conn))
 	conn.SetFD(fd)
 }
 
 func (s *Server) delConnect(conn Conn) {
 	s.connections.Delete(conn.FD())
+	s.senders.Delete(conn.FD())
 }
 
 func (s *Server) Range(fn func(conn Conn)) {
@@ -246,6 +213,7 @@ func (s *Server) Ready() {
 	}
 
 	s.connections = hash.New[int64, Conn]()
+	s.senders = hash.New[int64, socket.Emitter[Conn]]()
 }
 
 func (s *Server) process(w http.ResponseWriter, r *http.Request) {

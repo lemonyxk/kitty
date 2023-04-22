@@ -241,7 +241,7 @@ func Test_WS_Client(t *testing.T) {
 	for i := 0; i < count; i++ {
 		total += int64(i + 1)
 		go func() {
-			_ = webSocketClient.JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
+			_ = webSocketClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
 		}()
 	}
 
@@ -305,7 +305,7 @@ func Test_WS_JsonEmit(t *testing.T) {
 		return nil
 	})
 
-	var err = webSocketClient.JsonEmit("/JsonFormat", kitty2.M{"name": "kitty", "age": "18"})
+	var err = webSocketClient.Sender().JsonEmit("/JsonFormat", kitty2.M{"name": "kitty", "age": "18"})
 
 	assert.True(t, err == nil, err)
 
@@ -326,7 +326,7 @@ func Test_WS_Emit(t *testing.T) {
 		return nil
 	})
 
-	var err = webSocketClient.Emit("/Emit", []byte(`{"name":"kitty","age":18}`))
+	var err = webSocketClient.Sender().Emit("/Emit", []byte(`{"name":"kitty","age":18}`))
 
 	assert.True(t, err == nil, err)
 
@@ -354,7 +354,7 @@ func Test_WS_ProtobufEmit(t *testing.T) {
 		AwesomeKey:   "2",
 	}
 
-	var err = webSocketClient.ProtoBufEmit("/ProtoBufEmit", &buf)
+	var err = webSocketClient.Sender().ProtoBufEmit("/ProtoBufEmit", &buf)
 
 	assert.True(t, err == nil, err)
 
@@ -528,5 +528,5 @@ func ServerJson(stream *socket.Stream[server.Conn], pack JsonPack) error {
 	if err != nil {
 		return err
 	}
-	return stream.Push(data)
+	return stream.Conn().Push(data)
 }

@@ -41,6 +41,11 @@ func runTcpServer() {
 	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data))
+			var sender, _ = tcpServer.Sender(100)
+			if sender != nil {
+				sender.Emit("/hello/world", []byte("hello world"))
+			}
+
 			return stream.Emit(stream.Event, stream.Data)
 		})
 	})
@@ -62,7 +67,7 @@ func runTcpClient() {
 	tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
 
 	tcpClient.HeartBeatTimeout = time.Second * 3
-	// tcpClient.HeartBeatInterval = time.Second * 1
+	tcpClient.HeartBeatInterval = time.Second * 1
 
 	// tcpClient.CertFile = "example/ssl/localhost+2.pem"
 	// tcpClient.KeyFile = "example/ssl/localhost+2-key.pem"
@@ -96,7 +101,7 @@ func main() {
 	runTcpServer()
 	runTcpClient()
 
-	var err = tcpClient.Emit("/hello/world", []byte("hello world"))
+	var err = tcpClient.Sender().Emit("/hello/world", []byte("hello world"))
 
 	log.Println(err)
 

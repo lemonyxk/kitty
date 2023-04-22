@@ -14,24 +14,26 @@ import (
 	"sync"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket"
+	"github.com/lemonyxk/kitty/socket/protocol"
 	"google.golang.org/protobuf/proto"
 )
 
-type Server[T socket.Emitter] interface {
+type Server[T socket.Packer] interface {
 	Conn(fd int64) (T, error)
 	GetDailTimeout() time.Duration
 	GetRouter() *router.Router[*socket.Stream[T]]
 }
 
-type asyncServer[T socket.Emitter] struct {
+type asyncServer[T socket.Packer] struct {
 	server Server[T]
 	mux    sync.Mutex
 }
 
-func NewServer[T socket.Emitter](server Server[T]) *asyncServer[T] {
+func NewServer[T socket.Packer](server Server[T]) *asyncServer[T] {
 	return &asyncServer[T]{server: server}
 }
 
@@ -52,7 +54,7 @@ func (a *asyncServer[T]) Emit(fd int64, event string, data []byte) (*socket.Stre
 		return nil, err
 	}
 
-	err = conn.Emit(event, data)
+	err = conn.Pack(protocol.Bin, 0, 0, []byte(event), data)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +86,11 @@ func (a *asyncServer[T]) JsonEmit(fd int64, event string, data any) (*socket.Str
 		return nil, err
 	}
 
-	err = conn.JsonEmit(event, data)
+	msg, err := jsoniter.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	err = conn.Pack(protocol.Bin, 0, 0, []byte(event), msg)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +122,11 @@ func (a *asyncServer[T]) ProtoBufEmit(fd int64, event string, data proto.Message
 		return nil, err
 	}
 
-	err = conn.ProtoBufEmit(event, data)
+	msg, err := proto.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	err = conn.Pack(protocol.Bin, 0, 0, []byte(event), msg)
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,12 @@ import (
 
 	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/kitty/header"
+	"google.golang.org/protobuf/proto"
 )
+
+func NewSender(w http.ResponseWriter, r *http.Request) *Sender {
+	return &Sender{response: w, request: r}
+}
 
 type Sender struct {
 	response http.ResponseWriter
@@ -51,6 +56,16 @@ func (s *Sender) Any(data any) error {
 func (s *Sender) Json(data any) error {
 	s.response.Header().Set(header.ContentType, header.ApplicationJson)
 	bts, err := jsoniter.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = s.response.Write(bts)
+	return err
+}
+
+func (s *Sender) Protobuf(data proto.Message) error {
+	s.response.Header().Set(header.ContentType, header.ApplicationProtobuf)
+	bts, err := proto.Marshal(data)
 	if err != nil {
 		return err
 	}

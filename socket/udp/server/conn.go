@@ -15,14 +15,11 @@ import (
 	"net"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
-	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/socket"
 	"github.com/lemonyxk/kitty/socket/protocol"
-	"google.golang.org/protobuf/proto"
 )
 
 type Conn interface {
@@ -46,7 +43,7 @@ type Conn interface {
 	Server() *Server
 	Conn() *net.UDPAddr
 	SetReadDeadline(t time.Time) error
-	socket.Emitter
+	socket.Packer
 	protocol.UDPProtocol
 }
 
@@ -60,7 +57,6 @@ type conn struct {
 	timeoutTimer *time.Timer
 	accept       chan []byte
 	close        chan struct{}
-	messageID    int64
 	protocol.UDPProtocol
 }
 
@@ -140,31 +136,6 @@ func (c *conn) SendOpen() error {
 	return err
 }
 
-func (c *conn) Push(msg []byte) error {
-	_, err := c.Write(msg)
-	return err
-}
-
-func (c *conn) Emit(event string, data []byte) error {
-	return c.Pack(protocol.Bin, 0, atomic.AddInt64(&c.messageID, 1), []byte(event), data)
-}
-
-func (c *conn) JsonEmit(event string, data any) error {
-	msg, err := jsoniter.Marshal(data)
-	if err != nil {
-		return err
-	}
-	return c.Pack(protocol.Bin, 0, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
-}
-
-func (c *conn) ProtoBufEmit(event string, data proto.Message) error {
-	msg, err := proto.Marshal(data)
-	if err != nil {
-		return err
-	}
-	return c.Pack(protocol.Bin, 0, atomic.AddInt64(&c.messageID, 1), []byte(event), msg)
-}
-
 func (c *conn) Close() error {
 	return c.SendClose()
 }
@@ -182,6 +153,11 @@ func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
 	defer c.mux.Unlock()
 
 	return c.server.netListen.WriteToUDP(msg, addr)
+}
+
+func (c *conn) Push(msg []byte) error {
+	_, err := c.Write(msg)
+	return err
 }
 
 func (c *conn) Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error {

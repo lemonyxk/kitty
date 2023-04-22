@@ -35,6 +35,10 @@ type Stream[T Packer] struct {
 	*sender[T]
 }
 
+func (s *Stream[T]) Sender() Emitter[T] {
+	return s.sender
+}
+
 func (s *Stream[T]) Emit(event string, data []byte) error {
 	return s.conn.Pack(protocol.Bin, s.code, s.messageID, []byte(event), data)
 }

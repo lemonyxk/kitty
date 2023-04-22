@@ -24,32 +24,32 @@ func NewSender[T Packer](conn T) Emitter[T] {
 
 type sender[T Packer] struct {
 	conn      T
-	code      int
-	messageID int64
+	code      uint32
+	messageID uint64
 }
 
 func (s *sender[T]) Conn() T {
 	return s.conn
 }
 
-func (s *sender[T]) MessageID() int64 {
+func (s *sender[T]) MessageID() uint64 {
 	return s.messageID
 }
 
-func (s *sender[T]) SetMessageID(messageID int64) {
+func (s *sender[T]) SetMessageID(messageID uint64) {
 	s.messageID = messageID
 }
 
-func (s *sender[T]) Code() int {
+func (s *sender[T]) Code() uint32 {
 	return s.code
 }
 
-func (s *sender[T]) SetCode(code int) {
+func (s *sender[T]) SetCode(code uint32) {
 	s.code = code
 }
 
 func (s *sender[T]) Emit(event string, data []byte) error {
-	return s.conn.Pack(protocol.Bin, s.code, atomic.AddInt64(&s.messageID, 1), []byte(event), data)
+	return s.conn.Pack(protocol.Bin, s.code, atomic.AddUint64(&s.messageID, 1), []byte(event), data)
 }
 
 func (s *sender[T]) JsonEmit(event string, data any) error {
@@ -57,7 +57,7 @@ func (s *sender[T]) JsonEmit(event string, data any) error {
 	if err != nil {
 		return err
 	}
-	return s.conn.Pack(protocol.Bin, s.code, atomic.AddInt64(&s.messageID, 1), []byte(event), msg)
+	return s.conn.Pack(protocol.Bin, s.code, atomic.AddUint64(&s.messageID, 1), []byte(event), msg)
 }
 
 func (s *sender[T]) ProtoBufEmit(event string, data proto.Message) error {
@@ -65,5 +65,5 @@ func (s *sender[T]) ProtoBufEmit(event string, data proto.Message) error {
 	if err != nil {
 		return err
 	}
-	return s.conn.Pack(protocol.Bin, s.code, atomic.AddInt64(&s.messageID, 1), []byte(event), msg)
+	return s.conn.Pack(protocol.Bin, s.code, atomic.AddUint64(&s.messageID, 1), []byte(event), msg)
 }

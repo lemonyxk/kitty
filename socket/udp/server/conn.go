@@ -160,7 +160,7 @@ func (c *conn) Push(msg []byte) error {
 	return err
 }
 
-func (c *conn) Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error {
+func (c *conn) Pack(messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
 	var msg = c.Encode(messageType, code, messageID, route, body)
 	_, err := c.WriteToUDP(msg, c.conn)
 	return err

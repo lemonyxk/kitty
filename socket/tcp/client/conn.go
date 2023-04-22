@@ -99,7 +99,15 @@ func (c *conn) Write(message []byte) (int, error) {
 	return c.conn.Write(message)
 }
 
-func (c *conn) Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error {
+func (c *conn) Close() error {
+	return c.conn.Close()
+}
+
+func (c *conn) Read(b []byte) (n int, err error) {
+	return c.conn.Read(b)
+}
+
+func (c *conn) Pack(messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
 	var message = c.Encode(messageType, code, messageID, route, body)
 	_, err := c.Write(message)
 	return err
@@ -108,12 +116,4 @@ func (c *conn) Pack(messageType byte, code int, messageID int64, route []byte, b
 func (c *conn) Push(message []byte) error {
 	_, err := c.Write(message)
 	return err
-}
-
-func (c *conn) Close() error {
-	return c.conn.Close()
-}
-
-func (c *conn) Read(b []byte) (n int, err error) {
-	return c.conn.Read(b)
 }

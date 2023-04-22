@@ -10,8 +10,7 @@
 
 package socket
 
-
 type Packer interface {
-	Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error
+	Pack(messageType byte, code uint32, messageID uint64, route []byte, body []byte) error
 	Push(msg []byte) error
 }

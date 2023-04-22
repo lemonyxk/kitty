@@ -17,9 +17,9 @@ type Emitter[T Packer] interface {
 	ProtoBufEmit(event string, data proto.Message) error
 	Emit(event string, data []byte) error
 
-	SetCode(code int)
-	Code() int
-	SetMessageID(messageID int64)
-	MessageID() int64
+	SetCode(code uint32)
+	Code() uint32
+	SetMessageID(messageID uint64)
+	MessageID() uint64
 	Conn() T
 }

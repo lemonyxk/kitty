@@ -17,7 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func NewStream[T Packer](conn T, code int, messageID int64, event string, data []byte) *Stream[T] {
+func NewStream[T Packer](conn T, code uint32, messageID uint64, event string, data []byte) *Stream[T] {
 	return &Stream[T]{
 		sender: &sender[T]{conn: conn, code: code, messageID: messageID},
 		Event:  event, Data: data,

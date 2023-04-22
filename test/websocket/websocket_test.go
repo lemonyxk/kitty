@@ -82,8 +82,8 @@ func initServer() {
 		var j = jsoniter.Get(message)
 		var route = j.Get("event").ToString()
 		var data = j.Get("data").ToString()
-		var messageID = j.Get("message_id").ToInt64()
-		var code = j.Get("code").ToInt()
+		var messageID = j.Get("message_id").ToUint64()
+		var code = j.Get("code").ToUint32()
 
 		if route == "" {
 			return
@@ -162,8 +162,8 @@ func initClient() {
 		var j = jsoniter.Get(message)
 		var route = j.Get("event").ToString()
 		var data = j.Get("data").ToString()
-		var messageID = j.Get("message_id").ToInt64()
-		var code = j.Get("code").ToInt()
+		var messageID = j.Get("message_id").ToUint64()
+		var code = j.Get("code").ToUint32()
 		if route == "" {
 			return
 		}
@@ -217,13 +217,13 @@ func Test_WS_Client(t *testing.T) {
 
 	mux.Add(1)
 
-	var total int64 = 0
-	var messageIDTotal int64 = 0
-	var countTotal int64 = 0
+	var total uint64 = 0
+	var messageIDTotal uint64 = 0
+	var countTotal uint64 = 0
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
-			if atomic.AddInt64(&countTotal, 1) == int64(count) {
+			if atomic.AddUint64(&countTotal, 1) == uint64(count) {
 				mux.Done()
 			}
 			messageIDTotal += stream.MessageID()
@@ -239,7 +239,7 @@ func Test_WS_Client(t *testing.T) {
 	}()
 
 	for i := 0; i < count; i++ {
-		total += int64(i + 1)
+		total += uint64(i + 1)
 		go func() {
 			_ = webSocketClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
 		}()
@@ -484,8 +484,8 @@ func Test_WS_Multi_Client(t *testing.T) {
 				var j = jsoniter.Get(message)
 				var route = j.Get("event").ToString()
 				var data = j.Get("data").ToString()
-				var messageID = j.Get("message_id").ToInt64()
-				var code = j.Get("code").ToInt()
+				var messageID = j.Get("message_id").ToUint64()
+				var code = j.Get("code").ToUint32()
 				if route == "" {
 					return
 				}

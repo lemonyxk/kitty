@@ -40,7 +40,7 @@ func (d *DefaultWsProtocol) IsUnknown(messageType byte) bool {
 	return messageType == Unknown
 }
 
-func (d *DefaultWsProtocol) Decode(message []byte) (messageType byte, code int, id int64, route []byte, body []byte) {
+func (d *DefaultWsProtocol) Decode(message []byte) (messageType byte, code uint32, id uint64, route []byte, body []byte) {
 	if !d.isHeaderInvalid(message) {
 		return 0, 0, 0, nil, nil
 	}
@@ -52,12 +52,12 @@ func (d *DefaultWsProtocol) Decode(message []byte) (messageType byte, code int, 
 	headLen := d.HeadLen()
 
 	return message[2],
-		int(binary.BigEndian.Uint16(message[8:12])),
-		int64(binary.BigEndian.Uint64(message[12:headLen])),
+		binary.BigEndian.Uint32(message[8:12]),
+		binary.BigEndian.Uint64(message[12:headLen]),
 		message[headLen : headLen+int(message[3])], message[headLen+int(message[3]):]
 }
 
-func (d *DefaultWsProtocol) Encode(messageType byte, code int, id int64, route []byte, body []byte) []byte {
+func (d *DefaultWsProtocol) Encode(messageType byte, code uint32, id uint64, route []byte, body []byte) []byte {
 	switch messageType {
 	case Bin:
 		return d.packBin(code, id, route, body)
@@ -114,7 +114,7 @@ func (d *DefaultWsProtocol) getLen(message []byte) int {
 	return rl + int(bl) + headLen
 }
 
-func (d *DefaultWsProtocol) packBin(code int, id int64, route []byte, body []byte) []byte {
+func (d *DefaultWsProtocol) packBin(code uint32, id uint64, route []byte, body []byte) []byte {
 
 	var rl = len(route)
 

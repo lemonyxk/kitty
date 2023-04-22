@@ -36,8 +36,8 @@ var PingMessage = []byte{0x0, 0x0, 0x9, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 
 var PongMessage = []byte{0x0, 0x0, 0xa, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0}
 
 type Protocol interface {
-	Decode(message []byte) (messageType byte, code int, id int64, route []byte, body []byte)
-	Encode(messageType byte, code int, id int64, route []byte, body []byte) []byte
+	Decode(message []byte) (messageType byte, code uint32, id uint64, route []byte, body []byte)
+	Encode(messageType byte, code uint32, id uint64, route []byte, body []byte) []byte
 	Reader() func(n int, buf []byte, fn func(bytes []byte)) error
 	HeadLen() int
 	PackPing() []byte

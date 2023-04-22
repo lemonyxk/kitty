@@ -175,13 +175,13 @@ func Test_TCP_Client(t *testing.T) {
 
 	mux.Add(1)
 
-	var total int64 = 0
-	var messageIDTotal int64 = 0
-	var countTotal int64 = 0
+	var total uint64 = 0
+	var messageIDTotal uint64 = 0
+	var countTotal uint64 = 0
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
-			if atomic.AddInt64(&countTotal, 1) == int64(count) {
+			if atomic.AddUint64(&countTotal, 1) == uint64(count) {
 				mux.Done()
 			}
 			messageIDTotal += stream.MessageID()
@@ -197,7 +197,7 @@ func Test_TCP_Client(t *testing.T) {
 	}()
 
 	for i := 0; i < count; i++ {
-		total += int64(i + 1)
+		total += uint64(i + 1)
 		go func() {
 			_ = tcpClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
 		}()

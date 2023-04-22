@@ -40,12 +40,12 @@ type Conn interface {
 }
 
 type conn struct {
-	name      string
-	fd        int64
-	conn      net.Conn
-	server    *Server
-	lastPing  time.Time
-	mux       sync.RWMutex
+	name     string
+	fd       int64
+	conn     net.Conn
+	server   *Server
+	lastPing time.Time
+	mux      sync.RWMutex
 	protocol.Protocol
 }
 
@@ -121,7 +121,7 @@ func (c *conn) Write(msg []byte) (int, error) {
 	return c.conn.Write(msg)
 }
 
-func (c *conn) Pack(messageType byte, code int, messageID int64, route []byte, body []byte) error {
+func (c *conn) Pack(messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
 	var data = c.Encode(messageType, code, messageID, route, body)
 	_, err := c.Write(data)
 	return err

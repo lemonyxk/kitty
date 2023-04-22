@@ -57,6 +57,7 @@ func initServer() {
 	// create server
 	udpServer = kitty.NewUdpServer(addr)
 	udpServer.HeartBeatTimeout = 5 * time.Second
+	udpServer.ReadBufferSize = 1024 * 1024
 
 	// event
 	udpServer.OnOpen = func(conn server.Conn) {}
@@ -120,6 +121,7 @@ func initClient() {
 	udpClient = kitty.NewUdpClient(addr)
 	udpClient.ReconnectInterval = time.Second
 	udpClient.HeartBeatInterval = time.Second
+	udpClient.ReadBufferSize = 1024 * 1024
 
 	// event
 	udpClient.OnClose = func(c client.Conn) {}
@@ -201,7 +203,7 @@ func Test_UDP_Client(t *testing.T) {
 		// And wo can not use goroutine to send packet,
 		// cuz it can make the chance of packet loss greater,
 		// Although this is thread safe.
-		time.Sleep(time.Microsecond * 100)
+		time.Sleep(time.Microsecond * 50)
 		var err = udpClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
 		assert.True(t, err == nil, err)
 		total += uint64(i + 1)

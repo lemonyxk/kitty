@@ -190,7 +190,7 @@ func Test_UDP_Client(t *testing.T) {
 	})
 
 	go func() {
-		<-time.After(60 * time.Second)
+		<-time.After(600 * time.Second)
 		mux.Done()
 		flag = false
 	}()

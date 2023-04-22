@@ -31,8 +31,8 @@ type Client struct {
 	HeartBeat         func(conn Conn) error
 
 	Mtu             int
-	ReadBufferSize  int // not use yet
-	WriteBufferSize int // not use yet
+	ReadBufferSize  int
+	WriteBufferSize int
 	DailTimeout     time.Duration
 
 	OnOpen         func(conn Conn)
@@ -175,15 +175,15 @@ func (c *Client) Connect() {
 		return
 	}
 
-	// err = handler.SetWriteBuffer(c.WriteBufferSize)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	//
-	// err = handler.SetReadBuffer(c.ReadBufferSize)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	err = handler.SetWriteBuffer(c.WriteBufferSize)
+	if err != nil {
+		panic(err)
+	}
+
+	err = handler.SetReadBuffer(c.ReadBufferSize)
+	if err != nil {
+		panic(err)
+	}
 
 	var heartBeatTimeout = c.HeartBeatTimeout
 	if c.HeartBeatTimeout == 0 {

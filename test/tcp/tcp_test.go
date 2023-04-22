@@ -191,16 +191,16 @@ func Test_TCP_Client(t *testing.T) {
 	})
 
 	go func() {
-		<-time.After(600 * time.Second)
+		<-time.After(100 * time.Second)
 		mux.Done()
 		flag = false
 	}()
 
 	for i := 0; i < count; i++ {
 		total += uint64(i + 1)
-		go func() {
+		// go func() {
 			_ = tcpClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
-		}()
+		// }()
 	}
 
 	mux.Wait()

@@ -35,7 +35,7 @@ type Conn interface {
 	Pong() error
 	Conn() *websocket.Conn
 	SubProtocols() []string
-	SetReadDeadline(t time.Time) error
+	SetDeadline(t time.Time) error
 	socket.Packer
 	protocol.Protocol
 }
@@ -50,8 +50,8 @@ type conn struct {
 	protocol.Protocol
 }
 
-func (c *conn) SetReadDeadline(t time.Time) error {
-	return c.conn.SetReadDeadline(t)
+func (c *conn) SetDeadline(t time.Time) error {
+	return c.conn.NetConn().SetDeadline(t)
 }
 
 func (c *conn) Name() string {

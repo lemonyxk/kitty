@@ -198,9 +198,9 @@ func Test_TCP_Client(t *testing.T) {
 
 	for i := 0; i < count; i++ {
 		total += uint64(i + 1)
-		// go func() {
+		go func() {
 			_ = tcpClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
-		// }()
+		}()
 	}
 
 	mux.Wait()
@@ -364,7 +364,7 @@ func Test_TCP_Ping_Pong(t *testing.T) {
 			var t = time.Now()
 			conn.SetLastPing(t)
 			if tcpServer.HeartBeatTimeout != 0 {
-				err = conn.Conn().SetReadDeadline(t.Add(tcpServer.HeartBeatTimeout))
+				err = conn.SetDeadline(t.Add(tcpServer.HeartBeatTimeout))
 			}
 			err = conn.Pong()
 			return err
@@ -381,7 +381,7 @@ func Test_TCP_Ping_Pong(t *testing.T) {
 			var t = time.Now()
 			conn.SetLastPong(t)
 			if tcpClient.HeartBeatTimeout != 0 {
-				return conn.Conn().SetReadDeadline(t.Add(tcpClient.HeartBeatTimeout))
+				return conn.SetDeadline(t.Add(tcpClient.HeartBeatTimeout))
 			}
 			return nil
 		}

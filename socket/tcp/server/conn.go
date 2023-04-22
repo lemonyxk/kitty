@@ -34,7 +34,7 @@ type Conn interface {
 	SetName(name string)
 	Server() *Server
 	Conn() net.Conn
-	SetReadDeadline(t time.Time) error
+	SetDeadline(t time.Time) error
 	socket.Packer
 	protocol.Protocol
 }
@@ -49,8 +49,8 @@ type conn struct {
 	protocol.Protocol
 }
 
-func (c *conn) SetReadDeadline(t time.Time) error {
-	return c.conn.SetReadDeadline(t)
+func (c *conn) SetDeadline(t time.Time) error {
+	return c.conn.SetDeadline(t)
 }
 
 func (c *conn) Name() string {

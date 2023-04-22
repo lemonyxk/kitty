@@ -254,7 +254,7 @@ func (c *Client) Connect() {
 				var t = time.Now()
 				c.conn.SetLastPong(t)
 				if c.HeartBeatTimeout != 0 {
-					return netConn.SetReadDeadline(t.Add(c.HeartBeatTimeout))
+					return netConn.SetDeadline(t.Add(c.HeartBeatTimeout))
 				}
 				return nil
 			}

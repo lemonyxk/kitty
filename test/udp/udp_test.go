@@ -201,7 +201,7 @@ func Test_UDP_Client(t *testing.T) {
 		// And wo can not use goroutine to send packet,
 		// cuz it can make the chance of packet loss greater,
 		// Although this is thread safe.
-		time.Sleep(time.Microsecond * 10)
+		time.Sleep(time.Microsecond * 50)
 		var err = udpClient.Sender().JsonEmit("/hello/world", strings.Repeat("hello world!", 1))
 		assert.True(t, err == nil, err)
 		total += uint64(i + 1)
@@ -375,7 +375,7 @@ func Test_UDP_Ping_Pong(t *testing.T) {
 			var t = time.Now()
 			conn.SetLastPing(t)
 			if udpServer.HeartBeatTimeout != 0 {
-				err = conn.SetReadDeadline(t.Add(udpServer.HeartBeatTimeout))
+				err = conn.SetDeadline(t.Add(udpServer.HeartBeatTimeout))
 			}
 			err = conn.Pong()
 			return err
@@ -392,7 +392,7 @@ func Test_UDP_Ping_Pong(t *testing.T) {
 			var t = time.Now()
 			conn.SetLastPong(t)
 			if udpClient.HeartBeatTimeout != 0 {
-				return conn.SetReadDeadline(t.Add(udpClient.HeartBeatTimeout))
+				return conn.SetDeadline(t.Add(udpClient.HeartBeatTimeout))
 			}
 			return nil
 		}

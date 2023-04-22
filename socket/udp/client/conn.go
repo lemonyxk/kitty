@@ -38,7 +38,7 @@ type Conn interface {
 	Pong() error
 	SendClose() error
 	SendOpen() error
-	SetReadDeadline(t time.Time) error
+	SetDeadline(t time.Time) error
 	socket.Packer
 	protocol.UDPProtocol
 }
@@ -63,7 +63,7 @@ func (c *conn) SetName(name string) {
 	c.name = name
 }
 
-func (c *conn) SetReadDeadline(t time.Time) error {
+func (c *conn) SetDeadline(t time.Time) error {
 	c.timeoutTimer.Reset(t.Sub(time.Now()))
 	return nil
 }

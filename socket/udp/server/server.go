@@ -134,7 +134,7 @@ func (s *Server) Ready() {
 				var t = time.Now()
 				conn.SetLastPing(t)
 				if s.HeartBeatTimeout != 0 {
-					err = conn.SetReadDeadline(t.Add(s.HeartBeatTimeout))
+					err = conn.SetDeadline(t.Add(s.HeartBeatTimeout))
 				}
 				err = conn.Pong()
 				return err

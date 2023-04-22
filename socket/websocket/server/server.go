@@ -195,7 +195,7 @@ func (s *Server) Ready() {
 				var t = time.Now()
 				conn.SetLastPing(t)
 				if s.HeartBeatTimeout != 0 {
-					err = conn.SetReadDeadline(t.Add(s.HeartBeatTimeout))
+					err = conn.SetDeadline(t.Add(s.HeartBeatTimeout))
 				}
 				err = conn.Pong()
 				return err
@@ -239,7 +239,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.HeartBeatTimeout != 0 {
-		err = netConn.SetReadDeadline(time.Now().Add(s.HeartBeatTimeout))
+		err = netConn.NetConn().SetDeadline(time.Now().Add(s.HeartBeatTimeout))
 		if err != nil {
 			fmt.Println(err)
 			return

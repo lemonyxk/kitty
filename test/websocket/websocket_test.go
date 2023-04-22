@@ -425,7 +425,7 @@ func Test_WS_Ping_Pong(t *testing.T) {
 			var t = time.Now()
 			conn.SetLastPing(t)
 			if webSocketServer.HeartBeatTimeout != 0 {
-				err = conn.Conn().SetReadDeadline(t.Add(webSocketServer.HeartBeatTimeout))
+				err = conn.SetDeadline(t.Add(webSocketServer.HeartBeatTimeout))
 			}
 			err = conn.Pong()
 			return err
@@ -442,7 +442,7 @@ func Test_WS_Ping_Pong(t *testing.T) {
 			var t = time.Now()
 			conn.SetLastPong(t)
 			if webSocketClient.HeartBeatTimeout != 0 {
-				return conn.Conn().SetReadDeadline(t.Add(webSocketClient.HeartBeatTimeout))
+				return conn.SetDeadline(t.Add(webSocketClient.HeartBeatTimeout))
 			}
 			return nil
 		}

@@ -42,7 +42,7 @@ type Conn interface {
 	SetName(name string)
 	Server() *Server
 	Conn() *net.UDPAddr
-	SetReadDeadline(t time.Time) error
+	SetDeadline(t time.Time) error
 	socket.Packer
 	protocol.UDPProtocol
 }
@@ -60,7 +60,7 @@ type conn struct {
 	protocol.UDPProtocol
 }
 
-func (c *conn) SetReadDeadline(t time.Time) error {
+func (c *conn) SetDeadline(t time.Time) error {
 	c.timeoutTimer.Reset(t.Sub(time.Now()))
 	return nil
 }

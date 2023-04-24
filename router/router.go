@@ -44,9 +44,9 @@ func (r *Router[T]) Group(path ...string) *Group[T] {
 
 	var g = new(Group[T])
 
-	g.Path = strings.Join(path, "")
+	g.path = strings.Join(path, "")
 
-	g.Router = r
+	g.router = r
 
 	return g
 }

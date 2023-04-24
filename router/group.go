@@ -13,57 +13,57 @@ package router
 import "strings"
 
 type Group[T any] struct {
-	Path        string
-	Description []string
-	BeforeList  []Before[T]
-	AftersList  []After[T]
-	Router      *Router[T]
+	path   string
+	desc   []string
+	before []Before[T]
+	after  []After[T]
+	router *Router[T]
 }
 
 func (g *Group[T]) Before(before ...Before[T]) *Group[T] {
-	g.BeforeList = append(g.BeforeList, before...)
+	g.before = append(g.before, before...)
 	return g
 }
 
 func (g *Group[T]) After(after ...After[T]) *Group[T] {
-	g.AftersList = append(g.AftersList, after...)
+	g.after = append(g.after, after...)
 	return g
 }
 
 func (g *Group[T]) Remove(path ...string) {
-	if g.Router.tire == nil {
+	if g.router.tire == nil {
 		return
 	}
 	for i := 0; i < len(path); i++ {
-		var dp = g.Path + path[i]
-		if !g.Router.StrictMode {
+		var dp = g.path + path[i]
+		if !g.router.StrictMode {
 			dp = strings.ToLower(dp)
 		}
-		g.Router.tire.Delete(dp)
+		g.router.tire.Delete(dp)
 	}
 }
 
 func (g *Group[T]) Handler(fn func(handler *Handler[T])) {
 	fn(&Handler[T]{group: &Group[T]{
-		Path:        g.Path,
-		Description: g.Description,
-		BeforeList:  g.BeforeList,
-		AftersList:  g.AftersList,
-		Router:      g.Router,
+		path:   g.path,
+		desc:   g.desc,
+		before: g.before,
+		after:  g.after,
+		router: g.router,
 	}})
 }
 
 func (g *Group[T]) Create() *Handler[T] {
 	return &Handler[T]{group: &Group[T]{
-		Path:        g.Path,
-		Description: g.Description,
-		BeforeList:  g.BeforeList,
-		AftersList:  g.AftersList,
-		Router:      g.Router,
+		path:   g.path,
+		desc:   g.desc,
+		before: g.before,
+		after:  g.after,
+		router: g.router,
 	}}
 }
 
 func (g *Group[T]) Desc(desc ...string) *Group[T] {
-	g.Description = append(g.Description, desc...)
+	g.desc = append(g.desc, desc...)
 	return g
 }

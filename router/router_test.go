@@ -13,6 +13,7 @@ package router
 import (
 	"fmt"
 	"testing"
+	"unsafe"
 
 	"github.com/lemonyxk/kitty/socket/http"
 	"github.com/stretchr/testify/assert"
@@ -239,4 +240,76 @@ func Test_Router_StrictMode(t *testing.T) {
 	a, b = r.GetRoute("/Test/1/tiny")
 	assert.True(t, a != nil)
 	assert.True(t, len(b) > 0)
+}
+
+func Test_Router_Before(t *testing.T) {
+	var r = &Router[*http.Stream]{}
+	r.StrictMode = false
+	var g = r.Create()
+	var f = func(stream *http.Stream) error { return nil }
+	var b1 = func(stream *http.Stream) error { return nil }
+	var b2 = func(stream *http.Stream) error { return nil }
+	var gg = g.Post("/Test/Before")
+	gg.Before(b1).Before(b2).Handler(f)
+
+	a, b := r.GetRoute("/Test/Before")
+	assert.True(t, a != nil)
+	assert.True(t, len(b) > 0)
+
+	assert.True(t, len(a.Data.Before) == 2)
+
+	gg = g.Post("/Test/Before1")
+	gg.Before(b1).RemoveBefore(b1).Before(b2).Handler(f)
+	a, b = r.GetRoute("/Test/Before1")
+	assert.True(t, a != nil)
+	assert.True(t, len(b) > 0)
+
+	assert.True(t, len(a.Data.Before) == 1, "RemoveBefore failed", len(a.Data.Before))
+
+	gg.CancelBefore()
+	assert.True(t, len(gg.before) == 0, "RemoveBefore failed", len(gg.before))
+
+	gg.Before(b1).Before(b2)
+	assert.True(t, len(gg.before) == 2, "RemoveBefore failed", len(gg.before))
+
+	gg.RemoveBefore(b2)
+	assert.True(t, equal(gg.before[0], b1) && len(gg.before) == 1, "RemoveBefore failed", len(gg.before))
+}
+
+func Test_Router_After(t *testing.T) {
+	var r = &Router[*http.Stream]{}
+	r.StrictMode = false
+	var g = r.Create()
+	var f = func(stream *http.Stream) error { return nil }
+	var b1 = func(stream *http.Stream) error { return nil }
+	var b2 = func(stream *http.Stream) error { return nil }
+	var gg = g.Post("/Test/After")
+	gg.After(b1).After(b2).Handler(f)
+
+	a, b := r.GetRoute("/Test/After")
+	assert.True(t, a != nil)
+	assert.True(t, len(b) > 0)
+
+	assert.True(t, len(a.Data.After) == 2)
+
+	gg = g.Post("/Test/After1")
+	gg.After(b1).RemoveAfter(b1).After(b2).Handler(f)
+	a, b = r.GetRoute("/Test/After1")
+	assert.True(t, a != nil)
+	assert.True(t, len(b) > 0)
+
+	assert.True(t, len(a.Data.After) == 1, "RemoveAfter failed", len(a.Data.After))
+
+	gg.CancelAfter()
+	assert.True(t, len(gg.after) == 0, "RemoveAfter failed", len(gg.after))
+
+	gg.After(b1).After(b2)
+	assert.True(t, len(gg.after) == 2, "RemoveAfter failed", len(gg.after))
+
+	gg.RemoveAfter(b2)
+	assert.True(t, equal(gg.after[0], b1) && len(gg.after) == 1, "RemoveAfter failed", len(gg.after))
+}
+
+func equal(a, b func(stream *http.Stream) error) bool {
+	return *(*unsafe.Pointer)(unsafe.Pointer(&a)) == *(*unsafe.Pointer)(unsafe.Pointer(&b))
 }

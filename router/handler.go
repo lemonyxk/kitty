@@ -23,7 +23,11 @@ type MethodsHandler[T any] struct {
 }
 
 func (m *MethodsHandler[T]) Route(path ...string) *Route[T] {
-	return &Route[T]{method: m.method, path: path, group: m.group}
+	return &Route[T]{
+		method: m.method, path: path, group: m.group,
+		before: append([]Before[T]{}, m.group.before...),
+		after:  append([]After[T]{}, m.group.after...),
+	}
 }
 
 type Handler[T any] struct {
@@ -32,16 +36,20 @@ type Handler[T any] struct {
 
 func (rh *Handler[T]) Group(path ...string) *Group[T] {
 	return &Group[T]{
-		Path:        rh.group.Path + strings.Join(path, ""),
-		Description: rh.group.Description,
-		BeforeList:  rh.group.BeforeList,
-		AftersList:  rh.group.AftersList,
-		Router:      rh.group.Router,
+		path:   rh.group.path + strings.Join(path, ""),
+		desc:   rh.group.desc,
+		before: rh.group.before,
+		after:  rh.group.after,
+		router: rh.group.router,
 	}
 }
 
 func (rh *Handler[T]) Route(path ...string) *Route[T] {
-	return &Route[T]{method: []string{"GET"}, path: path, group: rh.group}
+	return &Route[T]{
+		method: []string{"GET"}, path: path, group: rh.group,
+		before: append([]Before[T]{}, rh.group.before...),
+		after:  append([]After[T]{}, rh.group.after...),
+	}
 }
 
 func (rh *Handler[T]) Method(method ...string) *MethodsHandler[T] {
@@ -85,14 +93,14 @@ func (rh *Handler[T]) Trace(path ...string) *Route[T] {
 }
 
 func (rh *Handler[T]) Remove(path ...string) {
-	if rh.group.Router.tire == nil {
+	if rh.group.router.tire == nil {
 		return
 	}
 	for i := 0; i < len(path); i++ {
-		var dp = rh.group.Path + path[i]
-		if !rh.group.Router.StrictMode {
+		var dp = rh.group.path + path[i]
+		if !rh.group.router.StrictMode {
 			dp = strings.ToLower(dp)
 		}
-		rh.group.Router.tire.Delete(dp)
+		rh.group.router.tire.Delete(dp)
 	}
 }

@@ -37,9 +37,9 @@ type Handler[T any] struct {
 func (rh *Handler[T]) Group(path ...string) *Group[T] {
 	return &Group[T]{
 		path:   rh.group.path + strings.Join(path, ""),
-		desc:   rh.group.desc,
-		before: rh.group.before,
-		after:  rh.group.after,
+		desc:   append([]string{}, rh.group.desc...),
+		before: append([]Before[T]{}, rh.group.before...),
+		after:  append([]After[T]{}, rh.group.after...),
 		router: rh.group.router,
 	}
 }

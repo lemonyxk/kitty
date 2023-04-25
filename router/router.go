@@ -41,13 +41,9 @@ func (r *Router[T]) GetAllRouters() []*Node[T] {
 }
 
 func (r *Router[T]) Group(path ...string) *Group[T] {
-
 	var g = new(Group[T])
-
 	g.path = strings.Join(path, "")
-
 	g.router = r
-
 	return g
 }
 
@@ -84,7 +80,6 @@ func (m *MethodsRouter[T]) Route(path ...string) *Route[T] {
 }
 
 func (r *Router[T]) GetRoute(path string) (*tire.Tire[*Node[T]], []byte) {
-
 	if r.tire == nil {
 		return nil, nil
 	}
@@ -92,9 +87,7 @@ func (r *Router[T]) GetRoute(path string) (*tire.Tire[*Node[T]], []byte) {
 	path = r.formatPath(path)
 
 	var pathB = []byte(path)
-
 	var t = r.tire.GetValue(pathB)
-
 	if t == nil {
 		return nil, nil
 	}

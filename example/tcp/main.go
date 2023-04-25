@@ -40,13 +40,13 @@ func runTcpServer() {
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			log.Println(string(stream.Data))
+			log.Println(string(stream.Data()))
 			var sender, _ = tcpServer.Sender(100)
 			if sender != nil {
 				sender.Emit("/hello/world", []byte("hello world"))
 			}
 
-			return stream.Emit(stream.Event, stream.Data)
+			return stream.Emit(stream.Event(), stream.Data())
 		})
 	})
 
@@ -77,7 +77,7 @@ func runTcpClient() {
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
-			return stream.Emit(stream.Event, stream.Data)
+			return stream.Emit(stream.Event(), stream.Data())
 		})
 	})
 

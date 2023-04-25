@@ -107,8 +107,8 @@ func (c *conn) Read(b []byte) (n int, err error) {
 	return c.conn.Read(b)
 }
 
-func (c *conn) Pack(messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
-	var message = c.Encode(messageType, code, messageID, route, body)
+func (c *conn) Pack(async byte, messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
+	var message = c.Encode(async, messageType, code, messageID, route, body)
 	_, err := c.Write(message)
 	return err
 }

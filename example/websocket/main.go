@@ -39,8 +39,8 @@ func runWsServer() {
 
 	wsServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			log.Println(string(stream.Data), stream.MessageID())
-			return stream.Emit(stream.Event, stream.Data)
+			log.Println(string(stream.Data()), stream.MessageID())
+			return stream.Emit(stream.Event(), stream.Data())
 		})
 	})
 

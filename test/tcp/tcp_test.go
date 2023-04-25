@@ -25,7 +25,6 @@ import (
 	kitty2 "github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket"
-	"github.com/lemonyxk/kitty/socket/async"
 	"github.com/lemonyxk/kitty/socket/tcp/client"
 	"github.com/lemonyxk/kitty/socket/tcp/server"
 	"github.com/stretchr/testify/assert"
@@ -78,29 +77,29 @@ func initServer() {
 	// set group route
 	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			return stream.JsonEmit(stream.Event, "i am server")
+			return stream.JsonEmit(stream.Event(), "i am server")
 		})
 	})
 
 	tcpServerRouter.Route("/asyncClient").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Emit(stream.Event, stream.Data)
+		return stream.Emit(stream.Event(), stream.Data())
 	})
 
 	var tcpRouter = tcpServerRouter.Create()
 	tcpRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res kitty2.M
-		_ = jsoniter.Unmarshal(stream.Data, &res)
-		return stream.JsonEmit(stream.Event, res)
+		_ = jsoniter.Unmarshal(stream.Data(), &res)
+		return stream.JsonEmit(stream.Event(), res)
 	})
 
 	tcpRouter.Route("/Emit").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Emit(stream.Event, stream.Data)
+		return stream.Emit(stream.Event(), stream.Data())
 	})
 
 	tcpRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res hello.AwesomeMessage
-		_ = proto.Unmarshal(stream.Data, &res)
-		return stream.ProtoBufEmit(stream.Event, &res)
+		_ = proto.Unmarshal(stream.Data(), &res)
+		return stream.ProtoBufEmit(stream.Event(), &res)
 	})
 
 	go tcpServer.SetRouter(tcpServerRouter).Start()
@@ -134,7 +133,7 @@ func initClient() {
 	clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
 
 	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
-		return stream.JsonEmit(stream.Event, string(stream.Data))
+		return stream.JsonEmit(stream.Event(), string(stream.Data()))
 	})
 
 	go tcpClient.SetRouter(clientRouter).Connect()
@@ -187,7 +186,7 @@ func Test_TCP_Client(t *testing.T) {
 				mux.Done()
 			}
 			messageIDTotal += stream.MessageID()
-			assert.True(t, string(stream.Data) == `"i am server"`, "stream is nil")
+			assert.True(t, string(stream.Data()) == `"i am server"`, "stream is nil")
 			return nil
 		})
 	})
@@ -216,7 +215,7 @@ func Test_TCP_Client(t *testing.T) {
 
 func Test_TCP_Client_Async(t *testing.T) {
 
-	var asyncClient = async.NewClient[client.Conn](tcpClient)
+	var asyncClient = socket.NewAsyncClient[client.Conn](tcpClient)
 
 	var wait = sync.WaitGroup{}
 
@@ -237,7 +236,7 @@ func Test_TCP_Client_Async(t *testing.T) {
 
 			assert.True(t, err == nil, err)
 			assert.True(t, stream != nil, "stream is nil")
-			assert.True(t, string(stream.Data) == str, fmt.Sprintf("`%+v` not equal `%+v`", string(stream.Data), str))
+			assert.True(t, string(stream.Data()) == str, fmt.Sprintf("`%+v` not equal `%+v`", string(stream.Data()), str))
 
 			wait.Done()
 		}()
@@ -258,7 +257,7 @@ func Test_TCP_JsonEmit(t *testing.T) {
 
 	tcpRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[client.Conn]) error {
 		var res kitty2.M
-		_ = jsoniter.Unmarshal(stream.Data, &res)
+		_ = jsoniter.Unmarshal(stream.Data(), &res)
 		assert.True(t, res["name"] == "kitty", res)
 		assert.True(t, res["age"] == "18", res)
 		mux.Done()
@@ -284,7 +283,7 @@ func Test_TCP_Emit(t *testing.T) {
 	var tcpRouter = clientRouter.Create()
 
 	tcpRouter.Route("/Emit").Handler(func(stream *socket.Stream[client.Conn]) error {
-		assert.True(t, string(stream.Data) == `{"name":"kitty","age":18}`, string(stream.Data))
+		assert.True(t, string(stream.Data()) == `{"name":"kitty","age":18}`, string(stream.Data()))
 		mux.Done()
 		return nil
 	})
@@ -305,7 +304,7 @@ func Test_TCP_ProtobufEmit(t *testing.T) {
 
 	tcpRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[client.Conn]) error {
 		var res hello.AwesomeMessage
-		_ = proto.Unmarshal(stream.Data, &res)
+		_ = proto.Unmarshal(stream.Data(), &res)
 		assert.True(t, res.AwesomeField == "1", res.String())
 		assert.True(t, res.AwesomeKey == "2", res.String())
 		mux.Done()
@@ -326,7 +325,7 @@ func Test_TCP_ProtobufEmit(t *testing.T) {
 
 func Test_TCP_Server_Async(t *testing.T) {
 
-	var asyncServer = async.NewServer[server.Conn](tcpServer)
+	var asyncServer = socket.NewAsyncServer[server.Conn](tcpServer)
 
 	var wait = sync.WaitGroup{}
 
@@ -337,14 +336,17 @@ func Test_TCP_Server_Async(t *testing.T) {
 	for i := 0; i < random; i++ {
 		var index = i
 		go func() {
+			var sender, err = asyncServer.Sender(fd)
 
-			stream, err := asyncServer.JsonEmit(fd, "/asyncServer", index)
+			assert.True(t, err == nil, err)
+
+			stream, err := sender.JsonEmit("/asyncServer", index)
 
 			assert.True(t, err == nil, err)
 
 			assert.True(t, stream != nil, "stream is nil")
 
-			assert.True(t, string(stream.Data) == fmt.Sprintf("\"%d\"", index), "stream is nil")
+			assert.True(t, string(stream.Data()) == fmt.Sprintf("\"%d\"", index), "stream is nil")
 
 			wait.Done()
 		}()
@@ -424,7 +426,7 @@ func Test_TCP_Multi_Client(t *testing.T) {
 			var clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
 
 			clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
-				return stream.JsonEmit(stream.Event, string(stream.Data))
+				return stream.JsonEmit(stream.Event(), string(stream.Data()))
 			})
 
 			go tClient.SetRouter(clientRouter).Connect()

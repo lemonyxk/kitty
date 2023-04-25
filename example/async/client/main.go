@@ -16,7 +16,6 @@ import (
 	"github.com/lemonyxk/kitty"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket"
-	"github.com/lemonyxk/kitty/socket/async"
 	"github.com/lemonyxk/kitty/socket/tcp/client"
 	"github.com/lemonyxk/kitty/socket/tcp/server"
 )
@@ -37,7 +36,7 @@ func asyncTcpServer() {
 
 	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			return stream.Emit(stream.Event, stream.Data)
+			return stream.Emit(stream.Event(), stream.Data())
 		})
 	})
 
@@ -76,11 +75,11 @@ func main() {
 	asyncTcpServer()
 	asyncTcpClient()
 
-	var asyncClient = async.NewClient[client.Conn](tcpClient)
+	var asyncClient = socket.NewAsyncClient[client.Conn](tcpClient)
 
 	var stream, err = asyncClient.Emit("/hello/world", []byte("hello world"))
 
-	log.Println(string(stream.Data), err)
+	log.Println(string(stream.Data()), err)
 
 	select {}
 }

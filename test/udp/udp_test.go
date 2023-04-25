@@ -25,7 +25,6 @@ import (
 	kitty2 "github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket"
-	"github.com/lemonyxk/kitty/socket/async"
 	"github.com/lemonyxk/kitty/socket/udp/client"
 	"github.com/lemonyxk/kitty/socket/udp/server"
 	"github.com/stretchr/testify/assert"
@@ -78,29 +77,29 @@ func initServer() {
 	// set group route
 	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			return stream.JsonEmit(stream.Event, "i am server")
+			return stream.JsonEmit(stream.Event(), "i am server")
 		})
 	})
 
 	udpServerRouter.Route("/asyncClient").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Emit(stream.Event, stream.Data)
+		return stream.Emit(stream.Event(), stream.Data())
 	})
 
 	var udpRouter = udpServerRouter.Create()
 	udpRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res kitty2.M
-		_ = jsoniter.Unmarshal(stream.Data, &res)
-		return stream.JsonEmit(stream.Event, res)
+		_ = jsoniter.Unmarshal(stream.Data(), &res)
+		return stream.JsonEmit(stream.Event(), res)
 	})
 
 	udpRouter.Route("/Emit").Handler(func(stream *socket.Stream[server.Conn]) error {
-		return stream.Emit(stream.Event, stream.Data)
+		return stream.Emit(stream.Event(), stream.Data())
 	})
 
 	udpRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res hello.AwesomeMessage
-		_ = proto.Unmarshal(stream.Data, &res)
-		return stream.ProtoBufEmit(stream.Event, &res)
+		_ = proto.Unmarshal(stream.Data(), &res)
+		return stream.ProtoBufEmit(stream.Event(), &res)
 	})
 
 	go udpServer.SetRouter(udpServerRouter).Start()
@@ -133,7 +132,7 @@ func initClient() {
 	clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
 
 	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
-		return stream.JsonEmit(stream.Event, string(stream.Data))
+		return stream.JsonEmit(stream.Event(), string(stream.Data()))
 	})
 
 	go udpClient.SetRouter(clientRouter).Connect()
@@ -186,7 +185,7 @@ func Test_UDP_Client(t *testing.T) {
 				mux.Done()
 			}
 			messageIDTotal += stream.MessageID()
-			assert.True(t, string(stream.Data) == `"i am server"`, "stream is nil")
+			assert.True(t, string(stream.Data()) == `"i am server"`, "stream is nil")
 			return nil
 		})
 	})
@@ -220,7 +219,7 @@ func Test_UDP_Client(t *testing.T) {
 
 func Test_UDP_Client_Async(t *testing.T) {
 
-	var asyncClient = async.NewClient[client.Conn](udpClient)
+	var asyncClient = socket.NewAsyncClient[client.Conn](udpClient)
 
 	var wait = sync.WaitGroup{}
 
@@ -248,7 +247,7 @@ func Test_UDP_Client_Async(t *testing.T) {
 			// 80725%!(EXTRA string=80725) if the body use the same []byte,
 			// cuz the right string(stream.Data)'s value and str is 80725,
 			// but left string(stream.Data)'s value was changed by the next loop.
-			assert.True(t, string(stream.Data) == str, fmt.Sprintf("`%+v` not equal `%+v`", string(stream.Data), str))
+			assert.True(t, string(stream.Data()) == str, fmt.Sprintf("`%+v` not equal `%+v`", string(stream.Data()), str))
 
 			wait.Done()
 		}()
@@ -269,7 +268,7 @@ func Test_UDP_JsonEmit(t *testing.T) {
 
 	udpRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[client.Conn]) error {
 		var res kitty2.M
-		_ = jsoniter.Unmarshal(stream.Data, &res)
+		_ = jsoniter.Unmarshal(stream.Data(), &res)
 		assert.True(t, res["name"] == "kitty", res)
 		assert.True(t, res["age"] == "18", res)
 		mux.Done()
@@ -295,7 +294,7 @@ func Test_UDP_Emit(t *testing.T) {
 	var udpRouter = clientRouter.Create()
 
 	udpRouter.Route("/Emit").Handler(func(stream *socket.Stream[client.Conn]) error {
-		assert.True(t, string(stream.Data) == `{"name":"kitty","age":18}`, string(stream.Data))
+		assert.True(t, string(stream.Data()) == `{"name":"kitty","age":18}`, string(stream.Data()))
 		mux.Done()
 		return nil
 	})
@@ -316,7 +315,7 @@ func Test_UDP_ProtobufEmit(t *testing.T) {
 
 	udpRouter.Route("/ProtoBufEmit").Handler(func(stream *socket.Stream[client.Conn]) error {
 		var res hello.AwesomeMessage
-		_ = proto.Unmarshal(stream.Data, &res)
+		_ = proto.Unmarshal(stream.Data(), &res)
 		assert.True(t, res.AwesomeField == "1", res.String())
 		assert.True(t, res.AwesomeKey == "2", res.String())
 		mux.Done()
@@ -337,7 +336,7 @@ func Test_UDP_ProtobufEmit(t *testing.T) {
 
 func Test_UDP_Server_Async(t *testing.T) {
 
-	var asyncServer = async.NewServer[server.Conn](udpServer)
+	var asyncServer = socket.NewAsyncServer[server.Conn](udpServer)
 
 	var wait = sync.WaitGroup{}
 
@@ -348,14 +347,17 @@ func Test_UDP_Server_Async(t *testing.T) {
 	for i := 0; i < random; i++ {
 		var index = i
 		go func() {
+			var sender, err = asyncServer.Sender(fd)
 
-			stream, err := asyncServer.JsonEmit(fd, "/asyncServer", index)
+			assert.True(t, err == nil, err)
+
+			stream, err := sender.JsonEmit("/asyncServer", index)
 
 			assert.True(t, err == nil, err)
 
 			assert.True(t, stream != nil, "stream is nil")
 
-			assert.True(t, string(stream.Data) == fmt.Sprintf("\"%d\"", index), "stream is nil")
+			assert.True(t, string(stream.Data()) == fmt.Sprintf("\"%d\"", index), "stream is nil")
 
 			wait.Done()
 		}()
@@ -435,7 +437,7 @@ func Test_UDP_Multi_Client(t *testing.T) {
 			var clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
 
 			clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
-				return stream.JsonEmit(stream.Event, string(stream.Data))
+				return stream.JsonEmit(stream.Event(), string(stream.Data()))
 			})
 
 			go uClient.SetRouter(clientRouter).Connect()

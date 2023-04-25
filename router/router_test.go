@@ -15,15 +15,14 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/lemonyxk/kitty/socket/http"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_Router_Group(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
-	g.Group("/test").Handler(func(handler *Handler[*http.Stream]) {
+	var f = func(stream int) error { return nil }
+	g.Group("/test").Handler(func(handler *Handler[int]) {
 		handler.Get("/test").Handler(f)
 	})
 
@@ -33,14 +32,14 @@ func Test_Router_Group(t *testing.T) {
 }
 
 func Test_Router_Group2(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
-	g.Group("/test").Handler(func(handler *Handler[*http.Stream]) {
+	var f = func(stream int) error { return nil }
+	g.Group("/test").Handler(func(handler *Handler[int]) {
 		handler.Get("/test").Handler(f)
 	})
 
-	g.Group("/test").Handler(func(handler *Handler[*http.Stream]) {
+	g.Group("/test").Handler(func(handler *Handler[int]) {
 		handler.Get("/test2").Handler(f)
 	})
 
@@ -54,9 +53,9 @@ func Test_Router_Group2(t *testing.T) {
 }
 
 func Test_Router_Get(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Get("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -66,9 +65,9 @@ func Test_Router_Get(t *testing.T) {
 }
 
 func Test_Router_Post(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Post("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -78,9 +77,9 @@ func Test_Router_Post(t *testing.T) {
 }
 
 func Test_Router_Put(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Put("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -90,9 +89,9 @@ func Test_Router_Put(t *testing.T) {
 }
 
 func Test_Router_Delete(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Delete("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -102,9 +101,9 @@ func Test_Router_Delete(t *testing.T) {
 }
 
 func Test_Router_Patch(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Patch("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -114,9 +113,9 @@ func Test_Router_Patch(t *testing.T) {
 }
 
 func Test_Router_Head(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Head("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -126,9 +125,9 @@ func Test_Router_Head(t *testing.T) {
 }
 
 func Test_Router_Options(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Options("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -138,9 +137,9 @@ func Test_Router_Options(t *testing.T) {
 }
 
 func Test_Router_Connect(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Connect("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -150,9 +149,9 @@ func Test_Router_Connect(t *testing.T) {
 }
 
 func Test_Router_Trace(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Trace("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -162,9 +161,9 @@ func Test_Router_Trace(t *testing.T) {
 }
 
 func Test_Router_Multi_Method(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Method("GET", "POST").Route("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -175,9 +174,9 @@ func Test_Router_Multi_Method(t *testing.T) {
 }
 
 func Test_Router_nil(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Method("GET", "POST").Route("/test").Handler(f)
 
 	a, b := r.GetRoute("/test2")
@@ -186,9 +185,9 @@ func Test_Router_nil(t *testing.T) {
 }
 
 func Test_Router_Ptr(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Post("/test").Handler(f)
 
 	a, b := r.GetRoute("/test")
@@ -202,9 +201,9 @@ func Test_Router_Ptr(t *testing.T) {
 }
 
 func Test_Router_Params(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Post("/test/:id/:name").Handler(f)
 
 	a, b := r.GetRoute("/test/1/tiny")
@@ -218,17 +217,17 @@ func Test_Router_Params(t *testing.T) {
 }
 
 func Test_Router_StrictMode(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	r.StrictMode = true
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
 	g.Post("/Test/:id/:name").Handler(f)
 
 	a, b := r.GetRoute("/test/1/tiny")
 	assert.True(t, a == nil)
 	assert.True(t, len(b) == 0)
 
-	r = &Router[*http.Stream]{}
+	r = &Router[int]{}
 	r.StrictMode = false
 	g = r.Create()
 	g.Post("/Test/:id/:name").Handler(f)
@@ -243,12 +242,12 @@ func Test_Router_StrictMode(t *testing.T) {
 }
 
 func Test_Router_Before(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	r.StrictMode = false
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
-	var b1 = func(stream *http.Stream) error { return nil }
-	var b2 = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
+	var b1 = func(stream int) error { return nil }
+	var b2 = func(stream int) error { return nil }
 	var gg = g.Post("/Test/Before")
 	gg.Before(b1).Before(b2).Handler(f)
 
@@ -277,12 +276,12 @@ func Test_Router_Before(t *testing.T) {
 }
 
 func Test_Router_After(t *testing.T) {
-	var r = &Router[*http.Stream]{}
+	var r = &Router[int]{}
 	r.StrictMode = false
 	var g = r.Create()
-	var f = func(stream *http.Stream) error { return nil }
-	var b1 = func(stream *http.Stream) error { return nil }
-	var b2 = func(stream *http.Stream) error { return nil }
+	var f = func(stream int) error { return nil }
+	var b1 = func(stream int) error { return nil }
+	var b2 = func(stream int) error { return nil }
 	var gg = g.Post("/Test/After")
 	gg.After(b1).After(b2).Handler(f)
 
@@ -310,6 +309,6 @@ func Test_Router_After(t *testing.T) {
 	assert.True(t, equal(gg.after[0], b1) && len(gg.after) == 1, "RemoveAfter failed", len(gg.after))
 }
 
-func equal(a, b func(stream *http.Stream) error) bool {
+func equal(a, b func(stream int) error) bool {
 	return *(*unsafe.Pointer)(unsafe.Pointer(&a)) == *(*unsafe.Pointer)(unsafe.Pointer(&b))
 }

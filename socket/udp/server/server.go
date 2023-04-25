@@ -375,8 +375,9 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 }
 
 func (s *Server) decodeMessage(conn Conn, message []byte) error {
-	messageType, code, id, route, body := s.Protocol.Decode(message)
-	_ = id
+	async, messageType, code, id, route, body := s.Protocol.Decode(message)
+
+	_ = async
 
 	if s.OnMessage != nil {
 		s.OnMessage(conn, message)
@@ -417,15 +418,15 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	if s.router == nil {
 		if s.OnError != nil {
-			s.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
+			s.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event()))
 		}
 		return
 	}
 
-	var n, formatPath = s.router.GetRoute(stream.Event)
+	var n, formatPath = s.router.GetRoute(stream.Event())
 	if n == nil {
 		if s.OnError != nil {
-			s.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
+			s.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event()))
 		}
 		return
 	}

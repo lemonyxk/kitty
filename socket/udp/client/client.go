@@ -77,23 +77,6 @@ func (c *Client) Sender() socket.Emitter[Conn] {
 	return c.sender
 }
 
-func (c *Client) Push(message []byte) error {
-	return c.conn.Push(message)
-}
-
-func (c *Client) PushUDP(message []byte, addr *net.UDPAddr) error {
-	_, err := c.conn.WriteToUDP(message, addr)
-	return err
-}
-
-func (c *Client) Close() error {
-	return c.conn.Close()
-}
-
-func (c *Client) Conn() Conn {
-	return c.conn
-}
-
 func (c *Client) reconnecting() {
 	if c.ReconnectInterval != 0 {
 		time.Sleep(c.ReconnectInterval)
@@ -215,7 +198,7 @@ func (c *Client) Connect() {
 	var tick = time.AfterFunc(c.DailTimeout, func() {
 		// handler.ReadFromUDP will read failed
 		// then trigger reconnecting
-		_ = c.Close()
+		_ = c.conn.Close()
 	})
 
 	var msg = make([]byte, c.Protocol.HeadLen())
@@ -355,7 +338,7 @@ func (c *Client) Connect() {
 	c.cancelHeartbeatTicker <- struct{}{}
 	netConn.cancelTimeoutTimer <- struct{}{}
 
-	_ = c.Close()
+	_ = c.conn.Close()
 	c.OnClose(c.conn)
 	c.reconnecting()
 }
@@ -377,8 +360,9 @@ func (c *Client) process(message []byte) error {
 
 func (c *Client) decodeMessage(message []byte) error {
 	// unpack
-	messageType, code, id, route, body := c.Protocol.Decode(message)
-	_ = id
+	async, messageType, code, id, route, body := c.Protocol.Decode(message)
+
+	_ = async
 
 	if c.OnMessage != nil {
 		c.OnMessage(c.conn, message)
@@ -402,7 +386,6 @@ func (c *Client) decodeMessage(message []byte) error {
 	}
 
 	// on router
-
 	c.middleware(socket.NewStream(c.conn, code, id, string(route), body))
 
 	return nil
@@ -420,15 +403,15 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 
 	if c.router == nil {
 		if c.OnError != nil {
-			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
+			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event()))
 		}
 		return
 	}
 
-	var n, formatPath = c.router.GetRoute(stream.Event)
+	var n, formatPath = c.router.GetRoute(stream.Event())
 	if n == nil {
 		if c.OnError != nil {
-			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
+			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event()))
 		}
 		return
 	}
@@ -475,4 +458,12 @@ func (c *Client) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Client 
 
 func (c *Client) GetRouter() *router.Router[*socket.Stream[Conn]] {
 	return c.router
+}
+
+func (c *Client) Conn() Conn {
+	return c.conn
+}
+
+func (c *Client) Close() error {
+	return c.conn.Close()
 }

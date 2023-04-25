@@ -37,8 +37,8 @@ func runUdpServer() {
 
 	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
-			log.Println(string(stream.Data))
-			return stream.Emit(stream.Event, stream.Data)
+			log.Println(string(stream.Data()))
+			return stream.Emit(stream.Event(), stream.Data())
 		})
 	})
 
@@ -66,7 +66,7 @@ func runUdpClient() {
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
-			return stream.Emit(stream.Event, stream.Data)
+			return stream.Emit(stream.Event(), stream.Data())
 		})
 	})
 

@@ -15,8 +15,6 @@ import (
 	"strings"
 )
 
-// type GroupFunc[T any] func(handler *RouteHandler[T])
-
 type MethodsHandler[T any] struct {
 	method []string
 	group  *Group[T]

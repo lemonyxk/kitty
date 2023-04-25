@@ -139,8 +139,8 @@ func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
 	return c.conn.WriteToUDP(msg, addr)
 }
 
-func (c *conn) Pack(messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
-	var msg = c.Encode(messageType, code, messageID, route, body)
+func (c *conn) Pack(async byte, messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
+	var msg = c.Encode(async, messageType, code, messageID, route, body)
 	_, err := c.WriteToUDP(msg, c.addr)
 	return err
 }

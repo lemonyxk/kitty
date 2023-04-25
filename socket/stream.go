@@ -20,27 +20,31 @@ import (
 func NewStream[T Packer](conn T, code uint32, messageID uint64, event string, data []byte) *Stream[T] {
 	return &Stream[T]{
 		sender: &sender[T]{conn: conn, code: code, messageID: messageID},
-		Event:  event, Data: data,
+		event:  event, data: data,
 	}
 }
 
 type Stream[T Packer] struct {
-	Data  []byte
-	Event string
-
 	Context kitty.Context
-	Params  Params
 	Logger  kitty.Logger
+	Params  Params
+
+	data  []byte
+	event string
 
 	*sender[T]
 }
 
-func (s *Stream[T]) Sender() Emitter[T] {
-	return s.sender
+func (s *Stream[T]) Data() []byte {
+	return s.data
+}
+
+func (s *Stream[T]) Event() string {
+	return s.event
 }
 
 func (s *Stream[T]) Emit(event string, data []byte) error {
-	return s.conn.Pack(protocol.Bin, s.code, s.messageID, []byte(event), data)
+	return s.conn.Pack(protocol.Async, protocol.Bin, s.code, s.messageID, []byte(event), data)
 }
 
 func (s *Stream[T]) JsonEmit(event string, data any) error {
@@ -48,7 +52,7 @@ func (s *Stream[T]) JsonEmit(event string, data any) error {
 	if err != nil {
 		return err
 	}
-	return s.conn.Pack(protocol.Bin, s.code, s.messageID, []byte(event), msg)
+	return s.conn.Pack(protocol.Async, protocol.Bin, s.code, s.messageID, []byte(event), msg)
 }
 
 func (s *Stream[T]) ProtoBufEmit(event string, data proto.Message) error {
@@ -56,5 +60,5 @@ func (s *Stream[T]) ProtoBufEmit(event string, data proto.Message) error {
 	if err != nil {
 		return err
 	}
-	return s.conn.Pack(protocol.Bin, s.code, s.messageID, []byte(event), msg)
+	return s.conn.Pack(protocol.Async, protocol.Bin, s.code, s.messageID, []byte(event), msg)
 }

@@ -11,6 +11,6 @@
 package socket
 
 type Packer interface {
-	Pack(messageType byte, code uint32, messageID uint64, route []byte, body []byte) error
+	Pack(async byte, messageType byte, code uint32, messageID uint64, route []byte, body []byte) error
 	Push(msg []byte) error
 }

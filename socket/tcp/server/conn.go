@@ -121,8 +121,8 @@ func (c *conn) Write(msg []byte) (int, error) {
 	return c.conn.Write(msg)
 }
 
-func (c *conn) Pack(messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
-	var data = c.Encode(messageType, code, messageID, route, body)
+func (c *conn) Pack(async byte, messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
+	var data = c.Encode(async, messageType, code, messageID, route, body)
 	_, err := c.Write(data)
 	return err
 }

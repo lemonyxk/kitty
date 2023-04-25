@@ -78,18 +78,6 @@ func (c *Client) Sender() socket.Emitter[Conn] {
 	return c.sender
 }
 
-func (c *Client) Push(message []byte) error {
-	return c.conn.Push(message)
-}
-
-func (c *Client) Close() error {
-	return c.conn.Close()
-}
-
-func (c *Client) Conn() Conn {
-	return c.conn
-}
-
 func (c *Client) reconnecting() {
 	if c.ReconnectInterval != 0 {
 		time.Sleep(c.ReconnectInterval)
@@ -300,15 +288,16 @@ func (c *Client) Connect() {
 	c.heartbeatTicker.Stop()
 	c.cancelHeartbeatTicker <- struct{}{}
 
-	_ = c.Close()
+	_ = c.conn.Close()
 	c.OnClose(c.conn)
 	c.reconnecting()
 }
 
 func (c *Client) decodeMessage(messageFrame int, message []byte) error {
 	// unpack
-	messageType, code, id, route, body := c.Protocol.Decode(message)
-	_ = id
+	async,messageType, code, id, route, body := c.Protocol.Decode(message)
+
+	_ = async
 
 	if c.OnMessage != nil {
 		c.OnMessage(c.conn, messageFrame, message)
@@ -349,15 +338,15 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 
 	if c.router == nil {
 		if c.OnError != nil {
-			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
+			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event()))
 		}
 		return
 	}
 
-	var n, formatPath = c.router.GetRoute(stream.Event)
+	var n, formatPath = c.router.GetRoute(stream.Event())
 	if n == nil {
 		if c.OnError != nil {
-			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event))
+			c.OnError(stream, errors.Wrap(errors.RouteNotFount, stream.Event()))
 		}
 		return
 	}
@@ -404,4 +393,12 @@ func (c *Client) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Client 
 
 func (c *Client) GetRouter() *router.Router[*socket.Stream[Conn]] {
 	return c.router
+}
+
+func (c *Client) Conn() Conn {
+	return c.conn
+}
+
+func (c *Client) Close() error {
+	return c.conn.Close()
 }

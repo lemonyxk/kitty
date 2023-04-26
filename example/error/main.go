@@ -13,10 +13,8 @@ package main
 import (
 	errors2 "errors"
 	"fmt"
-	"log"
 
 	"github.com/lemonyxk/kitty/errors"
-	"github.com/rs/xid"
 )
 
 func main() {
@@ -30,10 +28,6 @@ func main() {
 
 	fmt.Printf("%+v\n", errors.Unwrap(errors.Unwrap(err)))
 	fmt.Println(err)
-
-	var a = []byte("/a" + xid.New().String())
-
-	log.Println(string(a[:len(a)-20]))
 }
 
 func test1() error {

@@ -44,7 +44,6 @@ type Conn interface {
 	Conn() *net.UDPAddr
 	SetDeadline(t time.Time) error
 	socket.Packer
-	protocol.UDPProtocol
 }
 
 type conn struct {
@@ -160,8 +159,13 @@ func (c *conn) Push(msg []byte) error {
 	return err
 }
 
-func (c *conn) Pack(async byte, messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
-	var msg = c.Encode(async, messageType, code, messageID, route, body)
+func (c *conn) Pack(order uint32, messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
+	var msg = c.Encode(order, messageType, code, messageID, route, body)
 	_, err := c.WriteToUDP(msg, c.conn)
 	return err
+}
+
+func (c *conn) UnPack(message []byte) (uint32, byte, uint32, uint64, []byte, []byte) {
+	var order, messageType, code, id, route, body = c.Decode(message)
+	return order, messageType, code, id, route, body
 }

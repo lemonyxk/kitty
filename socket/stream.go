@@ -12,15 +12,19 @@ package socket
 
 import (
 	jsoniter "github.com/json-iterator/go"
+	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/socket/protocol"
 	"google.golang.org/protobuf/proto"
 )
 
-func NewStream[T Packer](conn T, code uint32, messageID uint64, event string, data []byte) *Stream[T] {
+func NewStream[T Packer](conn T, order uint32, messageType byte, code uint32, id uint64, route []byte, body []byte) *Stream[T] {
 	return &Stream[T]{
-		sender: &sender[T]{conn: conn, code: code, messageID: messageID},
-		event:  event, data: data,
+		data: body,
+		sender: &sender[T]{
+			conn: conn, code: code, messageID: id,
+			order: order, messageType: messageType, event: string(route),
+		},
 	}
 }
 
@@ -29,8 +33,7 @@ type Stream[T Packer] struct {
 	Logger  kitty.Logger
 	Params  Params
 
-	data  []byte
-	event string
+	data []byte
 
 	*sender[T]
 }
@@ -39,12 +42,28 @@ func (s *Stream[T]) Data() []byte {
 	return s.data
 }
 
-func (s *Stream[T]) Event() string {
-	return s.event
+func (s *Stream[T]) Respond(data any) error {
+	switch s.messageType {
+	case protocol.Json:
+		return s.JsonEmit(s.event, data)
+	case protocol.ProtoBuf:
+		msg, ok := data.(proto.Message)
+		if !ok {
+			return errors.New("data must be proto.Message")
+		}
+		return s.ProtoBufEmit(s.event, msg)
+	case protocol.Bin:
+		msg, ok := data.([]byte)
+		if !ok {
+			return errors.New("data must be []byte")
+		}
+		return s.Emit(s.event, msg)
+	}
+	return errors.New("unknown message type")
 }
 
 func (s *Stream[T]) Emit(event string, data []byte) error {
-	return s.conn.Pack(protocol.Async, protocol.Bin, s.code, s.messageID, []byte(event), data)
+	return s.conn.Pack(s.order, protocol.Bin, s.code, s.messageID, []byte(event), data)
 }
 
 func (s *Stream[T]) JsonEmit(event string, data any) error {
@@ -52,7 +71,7 @@ func (s *Stream[T]) JsonEmit(event string, data any) error {
 	if err != nil {
 		return err
 	}
-	return s.conn.Pack(protocol.Async, protocol.Bin, s.code, s.messageID, []byte(event), msg)
+	return s.conn.Pack(s.order, protocol.Json, s.code, s.messageID, []byte(event), msg)
 }
 
 func (s *Stream[T]) ProtoBufEmit(event string, data proto.Message) error {
@@ -60,5 +79,5 @@ func (s *Stream[T]) ProtoBufEmit(event string, data proto.Message) error {
 	if err != nil {
 		return err
 	}
-	return s.conn.Pack(protocol.Async, protocol.Bin, s.code, s.messageID, []byte(event), msg)
+	return s.conn.Pack(s.order, protocol.ProtoBuf, s.code, s.messageID, []byte(event), msg)
 }

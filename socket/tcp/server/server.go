@@ -312,9 +312,7 @@ func (s *Server) process(netConn net.Conn) {
 
 func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	// unpack
-	async, messageType, code, id, route, body := s.Protocol.Decode(message)
-
-	_ = async
+	order, messageType, code, id, route, body := conn.UnPack(message)
 
 	if s.OnMessage != nil {
 		s.OnMessage(conn, message)
@@ -337,7 +335,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 		return s.PongHandler(conn)("")
 	}
 
-	s.middleware(socket.NewStream(conn, code, id, string(route), body))
+	s.middleware(socket.NewStream(conn, order, messageType, code, id, route, body))
 
 	return nil
 }

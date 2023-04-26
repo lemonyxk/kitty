@@ -47,7 +47,7 @@ func asyncWsServer() {
 		var route = message[:index]
 		var data = message[index+1:]
 
-		next(socket.NewStream(conn, 0, 0, string(route), data))
+		next(socket.NewStream(conn, 0, 0, 0, 0, route, data))
 	}
 
 	wsServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
@@ -88,7 +88,7 @@ func asyncWsClient() {
 		var route = message[:index]
 		var data = message[index+1:]
 
-		next(socket.NewStream(conn, 0, 0, string(route), data))
+		next(socket.NewStream(conn, 0, 0, 0, 0, route, data))
 	}
 
 	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {

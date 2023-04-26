@@ -17,7 +17,7 @@ import (
 type DefaultWsProtocol struct{}
 
 func (d *DefaultWsProtocol) HeadLen() int {
-	return 20
+	return 24
 }
 
 func (d *DefaultWsProtocol) PackPong() []byte {
@@ -40,7 +40,7 @@ func (d *DefaultWsProtocol) IsUnknown(messageType byte) bool {
 	return messageType == Unknown
 }
 
-func (d *DefaultWsProtocol) Decode(message []byte) (async byte, messageType byte, code uint32, id uint64, route []byte, body []byte) {
+func (d *DefaultWsProtocol) Decode(message []byte) (order uint32, messageType byte, code uint32, id uint64, route []byte, body []byte) {
 	if !d.isHeaderInvalid(message) {
 		return 0, 0, 0, 0, nil, nil
 	}
@@ -51,16 +51,16 @@ func (d *DefaultWsProtocol) Decode(message []byte) (async byte, messageType byte
 
 	headLen := d.HeadLen()
 
-	return message[1], message[2],
+	return binary.BigEndian.Uint32(message[12:headLen]), message[2],
 		binary.BigEndian.Uint32(message[8:12]),
-		binary.BigEndian.Uint64(message[12:headLen]),
+		binary.BigEndian.Uint64(message[12:20]),
 		message[headLen : headLen+int(message[3])], message[headLen+int(message[3]):]
 }
 
-func (d *DefaultWsProtocol) Encode(async byte, messageType byte, code uint32, id uint64, route []byte, body []byte) []byte {
+func (d *DefaultWsProtocol) Encode(order uint32, messageType byte, code uint32, id uint64, route []byte, body []byte) []byte {
 	switch messageType {
-	case Bin:
-		return d.packBin(async, code, id, route, body)
+	case Bin, Json, ProtoBuf:
+		return d.packBin(order, messageType, code, id, route, body)
 	case Ping:
 		return PingMessage
 	case Pong:
@@ -93,7 +93,8 @@ func (d *DefaultWsProtocol) isHeaderInvalid(message []byte) bool {
 	}
 
 	// message type
-	if message[2] != Bin && message[2] != Ping && message[2] != Pong {
+	if message[2] != Bin && message[2] != Json && message[2] != ProtoBuf &&
+		message[2] != Ping && message[2] != Pong {
 		return false
 	}
 
@@ -114,7 +115,7 @@ func (d *DefaultWsProtocol) getLen(message []byte) int {
 	return rl + int(bl) + headLen
 }
 
-func (d *DefaultWsProtocol) packBin(async byte, code uint32, id uint64, route []byte, body []byte) []byte {
+func (d *DefaultWsProtocol) packBin(order uint32, messageType byte, code uint32, id uint64, route []byte, body []byte) []byte {
 
 	var rl = len(route)
 
@@ -128,11 +129,11 @@ func (d *DefaultWsProtocol) packBin(async byte, code uint32, id uint64, route []
 	// 0 keep
 	data[0] = 0
 
-	// 1 async or sync
-	data[1] = async
+	// 1 keep
+	data[1] = 0
 
 	// 2 message type
-	data[2] = Bin
+	data[2] = messageType
 
 	// 3 route len
 	data[3] = byte(rl)
@@ -141,10 +142,13 @@ func (d *DefaultWsProtocol) packBin(async byte, code uint32, id uint64, route []
 	binary.BigEndian.PutUint32(data[4:8], uint32(bl))
 
 	// 8 - 11 code
-	binary.BigEndian.PutUint32(data[8:12], uint32(code))
+	binary.BigEndian.PutUint32(data[8:12], code)
 
 	// 12 - 19 id
-	binary.BigEndian.PutUint64(data[12:headLen], uint64(id))
+	binary.BigEndian.PutUint64(data[12:20], id)
+
+	// 20 - 23 order
+	binary.BigEndian.PutUint32(data[20:headLen], order)
 
 	copy(data[headLen:headLen+rl], route)
 

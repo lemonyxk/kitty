@@ -50,8 +50,6 @@ type Server struct {
 	PingHandler  func(conn Conn) func(data string) error
 	PongHandler  func(conn Conn) func(data string) error
 
-	Protocol protocol.Protocol
-
 	fd          int64
 	senders     *hash.Hash[int64, socket.Emitter[Conn]]
 	connections *hash.Hash[int64, Conn]
@@ -59,6 +57,7 @@ type Server struct {
 	middle      []func(next Middle) Middle
 	server      *http.Server
 	netListen   net.Listener
+	protocol    protocol.Protocol
 }
 
 type Middle router.Middle[*socket.Stream[Conn]]
@@ -184,8 +183,8 @@ func (s *Server) Ready() {
 		}
 	}
 
-	if s.Protocol == nil {
-		s.Protocol = &protocol.DefaultWsProtocol{}
+	if s.protocol == nil {
+		s.protocol = &protocol.DefaultWsProtocol{}
 	}
 
 	if s.PingHandler == nil {
@@ -254,7 +253,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		request:      r,
 		lastPing:     time.Now(),
 		subProtocols: upgrade.Subprotocols,
-		Protocol:     s.Protocol,
+		Protocol:     s.protocol,
 	}
 
 	netConn.SetPingHandler(s.PingHandler(conn))
@@ -263,7 +262,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 
 	s.onOpen(conn)
 
-	var reader = s.Protocol.Reader()
+	var reader = s.protocol.Reader()
 
 	for {
 
@@ -298,15 +297,13 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 func (s *Server) decodeMessage(conn Conn, message []byte) error {
 
 	// unpack
-	async, messageType, code, id, route, body := s.Protocol.Decode(message)
-
-	_ = async
+	order, messageType, code, id, route, body := conn.UnPack(message)
 
 	if s.OnMessage != nil {
 		s.OnMessage(conn, message)
 	}
 
-	if s.Protocol.IsUnknown(messageType) {
+	if s.protocol.IsUnknown(messageType) {
 		if s.OnUnknown != nil {
 			s.OnUnknown(conn, message, s.middleware)
 		}
@@ -314,17 +311,17 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	}
 
 	// Ping
-	if s.Protocol.IsPing(messageType) {
+	if s.protocol.IsPing(messageType) {
 		return s.PingHandler(conn)("")
 	}
 
 	// Pong
-	if s.Protocol.IsPong(messageType) {
+	if s.protocol.IsPong(messageType) {
 		return s.PongHandler(conn)("")
 	}
 
 	// on router
-	s.middleware(socket.NewStream(conn, code, id, string(route), body))
+	s.middleware(socket.NewStream(conn, order, messageType, code, id, route, body))
 
 	return nil
 }

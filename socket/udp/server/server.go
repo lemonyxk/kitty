@@ -375,9 +375,7 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 }
 
 func (s *Server) decodeMessage(conn Conn, message []byte) error {
-	async, messageType, code, id, route, body := s.Protocol.Decode(message)
-
-	_ = async
+	order, messageType, code, id, route, body := conn.UnPack(message)
 
 	if s.OnMessage != nil {
 		s.OnMessage(conn, message)
@@ -401,7 +399,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	}
 
 	// on router
-	s.middleware(socket.NewStream(conn, code, id, string(route), body))
+	s.middleware(socket.NewStream(conn, order, messageType, code, id, route, body))
 
 	return nil
 }

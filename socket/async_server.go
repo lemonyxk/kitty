@@ -12,10 +12,13 @@ package socket
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/router"
+	"github.com/lemonyxk/kitty/socket/protocol"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -67,7 +70,7 @@ func (s *ServerSender[T]) Emit(event string, data []byte) (*Stream[T], error) {
 
 	defer func() { s.server.GetRouter().Remove(event) }()
 
-	err := s.sender.Emit(event, data)
+	err := s.conn.Pack(s.order, protocol.Bin, s.code, atomic.AddUint64(&s.messageID, 1), []byte(event), data)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +97,12 @@ func (s *ServerSender[T]) JsonEmit(event string, data any) (*Stream[T], error) {
 
 	defer func() { s.server.GetRouter().Remove(event) }()
 
-	err := s.sender.JsonEmit(event, data)
+	msg, err := jsoniter.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.conn.Pack(s.order, protocol.Json, s.code, atomic.AddUint64(&s.messageID, 1), []byte(event), msg)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +129,12 @@ func (s *ServerSender[T]) ProtoBufEmit(event string, data proto.Message) (*Strea
 
 	defer func() { s.server.GetRouter().Remove(event) }()
 
-	err := s.sender.ProtoBufEmit(event, data)
+	msg, err := proto.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.conn.Pack(s.order, protocol.ProtoBuf, s.code, atomic.AddUint64(&s.messageID, 1), []byte(event), msg)
 	if err != nil {
 		return nil, err
 	}

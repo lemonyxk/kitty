@@ -36,7 +36,6 @@ type Conn interface {
 	Conn() net.Conn
 	SetDeadline(t time.Time) error
 	socket.Packer
-	protocol.Protocol
 }
 
 type conn struct {
@@ -121,8 +120,13 @@ func (c *conn) Write(msg []byte) (int, error) {
 	return c.conn.Write(msg)
 }
 
-func (c *conn) Pack(async byte, messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
-	var data = c.Encode(async, messageType, code, messageID, route, body)
+func (c *conn) Pack(order uint32, messageType byte, code uint32, messageID uint64, route []byte, body []byte) error {
+	var data = c.Encode(order, messageType, code, messageID, route, body)
 	_, err := c.Write(data)
 	return err
+}
+
+func (c *conn) UnPack(message []byte) (uint32, byte, uint32, uint64, []byte, []byte) {
+	var order, messageType, code, id, route, body = c.Decode(message)
+	return order, messageType, code, id, route, body
 }

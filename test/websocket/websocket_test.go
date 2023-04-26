@@ -87,7 +87,7 @@ func initServer() {
 		if route == "" {
 			return
 		}
-		next(socket.NewStream(conn, code, messageID, route, []byte(data)))
+		next(socket.NewStream(conn, 0, 0, code, messageID, []byte(route), []byte(data)))
 	}
 
 	// create router
@@ -166,7 +166,7 @@ func initClient() {
 		if route == "" {
 			return
 		}
-		next(socket.NewStream(c, code, messageID, route, []byte(data)))
+		next(socket.NewStream(c, 0, 0, code, messageID, []byte(route), []byte(data)))
 	}
 
 	// create router
@@ -492,7 +492,7 @@ func Test_WS_Multi_Client(t *testing.T) {
 				if route == "" {
 					return
 				}
-				next(socket.NewStream(c, code, messageID, route, []byte(data)))
+				next(socket.NewStream(c, 0, 0, code, messageID, []byte(route), []byte(data)))
 			}
 
 			// create router

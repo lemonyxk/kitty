@@ -360,9 +360,7 @@ func (c *Client) process(message []byte) error {
 
 func (c *Client) decodeMessage(message []byte) error {
 	// unpack
-	async, messageType, code, id, route, body := c.Protocol.Decode(message)
-
-	_ = async
+	order, messageType, code, id, route, body := c.conn.UnPack(message)
 
 	if c.OnMessage != nil {
 		c.OnMessage(c.conn, message)
@@ -386,7 +384,7 @@ func (c *Client) decodeMessage(message []byte) error {
 	}
 
 	// on router
-	c.middleware(socket.NewStream(c.conn, code, id, string(route), body))
+	c.middleware(socket.NewStream(c.conn, order, messageType, code, id, route, body))
 
 	return nil
 }

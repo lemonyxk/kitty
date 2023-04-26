@@ -21,5 +21,8 @@ type Emitter[T Packer] interface {
 	Code() uint32
 	SetMessageID(messageID uint64)
 	MessageID() uint64
+	SetMessageType(messageType byte)
+	MessageType() byte
+	Event() string
 	Conn() T
 }

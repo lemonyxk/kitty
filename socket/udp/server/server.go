@@ -33,6 +33,7 @@ type Server struct {
 	OnOpen    func(conn Conn)
 	OnError   func(stream *socket.Stream[Conn], err error)
 	OnSuccess func()
+	OnException    func(err error)
 	OnUnknown func(conn Conn, message []byte, next Middle)
 
 	HeartBeatTimeout  time.Duration
@@ -124,7 +125,13 @@ func (s *Server) Ready() {
 
 	if s.OnError == nil {
 		s.OnError = func(stream *socket.Stream[Conn], err error) {
-			fmt.Println("udp server:", err)
+			fmt.Println("udp server err:", err)
+		}
+	}
+
+	if s.OnException == nil {
+		s.OnException = func(err error) {
+			fmt.Println("udp server exception:", err)
 		}
 	}
 
@@ -279,7 +286,7 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 		err = s.readMessage(addr, bytes)
 	})
 	if err != nil {
-		fmt.Println(err)
+		s.OnException(err)
 	}
 }
 
@@ -338,7 +345,7 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 				case message := <-conn.accept:
 					var err = s.decodeMessage(conn, message)
 					if err != nil {
-						fmt.Println(err)
+						s.OnException(err)
 					}
 				case <-conn.close:
 					conn.timeoutTimer.Stop()
@@ -351,7 +358,7 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 
 		err := conn.SendOpen()
 		if err != nil {
-			fmt.Println(err)
+			s.OnException(err)
 		}
 	} else if s.Protocol.IsClose(messageType) {
 		s.processLock.Lock()

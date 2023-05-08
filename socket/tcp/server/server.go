@@ -38,6 +38,7 @@ type Server struct {
 	OnMessage func(conn Conn, msg []byte)
 	OnOpen    func(conn Conn)
 	OnError   func(stream *socket.Stream[Conn], err error)
+	OnException    func(err error)
 	OnSuccess func()
 	OnUnknown func(conn Conn, message []byte, next Middle)
 
@@ -118,7 +119,13 @@ func (s *Server) Ready() {
 
 	if s.OnError == nil {
 		s.OnError = func(stream *socket.Stream[Conn], err error) {
-			fmt.Println("tcp server:", err)
+			fmt.Println("tcp server err:", err)
+		}
+	}
+
+	if s.OnException == nil {
+		s.OnException = func(err error) {
+			fmt.Println("tcp server exception:", err)
 		}
 	}
 
@@ -301,7 +308,7 @@ func (s *Server) process(netConn net.Conn) {
 		})
 
 		if err != nil {
-			fmt.Println(err)
+			s.OnException(err)
 			break
 		}
 

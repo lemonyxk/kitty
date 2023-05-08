@@ -40,6 +40,7 @@ type Client struct {
 	OnClose        func(conn Conn)
 	OnMessage      func(conn Conn, messageType int, msg []byte)
 	OnError        func(stream *socket.Stream[Conn], err error)
+	OnException    func(err error)
 	OnSuccess      func()
 	OnReconnecting func()
 
@@ -108,7 +109,13 @@ func (c *Client) Connect() {
 
 	if c.OnError == nil {
 		c.OnError = func(stream *socket.Stream[Conn], err error) {
-			fmt.Println("webSocket client:", err)
+			fmt.Println("webSocket client err:", err)
+		}
+	}
+
+	if c.OnException == nil {
+		c.OnException = func(err error) {
+			fmt.Println("webSocket client exception:", err)
 		}
 	}
 
@@ -160,7 +167,7 @@ func (c *Client) Connect() {
 
 	handler, response, err := dialer.Dial(c.Addr, c.Header)
 	if err != nil {
-		fmt.Println(err)
+		c.OnException(err)
 		c.reconnecting()
 		return
 	}
@@ -231,7 +238,7 @@ func (c *Client) Connect() {
 			select {
 			case <-c.heartbeatTicker.C:
 				if err := c.HeartBeat(c.conn); err != nil {
-					fmt.Println(err)
+					c.OnException(err)
 				}
 			case <-c.cancelHeartbeatTicker:
 				return
@@ -242,7 +249,7 @@ func (c *Client) Connect() {
 	if c.HeartBeatTimeout != 0 {
 		err = c.conn.SetDeadline(time.Now().Add(c.HeartBeatTimeout))
 		if err != nil {
-			fmt.Println(err)
+			c.OnException(err)
 			c.reconnecting()
 			return
 		}
@@ -273,7 +280,7 @@ func (c *Client) Connect() {
 			})
 
 			if err != nil {
-				fmt.Println(err)
+				c.OnException(err)
 				if !c.isStop {
 					c.stopCh <- struct{}{}
 				}

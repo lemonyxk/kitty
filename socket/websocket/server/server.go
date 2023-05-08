@@ -33,6 +33,7 @@ type Server struct {
 	OnMessage func(conn Conn, msg []byte)
 	OnClose   func(conn Conn)
 	OnError   func(stream *socket.Stream[Conn], err error)
+	OnException    func(err error)
 	OnSuccess func()
 	OnRaw     func(w http.ResponseWriter, r *http.Request)
 	OnUnknown func(conn Conn, message []byte, next Middle)
@@ -179,7 +180,13 @@ func (s *Server) Ready() {
 
 	if s.OnError == nil {
 		s.OnError = func(stream *socket.Stream[Conn], err error) {
-			fmt.Println("webSocket server:", err)
+			fmt.Println("webSocket server err:", err)
+		}
+	}
+
+	if s.OnException == nil {
+		s.OnException = func(err error) {
+			fmt.Println("webSocket server exception:", err)
 		}
 	}
 
@@ -216,7 +223,6 @@ func (s *Server) Ready() {
 }
 
 func (s *Server) process(w http.ResponseWriter, r *http.Request) {
-
 	var upgrade = websocket.Upgrader{
 		HandshakeTimeout: s.HandshakeTimeout,
 		ReadBufferSize:   s.ReadBufferSize,
@@ -233,14 +239,14 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 	netConn, err := upgrade.Upgrade(w, r, nil)
 
 	if err != nil {
-		fmt.Println(err)
+		s.OnException(err)
 		return
 	}
 
 	if s.HeartBeatTimeout != 0 {
 		err = netConn.NetConn().SetDeadline(time.Now().Add(s.HeartBeatTimeout))
 		if err != nil {
-			fmt.Println(err)
+			s.OnException(err)
 			return
 		}
 	}
@@ -284,7 +290,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 		})
 
 		if err != nil {
-			fmt.Println(err)
+			s.OnException(err)
 			break
 		}
 	}
@@ -425,7 +431,7 @@ func (s *Server) Start() {
 	}
 
 	if err != nil {
-		fmt.Println(err)
+		s.OnException(err)
 	}
 }
 

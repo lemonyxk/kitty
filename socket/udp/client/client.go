@@ -39,6 +39,7 @@ type Client struct {
 	OnClose        func(conn Conn)
 	OnMessage      func(conn Conn, msg []byte)
 	OnError        func(stream *socket.Stream[Conn], err error)
+	OnException    func(err error)
 	OnSuccess      func()
 	OnReconnecting func()
 	OnUnknown      func(conn Conn, message []byte, next Middle)
@@ -107,7 +108,13 @@ func (c *Client) Connect() {
 
 	if c.OnError == nil {
 		c.OnError = func(stream *socket.Stream[Conn], err error) {
-			fmt.Println("udp client:", err)
+			fmt.Println("udp client err:", err)
+		}
+	}
+
+	if c.OnException == nil {
+		c.OnException = func(err error) {
+			fmt.Println("udp client exception:", err)
 		}
 	}
 
@@ -153,7 +160,7 @@ func (c *Client) Connect() {
 	// more useful
 	handler, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
-		fmt.Println(err)
+		c.OnException(err)
 		c.reconnecting()
 		return
 	}
@@ -190,7 +197,7 @@ func (c *Client) Connect() {
 	// send open message
 	err = c.conn.SendOpen()
 	if err != nil {
-		fmt.Println(err)
+		c.OnException(err)
 		c.reconnecting()
 		return
 	}
@@ -204,7 +211,7 @@ func (c *Client) Connect() {
 	var msg = make([]byte, c.Protocol.HeadLen())
 	_, _, err = c.conn.Read(msg)
 	if err != nil {
-		fmt.Println(err)
+		c.OnException(err)
 		c.reconnecting()
 		return
 	}
@@ -212,7 +219,7 @@ func (c *Client) Connect() {
 	messageType := c.Protocol.GetMessageType(msg)
 
 	if !c.Protocol.IsOpen(messageType) {
-		fmt.Println("open message type error: ", messageType)
+		c.OnException(errors.Errorf("open message type error: %d", messageType))
 		c.reconnecting()
 		return
 	}
@@ -268,7 +275,7 @@ func (c *Client) Connect() {
 			select {
 			case <-c.heartbeatTicker.C:
 				if err := c.HeartBeat(c.conn); err != nil {
-					fmt.Println(err)
+					c.OnException(err)
 				}
 			case <-c.cancelHeartbeatTicker:
 				return
@@ -320,9 +327,10 @@ func (c *Client) Connect() {
 			})
 
 			if err != nil {
-				if errors.Is(err, errors.ServerClosed) {
-					fmt.Println(err)
-				}
+				// if errors.Is(err, errors.ServerClosed) {
+				// 	c.OnException(err)
+				// }
+				c.OnException(err)
 				if !c.isStop {
 					c.stopCh <- struct{}{}
 				}

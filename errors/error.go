@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/lemonyxk/caller"
+	"github.com/modern-go/reflect2"
 )
 
 var space = strings.Repeat(" ", 4) + "at "
@@ -68,6 +69,9 @@ func (e *Error) Unwrap() error {
 }
 
 func New(text any) error {
+	if reflect2.IsNil(text) {
+		return nil
+	}
 	if e, ok := text.(*Error); ok {
 		return e
 	}
@@ -150,6 +154,9 @@ func Is(err, target error) bool {
 }
 
 func Unwrap(err error) error {
+	if err == nil {
+		return nil
+	}
 	u, ok := err.(interface {
 		Unwrap() error
 	})

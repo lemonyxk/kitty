@@ -12,8 +12,9 @@ import (
 	"github.com/lemonyxk/kitty/socket"
 )
 
-type Stream struct {
-	// Server   *Server
+type Stream[T Packer] struct {
+	sender[T]
+
 	Response http.ResponseWriter
 	Request  *http.Request
 
@@ -29,11 +30,12 @@ type Stream struct {
 
 	Sender *Sender
 
-	Parser *Parser
+	Parser *Parser[T]
 }
 
-func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
-	var stream = &Stream{
+func NewStream[T Packer](conn T, w http.ResponseWriter, r *http.Request) *Stream[T] {
+	var stream = &Stream[T]{
+		sender:   sender[T]{conn: conn},
 		Response: w, Request: r,
 		Protobuf: &Protobuf{},
 		Query:    &Store{},
@@ -41,7 +43,7 @@ func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
 		Json:     &Json{},
 		Files:    &Files{},
 		Sender:   &Sender{response: w, request: r},
-		Parser:   &Parser{response: w, request: r, maxMemory: 6 * 1024 * 1024},
+		Parser:   &Parser[T]{response: w, request: r, maxMemory: 6 * 1024 * 1024},
 	}
 
 	stream.Parser.stream = stream
@@ -49,22 +51,22 @@ func NewStream(w http.ResponseWriter, r *http.Request) *Stream {
 	return stream
 }
 
-func (s *Stream) Forward(fn func(stream *Stream) error) error {
+func (s *Stream[T]) Forward(fn func(stream *Stream[T]) error) error {
 	return fn(s)
 }
 
-func (s *Stream) SetHeader(header string, content string) {
+func (s *Stream[T]) SetHeader(header string, content string) {
 	s.Response.Header().Set(header, content)
 }
 
-func (s *Stream) Host() string {
+func (s *Stream[T]) Host() string {
 	if host := s.Request.Header.Get(header.Host); host != "" {
 		return host
 	}
 	return s.Request.Host
 }
 
-func (s *Stream) ClientIP() string {
+func (s *Stream[T]) ClientIP() string {
 
 	if ip := strings.Split(s.Request.Header.Get(header.XForwardedFor), ",")[0]; ip != "" {
 		return ip
@@ -81,7 +83,7 @@ func (s *Stream) ClientIP() string {
 	return ""
 }
 
-func (s *Stream) Has(key string) bool {
+func (s *Stream[T]) Has(key string) bool {
 	if !s.Parser.HasParse() {
 		return false
 	}
@@ -133,7 +135,7 @@ func (s *Stream) Has(key string) bool {
 	return false
 }
 
-func (s *Stream) Empty(key string) bool {
+func (s *Stream[T]) Empty(key string) bool {
 
 	if !s.Parser.HasParse() {
 		return false
@@ -186,7 +188,7 @@ func (s *Stream) Empty(key string) bool {
 	return false
 }
 
-func (s *Stream) AutoGet(key string) Value {
+func (s *Stream[T]) AutoGet(key string) Value {
 	if !s.Parser.HasParse() {
 		return Value{}
 	}
@@ -242,7 +244,7 @@ func (s *Stream) AutoGet(key string) Value {
 	return Value{}
 }
 
-func (s *Stream) Url() string {
+func (s *Stream[T]) Url() string {
 	var buf bytes.Buffer
 	var host = s.Host()
 	buf.WriteString(s.Scheme() + "://" + host + s.Request.URL.Path)
@@ -255,7 +257,7 @@ func (s *Stream) Url() string {
 	return buf.String()
 }
 
-func (s *Stream) String() string {
+func (s *Stream[T]) String() string {
 
 	var contentType = s.Request.Header.Get(header.ContentType)
 
@@ -282,7 +284,7 @@ func (s *Stream) String() string {
 	return ""
 }
 
-func (s *Stream) Scheme() string {
+func (s *Stream[T]) Scheme() string {
 	var scheme = "http"
 	if s.Request.TLS != nil {
 		scheme = "https"

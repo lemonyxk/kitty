@@ -52,7 +52,7 @@ func runHttpServer() {
 
 	// middleware
 	httpServer.Use(func(next server.Middle) server.Middle {
-		return func(stream *http.Stream) {
+		return func(stream *http.Stream[server.Conn]) {
 			// cors
 			stream.Response.Header().Set("Access-Control-Allow-Origin", "*")
 			stream.Response.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -72,26 +72,26 @@ func runHttpServer() {
 	})
 
 	httpServer.Use(func(next server.Middle) server.Middle {
-		return func(stream *http.Stream) {
+		return func(stream *http.Stream[server.Conn]) {
 			log.Println("middleware2 start")
 			next(stream)
 			log.Println("middleware2 end")
 		}
 	})
 
-	var before = func(stream *http.Stream) error {
+	var before = func(stream *http.Stream[server.Conn]) error {
 		log.Println("before start")
 		// you could return error to stop the stream
 		return nil
 	}
 
-	var after = func(stream *http.Stream) error {
+	var after = func(stream *http.Stream[server.Conn]) error {
 		log.Println("after start")
 		// handle this error by set OnError
 		return errors.New("after error")
 	}
 
-	httpServer.OnError = func(stream *http.Stream, err error) {
+	httpServer.OnError = func(stream *http.Stream[server.Conn], err error) {
 		// %+v print stack
 		// log.Printf("%+v", err)
 		log.Println(err)
@@ -99,23 +99,23 @@ func runHttpServer() {
 
 	// you cloud create your own router to use get and post or other method easily
 	var httpRouter = httpServerRouter.Create()
-	httpRouter.Get("/hello").Before(before).After(after).Handler(func(stream *http.Stream) error {
+	httpRouter.Get("/hello").Before(before).After(after).Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		return stream.Sender.String("hello world!")
 	})
 
-	httpRouter.Post("/post").Before(before).After(after).Handler(func(stream *http.Stream) error {
+	httpRouter.Post("/post").Before(before).After(after).Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println(stream.Form.String())
 		return stream.Sender.String("hello world!")
 	})
 
-	httpRouter.Post("/file").Before(before).After(after).Handler(func(stream *http.Stream) error {
+	httpRouter.Post("/file").Before(before).After(after).Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println(stream.Files.String())
 		log.Println(stream.Form.String())
 		return stream.Sender.String("hello world!")
 	})
 
-	httpRouter.Post("/OctetStream").Before(before).After(after).Handler(func(stream *http.Stream) error {
+	httpRouter.Post("/OctetStream").Before(before).After(after).Handler(func(stream *http.Stream[server.Conn]) error {
 		var b bytes.Buffer
 		var body = stream.Request.Body
 		log.Println("stream.Request.ContentLength:", stream.Request.ContentLength)
@@ -128,17 +128,17 @@ func runHttpServer() {
 		return stream.Sender.String("hello world!")
 	})
 
-	httpRouter.Post("/test").Handler(func(stream *http.Stream) error {
+	httpRouter.Post("/test").Handler(func(stream *http.Stream[server.Conn]) error {
 		return stream.Sender.String("hello world!")
 	})
 
-	httpRouter.Delete("/delete").Handler(func(stream *http.Stream) error {
+	httpRouter.Delete("/delete").Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println(stream.Form.String())
 		return stream.Sender.String("hello world!")
 	})
 
 	// or you can just use original router
-	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		log.Println(stream.AutoGet("name").String())
 		var res hello.AwesomeMessage
@@ -153,21 +153,21 @@ func runHttpServer() {
 
 	// create group router
 	var group = httpServerRouter.Group("/hello").Create()
-	group.Get("/world").Handler(func(t *http.Stream) error {
+	group.Get("/world").Handler(func(t *http.Stream[server.Conn]) error {
 		time.Sleep(time.Second * 3)
 		return t.Sender.Any(os.Getpid())
 	})
 
 	// another way to use group router
-	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream]) {
-		handler.Get("/hello").Handler(func(t *http.Stream) error {
+	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream[server.Conn]]) {
+		handler.Get("/hello").Handler(func(t *http.Stream[server.Conn]) error {
 			return t.Sender.Any(os.Getpid())
 		})
 	})
 
-	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream]) {
-		handler.Group("/hello").Handler(func(handler *router.Handler[*http.Stream]) {
-			handler.Get("/hello").Handler(func(t *http.Stream) error {
+	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream[server.Conn]]) {
+		handler.Group("/hello").Handler(func(handler *router.Handler[*http.Stream[server.Conn]]) {
+			handler.Get("/hello").Handler(func(t *http.Stream[server.Conn]) error {
 				return t.Sender.Any(os.Getpid())
 			})
 		})

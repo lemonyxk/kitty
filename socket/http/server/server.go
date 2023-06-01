@@ -23,23 +23,23 @@ type Server struct {
 	// TLS KEY
 	KeyFile string
 
-	OnOpen    func(stream *http2.Stream)
-	OnMessage func(stream *http2.Stream)
-	OnClose   func(stream *http2.Stream)
-	OnError   func(stream *http2.Stream, err error)
+	OnOpen    func(stream *http2.Stream[Conn])
+	OnMessage func(stream *http2.Stream[Conn])
+	OnClose   func(stream *http2.Stream[Conn])
+	OnError   func(stream *http2.Stream[Conn], err error)
 	OnSuccess func()
 
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 
 	middle       []func(next Middle) Middle
-	router       *router.Router[*http2.Stream]
+	router       *router.Router[*http2.Stream[Conn]]
 	staticRouter *StaticRouter
 	netListen    net.Listener
 	server       *http.Server
 }
 
-type Middle router.Middle[*http2.Stream]
+type Middle router.Middle[*http2.Stream[Conn]]
 
 func (s *Server) Ready() {
 	if s.Addr == "" {
@@ -56,11 +56,11 @@ func (s *Server) Use(middle ...func(next Middle) Middle) {
 }
 
 func (s *Server) process(w http.ResponseWriter, r *http.Request) {
-	var stream = http2.NewStream(w, r)
+	var stream = http2.NewStream[Conn](&conn{server: s}, w, r)
 	s.middleware(stream)
 }
 
-func (s *Server) middleware(stream *http2.Stream) {
+func (s *Server) middleware(stream *http2.Stream[Conn]) {
 	var next Middle = s.handler
 	for i := len(s.middle) - 1; i >= 0; i-- {
 		next = s.middle[i](next)
@@ -68,7 +68,7 @@ func (s *Server) middleware(stream *http2.Stream) {
 	next(stream)
 }
 
-func (s *Server) handler(stream *http2.Stream) {
+func (s *Server) handler(stream *http2.Stream[Conn]) {
 
 	if s.OnOpen != nil {
 		s.OnOpen(stream)
@@ -155,7 +155,7 @@ func (s *Server) handler(stream *http2.Stream) {
 	}
 }
 
-func (s *Server) SetRouter(router *router.Router[*http2.Stream]) *Server {
+func (s *Server) SetRouter(router *router.Router[*http2.Stream[Conn]]) *Server {
 	s.router = router
 	return s
 }
@@ -165,7 +165,7 @@ func (s *Server) SetStaticRouter(router *StaticRouter) *Server {
 	return s
 }
 
-func (s *Server) GetRouter() *router.Router[*http2.Stream] {
+func (s *Server) GetRouter() *router.Router[*http2.Stream[Conn]] {
 	return s.router
 }
 

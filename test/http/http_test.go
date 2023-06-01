@@ -74,7 +74,7 @@ func TestMain(t *testing.M) {
 	ts = httptest.NewServer(httpServer)
 
 	httpServer.Use(func(next server.Middle) server.Middle {
-		return func(stream *http.Stream) {
+		return func(stream *http.Stream[server.Conn]) {
 			stream.Parser.Auto()
 			next(stream)
 		}
@@ -90,7 +90,7 @@ func TestMain(t *testing.M) {
 	// httpsServer.CertFile = certFile
 	// httpsServer.KeyFile = keyFile
 	httpsServer.Use(func(next server.Middle) server.Middle {
-		return func(stream *http.Stream) {
+		return func(stream *http.Stream[server.Conn]) {
 			stream.Parser.Auto()
 			next(stream)
 		}
@@ -111,9 +111,9 @@ func TestMain(t *testing.M) {
 
 func Test_HTTPS_Get(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		var res = stream.Query.First("a").String()
 		assert.True(t, res == "1", res)
 		return stream.Sender.String("hello world!")
@@ -129,9 +129,9 @@ func Test_HTTPS_Get(t *testing.T) {
 
 func Test_HTTP_Get(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Query.First("a").String() == "1")
 		return stream.Sender.String("hello world!")
 	})
@@ -144,9 +144,9 @@ func Test_HTTP_Get(t *testing.T) {
 
 func Test_HTTP_Post(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Form.First("a").String() == "2")
 		return stream.Sender.String("hello group!")
 	})
@@ -160,9 +160,9 @@ func Test_HTTP_Post(t *testing.T) {
 
 func Test_HTTP_PostJson(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Json.Get("a").String() == "2")
 		return stream.Sender.String("hello group!")
 	})
@@ -176,9 +176,9 @@ func Test_HTTP_PostJson(t *testing.T) {
 
 func Test_HTTP_Head(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("HEAD").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("HEAD").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Query.First("a").String() == "1")
 		return stream.Sender.String("hello world!")
 	})
@@ -192,9 +192,9 @@ func Test_HTTP_Head(t *testing.T) {
 
 func Test_HTTP_Put(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("PUT").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("PUT").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Form.First("a").String() == "1")
 		return stream.Sender.String("hello world!")
 	})
@@ -207,9 +207,9 @@ func Test_HTTP_Put(t *testing.T) {
 
 func Test_HTTP_Patch(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("PATCH").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("PATCH").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Form.First("a").String() == "1")
 		return stream.Sender.String("hello world!")
 	})
@@ -222,9 +222,9 @@ func Test_HTTP_Patch(t *testing.T) {
 
 func Test_HTTP_Delete(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("DELETE").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("DELETE").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Form.First("a").String() == "1", stream.Form.String())
 		assert.True(t, stream.Form.First("b").String() == "2", stream.Form.String())
 		return stream.Sender.String("hello world!")
@@ -238,9 +238,9 @@ func Test_HTTP_Delete(t *testing.T) {
 
 func Test_HTTP_Options(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("OPTIONS").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("OPTIONS").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Query.First("a").String() == "1", stream.Query.String())
 		return stream.Sender.Respond(http2.StatusNoContent, "hello world!")
 	})
@@ -253,9 +253,9 @@ func Test_HTTP_Options(t *testing.T) {
 
 func Test_HTTP_Trace(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("TRACE").Route("/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("TRACE").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Query.First("a").String() == "1")
 		return stream.Sender.Respond(http2.StatusNoContent, "hello world!")
 	})
@@ -268,9 +268,9 @@ func Test_HTTP_Trace(t *testing.T) {
 
 func Test_HTTP_Multipart(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("POST").Route("/PostFile").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("POST").Route("/PostFile").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Files.First("file").Filename == "1.png")
 		assert.True(t, stream.Files.First("file").Size == 2853516)
 		assert.True(t, stream.Files.First("file1") == nil)
@@ -290,9 +290,9 @@ func Test_HTTP_Multipart(t *testing.T) {
 
 func Test_HTTP_Params(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("POST").Route("/Params/:id/hello").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("POST").Route("/Params/:id/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Params.Get("id") == stream.Form.First("a").String())
 		return stream.Sender.String("hello Params!")
 	})
@@ -308,9 +308,9 @@ func Test_HTTP_Params(t *testing.T) {
 
 func Test_HTTP_Protobuf(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 
-	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream) error {
+	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream[server.Conn]) error {
 		var res hello.AwesomeMessage
 		var msg = stream.Protobuf.Bytes()
 		var err = proto.Unmarshal(msg, &res)
@@ -342,7 +342,7 @@ func Test_HTTP_NotFound(t *testing.T) {
 }
 
 func Test_HTTP_Static(t *testing.T) {
-	var httpServerRouter = &router.Router[*http.Stream]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
 	var httpServerStaticRouter = &server.StaticRouter{}
 	httpServerStaticRouter.SetStaticPath("/", "", http2.Dir("../../example/http/public"))
 	httpServer.SetRouter(httpServerRouter)

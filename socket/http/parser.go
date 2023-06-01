@@ -20,8 +20,8 @@ import (
 	"github.com/lemonyxk/kitty/kitty/header"
 )
 
-type Parser struct {
-	stream *Stream
+type Parser[T Packer] struct {
+	stream *Stream[T]
 
 	response http.ResponseWriter
 	request  *http.Request
@@ -36,19 +36,19 @@ type Parser struct {
 	err error
 }
 
-func (s *Parser) HasParse() bool {
+func (s *Parser[T]) HasParse() bool {
 	return s.hasParseQuery || s.hasParseForm || s.hasParseMultipart || s.hasParseJson || s.hasParseProtobuf
 }
 
-func (s *Parser) Error() error {
+func (s *Parser[T]) Error() error {
 	return s.err
 }
 
-func (s *Parser) SetMaxMemory(maxMemory int64) {
+func (s *Parser[T]) SetMaxMemory(maxMemory int64) {
 	s.maxMemory = maxMemory
 }
 
-func (s *Parser) Json() {
+func (s *Parser[T]) Json() {
 
 	if s.hasParseJson {
 		return
@@ -68,7 +68,7 @@ func (s *Parser) Json() {
 	return
 }
 
-func (s *Parser) Protobuf() {
+func (s *Parser[T]) Protobuf() {
 
 	if s.hasParseProtobuf {
 		return
@@ -87,7 +87,7 @@ func (s *Parser) Protobuf() {
 	return
 }
 
-func (s *Parser) Multipart() {
+func (s *Parser[T]) Multipart() {
 
 	if s.hasParseMultipart {
 		return
@@ -120,7 +120,7 @@ func (s *Parser) Multipart() {
 	return
 }
 
-func (s *Parser) Query() {
+func (s *Parser[T]) Query() {
 
 	if s.hasParseQuery {
 		return
@@ -144,7 +144,7 @@ func (s *Parser) Query() {
 	return
 }
 
-func (s *Parser) Form() {
+func (s *Parser[T]) Form() {
 
 	if s.hasParseForm {
 		return
@@ -168,7 +168,7 @@ func (s *Parser) Form() {
 	return
 }
 
-func (s *Parser) Auto() {
+func (s *Parser[T]) Auto() {
 	if strings.ToUpper(s.request.Method) == http.MethodGet {
 		s.Query()
 		return

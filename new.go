@@ -30,8 +30,8 @@ func NewHttpServer(addr string) *httpServer.Server {
 	return &httpServer.Server{Addr: addr}
 }
 
-func NewHttpServerRouter() *router.Router[*http.Stream] {
-	return &router.Router[*http.Stream]{}
+func NewHttpServerRouter() *router.Router[*http.Stream[httpServer.Conn]] {
+	return &router.Router[*http.Stream[httpServer.Conn]]{}
 }
 
 func NewHttpServerStaticRouter() *httpServer.StaticRouter {

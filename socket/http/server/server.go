@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -22,6 +23,8 @@ type Server struct {
 	CertFile string
 	// TLS KEY
 	KeyFile string
+	// TLS
+	TLSConfig *tls.Config
 
 	OnOpen    func(stream *http2.Stream[Conn])
 	OnMessage func(stream *http2.Stream[Conn])
@@ -193,7 +196,8 @@ func (s *Server) Start() {
 		s.OnSuccess()
 	}
 
-	if s.KeyFile != "" && s.CertFile != "" {
+	if s.KeyFile != "" && s.CertFile != "" || s.TLSConfig != nil {
+		server.TLSConfig = s.TLSConfig
 		err = server.ServeTLS(netListen, s.CertFile, s.KeyFile)
 	} else {
 		err = server.Serve(netListen)

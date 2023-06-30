@@ -33,6 +33,8 @@ type Server struct {
 	CertFile string
 	// TLS KEY
 	KeyFile string
+	// TLS
+	TLSConfig *tls.Config
 
 	OnClose   func(conn Conn)
 	OnMessage func(conn Conn, msg []byte)
@@ -214,10 +216,15 @@ func (s *Server) Start() {
 	var err error
 	var netListen net.Listener
 
-	if s.CertFile != "" && s.KeyFile != "" {
-		var config, err = ssl.NewTLSConfig(s.CertFile, s.KeyFile)
-		if err != nil {
-			panic(err)
+	if s.CertFile != "" && s.KeyFile != "" || s.TLSConfig != nil {
+		var config *tls.Config
+		if s.TLSConfig != nil {
+			config = s.TLSConfig
+		} else {
+			config, err = ssl.LoadTLSConfig(s.CertFile, s.KeyFile)
+			if err != nil {
+				panic(err)
+			}
 		}
 		netListen, err = tls.Listen("tcp", s.Addr, config)
 	} else {

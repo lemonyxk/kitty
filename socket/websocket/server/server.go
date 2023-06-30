@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -27,16 +28,19 @@ type Server struct {
 	CertFile string
 	// TLS KEY
 	KeyFile string
-	Path    string
+	// TLS
+	TLSConfig *tls.Config
+	// Path
+	Path string
 
-	OnOpen    func(conn Conn)
-	OnMessage func(conn Conn, msg []byte)
-	OnClose   func(conn Conn)
-	OnError   func(stream *socket.Stream[Conn], err error)
-	OnException    func(err error)
-	OnSuccess func()
-	OnRaw     func(w http.ResponseWriter, r *http.Request)
-	OnUnknown func(conn Conn, message []byte, next Middle)
+	OnOpen      func(conn Conn)
+	OnMessage   func(conn Conn, msg []byte)
+	OnClose     func(conn Conn)
+	OnError     func(stream *socket.Stream[Conn], err error)
+	OnException func(err error)
+	OnSuccess   func()
+	OnRaw       func(w http.ResponseWriter, r *http.Request)
+	OnUnknown   func(conn Conn, message []byte, next Middle)
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
@@ -424,7 +428,8 @@ func (s *Server) Start() {
 		s.OnSuccess()
 	}
 
-	if s.KeyFile != "" && s.CertFile != "" {
+	if s.KeyFile != "" && s.CertFile != "" || s.TLSConfig != nil {
+		server.TLSConfig = s.TLSConfig
 		err = server.ServeTLS(netListen, s.CertFile, s.KeyFile)
 	} else {
 		err = server.Serve(netListen)

@@ -83,8 +83,8 @@ func (s *Sender) Bytes(data []byte) error {
 	return err
 }
 
-func (s *Sender) Error(err error) error {
-	var e = s.String(err.Error())
+func (s *Sender) RespondWithError(code int,err error) error {
+	var e = s.Respond(code, err.Error())
 	if e != nil {
 		return e
 	}

@@ -22,6 +22,8 @@ type Client struct {
 	CertFile string
 	// TLS KEY
 	KeyFile string
+	// TLS
+	TLSConfig *tls.Config
 
 	Response *http.Response
 	Header   http.Header
@@ -150,10 +152,14 @@ func (c *Client) Connect() {
 	var err error
 	var config = &tls.Config{}
 
-	if c.CertFile != "" && c.KeyFile != "" {
-		config, err = ssl.NewTLSConfig(c.CertFile, c.KeyFile)
-		if err != nil {
-			panic(err)
+	if c.CertFile != "" && c.KeyFile != "" || c.TLSConfig != nil {
+		if c.TLSConfig != nil {
+			config = c.TLSConfig
+		} else {
+			config, err = ssl.LoadTLSConfig(c.CertFile, c.KeyFile)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 
@@ -302,7 +308,7 @@ func (c *Client) Connect() {
 
 func (c *Client) decodeMessage(messageFrame int, message []byte) error {
 	// unpack
-	order,messageType, code, id, route, body := c.conn.UnPack(message)
+	order, messageType, code, id, route, body := c.conn.UnPack(message)
 
 	if c.OnMessage != nil {
 		c.OnMessage(c.conn, messageFrame, message)

@@ -3,6 +3,7 @@ package client
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/lemonyxk/kitty/ssl"
 	"net"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket"
 	"github.com/lemonyxk/kitty/socket/protocol"
-	"github.com/lemonyxk/kitty/ssl"
 )
 
 type Client struct {
@@ -20,6 +20,8 @@ type Client struct {
 	CertFile string
 	// TLS KEY
 	KeyFile string
+	// TLS
+	TLSConfig *tls.Config
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
@@ -143,13 +145,17 @@ func (c *Client) Connect() {
 	var err error
 	var handler net.Conn
 
-	if c.CertFile != "" && c.KeyFile != "" {
-		var config, err = ssl.NewTLSConfig(c.CertFile, c.KeyFile)
-		if err != nil {
-			panic(err)
+	if c.CertFile != "" && c.KeyFile != "" || c.TLSConfig != nil {
+		var config *tls.Config
+		if c.TLSConfig != nil {
+			config = c.TLSConfig
+		} else {
+			config, err = ssl.LoadTLSConfig(c.CertFile, c.KeyFile)
+			if err != nil {
+				panic(err)
+			}
 		}
 		handler, err = tls.DialWithDialer(&net.Dialer{Timeout: c.DailTimeout}, "tcp", c.Addr, config)
-
 	} else {
 		handler, err = net.DialTimeout("tcp", c.Addr, c.DailTimeout)
 	}

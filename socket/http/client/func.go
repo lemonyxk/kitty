@@ -11,7 +11,6 @@
 package client
 
 import (
-	"crypto/tls"
 	"net"
 	"net/http"
 	url2 "net/url"
@@ -56,10 +55,6 @@ func Delete(url string) *Request {
 func Options(url string) *Request {
 	var c = &Client{}
 	return c.Options(url)
-}
-
-func TSLConfig(tlsConfig *tls.Config) {
-	defaultTransport.TLSClientConfig = tlsConfig
 }
 
 func Proxy(url string) {

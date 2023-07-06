@@ -10,29 +10,59 @@
 
 package http
 
-import "github.com/json-iterator/go"
+import (
+	"github.com/json-iterator/go"
+)
+
+type Any struct {
+	jsoniter.Any
+}
+
+func (a *Any) Bytes() []byte {
+	return []byte(a.ToString())
+}
+
+func (a *Any) String() string {
+	return a.ToString()
+}
+
+func (a *Any) Float64() float64 {
+	return a.ToFloat64()
+}
+
+func (a *Any) Int() int {
+	return a.ToInt()
+}
+
+func (a *Any) Int64() int64 {
+	return a.ToInt64()
+}
+
+func (a *Any) Decode(v any) error {
+	return jsoniter.Unmarshal(a.Bytes(), v)
+}
 
 type Json struct {
 	any jsoniter.Any
 	bts []byte
 }
 
-func (j *Json) Reset(data any) jsoniter.Any {
+func (j *Json) Reset(data any) *Any {
 	bts, _ := jsoniter.Marshal(data)
 	j.any = jsoniter.Get(bts)
 	j.bts = bts
-	return j.any
+	return &Any{Any: j.any}
 }
 
-func (j *Json) getAny() jsoniter.Any {
+func (j *Json) getAny() *Any {
 	if j.any != nil {
-		return j.any
+		return &Any{Any: j.any}
 	}
 	j.any = jsoniter.Get(nil)
-	return j.any
+	return &Any{Any: j.any}
 }
 
-func (j *Json) Any() jsoniter.Any {
+func (j *Json) Any() *Any {
 	return j.getAny()
 }
 
@@ -61,15 +91,45 @@ func (j *Json) String() string {
 	return j.getAny().ToString()
 }
 
-func (j *Json) Path(path ...any) jsoniter.Any {
-	return j.getAny().Get(path...)
+func (j *Json) Path(path ...any) *Any {
+	return &Any{Any: j.getAny().Get(path...)}
 }
 
 func (j *Json) Array(path ...any) Array {
-	var result []jsoniter.Any
+	var result []*Any
 	var val = j.getAny().Get(path...)
 	for i := 0; i < val.Size(); i++ {
-		result = append(result, val.Get(i))
+		result = append(result, &Any{Any: val.Get(i)})
+	}
+	return result
+}
+
+func (j *Json) Decode(v any) error {
+	return jsoniter.Unmarshal(j.bts, v)
+}
+
+type Array []*Any
+
+func (a Array) String() []string {
+	var result []string
+	for i := 0; i < len(a); i++ {
+		result = append(result, a[i].ToString())
+	}
+	return result
+}
+
+func (a Array) Int() []int {
+	var result []int
+	for i := 0; i < len(a); i++ {
+		result = append(result, a[i].ToInt())
+	}
+	return result
+}
+
+func (a Array) Float64() []float64 {
+	var result []float64
+	for i := 0; i < len(a); i++ {
+		result = append(result, a[i].ToFloat64())
 	}
 	return result
 }

@@ -16,7 +16,6 @@ import (
 	"net/textproto"
 	"time"
 
-	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/kitty/header"
 	"google.golang.org/protobuf/proto"
 )
@@ -114,7 +113,7 @@ func (h *Request) Json(body ...any) *Sender {
 	return &Sender{info: h, req: request, cancel: cancel}
 }
 
-func (h *Request) Query(body ...kitty.M) *Sender {
+func (h *Request) Query(body ...any) *Sender {
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
 	if err != nil {
@@ -123,7 +122,7 @@ func (h *Request) Query(body ...kitty.M) *Sender {
 	return &Sender{info: h, req: request, cancel: cancel}
 }
 
-func (h *Request) Form(body ...kitty.M) *Sender {
+func (h *Request) Form(body ...any) *Sender {
 	h.SetHeader(header.ContentType, header.ApplicationFormUrlencoded)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
@@ -133,7 +132,7 @@ func (h *Request) Form(body ...kitty.M) *Sender {
 	return &Sender{info: h, req: request, cancel: cancel}
 }
 
-func (h *Request) Multipart(body ...kitty.M) *Sender {
+func (h *Request) Multipart(body ...any) *Sender {
 	h.SetHeader(header.ContentType, header.MultipartFormData)
 	h.body = body
 	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)

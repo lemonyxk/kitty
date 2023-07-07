@@ -134,7 +134,7 @@ func runHttpServer() {
 
 	httpRouter.Delete("/delete").Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println(stream.Form.String())
-		return stream.Sender.String("hello world!")
+		return stream.Sender.String("delete hello world!")
 	})
 
 	// or you can just use original router
@@ -148,7 +148,7 @@ func runHttpServer() {
 			return stream.Sender.String(err.Error())
 		}
 		log.Printf("%+v", res.String())
-		return stream.Sender.String("hello proto!")
+		return stream.Sender.String("proto hello world!")
 	})
 
 	// create group router
@@ -205,20 +205,22 @@ func main() {
 	var res = client.Post("http://127.0.0.1:8666/proto").Protobuf(&msg).Send()
 	if res.Error() != nil {
 		log.Println(res.Error())
+	} else {
+		log.Println("res:", res.String())
 	}
 
-	log.Println("res:", res.String())
+	res = client.Delete("http://127.0.0.1:8666/delete?b=2").Form(kitty2.M{"a": 1}).Send()
+	if res.Error() != nil {
+		log.Println(res.Error())
+	} else {
+		log.Println("res:", res.String())
+	}
 
 	var h = client.Get("http://127.0.0.1:8666/hello/world").Query(kitty2.M{"a": 1})
 
 	time.AfterFunc(time.Second, func() {
 		h.Abort()
 	})
-
-	res = client.Delete("http://127.0.0.1:8666/delete?b=2").Form(kitty2.M{"a": 1}).Send()
-	if res.Error() != nil {
-		log.Println(res.Error())
-	}
 
 	go func() {
 		res = h.Send()

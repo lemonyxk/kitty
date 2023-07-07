@@ -28,31 +28,33 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func getRequest(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
-	var contentType = strings.ToLower(getContentType(info))
-	switch contentType {
-	case header.ApplicationFormUrlencoded:
-		return doFormUrlencoded(method, url, info)
-	case header.ApplicationJson:
-		return doJson(method, url, info)
-	case header.MultipartFormData:
-		return doFormData(method, url, info)
-	case header.ApplicationProtobuf:
-		return doXProtobuf(method, url, info)
-	default:
-		return doUrl(method, url, info)
-	}
-}
+//func getRequest(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
+//	var contentType = strings.ToLower(getContentType(info))
+//	switch contentType {
+//	case header.ApplicationFormUrlencoded:
+//		return doFormUrlencoded(method, url, info)
+//	case header.ApplicationJson:
+//		return doJson(method, url, info)
+//	case header.MultipartFormData:
+//		return doFormData(method, url, info)
+//	case header.ApplicationProtobuf:
+//		return doXProtobuf(method, url, info)
+//	default:
+//		return doUrl(method, url, info)
+//	}
+//}
 
-func doRaw(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
-	if info.body == nil {
-		info.body = new(bytes.Buffer)
+func doRaw(method string, url string, info *Request, body io.Reader) (*http.Request, context.CancelFunc, error) {
+
+	if body == nil {
+		body = bytes.NewReader([]byte{})
 	}
 
-	body, ok := info.body.(io.Reader)
-	if !ok {
-		return nil, nil, errors.Wrap(errors.AssertionFailed, "io.Reader")
-	}
+	//// check body type generic is io.Reader or not
+	//body, ok := any(info.body).(io.Reader)
+	//if !ok {
+	//	return nil, nil, errors.Wrap(errors.AssertionFailed, "io.Reader")
+	//}
 
 	out, in := io.Pipe()
 	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
@@ -91,11 +93,7 @@ func doRaw(method string, url string, info *Request) (*http.Request, context.Can
 	return request, cancel, err
 }
 
-func doXProtobuf(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
-	body, ok := info.body.([]proto.Message)
-	if !ok {
-		return nil, nil, errors.Wrap(errors.AssertionFailed, "proto.Message")
-	}
+func doProtobuf(method string, url string, info *Request, body ...proto.Message) (*http.Request, context.CancelFunc, error) {
 
 	var protobufBody []byte
 
@@ -121,16 +119,7 @@ type file interface {
 	Name() string
 }
 
-func doFormData(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
-	if info.body == nil {
-		info.body = []kitty.M{}
-	}
-
-	body, ok := info.body.([]kitty.M)
-	if !ok {
-		return nil, nil, errors.Wrap(errors.AssertionFailed, "map[string]interface{}")
-	}
-
+func doFormData(method string, url string, info *Request, body ...kitty.M) (*http.Request, context.CancelFunc, error) {
 	out, in := io.Pipe()
 	part := multipart.NewWriter(in)
 	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
@@ -218,11 +207,7 @@ func doFormData(method string, url string, info *Request) (*http.Request, contex
 	return request, cancel, err
 }
 
-func doJson(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
-	body, ok := info.body.([]any)
-	if !ok {
-		return nil, nil, errors.Wrap(errors.AssertionFailed, "interface{}")
-	}
+func doJson(method string, url string, info *Request, body ...any) (*http.Request, context.CancelFunc, error) {
 
 	var jsonBody []byte
 
@@ -243,16 +228,7 @@ func doJson(method string, url string, info *Request) (*http.Request, context.Ca
 	return request, cancel, err
 }
 
-func doFormUrlencoded(method string, url string, info *Request) (*http.Request, context.CancelFunc, error) {
-	if info.body == nil {
-		info.body = []kitty.M{}
-	}
-
-	body, ok := info.body.([]kitty.M)
-	if !ok {
-		return nil, nil, errors.Wrap(errors.AssertionFailed, "map[string]interface{}")
-	}
-
+func doFormUrlencoded(method string, url string, info *Request, body ...kitty.M) (*http.Request, context.CancelFunc, error) {
 	var buff bytes.Buffer
 	for i := 0; i < len(body); i++ {
 		for key, value := range body[i] {
@@ -283,18 +259,9 @@ func doFormUrlencoded(method string, url string, info *Request) (*http.Request, 
 	return request, cancel, err
 }
 
-func doUrl(method string, u string, info *Request) (*http.Request, context.CancelFunc, error) {
+func doUrl(method string, u string, info *Request, body ...kitty.M) (*http.Request, context.CancelFunc, error) {
 	Url, err := url.Parse(u)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	if info.body == nil {
-		info.body = []kitty.M{}
-	}
-
-	body, ok := info.body.([]kitty.M)
-	if !ok {
 		return nil, nil, err
 	}
 

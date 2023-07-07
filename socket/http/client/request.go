@@ -11,13 +11,14 @@
 package client
 
 import (
+	"github.com/lemonyxk/kitty/kitty"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"net/http"
 	"net/textproto"
 	"time"
 
 	"github.com/lemonyxk/kitty/kitty/header"
-	"google.golang.org/protobuf/proto"
 )
 
 type Request struct {
@@ -25,7 +26,6 @@ type Request struct {
 	headerKey     []string
 	headerValue   []string
 	cookies       []*http.Cookie
-	body          any
 	progress      *Progress
 	userName      string
 	passWord      string
@@ -93,70 +93,35 @@ func (h *Request) AddCookie(cookie *http.Cookie) *Request {
 	return h
 }
 
-func (h *Request) Protobuf(body ...proto.Message) *Sender {
+func (h *Request) Protobuf(body ...proto.Message) *Protobuf {
 	h.SetHeader(header.ContentType, header.ApplicationProtobuf)
-	h.body = body
-	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
-	if err != nil {
-		return &Sender{err: err}
-	}
-	return &Sender{info: h, req: request, cancel: cancel}
+	return &Protobuf{info: h, body: body}
 }
 
-func (h *Request) Json(body ...any) *Sender {
+func (h *Request) Json(body ...any) *Json {
 	h.SetHeader(header.ContentType, header.ApplicationJson)
-	h.body = body
-	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
-	if err != nil {
-		return &Sender{err: err}
-	}
-	return &Sender{info: h, req: request, cancel: cancel}
+	return &Json{info: h, body: body}
 }
 
-func (h *Request) Query(body ...any) *Sender {
-	h.body = body
-	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
-	if err != nil {
-		return &Sender{err: err}
-	}
-	return &Sender{info: h, req: request, cancel: cancel}
+func (h *Request) Query(body ...kitty.M) *URL {
+	return &URL{info: h, body: body}
 }
 
-func (h *Request) Form(body ...any) *Sender {
+func (h *Request) Form(body ...kitty.M) *Form {
 	h.SetHeader(header.ContentType, header.ApplicationFormUrlencoded)
-	h.body = body
-	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
-	if err != nil {
-		return &Sender{err: err}
-	}
-	return &Sender{info: h, req: request, cancel: cancel}
+	return &Form{info: h, body: body}
 }
 
-func (h *Request) Multipart(body ...any) *Sender {
+func (h *Request) Multipart(body ...kitty.M) *FormData {
 	h.SetHeader(header.ContentType, header.MultipartFormData)
-	h.body = body
-	request, cancel, err := getRequest(h.handler.method, h.handler.url, h)
-	if err != nil {
-		return &Sender{err: err}
-	}
-	return &Sender{info: h, req: request, cancel: cancel}
+	return &FormData{info: h, body: body}
 }
 
-func (h *Request) OctetStream(r io.Reader) *Sender {
+func (h *Request) OctetStream(body io.Reader) *OctetStream {
 	h.SetHeader(header.ContentType, header.ApplicationOctetStream)
-	h.body = r
-	request, cancel, err := doRaw(h.handler.method, h.handler.url, h)
-	if err != nil {
-		return &Sender{err: err}
-	}
-	return &Sender{info: h, req: request, cancel: cancel}
+	return &OctetStream{info: h, body: body}
 }
 
-func (h *Request) Raw(r io.Reader) *Sender {
-	h.body = r
-	request, cancel, err := doRaw(h.handler.method, h.handler.url, h)
-	if err != nil {
-		return &Sender{err: err}
-	}
-	return &Sender{info: h, req: request, cancel: cancel}
+func (h *Request) Raw(body io.Reader) *Raw {
+	return &Raw{info: h, body: body}
 }

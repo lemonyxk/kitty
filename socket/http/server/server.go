@@ -115,6 +115,8 @@ func (s *Server) handler(stream *http2.Stream[Conn]) {
 
 	stream.Params = socket.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
+	stream.Node = n.Data
+
 	var nodeData = n.Data
 
 	if s.OnMessage != nil {

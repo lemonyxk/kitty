@@ -14,6 +14,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket/protocol"
 	"google.golang.org/protobuf/proto"
 )
@@ -32,6 +33,8 @@ type Stream[T Packer] struct {
 	Context kitty.Context
 	Logger  kitty.Logger
 	Params  Params
+
+	Node *router.Node[*Stream[T]]
 
 	data []byte
 

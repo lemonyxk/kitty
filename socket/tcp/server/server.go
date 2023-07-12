@@ -381,6 +381,8 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	var nodeData = n.Data
 
+	stream.Node = n.Data
+
 	stream.Params = socket.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
 
 	for i := 0; i < len(nodeData.Before); i++ {

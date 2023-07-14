@@ -16,7 +16,7 @@ import (
 	"unsafe"
 
 	"github.com/lemonyxk/caller"
-	"github.com/lemonyxk/structure/tire"
+	"github.com/lemonyxk/structure/trie"
 )
 
 type Route[T any] struct {
@@ -106,8 +106,8 @@ func (r *Route[T]) Handler(fn Func[T]) {
 
 		var path = router.formatPath(originPath)
 
-		if router.tire == nil {
-			router.tire = tire.New[*Node[T]]()
+		if router.trie == nil {
+			router.trie = trie.New[*Node[T]]()
 		}
 
 		var cba = &Node[T]{}
@@ -125,7 +125,7 @@ func (r *Route[T]) Handler(fn Func[T]) {
 
 		cba.Route = []byte(originPath)
 
-		router.tire.Insert(path, cba)
+		router.trie.Insert(path, cba)
 	}
 
 }

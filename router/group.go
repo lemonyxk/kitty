@@ -70,7 +70,7 @@ func (g *Group[T]) CancelAfter() *Group[T] {
 }
 
 func (g *Group[T]) Remove(path ...string) {
-	if g.router.tire == nil {
+	if g.router.trie == nil {
 		return
 	}
 	for i := 0; i < len(path); i++ {
@@ -78,7 +78,7 @@ func (g *Group[T]) Remove(path ...string) {
 		if !g.router.StrictMode {
 			dp = strings.ToLower(dp)
 		}
-		g.router.tire.Delete(dp)
+		g.router.trie.Delete(dp)
 	}
 }
 

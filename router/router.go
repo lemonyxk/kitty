@@ -13,12 +13,12 @@ package router
 import (
 	"strings"
 
-	"github.com/lemonyxk/structure/tire"
+	"github.com/lemonyxk/structure/trie"
 )
 
 type Router[T any] struct {
 	StrictMode   bool
-	tire         *tire.Tire[*Node[T]]
+	trie         *trie.Trie[*Node[T]]
 	globalAfter  []After[T]
 	globalBefore []Before[T]
 }
@@ -33,7 +33,7 @@ func (r *Router[T]) SetGlobalAfter(after ...After[T]) {
 
 func (r *Router[T]) GetAllRouters() []*Node[T] {
 	var res []*Node[T]
-	var tires = r.tire.GetAllValue()
+	var tires = r.trie.GetAllValue()
 	for i := 0; i < len(tires); i++ {
 		res = append(res, tires[i].Data)
 	}
@@ -48,14 +48,14 @@ func (r *Router[T]) Group(path ...string) *Group[T] {
 }
 
 func (r *Router[T]) Remove(path ...string) {
-	if r.tire == nil {
+	if r.trie == nil {
 		return
 	}
 	var dp = strings.Join(path, "")
 	if !r.StrictMode {
 		dp = strings.ToLower(dp)
 	}
-	r.tire.Delete(dp)
+	r.trie.Delete(dp)
 }
 
 func (r *Router[T]) Create() *Handler[T] {
@@ -79,15 +79,15 @@ func (m *MethodsRouter[T]) Route(path ...string) *Route[T] {
 	return (&Handler[T]{group: m.router.Group("")}).Method(m.method...).Route(path...)
 }
 
-func (r *Router[T]) GetRoute(path string) (*tire.Tire[*Node[T]], []byte) {
-	if r.tire == nil {
+func (r *Router[T]) GetRoute(path string) (*trie.Trie[*Node[T]], []byte) {
+	if r.trie == nil {
 		return nil, nil
 	}
 
 	path = r.formatPath(path)
 
 	var pathB = []byte(path)
-	var t = r.tire.GetValue(pathB)
+	var t = r.trie.GetValue(pathB)
 	if t == nil {
 		return nil, nil
 	}

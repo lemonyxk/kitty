@@ -91,7 +91,7 @@ func (rh *Handler[T]) Trace(path ...string) *Route[T] {
 }
 
 func (rh *Handler[T]) Remove(path ...string) {
-	if rh.group.router.tire == nil {
+	if rh.group.router.trie == nil {
 		return
 	}
 	for i := 0; i < len(path); i++ {
@@ -99,6 +99,6 @@ func (rh *Handler[T]) Remove(path ...string) {
 		if !rh.group.router.StrictMode {
 			dp = strings.ToLower(dp)
 		}
-		rh.group.router.tire.Delete(dp)
+		rh.group.router.trie.Delete(dp)
 	}
 }

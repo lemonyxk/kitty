@@ -6,7 +6,7 @@ require (
 	github.com/fasthttp/websocket v1.5.2
 	github.com/json-iterator/go v1.1.12
 	github.com/lemonyxk/caller v0.0.0-20230423070323-e226a04be497
-	github.com/lemonyxk/structure v0.0.0-20230714025621-ae2c60903672
+	github.com/lemonyxk/structure v1.0.1-0.20230731184344-c2e77007b77a
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/protobuf v1.30.0

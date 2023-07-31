@@ -18,7 +18,7 @@ import (
 
 type Router[T any] struct {
 	StrictMode   bool
-	trie         *trie.Trie[*Node[T]]
+	trie         *trie.Node[*Node[T]]
 	globalAfter  []After[T]
 	globalBefore []Before[T]
 }
@@ -79,20 +79,19 @@ func (m *MethodsRouter[T]) Route(path ...string) *Route[T] {
 	return (&Handler[T]{group: m.router.Group("")}).Method(m.method...).Route(path...)
 }
 
-func (r *Router[T]) GetRoute(path string) (*trie.Trie[*Node[T]], []byte) {
+func (r *Router[T]) GetRoute(path string) (*trie.Node[*Node[T]], string) {
 	if r.trie == nil {
-		return nil, nil
+		return nil, ""
 	}
 
 	path = r.formatPath(path)
 
-	var pathB = []byte(path)
-	var t = r.trie.GetValue(pathB)
+	var t = r.trie.GetValue(path)
 	if t == nil {
-		return nil, nil
+		return nil, ""
 	}
 
-	return t, pathB
+	return t, path
 }
 
 func (r *Router[T]) formatPath(path string) string {

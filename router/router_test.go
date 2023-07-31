@@ -210,10 +210,8 @@ func Test_Router_Params(t *testing.T) {
 	assert.Equal(t, string(b), "/test/1/tiny")
 	assert.True(t, string(a.Path) == "/test/:id/:name")
 	assert.True(t, a.Data.Method[0] == "POST")
-	assert.True(t, a.ParseParams(b)[0] == "1")
-	assert.True(t, a.ParseParams(b)[1] == "tiny")
-	assert.True(t, a.Keys[0] == "id")
-	assert.True(t, a.Keys[1] == "name")
+	assert.True(t, a.ParseParams(b)["id"] == "1", a.ParseParams(b)["id"])
+	assert.True(t, a.ParseParams(b)["name"] == "tiny", a.ParseParams(b)["name"])
 }
 
 func Test_Router_StrictMode(t *testing.T) {

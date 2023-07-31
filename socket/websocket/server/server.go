@@ -365,7 +365,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	stream.Node = n.Data
 
-	stream.Params = socket.Params{Keys: n.Keys, Values: n.ParseParams(formatPath)}
+	stream.Params = n.ParseParams(formatPath)
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		if err := nodeData.Before[i](stream); err != nil {

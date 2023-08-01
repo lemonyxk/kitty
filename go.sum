@@ -22,6 +22,8 @@ github.com/lemonyxk/caller v0.0.0-20230423070323-e226a04be497 h1:Bb7PsEFG28sebks
 github.com/lemonyxk/caller v0.0.0-20230423070323-e226a04be497/go.mod h1:6TuWfAU2LFD6jtjJsFC2dNyvJiDtlhI5oK/pfOa13SQ=
 github.com/lemonyxk/structure v1.0.1-0.20230731184344-c2e77007b77a h1:QABnhkZuxkz+LSLKq6qnIe8c3HXIyxzHhDZkjAaIVKA=
 github.com/lemonyxk/structure v1.0.1-0.20230731184344-c2e77007b77a/go.mod h1:7nt3U1dKeVPpqdhrxvYgfftsABObkjHky6kf6ylYfEI=
+github.com/lemonyxk/structure v1.0.1-0.20230801021443-5292061aabb4 h1:RDUIWCAv3zuy3ps4unChOXkB/lQ5zrDzVKFE4LNCJio=
+github.com/lemonyxk/structure v1.0.1-0.20230801021443-5292061aabb4/go.mod h1:7nt3U1dKeVPpqdhrxvYgfftsABObkjHky6kf6ylYfEI=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w8PVh93nsPXa1VrQ6jlwL5oN8l14QlcNfg=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=

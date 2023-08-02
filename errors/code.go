@@ -21,4 +21,5 @@ var (
 	Invalid          = New("invalid")
 	MaximumExceeded  = New("maximum exceeded")
 	AssertionFailed  = New("assertion failed")
+	StopPropagation  = New("stop propagation")
 )

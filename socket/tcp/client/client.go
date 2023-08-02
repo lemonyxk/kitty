@@ -374,6 +374,9 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		if err := nodeData.Before[i](stream); err != nil {
+			if errors.Is(err, errors.StopPropagation) {
+				return
+			}
 			if c.OnError != nil {
 				c.OnError(stream, err)
 			}
@@ -391,6 +394,9 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 
 	for i := 0; i < len(nodeData.After); i++ {
 		if err := nodeData.After[i](stream); err != nil {
+			if errors.Is(err, errors.StopPropagation) {
+				return
+			}
 			if c.OnError != nil {
 				c.OnError(stream, err)
 			}

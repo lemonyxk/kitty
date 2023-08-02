@@ -124,6 +124,9 @@ func (s *Server) handler(stream *http2.Stream[Conn]) {
 
 	for i := 0; i < len(nodeData.Before); i++ {
 		if err := nodeData.Before[i](stream); err != nil {
+			if errors.Is(err, errors.StopPropagation) {
+				return
+			}
 			if s.OnError != nil {
 				s.OnError(stream, err)
 			}
@@ -136,6 +139,9 @@ func (s *Server) handler(stream *http2.Stream[Conn]) {
 
 	if nodeData.Function != nil {
 		if err := nodeData.Function(stream); err != nil {
+			if errors.Is(err, errors.StopPropagation) {
+				return
+			}
 			if s.OnError != nil {
 				s.OnError(stream, err)
 			}
@@ -148,6 +154,9 @@ func (s *Server) handler(stream *http2.Stream[Conn]) {
 
 	for i := 0; i < len(nodeData.After); i++ {
 		if err := nodeData.After[i](stream); err != nil {
+			if errors.Is(err, errors.StopPropagation) {
+				return
+			}
 			if s.OnError != nil {
 				s.OnError(stream, err)
 			}

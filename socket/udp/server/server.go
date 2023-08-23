@@ -88,7 +88,7 @@ func (s *Server) Ready() {
 	}
 
 	if s.HandshakeTimeout == 0 {
-		s.HandshakeTimeout = 2 * time.Second
+		s.HandshakeTimeout = 3 * time.Second
 	}
 
 	// if s.HeartBeatTimeout == 0 {

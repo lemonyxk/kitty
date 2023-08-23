@@ -55,6 +55,12 @@ type Server struct {
 	PingHandler  func(conn Conn) func(data string) error
 	PongHandler  func(conn Conn) func(data string) error
 
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
+	ReadHeaderTimeout time.Duration
+	MaxHeaderBytes    int
+
 	fd          int64
 	senders     *hash.Hash[int64, socket.Emitter[Conn]]
 	connections *hash.Hash[int64, Conn]
@@ -152,16 +158,16 @@ func (s *Server) Ready() {
 	// }
 
 	if s.HandshakeTimeout == 0 {
-		s.HandshakeTimeout = 2 * time.Second
+		s.HandshakeTimeout = 3 * time.Second
 	}
 
 	// suggest 4096
 	if s.ReadBufferSize == 0 {
-		s.ReadBufferSize = 4096
+		s.ReadBufferSize = 8192
 	}
 	// suggest 4096
 	if s.WriteBufferSize == 0 {
-		s.WriteBufferSize = 4096
+		s.WriteBufferSize = 8192
 	}
 
 	if s.CheckOrigin == nil {
@@ -417,7 +423,14 @@ func (s *Server) Start() {
 
 	s.Ready()
 
-	var server = http.Server{Addr: s.Addr, Handler: s}
+	var server = http.Server{
+		Addr: s.Addr, Handler: s,
+		ReadTimeout:       s.ReadTimeout,
+		WriteTimeout:      s.WriteTimeout,
+		IdleTimeout:       s.IdleTimeout,
+		ReadHeaderTimeout: s.ReadHeaderTimeout,
+		MaxHeaderBytes:    s.MaxHeaderBytes,
+	}
 
 	var err error
 	var netListen net.Listener

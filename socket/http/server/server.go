@@ -31,8 +31,11 @@ type Server struct {
 	OnError   func(stream *http2.Stream[Conn], err error)
 	OnSuccess func()
 
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
+	ReadHeaderTimeout time.Duration
+	MaxHeaderBytes    int
 
 	middle       []func(next Middle) Middle
 	router       *router.Router[*http2.Stream[Conn]]
@@ -187,7 +190,14 @@ func (s *Server) Start() {
 
 	s.Ready()
 
-	var server = http.Server{Addr: s.Addr, Handler: s, ReadTimeout: s.ReadTimeout, WriteTimeout: s.WriteTimeout}
+	var server = http.Server{
+		Addr: s.Addr, Handler: s,
+		ReadTimeout:       s.ReadTimeout,
+		WriteTimeout:      s.WriteTimeout,
+		IdleTimeout:       s.IdleTimeout,
+		ReadHeaderTimeout: s.ReadHeaderTimeout,
+		MaxHeaderBytes:    s.MaxHeaderBytes,
+	}
 
 	var err error
 	var netListen net.Listener

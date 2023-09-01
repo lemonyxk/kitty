@@ -35,11 +35,11 @@ type Error struct {
 	stack   []caller.Info
 }
 
-func (e *Error) Error() string {
+func (e Error) Error() string {
 	return e.message
 }
 
-func (e *Error) Format(s fmt.State, verb rune) {
+func (e Error) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
@@ -64,7 +64,7 @@ func (e *Error) Format(s fmt.State, verb rune) {
 	}
 }
 
-func (e *Error) Unwrap() error {
+func (e Error) Unwrap() error {
 	return e.err
 }
 
@@ -72,10 +72,22 @@ func New(text any) error {
 	if reflect2.IsNil(text) {
 		return nil
 	}
-	if e, ok := text.(*Error); ok {
+	if e, ok := text.(Error); ok {
 		return e
 	}
-	var r = &Error{message: fmt.Sprintf("%v", text)}
+	switch text.(type) {
+	case error:
+		println("error")
+	default:
+	}
+	if e, ok := text.(interface{ Error() string }); ok {
+		var r = Error{message: e.Error(), err: e}
+		if withStack {
+			r.stack = caller.Deeps(2)
+		}
+		return r
+	}
+	var r = Error{message: fmt.Sprintf("%+v", text)}
 	if withStack {
 		r.stack = caller.Deeps(2)
 	}
@@ -83,7 +95,7 @@ func New(text any) error {
 }
 
 func Errorf(f string, args ...any) error {
-	var r = &Error{message: fmt.Sprintf(f, args...)}
+	var r = Error{message: fmt.Sprintf(f, args...)}
 	if withStack {
 		r.stack = caller.Deeps(2)
 	}
@@ -95,12 +107,12 @@ func Wrap(err error, text any) error {
 		return nil
 	}
 
-	var r = &Error{
-		message: fmt.Sprintf("%v", text) + ": " + err.Error(),
+	var r = Error{
+		message: fmt.Sprintf("%+v", text) + ": " + err.Error(),
 		err:     err,
 	}
 
-	if e, ok := err.(*Error); ok {
+	if e, ok := err.(Error); ok {
 		r.stack = e.stack
 		return r
 	}
@@ -117,12 +129,12 @@ func Wrapf(err error, f string, args ...any) error {
 		return nil
 	}
 
-	var r = &Error{
+	var r = Error{
 		message: fmt.Sprintf(f, args...) + ": " + err.Error(),
 		err:     err,
 	}
 
-	if e, ok := err.(*Error); ok {
+	if e, ok := err.(Error); ok {
 		r.stack = e.stack
 		return r
 	}

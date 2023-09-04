@@ -57,7 +57,6 @@ type Server struct {
 
 	fd          int64
 	senders     *hash.Hash[int64, socket.Emitter[Conn]]
-	connections *hash.Hash[int64, Conn]
 	router      *router.Router[*socket.Stream[Conn]]
 	middle      []func(Middle) Middle
 	netListen   net.Listener
@@ -159,7 +158,6 @@ func (s *Server) Ready() {
 		}
 	}
 
-	s.connections = hash.New[int64, Conn]()
 	s.senders = hash.New[int64, socket.Emitter[Conn]]()
 }
 
@@ -180,33 +178,31 @@ func (s *Server) onError(stream *socket.Stream[Conn], err error) {
 
 func (s *Server) addConnect(conn Conn) {
 	var fd = atomic.AddInt64(&s.fd, 1)
-	s.connections.Set(fd, conn)
 	s.senders.Set(fd, socket.NewSender(conn))
 	conn.SetFD(fd)
 }
 
 func (s *Server) delConnect(conn Conn) {
-	s.connections.Delete(conn.FD())
 	s.senders.Delete(conn.FD())
 }
 
 func (s *Server) Range(fn func(conn Conn)) {
-	s.connections.Range(func(fd int64, conn Conn) bool {
-		fn(conn)
+	s.senders.Range(func(k int64, v socket.Emitter[Conn]) bool {
+		fn(v.Conn())
 		return true
 	})
 }
 
 func (s *Server) Conn(fd int64) (Conn, error) {
-	conn := s.connections.Get(fd)
-	if conn == nil {
+	sender := s.senders.Get(fd)
+	if sender == nil {
 		return nil, errors.ConnNotFount
 	}
-	return conn, nil
+	return sender.Conn(), nil
 }
 
 func (s *Server) ConnLen() int {
-	return s.connections.Len()
+	return s.senders.Len()
 }
 
 func (s *Server) Start() {

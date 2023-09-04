@@ -2,11 +2,13 @@ package http
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/lemonyxk/kitty/router"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/kitty/header"
@@ -293,4 +295,31 @@ func (s *Stream[T]) Scheme() string {
 		scheme = "https"
 	}
 	return scheme
+}
+
+func (s *Stream[T]) UpgradeSse(config *SseConfig) (*Sse[T], error) {
+	s.Response.Header().Set("Content-Type", "text/event-stream")
+	s.Response.Header().Set("Cache-Control", "no-cache")
+	s.Response.Header().Set("Connection", "keep-alive")
+
+	s.Response.WriteHeader(http.StatusOK)
+
+	var lastEventId = s.Request.Header.Get("Last-Event-ID")
+
+	var id, _ = strconv.ParseInt(lastEventId, 10, 64)
+
+	if config == nil {
+		config = &SseConfig{Retry: 3 * time.Second}
+	}
+
+	_, err := s.Response.Write([]byte(fmt.Sprintf("retry: %d\n", config.Retry.Milliseconds())))
+	if err != nil {
+		return nil, err
+	}
+
+	var sse = &Sse[T]{Stream: s, LasTEventID: id, close: make(chan struct{}, 1)}
+
+	sse.Flush()
+
+	return sse, nil
 }

@@ -8,7 +8,7 @@ Kitty is a lightweight networking library, support http, tcp, udp.
 
 ### How to use?
 
-- [http server](./example/http)
+- [http server](./example/sse)
 - [tcp server](./example/tcp)
 - [udp server](./example/udp)
 - [websocket server](./example/websocket)

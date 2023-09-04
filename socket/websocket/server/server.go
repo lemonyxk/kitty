@@ -61,14 +61,13 @@ type Server struct {
 	ReadHeaderTimeout time.Duration
 	MaxHeaderBytes    int
 
-	fd          int64
-	senders     *hash.Hash[int64, socket.Emitter[Conn]]
-	connections *hash.Hash[int64, Conn]
-	router      *router.Router[*socket.Stream[Conn]]
-	middle      []func(next Middle) Middle
-	server      *http.Server
-	netListen   net.Listener
-	protocol    protocol.Protocol
+	fd        int64
+	senders   *hash.Hash[int64, socket.Emitter[Conn]]
+	router    *router.Router[*socket.Stream[Conn]]
+	middle    []func(next Middle) Middle
+	server    *http.Server
+	netListen net.Listener
+	protocol  protocol.Protocol
 }
 
 type Middle router.Middle[*socket.Stream[Conn]]
@@ -91,33 +90,31 @@ func (s *Server) Sender(fd int64) (socket.Emitter[Conn], error) {
 
 func (s *Server) addConnect(conn Conn) {
 	var fd = atomic.AddInt64(&s.fd, 1)
-	s.connections.Set(fd, conn)
 	s.senders.Set(fd, socket.NewSender(conn))
 	conn.SetFD(fd)
 }
 
 func (s *Server) delConnect(conn Conn) {
-	s.connections.Delete(conn.FD())
 	s.senders.Delete(conn.FD())
 }
 
 func (s *Server) Range(fn func(conn Conn)) {
-	s.connections.Range(func(fd int64, conn Conn) bool {
-		fn(conn)
+	s.senders.Range(func(k int64, v socket.Emitter[Conn]) bool {
+		fn(v.Conn())
 		return true
 	})
 }
 
 func (s *Server) Conn(fd int64) (Conn, error) {
-	conn := s.connections.Get(fd)
-	if conn == nil {
+	sender := s.senders.Get(fd)
+	if sender == nil {
 		return nil, errors.ConnNotFount
 	}
-	return conn, nil
+	return sender.Conn(), nil
 }
 
 func (s *Server) ConnLen() int {
-	return s.connections.Len()
+	return s.senders.Len()
 }
 
 func (s *Server) onOpen(conn Conn) {
@@ -228,7 +225,6 @@ func (s *Server) Ready() {
 		}
 	}
 
-	s.connections = hash.New[int64, Conn]()
 	s.senders = hash.New[int64, socket.Emitter[Conn]]()
 }
 

@@ -11,10 +11,10 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -35,11 +35,11 @@ type Error struct {
 	stack   []caller.Info
 }
 
-func (e Error) Error() string {
+func (e *Error) Error() string {
 	return e.message
 }
 
-func (e Error) Format(s fmt.State, verb rune) {
+func (e *Error) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
@@ -64,7 +64,7 @@ func (e Error) Format(s fmt.State, verb rune) {
 	}
 }
 
-func (e Error) Unwrap() error {
+func (e *Error) Unwrap() error {
 	return e.err
 }
 
@@ -72,30 +72,27 @@ func New(text any) error {
 	if reflect2.IsNil(text) {
 		return nil
 	}
-	if e, ok := text.(Error); ok {
-		return e
-	}
+
 	switch text.(type) {
+	case *Error:
+		return text.(*Error)
 	case error:
-		println("error")
+		var r = &Error{message: text.(error).Error()}
+		if withStack {
+			r.stack = caller.Deeps(2)
+		}
+		return r
 	default:
-	}
-	if e, ok := text.(interface{ Error() string }); ok {
-		var r = Error{message: e.Error(), err: e}
+		var r = &Error{message: fmt.Sprintf("%+v", text)}
 		if withStack {
 			r.stack = caller.Deeps(2)
 		}
 		return r
 	}
-	var r = Error{message: fmt.Sprintf("%+v", text)}
-	if withStack {
-		r.stack = caller.Deeps(2)
-	}
-	return r
 }
 
 func Errorf(f string, args ...any) error {
-	var r = Error{message: fmt.Sprintf(f, args...)}
+	var r = &Error{message: fmt.Sprintf(f, args...)}
 	if withStack {
 		r.stack = caller.Deeps(2)
 	}
@@ -107,12 +104,12 @@ func Wrap(err error, text any) error {
 		return nil
 	}
 
-	var r = Error{
+	var r = &Error{
 		message: fmt.Sprintf("%+v", text) + ": " + err.Error(),
 		err:     err,
 	}
 
-	if e, ok := err.(Error); ok {
+	if e, ok := err.(*Error); ok {
 		r.stack = e.stack
 		return r
 	}
@@ -129,12 +126,12 @@ func Wrapf(err error, f string, args ...any) error {
 		return nil
 	}
 
-	var r = Error{
+	var r = &Error{
 		message: fmt.Sprintf(f, args...) + ": " + err.Error(),
 		err:     err,
 	}
 
-	if e, ok := err.(Error); ok {
+	if e, ok := err.(*Error); ok {
 		r.stack = e.stack
 		return r
 	}
@@ -147,33 +144,9 @@ func Wrapf(err error, f string, args ...any) error {
 }
 
 func Is(err, target error) bool {
-	if target == nil {
-		return err == target
-	}
-
-	isComparable := reflect.TypeOf(target).Comparable()
-	for {
-		if isComparable && err == target {
-			return true
-		}
-		if x, ok := err.(interface{ Is(error) bool }); ok && x.Is(target) {
-			return true
-		}
-		if err = Unwrap(err); err == nil {
-			return false
-		}
-	}
+	return errors.Is(err, target)
 }
 
 func Unwrap(err error) error {
-	if err == nil {
-		return nil
-	}
-	u, ok := err.(interface {
-		Unwrap() error
-	})
-	if !ok {
-		return nil
-	}
-	return u.Unwrap()
+	return errors.Unwrap(err)
 }

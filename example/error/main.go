@@ -13,9 +13,13 @@ package main
 import (
 	errors2 "errors"
 	"fmt"
+	"log"
 
 	"github.com/lemonyxk/kitty/errors"
 )
+
+
+var stopError = errors.New("stop error")
 
 func main() {
 
@@ -28,6 +32,18 @@ func main() {
 
 	fmt.Printf("%+v\n", errors.Unwrap(errors.Unwrap(err)))
 	fmt.Println(err)
+
+
+	log.Println(errors2.Is(TestError(), errors.StopPropagation))
+
+
+	var err2 = errors.Wrap(stopError, errors.New("wrap error1111111111111111"))
+
+	log.Printf("%+v\n", err2)
+}
+
+func TestError() error {
+	return errors.StopPropagation
 }
 
 func test1() error {

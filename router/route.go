@@ -131,6 +131,8 @@ func (r *Route[T, P]) Handler(fn Func[T]) {
 
 		cba.Route = []byte(originPath)
 
+		cba.Data = r.data
+
 		router.trie.Insert(path, cba)
 	}
 

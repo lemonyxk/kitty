@@ -19,6 +19,8 @@ type Stream[T Packer] struct {
 
 	//Node *router.Node[*Stream[T]]
 
+	Time time.Time
+
 	Response http.ResponseWriter
 	Request  *http.Request
 
@@ -40,6 +42,7 @@ type Stream[T Packer] struct {
 func NewStream[T Packer](conn T, w http.ResponseWriter, r *http.Request) *Stream[T] {
 	var stream = &Stream[T]{
 		sender:   sender[T]{conn: conn},
+		Time:     time.Now(),
 		Response: w, Request: r,
 		Protobuf: &Protobuf{},
 		Query:    &Store{},

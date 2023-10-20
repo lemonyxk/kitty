@@ -16,10 +16,12 @@ import (
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/socket/protocol"
 	"google.golang.org/protobuf/proto"
+	"time"
 )
 
 func NewStream[T Packer](conn T, order uint32, messageType byte, code uint32, id uint64, route []byte, body []byte) *Stream[T] {
 	return &Stream[T]{
+		Time: time.Now(),
 		data: body,
 		sender: &sender[T]{
 			conn: conn, code: code, messageID: id,
@@ -29,15 +31,18 @@ func NewStream[T Packer](conn T, order uint32, messageType byte, code uint32, id
 }
 
 type Stream[T Packer] struct {
+	*sender[T]
+
+	data []byte
+
+	Time time.Time
+
 	Context kitty.Context
 	Logger  kitty.Logger
 	Params  Params
 
 	//Node *router.Node[*Stream[T]]
 
-	data []byte
-
-	*sender[T]
 }
 
 func (s *Stream[T]) Data() []byte {

@@ -21,7 +21,7 @@ import (
 	"github.com/lemonyxk/kitty/socket/protocol"
 )
 
-type Client struct {
+type Client[T any] struct {
 	Name string
 	Addr string
 
@@ -51,7 +51,7 @@ type Client struct {
 
 	conn                  Conn
 	sender                socket.Emitter[Conn]
-	router                *router.Router[*socket.Stream[Conn]]
+	router                *router.Router[*socket.Stream[Conn], T]
 	middle                []func(Middle) Middle
 	addr                  *net.UDPAddr
 	stopCh                chan struct{}
@@ -62,23 +62,23 @@ type Client struct {
 
 type Middle router.Middle[*socket.Stream[Conn]]
 
-func (c *Client) LocalAddr() net.Addr {
+func (c *Client[T]) LocalAddr() net.Addr {
 	return c.conn.LocalAddr()
 }
 
-func (c *Client) RemoteAddr() net.Addr {
+func (c *Client[T]) RemoteAddr() net.Addr {
 	return c.conn.RemoteAddr()
 }
 
-func (c *Client) Use(middle ...func(Middle) Middle) {
+func (c *Client[T]) Use(middle ...func(Middle) Middle) {
 	c.middle = append(c.middle, middle...)
 }
 
-func (c *Client) Sender() socket.Emitter[Conn] {
+func (c *Client[T]) Sender() socket.Emitter[Conn] {
 	return c.sender
 }
 
-func (c *Client) reconnecting() {
+func (c *Client[T]) reconnecting() {
 	if c.ReconnectInterval != 0 {
 		time.Sleep(c.ReconnectInterval)
 		if c.OnReconnecting != nil {
@@ -88,7 +88,7 @@ func (c *Client) reconnecting() {
 	}
 }
 
-func (c *Client) Connect() {
+func (c *Client[T]) Connect() {
 
 	if c.Addr == "" {
 		panic("addr can not be empty")
@@ -183,7 +183,7 @@ func (c *Client) Connect() {
 	var netConn = &conn{
 		addr:     addr,
 		conn:     handler,
-		client:   c,
+		mtu:      c.Mtu,
 		lastPong: time.Now(),
 		// PONG
 		timeoutTimer:       time.NewTimer(heartBeatTimeout),
@@ -351,7 +351,7 @@ func (c *Client) Connect() {
 	c.reconnecting()
 }
 
-func (c *Client) process(message []byte) error {
+func (c *Client[T]) process(message []byte) error {
 	messageType := c.Protocol.GetMessageType(message)
 
 	if c.Protocol.IsPing(messageType) || c.Protocol.IsPong(messageType) {
@@ -366,7 +366,7 @@ func (c *Client) process(message []byte) error {
 	}
 }
 
-func (c *Client) decodeMessage(message []byte) error {
+func (c *Client[T]) decodeMessage(message []byte) error {
 	// unpack
 	order, messageType, code, id, route, body := c.conn.UnPack(message)
 
@@ -397,7 +397,7 @@ func (c *Client) decodeMessage(message []byte) error {
 	return nil
 }
 
-func (c *Client) middleware(stream *socket.Stream[Conn]) {
+func (c *Client[T]) middleware(stream *socket.Stream[Conn]) {
 	var next Middle = c.handler
 	for i := len(c.middle) - 1; i >= 0; i-- {
 		next = c.middle[i](next)
@@ -405,7 +405,7 @@ func (c *Client) middleware(stream *socket.Stream[Conn]) {
 	next(stream)
 }
 
-func (c *Client) handler(stream *socket.Stream[Conn]) {
+func (c *Client[T]) handler(stream *socket.Stream[Conn]) {
 
 	if c.router == nil {
 		if c.OnError != nil {
@@ -424,7 +424,7 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 
 	var nodeData = n.Data
 
-	stream.Node = n.Data
+	//stream.Node = n.Data
 
 	stream.Params = n.ParseParams(formatPath)
 
@@ -461,23 +461,23 @@ func (c *Client) handler(stream *socket.Stream[Conn]) {
 	}
 }
 
-func (c *Client) GetDailTimeout() time.Duration {
+func (c *Client[T]) GetDailTimeout() time.Duration {
 	return c.DailTimeout
 }
 
-func (c *Client) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Client {
+func (c *Client[T]) SetRouter(router *router.Router[*socket.Stream[Conn], T]) *Client[T] {
 	c.router = router
 	return c
 }
 
-func (c *Client) GetRouter() *router.Router[*socket.Stream[Conn]] {
+func (c *Client[T]) GetRouter() *router.Router[*socket.Stream[Conn], T] {
 	return c.router
 }
 
-func (c *Client) Conn() Conn {
+func (c *Client[T]) Conn() Conn {
 	return c.conn
 }
 
-func (c *Client) Close() error {
+func (c *Client[T]) Close() error {
 	return c.conn.Close()
 }

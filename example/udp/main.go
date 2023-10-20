@@ -21,21 +21,21 @@ import (
 	"github.com/lemonyxk/kitty/socket/udp/server"
 )
 
-var udpServer *server.Server
+var udpServer *server.Server[any]
 
-var udpClient *client.Client
+var udpClient *client.Client[any]
 
 func runUdpServer() {
 
 	var ready = make(chan struct{})
 
-	udpServer = kitty.NewUdpServer("127.0.0.1:8888")
+	udpServer = kitty.NewUdpServer[any]("127.0.0.1:8888")
 
 	udpServer.HeartBeatTimeout = time.Second * 5
 
-	var udpServerRouter = kitty.NewUdpServerRouter()
+	var udpServerRouter = kitty.NewUdpServerRouter[any]()
 
-	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn],any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data()))
 			return stream.Emit(stream.Event(), stream.Data())
@@ -56,14 +56,14 @@ func runUdpClient() {
 	var ready = make(chan struct{}, 100)
 	var isRun = false
 
-	udpClient = kitty.NewUdpClient("127.0.0.1:8888")
+	udpClient = kitty.NewUdpClient[any]("127.0.0.1:8888")
 
 	udpClient.HeartBeatTimeout = time.Second * 2
 	udpClient.HeartBeatInterval = time.Second * 3
 
-	var clientRouter = kitty.NewUdpClientRouter()
+	var clientRouter = kitty.NewUdpClientRouter[any]()
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn],any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
 			return stream.Emit(stream.Event(), stream.Data())

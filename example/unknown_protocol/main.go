@@ -25,17 +25,17 @@ import (
 // websocket has been subcontracted and udp is not streaming data,
 // so there is an unknown possibility.
 
-var wsServer *server.Server
+var wsServer *server.Server[any]
 
-var wsClient *client.Client
+var wsClient *client.Client[any]
 
 func asyncWsServer() {
 
 	var ready = make(chan struct{})
 
-	wsServer = kitty.NewWebSocketServer("127.0.0.1:8888")
+	wsServer = kitty.NewWebSocketServer[any]("127.0.0.1:8888")
 
-	var wsServerRouter = kitty.NewWebSocketServerRouter()
+	var wsServerRouter = kitty.NewWebSocketServerRouter[any]()
 
 	// route:message
 	wsServer.OnUnknown = func(conn server.Conn, message []byte, next server.Middle) {
@@ -50,7 +50,7 @@ func asyncWsServer() {
 		next(socket.NewStream(conn, 0, 0, 0, 0, route, data))
 	}
 
-	wsServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	wsServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data()))
 			return stream.Conn().Push(packMessage(stream.Event(), string(stream.Data())))
@@ -71,9 +71,9 @@ func asyncWsClient() {
 	var ready = make(chan struct{})
 	var isRun = false
 
-	wsClient = kitty.NewWebSocketClient("ws://127.0.0.1:8888")
+	wsClient = kitty.NewWebSocketClient[any]("ws://127.0.0.1:8888")
 
-	var clientRouter = kitty.NewWebSocketClientRouter()
+	var clientRouter = kitty.NewWebSocketClientRouter[any]()
 
 	wsClient.OnError = func(stream *socket.Stream[client.Conn], err error) {
 		log.Println(err)
@@ -91,7 +91,7 @@ func asyncWsClient() {
 		next(socket.NewStream(conn, 0, 0, 0, 0, route, data))
 	}
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
 			return stream.Conn().Push(packMessage(stream.Event(), string(stream.Data())))

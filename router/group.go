@@ -15,25 +15,26 @@ import (
 	"unsafe"
 )
 
-type Group[T any] struct {
+type Group[T any, P any] struct {
 	path   string
 	desc   []string
+	data   P
 	before []Before[T]
 	after  []After[T]
-	router *Router[T]
+	router *Router[T, P]
 }
 
-func (g *Group[T]) Before(before ...Before[T]) *Group[T] {
+func (g *Group[T, P]) Before(before ...Before[T]) *Group[T, P] {
 	g.before = append(g.before, before...)
 	return g
 }
 
-func (g *Group[T]) After(after ...After[T]) *Group[T] {
+func (g *Group[T, P]) After(after ...After[T]) *Group[T, P] {
 	g.after = append(g.after, after...)
 	return g
 }
 
-func (g *Group[T]) RemoveBefore(before ...Before[T]) *Group[T] {
+func (g *Group[T, P]) RemoveBefore(before ...Before[T]) *Group[T, P] {
 	for i := 0; i < len(before); i++ {
 		for j := 0; j < len(g.before); j++ {
 			if *(*unsafe.Pointer)(unsafe.Pointer(&g.before[j])) ==
@@ -46,12 +47,12 @@ func (g *Group[T]) RemoveBefore(before ...Before[T]) *Group[T] {
 	return g
 }
 
-func (g *Group[T]) CancelBefore() *Group[T] {
+func (g *Group[T, P]) CancelBefore() *Group[T, P] {
 	g.before = nil
 	return g
 }
 
-func (g *Group[T]) RemoveAfter(after ...After[T]) *Group[T] {
+func (g *Group[T, P]) RemoveAfter(after ...After[T]) *Group[T, P] {
 	for i := 0; i < len(after); i++ {
 		for j := 0; j < len(g.after); j++ {
 			if *(*unsafe.Pointer)(unsafe.Pointer(&g.after[j])) ==
@@ -64,12 +65,12 @@ func (g *Group[T]) RemoveAfter(after ...After[T]) *Group[T] {
 	return g
 }
 
-func (g *Group[T]) CancelAfter() *Group[T] {
+func (g *Group[T, P]) CancelAfter() *Group[T, P] {
 	g.after = nil
 	return g
 }
 
-func (g *Group[T]) Remove(path ...string) {
+func (g *Group[T, P]) Remove(path ...string) {
 	if g.router.trie == nil {
 		return
 	}
@@ -82,8 +83,8 @@ func (g *Group[T]) Remove(path ...string) {
 	}
 }
 
-func (g *Group[T]) Handler(fn func(handler *Handler[T])) {
-	fn(&Handler[T]{group: &Group[T]{
+func (g *Group[T, P]) Handler(fn func(handler *Handler[T, P])) {
+	fn(&Handler[T, P]{group: &Group[T, P]{
 		path:   g.path,
 		desc:   append([]string{}, g.desc...),
 		before: append([]Before[T]{}, g.before...),
@@ -92,8 +93,8 @@ func (g *Group[T]) Handler(fn func(handler *Handler[T])) {
 	}})
 }
 
-func (g *Group[T]) Create() *Handler[T] {
-	return &Handler[T]{group: &Group[T]{
+func (g *Group[T, P]) Create() *Handler[T, P] {
+	return &Handler[T, P]{group: &Group[T, P]{
 		path:   g.path,
 		desc:   append([]string{}, g.desc...),
 		before: append([]Before[T]{}, g.before...),
@@ -102,7 +103,7 @@ func (g *Group[T]) Create() *Handler[T] {
 	}}
 }
 
-func (g *Group[T]) Desc(desc ...string) *Group[T] {
+func (g *Group[T, P]) Desc(desc ...string) *Group[T, P] {
 	g.desc = append(g.desc, desc...)
 	return g
 }

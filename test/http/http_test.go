@@ -30,11 +30,11 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-var httpServer *server.Server
+var httpServer *server.Server[any]
 
 var ts *httptest.Server
 
-var httpsServer *server.Server
+var httpsServer *server.Server[any]
 
 // var tss *httptest.Server
 
@@ -70,7 +70,7 @@ func newTls(certFile, keyFile, caFile string) *tls.Config {
 
 func TestMain(t *testing.M) {
 
-	httpServer = kitty.NewHttpServer("127.0.0.1:12345")
+	httpServer = kitty.NewHttpServer[any]("127.0.0.1:12345")
 	ts = httptest.NewServer(httpServer)
 
 	httpServer.Use(func(next server.Middle) server.Middle {
@@ -80,7 +80,7 @@ func TestMain(t *testing.M) {
 		}
 	})
 
-	httpsServer = kitty.NewHttpServer("127.0.0.1:12346")
+	httpsServer = kitty.NewHttpServer[any]("127.0.0.1:12346")
 	// fake server, but need ca file
 	// tss = httptest.NewUnstartedServer(httpsServer)
 	// tss.TLS = newTls(certFile, keyFile, caFile)
@@ -111,7 +111,7 @@ func TestMain(t *testing.M) {
 
 func Test_HTTPS_Get(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		var res = stream.Query.First("a").String()
@@ -129,7 +129,7 @@ func Test_HTTPS_Get(t *testing.T) {
 
 func Test_HTTP_Get(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("GET").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Query.First("a").String() == "1")
@@ -144,7 +144,7 @@ func Test_HTTP_Get(t *testing.T) {
 
 func Test_HTTP_Post(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Form.First("a").String() == "2")
@@ -160,7 +160,7 @@ func Test_HTTP_Post(t *testing.T) {
 
 func Test_HTTP_PostJson(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Json.Get("a").String() == "2")
@@ -176,7 +176,7 @@ func Test_HTTP_PostJson(t *testing.T) {
 
 func Test_HTTP_Head(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("HEAD").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Query.First("a").String() == "1")
@@ -192,7 +192,7 @@ func Test_HTTP_Head(t *testing.T) {
 
 func Test_HTTP_Put(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("PUT").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Form.First("a").String() == "1")
@@ -207,7 +207,7 @@ func Test_HTTP_Put(t *testing.T) {
 
 func Test_HTTP_Patch(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("PATCH").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Form.First("a").String() == "1")
@@ -222,7 +222,7 @@ func Test_HTTP_Patch(t *testing.T) {
 
 func Test_HTTP_Delete(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("DELETE").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Form.First("a").String() == "1", stream.Form.String())
@@ -238,7 +238,7 @@ func Test_HTTP_Delete(t *testing.T) {
 
 func Test_HTTP_Options(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("OPTIONS").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Query.First("a").String() == "1", stream.Query.String())
@@ -253,7 +253,7 @@ func Test_HTTP_Options(t *testing.T) {
 
 func Test_HTTP_Trace(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("TRACE").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Query.First("a").String() == "1")
@@ -268,7 +268,7 @@ func Test_HTTP_Trace(t *testing.T) {
 
 func Test_HTTP_Multipart(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("POST").Route("/PostFile").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Files.First("file").Filename == "1.png")
@@ -290,7 +290,7 @@ func Test_HTTP_Multipart(t *testing.T) {
 
 func Test_HTTP_Params(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("POST").Route("/Params/:id/hello").Handler(func(stream *http.Stream[server.Conn]) error {
 		assert.True(t, stream.Params.Get("id") == stream.Form.First("a").String())
@@ -308,7 +308,7 @@ func Test_HTTP_Params(t *testing.T) {
 
 func Test_HTTP_Protobuf(t *testing.T) {
 
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream[server.Conn]) error {
 		var res hello.AwesomeMessage
@@ -342,7 +342,7 @@ func Test_HTTP_NotFound(t *testing.T) {
 }
 
 func Test_HTTP_Static(t *testing.T) {
-	var httpServerRouter = &router.Router[*http.Stream[server.Conn]]{}
+	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 	var httpServerStaticRouter = &server.StaticRouter{}
 	httpServerStaticRouter.SetStaticPath("/", "", http2.Dir("../../example/http/public"))
 	httpServer.SetRouter(httpServerRouter)

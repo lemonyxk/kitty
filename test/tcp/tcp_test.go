@@ -37,13 +37,13 @@ func shutdown() {
 	stop <- true
 }
 
-var tcpServer *server.Server
+var tcpServer *server.Server[any]
 
-var tcpServerRouter *router.Router[*socket.Stream[server.Conn]]
+var tcpServerRouter *router.Router[*socket.Stream[server.Conn], any]
 
-var tcpClient *client.Client
+var tcpClient *client.Client[any]
 
-var clientRouter *router.Router[*socket.Stream[client.Conn]]
+var clientRouter *router.Router[*socket.Stream[client.Conn], any]
 
 var addr = "127.0.0.1:8667"
 
@@ -54,7 +54,7 @@ func initServer() {
 	var ready = make(chan bool)
 
 	// create server
-	tcpServer = kitty.NewTcpServer(addr)
+	tcpServer = kitty.NewTcpServer[any](addr)
 	tcpServer.HeartBeatTimeout = 5 * time.Second
 	tcpServer.ReadBufferSize = 1024 * 1024
 
@@ -72,10 +72,10 @@ func initServer() {
 	})
 
 	// create router
-	tcpServerRouter = &router.Router[*socket.Stream[server.Conn]]{StrictMode: true}
+	tcpServerRouter = &router.Router[*socket.Stream[server.Conn], any]{StrictMode: true}
 
 	// set group route
-	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			return stream.JsonEmit(stream.Event(), "i am server")
 		})
@@ -118,7 +118,7 @@ func initClient() {
 	var isRun = false
 
 	// create client
-	tcpClient = kitty.NewTcpClient(addr)
+	tcpClient = kitty.NewTcpClient[any](addr)
 	tcpClient.ReconnectInterval = time.Second
 	tcpClient.HeartBeatInterval = time.Second
 	tcpClient.ReadBufferSize = 1024 * 1024 // some platform need set big buffer
@@ -130,7 +130,7 @@ func initClient() {
 	tcpClient.OnMessage = func(client client.Conn, msg []byte) {}
 
 	// create router
-	clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
+	clientRouter = &router.Router[*socket.Stream[client.Conn], any]{StrictMode: true}
 
 	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
 		return stream.JsonEmit(stream.Event(), string(stream.Data()))
@@ -180,7 +180,7 @@ func Test_TCP_Client(t *testing.T) {
 	var messageIDTotal uint64 = 0
 	var countTotal uint64 = 0
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			if atomic.AddUint64(&countTotal, 1) == uint64(count) {
 				mux.Done()
@@ -215,7 +215,7 @@ func Test_TCP_Client(t *testing.T) {
 
 func Test_TCP_Client_Async(t *testing.T) {
 
-	var asyncClient = socket.NewAsyncClient[client.Conn](tcpClient)
+	var asyncClient = socket.NewAsyncClient[client.Conn, any](tcpClient)
 
 	var wait = sync.WaitGroup{}
 
@@ -325,7 +325,7 @@ func Test_TCP_ProtobufEmit(t *testing.T) {
 
 func Test_TCP_Server_Async(t *testing.T) {
 
-	var asyncServer = socket.NewAsyncServer[server.Conn](tcpServer)
+	var asyncServer = socket.NewAsyncServer[server.Conn, any](tcpServer)
 
 	var wait = sync.WaitGroup{}
 
@@ -412,7 +412,7 @@ func Test_TCP_Multi_Client(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		go func() {
 			// create client
-			var tClient = kitty.NewTcpClient(addr)
+			var tClient = kitty.NewTcpClient[any](addr)
 			tClient.ReconnectInterval = time.Second
 			tClient.HeartBeatInterval = time.Millisecond * 1000 / 60
 
@@ -423,7 +423,7 @@ func Test_TCP_Multi_Client(t *testing.T) {
 			tClient.OnMessage = func(client client.Conn, msg []byte) {}
 
 			// create router
-			var clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
+			var clientRouter = &router.Router[*socket.Stream[client.Conn], any]{StrictMode: true}
 
 			clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
 				return stream.JsonEmit(stream.Event(), string(stream.Data()))

@@ -43,13 +43,13 @@ func shutdown() {
 	stop <- true
 }
 
-var webSocketServer *server.Server
+var webSocketServer *server.Server[any]
 
-var webSocketServerRouter *router.Router[*socket.Stream[server.Conn]]
+var webSocketServerRouter *router.Router[*socket.Stream[server.Conn],any]
 
-var webSocketClient *client.Client
+var webSocketClient *client.Client[any]
 
-var clientRouter *router.Router[*socket.Stream[client.Conn]]
+var clientRouter *router.Router[*socket.Stream[client.Conn],any]
 
 var addr = "127.0.0.1:8669"
 
@@ -60,7 +60,7 @@ func initServer() {
 	var ready = make(chan bool)
 
 	// create server
-	webSocketServer = kitty.NewWebSocketServer(addr)
+	webSocketServer = kitty.NewWebSocketServer[any](addr)
 	webSocketServer.HeartBeatTimeout = 5 * time.Second
 
 	// event
@@ -91,10 +91,10 @@ func initServer() {
 	}
 
 	// create router
-	webSocketServerRouter = kitty.NewWebSocketServerRouter()
+	webSocketServerRouter = kitty.NewWebSocketServerRouter[any]()
 
 	// set group route
-	webSocketServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	webSocketServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn],any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			return stream.JsonEmit("/hello/world", "i am server")
 		})
@@ -146,7 +146,7 @@ func initClient() {
 	var isRun = false
 
 	// create client
-	webSocketClient = kitty.NewWebSocketClient("ws://" + addr)
+	webSocketClient = kitty.NewWebSocketClient[any]("ws://" + addr)
 	webSocketClient.ReconnectInterval = time.Second
 	webSocketClient.HeartBeatInterval = time.Second
 
@@ -170,7 +170,7 @@ func initClient() {
 	}
 
 	// create router
-	clientRouter = kitty.NewWebSocketClientRouter()
+	clientRouter = kitty.NewWebSocketClientRouter[any]()
 
 	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
 		return stream.JsonEmit(stream.Event(), string(stream.Data()))
@@ -220,7 +220,7 @@ func Test_WS_Client(t *testing.T) {
 	var messageIDTotal uint64 = 0
 	var countTotal uint64 = 0
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn],any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			if atomic.AddUint64(&countTotal, 1) == uint64(count) {
 				mux.Done()
@@ -255,7 +255,7 @@ func Test_WS_Client(t *testing.T) {
 
 func Test_WS_Client_Async(t *testing.T) {
 
-	var asyncClient = socket.NewAsyncClient[client.Conn](webSocketClient)
+	var asyncClient = socket.NewAsyncClient[client.Conn,any](webSocketClient)
 
 	var wait = sync.WaitGroup{}
 
@@ -362,7 +362,7 @@ func Test_WS_ProtobufEmit(t *testing.T) {
 
 func Test_WS_Server_Async(t *testing.T) {
 
-	var asyncServer = socket.NewAsyncServer[server.Conn](webSocketServer)
+	var asyncServer = socket.NewAsyncServer[server.Conn,any](webSocketServer)
 
 	var wait = sync.WaitGroup{}
 
@@ -472,7 +472,7 @@ func Test_WS_Multi_Client(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		go func() {
 			// create client
-			var wClient = kitty.NewWebSocketClient("ws://" + addr)
+			var wClient = kitty.NewWebSocketClient[any]("ws://" + addr)
 			wClient.ReconnectInterval = time.Second
 			wClient.HeartBeatInterval = time.Millisecond * 1000 / 60
 
@@ -496,7 +496,7 @@ func Test_WS_Multi_Client(t *testing.T) {
 			}
 
 			// create router
-			var clientRouter = kitty.NewWebSocketClientRouter()
+			var clientRouter = kitty.NewWebSocketClientRouter[any]()
 
 			clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
 				return stream.JsonEmit(stream.Event(), string(stream.Data()))
@@ -518,7 +518,7 @@ func Test_WS_Shutdown(t *testing.T) {
 	shutdown()
 }
 
-func ClientJson(c *client.Client, pack JsonPack) error {
+func ClientJson(c *client.Client[any], pack JsonPack) error {
 	data, err := jsoniter.Marshal(pack)
 	if err != nil {
 		return err

@@ -14,7 +14,7 @@ import (
 	http2 "github.com/lemonyxk/kitty/socket/http"
 )
 
-type Server struct {
+type Server[T any] struct {
 	Name string
 	// Host 服务Host
 	Addr string
@@ -38,7 +38,7 @@ type Server struct {
 	MaxHeaderBytes    int
 
 	middle       []func(next Middle) Middle
-	router       *router.Router[*http2.Stream[Conn]]
+	router       *router.Router[*http2.Stream[Conn], T]
 	staticRouter *StaticRouter
 	netListen    net.Listener
 	server       *http.Server
@@ -46,26 +46,26 @@ type Server struct {
 
 type Middle router.Middle[*http2.Stream[Conn]]
 
-func (s *Server) Ready() {
+func (s *Server[T]) Ready() {
 	if s.Addr == "" {
 		panic("addr can not be empty")
 	}
 }
 
-func (s *Server) LocalAddr() net.Addr {
+func (s *Server[T]) LocalAddr() net.Addr {
 	return s.netListen.Addr()
 }
 
-func (s *Server) Use(middle ...func(next Middle) Middle) {
+func (s *Server[T]) Use(middle ...func(next Middle) Middle) {
 	s.middle = append(s.middle, middle...)
 }
 
-func (s *Server) process(w http.ResponseWriter, r *http.Request) {
-	var stream = http2.NewStream[Conn](&conn{server: s}, w, r)
+func (s *Server[T]) process(w http.ResponseWriter, r *http.Request) {
+	var stream = http2.NewStream[Conn](&conn{}, w, r)
 	s.middleware(stream)
 }
 
-func (s *Server) middleware(stream *http2.Stream[Conn]) {
+func (s *Server[T]) middleware(stream *http2.Stream[Conn]) {
 	var next Middle = s.handler
 	for i := len(s.middle) - 1; i >= 0; i-- {
 		next = s.middle[i](next)
@@ -73,7 +73,7 @@ func (s *Server) middleware(stream *http2.Stream[Conn]) {
 	next(stream)
 }
 
-func (s *Server) handler(stream *http2.Stream[Conn]) {
+func (s *Server[T]) handler(stream *http2.Stream[Conn]) {
 
 	if s.OnOpen != nil {
 		s.OnOpen(stream)
@@ -117,7 +117,7 @@ func (s *Server) handler(stream *http2.Stream[Conn]) {
 
 	stream.Params = n.ParseParams(formatPath)
 
-	stream.Node = n.Data
+	//stream.Node = n.Data
 
 	var nodeData = n.Data
 
@@ -171,22 +171,22 @@ func (s *Server) handler(stream *http2.Stream[Conn]) {
 	}
 }
 
-func (s *Server) SetRouter(router *router.Router[*http2.Stream[Conn]]) *Server {
+func (s *Server[T]) SetRouter(router *router.Router[*http2.Stream[Conn], T]) *Server[T] {
 	s.router = router
 	return s
 }
 
-func (s *Server) SetStaticRouter(router *StaticRouter) *Server {
+func (s *Server[T]) SetStaticRouter(router *StaticRouter) *Server[T] {
 	s.staticRouter = router
 	return s
 }
 
-func (s *Server) GetRouter() *router.Router[*http2.Stream[Conn]] {
+func (s *Server[T]) GetRouter() *router.Router[*http2.Stream[Conn], T] {
 	return s.router
 }
 
 // Start Http
-func (s *Server) Start() {
+func (s *Server[T]) Start() {
 
 	s.Ready()
 
@@ -228,11 +228,11 @@ func (s *Server) Start() {
 	}
 }
 
-func (s *Server) Shutdown() error {
+func (s *Server[T]) Shutdown() error {
 	return s.server.Shutdown(context.Background())
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Server[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// static file
 	if s.staticRouter != nil && s.staticRouter.IsAllowMethod(r.Method) {

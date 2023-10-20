@@ -22,19 +22,19 @@ import (
 
 // the same as ws and udp
 
-var tcpServer *server.Server
+var tcpServer *server.Server[any]
 
-var tcpClient *client.Client
+var tcpClient *client.Client[any]
 
 func asyncTcpServer() {
 
 	var ready = make(chan struct{})
 
-	tcpServer = kitty.NewTcpServer("127.0.0.1:8888")
+	tcpServer = kitty.NewTcpServer[any]("127.0.0.1:8888")
 
-	var tcpServerRouter = kitty.NewTcpServerRouter()
+	var tcpServerRouter = kitty.NewTcpServerRouter[any]()
 
-	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			return stream.Emit(stream.Event(), stream.Data())
 		})
@@ -54,9 +54,9 @@ func asyncTcpClient() {
 	var ready = make(chan struct{})
 	var isRun = false
 
-	tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
+	tcpClient = kitty.NewTcpClient[any]("127.0.0.1:8888")
 
-	var clientRouter = kitty.NewTcpClientRouter()
+	var clientRouter = kitty.NewTcpClientRouter[any]()
 
 	tcpClient.OnSuccess = func() {
 		if isRun {
@@ -75,7 +75,7 @@ func main() {
 	asyncTcpServer()
 	asyncTcpClient()
 
-	var asyncClient = socket.NewAsyncClient[client.Conn](tcpClient)
+	var asyncClient = socket.NewAsyncClient[client.Conn, any](tcpClient)
 
 	var stream, err = asyncClient.Emit("/hello/world", []byte("hello world"))
 

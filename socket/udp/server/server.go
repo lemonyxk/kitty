@@ -24,17 +24,17 @@ import (
 	"github.com/lemonyxk/structure/map"
 )
 
-type Server struct {
+type Server[T any] struct {
 	Name string
 	Addr string
 
-	OnClose   func(conn Conn)
-	OnMessage func(conn Conn, msg []byte)
-	OnOpen    func(conn Conn)
-	OnError   func(stream *socket.Stream[Conn], err error)
-	OnSuccess func()
-	OnException    func(err error)
-	OnUnknown func(conn Conn, message []byte, next Middle)
+	OnClose     func(conn Conn)
+	OnMessage   func(conn Conn, msg []byte)
+	OnOpen      func(conn Conn)
+	OnError     func(stream *socket.Stream[Conn], err error)
+	OnSuccess   func()
+	OnException func(err error)
+	OnUnknown   func(conn Conn, message []byte, next Middle)
 
 	HeartBeatTimeout  time.Duration
 	HeartBeatInterval time.Duration
@@ -52,7 +52,7 @@ type Server struct {
 	fd          int64
 	senders     *hash.Hash[int64, socket.Emitter[Conn]]
 	addrMap     *hash.Hash[string, int64]
-	router      *router.Router[*socket.Stream[Conn]]
+	router      *router.Router[*socket.Stream[Conn], T]
 	middle      []func(Middle) Middle
 	netListen   *net.UDPConn
 	processLock sync.RWMutex
@@ -60,15 +60,15 @@ type Server struct {
 
 type Middle router.Middle[*socket.Stream[Conn]]
 
-func (s *Server) LocalAddr() net.Addr {
+func (s *Server[T]) LocalAddr() net.Addr {
 	return s.netListen.LocalAddr()
 }
 
-func (s *Server) Use(middle ...func(Middle) Middle) {
+func (s *Server[T]) Use(middle ...func(Middle) Middle) {
 	s.middle = append(s.middle, middle...)
 }
 
-func (s *Server) Sender(fd int64) (socket.Emitter[Conn], error) {
+func (s *Server[T]) Sender(fd int64) (socket.Emitter[Conn], error) {
 	var sender = s.senders.Get(fd)
 	if sender == nil {
 		return nil, errors.ConnNotFount
@@ -76,7 +76,7 @@ func (s *Server) Sender(fd int64) (socket.Emitter[Conn], error) {
 	return sender, nil
 }
 
-func (s *Server) Ready() {
+func (s *Server[T]) Ready() {
 
 	if s.Addr == "" {
 		panic("addr can not be empty")
@@ -166,41 +166,41 @@ func (s *Server) Ready() {
 	s.addrMap = hash.New[string, int64]()
 }
 
-func (s *Server) onOpen(conn Conn) {
+func (s *Server[T]) onOpen(conn Conn) {
 	s.addConnect(conn)
 	s.OnOpen(conn)
 }
 
-func (s *Server) onClose(conn Conn) {
+func (s *Server[T]) onClose(conn Conn) {
 	s.delConnect(conn)
 	s.OnClose(conn)
 	conn.CloseChan() <- struct{}{}
 }
 
-func (s *Server) onError(stream *socket.Stream[Conn], err error) {
+func (s *Server[T]) onError(stream *socket.Stream[Conn], err error) {
 	s.OnError(stream, err)
 }
 
-func (s *Server) addConnect(conn Conn) {
+func (s *Server[T]) addConnect(conn Conn) {
 	var fd = atomic.AddInt64(&s.fd, 1)
 	s.senders.Set(fd, socket.NewSender(conn))
 	s.addrMap.Set(conn.Host(), fd)
 	conn.SetFD(fd)
 }
 
-func (s *Server) delConnect(conn Conn) {
+func (s *Server[T]) delConnect(conn Conn) {
 	s.senders.Delete(conn.FD())
 	s.addrMap.Delete(conn.Host())
 }
 
-func (s *Server) Range(fn func(conn Conn)) {
+func (s *Server[T]) Range(fn func(conn Conn)) {
 	s.senders.Range(func(k int64, v socket.Emitter[Conn]) bool {
 		fn(v.Conn())
 		return true
 	})
 }
 
-func (s *Server) ConnByAddr(addr string) (Conn, error) {
+func (s *Server[T]) ConnByAddr(addr string) (Conn, error) {
 	fd := s.addrMap.Get(addr)
 	sender := s.senders.Get(fd)
 	if sender == nil {
@@ -209,7 +209,7 @@ func (s *Server) ConnByAddr(addr string) (Conn, error) {
 	return sender.Conn(), nil
 }
 
-func (s *Server) Conn(fd int64) (Conn, error) {
+func (s *Server[T]) Conn(fd int64) (Conn, error) {
 	sender := s.senders.Get(fd)
 	if sender == nil {
 		return nil, errors.ConnNotFount
@@ -217,11 +217,11 @@ func (s *Server) Conn(fd int64) (Conn, error) {
 	return sender.Conn(), nil
 }
 
-func (s *Server) ConnLen() int {
+func (s *Server[T]) ConnLen() int {
 	return s.senders.Len()
 }
 
-func (s *Server) Start() {
+func (s *Server[T]) Start() {
 
 	s.Ready()
 
@@ -271,11 +271,11 @@ func (s *Server) Start() {
 
 }
 
-func (s *Server) Shutdown() error {
+func (s *Server[T]) Shutdown() error {
 	return s.netListen.Close()
 }
 
-func (s *Server) process(addr *net.UDPAddr, message []byte) {
+func (s *Server[T]) process(addr *net.UDPAddr, message []byte) {
 	var reader = s.Protocol.Reader()
 	var err error
 	err = reader(len(message), message, func(bytes []byte) {
@@ -286,7 +286,7 @@ func (s *Server) process(addr *net.UDPAddr, message []byte) {
 	}
 }
 
-func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
+func (s *Server[T]) readMessage(addr *net.UDPAddr, message []byte) error {
 	// unpack
 	messageType := s.Protocol.GetMessageType(message)
 
@@ -309,7 +309,8 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 		var conn = &conn{
 			fd:          0,
 			conn:        addr,
-			server:      s,
+			mtu:         s.Mtu,
+			netListen:   s.netListen,
 			lastPing:    time.Now(),
 			accept:      make(chan []byte, 128),
 			close:       make(chan struct{}, 1),
@@ -377,7 +378,7 @@ func (s *Server) readMessage(addr *net.UDPAddr, message []byte) error {
 	return nil
 }
 
-func (s *Server) decodeMessage(conn Conn, message []byte) error {
+func (s *Server[T]) decodeMessage(conn Conn, message []byte) error {
 	order, messageType, code, id, route, body := conn.UnPack(message)
 
 	if s.OnMessage != nil {
@@ -407,7 +408,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	return nil
 }
 
-func (s *Server) middleware(stream *socket.Stream[Conn]) {
+func (s *Server[T]) middleware(stream *socket.Stream[Conn]) {
 	var next Middle = s.handler
 	for i := len(s.middle) - 1; i >= 0; i-- {
 		next = s.middle[i](next)
@@ -415,7 +416,7 @@ func (s *Server) middleware(stream *socket.Stream[Conn]) {
 	next(stream)
 }
 
-func (s *Server) handler(stream *socket.Stream[Conn]) {
+func (s *Server[T]) handler(stream *socket.Stream[Conn]) {
 
 	if s.router == nil {
 		if s.OnError != nil {
@@ -434,7 +435,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	var nodeData = n.Data
 
-	stream.Node = n.Data
+	//stream.Node = n.Data
 
 	stream.Params = n.ParseParams(formatPath)
 
@@ -471,15 +472,15 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	}
 }
 
-func (s *Server) GetDailTimeout() time.Duration {
+func (s *Server[T]) GetDailTimeout() time.Duration {
 	return s.DailTimeout
 }
 
-func (s *Server) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Server {
+func (s *Server[T]) SetRouter(router *router.Router[*socket.Stream[Conn], T]) *Server[T] {
 	s.router = router
 	return s
 }
 
-func (s *Server) GetRouter() *router.Router[*socket.Stream[Conn]] {
+func (s *Server[T]) GetRouter() *router.Router[*socket.Stream[Conn], T] {
 	return s.router
 }

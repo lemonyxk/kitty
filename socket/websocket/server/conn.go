@@ -37,7 +37,6 @@ type Conn interface {
 	SetLastPing(time.Time)
 	LastPing() time.Time
 	Conn() *websocket.Conn
-	Server() *Server
 	Response() http.ResponseWriter
 	Request() *http.Request
 	SubProtocols() []string
@@ -50,7 +49,6 @@ type conn struct {
 	fd           int64
 	conn         *websocket.Conn
 	lastPing     time.Time
-	server       *Server
 	response     http.ResponseWriter
 	request      *http.Request
 	mux          sync.Mutex
@@ -76,10 +74,6 @@ func (c *conn) Name() string {
 
 func (c *conn) SetName(name string) {
 	c.name = name
-}
-
-func (c *conn) Server() *Server {
-	return c.server
 }
 
 func (c *conn) Conn() *websocket.Conn {

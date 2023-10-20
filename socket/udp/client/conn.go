@@ -33,7 +33,6 @@ type Conn interface {
 	Conn() *net.UDPConn
 	LastPong() time.Time
 	SetLastPong(t time.Time)
-	Client() *Client
 	Ping() error
 	Pong() error
 	SendClose() error
@@ -46,10 +45,10 @@ type conn struct {
 	name               string
 	conn               *net.UDPConn
 	addr               *net.UDPAddr
-	client             *Client
 	lastPong           time.Time
 	timeoutTimer       *time.Timer
 	cancelTimeoutTimer chan struct{}
+	mtu                int
 	mux                sync.RWMutex
 	protocol.UDPProtocol
 }
@@ -65,10 +64,6 @@ func (c *conn) SetName(name string) {
 func (c *conn) SetDeadline(t time.Time) error {
 	c.timeoutTimer.Reset(t.Sub(time.Now()))
 	return nil
-}
-
-func (c *conn) Client() *Client {
-	return c.client
 }
 
 func (c *conn) LocalAddr() net.Addr {
@@ -130,8 +125,8 @@ func (c *conn) Write(msg []byte) (int, error) {
 }
 
 func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
-	if len(msg) > c.client.Mtu+c.HeadLen() {
-		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.client.Mtu))
+	if len(msg) > c.mtu+c.HeadLen() {
+		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.mtu))
 	}
 	c.mux.Lock()
 	defer c.mux.Unlock()

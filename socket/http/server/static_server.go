@@ -24,7 +24,7 @@ import (
 	"github.com/lemonyxk/kitty/kitty/header"
 )
 
-func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
+func (s *Server[T]) staticHandler(w http.ResponseWriter, r *http.Request) error {
 
 	var static *Static
 
@@ -166,7 +166,7 @@ func (s *Server) staticHandler(w http.ResponseWriter, r *http.Request) error {
 	return s.staticDefaultFileMiddle(w, err, file, info, ext)
 }
 
-func (s *Server) staticDefaultFileMiddle(w http.ResponseWriter, err error, file http.File, info fs.FileInfo, ext string) error {
+func (s *Server[T]) staticDefaultFileMiddle(w http.ResponseWriter, err error, file http.File, info fs.FileInfo, ext string) error {
 	var contentType = mime.TypeByExtension(ext)
 	if contentType == "" {
 		contentType = header.TextPlain
@@ -183,7 +183,7 @@ func (s *Server) staticDefaultFileMiddle(w http.ResponseWriter, err error, file 
 	return nil
 }
 
-func (s *Server) staticDefaultDirMiddle(w http.ResponseWriter, r *http.Request, file http.File) error {
+func (s *Server[T]) staticDefaultDirMiddle(w http.ResponseWriter, r *http.Request, file http.File) error {
 	dir, err := file.Readdir(-1)
 	if err != nil {
 		return nil

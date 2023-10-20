@@ -22,43 +22,43 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type server[T Packer] interface {
+type server[T Packer, P any] interface {
 	Conn(fd int64) (T, error)
 	GetDailTimeout() time.Duration
-	GetRouter() *router.Router[*Stream[T]]
+	GetRouter() *router.Router[*Stream[T], P]
 }
 
-type Server[T Packer] struct {
-	server server[T]
+type Server[T Packer, P any] struct {
+	server server[T, P]
 	mux    *sync.Mutex
 }
 
-func NewAsyncServer[T Packer](server server[T]) *Server[T] {
-	return &Server[T]{
+func NewAsyncServer[T Packer, P any](server server[T, P]) *Server[T, P] {
+	return &Server[T, P]{
 		server: server,
 		mux:    &sync.Mutex{},
 	}
 }
 
-func (s *Server[T]) Sender(fd int64) (*ServerSender[T], error) {
+func (s *Server[T, P]) Sender(fd int64) (*ServerSender[T, P], error) {
 	var conn, err = s.server.Conn(fd)
 	if err != nil {
 		return nil, err
 	}
-	return &ServerSender[T]{
+	return &ServerSender[T, P]{
 		sender: &sender[T]{conn: conn, code: 0, messageID: 0},
 		server: s.server,
 		mux:    s.mux,
 	}, nil
 }
 
-type ServerSender[T Packer] struct {
-	server server[T]
+type ServerSender[T Packer, P any] struct {
+	server server[T, P]
 	mux    *sync.Mutex
 	*sender[T]
 }
 
-func (s *ServerSender[T]) Emit(event string, data []byte) (*Stream[T], error) {
+func (s *ServerSender[T, P]) Emit(event string, data []byte) (*Stream[T], error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -85,7 +85,7 @@ func (s *ServerSender[T]) Emit(event string, data []byte) (*Stream[T], error) {
 	}
 }
 
-func (s *ServerSender[T]) JsonEmit(event string, data any) (*Stream[T], error) {
+func (s *ServerSender[T, P]) JsonEmit(event string, data any) (*Stream[T], error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -117,7 +117,7 @@ func (s *ServerSender[T]) JsonEmit(event string, data any) (*Stream[T], error) {
 	}
 }
 
-func (s *ServerSender[T]) ProtoBufEmit(event string, data proto.Message) (*Stream[T], error) {
+func (s *ServerSender[T, P]) ProtoBufEmit(event string, data proto.Message) (*Stream[T], error) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 

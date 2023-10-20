@@ -27,12 +27,12 @@ func runHttpServer() {
 
 	var ready = make(chan struct{})
 
-	var httpServer = kitty.NewHttpServer("127.0.0.1:8999")
+	var httpServer = kitty.NewHttpServer[any]("127.0.0.1:8999")
 	// use ssl for https
 	httpServer.CertFile = "example/ssl/127.0.0.1+1.pem"
 	httpServer.KeyFile = "example/ssl/127.0.0.1+1-key.pem"
 
-	var httpServerRouter = kitty.NewHttpServerRouter()
+	var httpServerRouter = kitty.NewHttpServerRouter[any]()
 
 	var httpStaticServerRouter = kitty.NewHttpServerStaticRouter()
 

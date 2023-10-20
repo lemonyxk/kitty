@@ -40,7 +40,6 @@ type Conn interface {
 	AcceptChan() chan []byte
 	Name() string
 	SetName(name string)
-	Server() *Server
 	Conn() *net.UDPAddr
 	SetDeadline(t time.Time) error
 	socket.Packer
@@ -50,12 +49,13 @@ type conn struct {
 	name         string
 	fd           int64
 	conn         *net.UDPAddr
-	server       *Server
 	lastPing     time.Time
 	mux          sync.RWMutex
 	timeoutTimer *time.Timer
 	accept       chan []byte
 	close        chan struct{}
+	mtu          int
+	netListen    *net.UDPConn
 	protocol.UDPProtocol
 }
 
@@ -70,10 +70,6 @@ func (c *conn) Name() string {
 
 func (c *conn) SetName(name string) {
 	c.name = name
-}
-
-func (c *conn) Server() *Server {
-	return c.server
 }
 
 func (c *conn) Conn() *net.UDPAddr {
@@ -144,14 +140,14 @@ func (c *conn) Write(msg []byte) (int, error) {
 }
 
 func (c *conn) WriteToUDP(msg []byte, addr *net.UDPAddr) (int, error) {
-	if len(msg) > c.server.Mtu+c.HeadLen() {
-		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.server.Mtu))
+	if len(msg) > c.mtu+c.HeadLen() {
+		return 0, errors.Wrap(errors.MaximumExceeded, strconv.Itoa(c.mtu))
 	}
 
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	return c.server.netListen.WriteToUDP(msg, addr)
+	return c.netListen.WriteToUDP(msg, addr)
 }
 
 func (c *conn) Push(msg []byte) error {

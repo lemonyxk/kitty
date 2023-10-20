@@ -20,7 +20,7 @@ import (
 	"github.com/lemonyxk/kitty/socket"
 )
 
-type Server struct {
+type Server[T any] struct {
 	Name string
 	// Host 服务Host
 	Addr string
@@ -63,7 +63,7 @@ type Server struct {
 
 	fd        int64
 	senders   *hash.Hash[int64, socket.Emitter[Conn]]
-	router    *router.Router[*socket.Stream[Conn]]
+	router    *router.Router[*socket.Stream[Conn], T]
 	middle    []func(next Middle) Middle
 	server    *http.Server
 	netListen net.Listener
@@ -72,15 +72,15 @@ type Server struct {
 
 type Middle router.Middle[*socket.Stream[Conn]]
 
-func (s *Server) LocalAddr() net.Addr {
+func (s *Server[T]) LocalAddr() net.Addr {
 	return s.netListen.Addr()
 }
 
-func (s *Server) Use(middle ...func(next Middle) Middle) {
+func (s *Server[T]) Use(middle ...func(next Middle) Middle) {
 	s.middle = append(s.middle, middle...)
 }
 
-func (s *Server) Sender(fd int64) (socket.Emitter[Conn], error) {
+func (s *Server[T]) Sender(fd int64) (socket.Emitter[Conn], error) {
 	var sender = s.senders.Get(fd)
 	if sender == nil {
 		return nil, errors.ConnNotFount
@@ -88,24 +88,24 @@ func (s *Server) Sender(fd int64) (socket.Emitter[Conn], error) {
 	return sender, nil
 }
 
-func (s *Server) addConnect(conn Conn) {
+func (s *Server[T]) addConnect(conn Conn) {
 	var fd = atomic.AddInt64(&s.fd, 1)
 	s.senders.Set(fd, socket.NewSender(conn))
 	conn.SetFD(fd)
 }
 
-func (s *Server) delConnect(conn Conn) {
+func (s *Server[T]) delConnect(conn Conn) {
 	s.senders.Delete(conn.FD())
 }
 
-func (s *Server) Range(fn func(conn Conn)) {
+func (s *Server[T]) Range(fn func(conn Conn)) {
 	s.senders.Range(func(k int64, v socket.Emitter[Conn]) bool {
 		fn(v.Conn())
 		return true
 	})
 }
 
-func (s *Server) Conn(fd int64) (Conn, error) {
+func (s *Server[T]) Conn(fd int64) (Conn, error) {
 	sender := s.senders.Get(fd)
 	if sender == nil {
 		return nil, errors.ConnNotFount
@@ -113,26 +113,26 @@ func (s *Server) Conn(fd int64) (Conn, error) {
 	return sender.Conn(), nil
 }
 
-func (s *Server) ConnLen() int {
+func (s *Server[T]) ConnLen() int {
 	return s.senders.Len()
 }
 
-func (s *Server) onOpen(conn Conn) {
+func (s *Server[T]) onOpen(conn Conn) {
 	s.addConnect(conn)
 	s.OnOpen(conn)
 }
 
-func (s *Server) onClose(conn Conn) {
+func (s *Server[T]) onClose(conn Conn) {
 	_ = conn.Close()
 	s.delConnect(conn)
 	s.OnClose(conn)
 }
 
-func (s *Server) onError(stream *socket.Stream[Conn], err error) {
+func (s *Server[T]) onError(stream *socket.Stream[Conn], err error) {
 	s.OnError(stream, err)
 }
 
-func (s *Server) Ready() {
+func (s *Server[T]) Ready() {
 
 	if s.Addr == "" {
 		panic("addr can not be empty")
@@ -228,7 +228,7 @@ func (s *Server) Ready() {
 	s.senders = hash.New[int64, socket.Emitter[Conn]]()
 }
 
-func (s *Server) process(w http.ResponseWriter, r *http.Request) {
+func (s *Server[T]) process(w http.ResponseWriter, r *http.Request) {
 	var upgrade = websocket.Upgrader{
 		HandshakeTimeout: s.HandshakeTimeout,
 		ReadBufferSize:   s.ReadBufferSize,
@@ -260,7 +260,6 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 	var conn = &conn{
 		fd:           0,
 		conn:         netConn,
-		server:       s,
 		response:     w,
 		request:      r,
 		lastPing:     time.Now(),
@@ -306,7 +305,7 @@ func (s *Server) process(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (s *Server) decodeMessage(conn Conn, message []byte) error {
+func (s *Server[T]) decodeMessage(conn Conn, message []byte) error {
 
 	// unpack
 	order, messageType, code, id, route, body := conn.UnPack(message)
@@ -338,7 +337,7 @@ func (s *Server) decodeMessage(conn Conn, message []byte) error {
 	return nil
 }
 
-func (s *Server) middleware(stream *socket.Stream[Conn]) {
+func (s *Server[T]) middleware(stream *socket.Stream[Conn]) {
 	var next Middle = s.handler
 	for i := len(s.middle) - 1; i >= 0; i-- {
 		next = s.middle[i](next)
@@ -346,7 +345,7 @@ func (s *Server) middleware(stream *socket.Stream[Conn]) {
 	next(stream)
 }
 
-func (s *Server) handler(stream *socket.Stream[Conn]) {
+func (s *Server[T]) handler(stream *socket.Stream[Conn]) {
 
 	if s.router == nil {
 		if s.OnError != nil {
@@ -365,7 +364,7 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 
 	var nodeData = n.Data
 
-	stream.Node = n.Data
+	//stream.Node = n.Data
 
 	stream.Params = n.ParseParams(formatPath)
 
@@ -402,20 +401,20 @@ func (s *Server) handler(stream *socket.Stream[Conn]) {
 	}
 }
 
-func (s *Server) GetDailTimeout() time.Duration {
+func (s *Server[T]) GetDailTimeout() time.Duration {
 	return s.DailTimeout
 }
 
-func (s *Server) SetRouter(router *router.Router[*socket.Stream[Conn]]) *Server {
+func (s *Server[T]) SetRouter(router *router.Router[*socket.Stream[Conn], T]) *Server[T] {
 	s.router = router
 	return s
 }
 
-func (s *Server) GetRouter() *router.Router[*socket.Stream[Conn]] {
+func (s *Server[T]) GetRouter() *router.Router[*socket.Stream[Conn], T] {
 	return s.router
 }
 
-func (s *Server) Start() {
+func (s *Server[T]) Start() {
 
 	s.Ready()
 
@@ -457,11 +456,11 @@ func (s *Server) Start() {
 	}
 }
 
-func (s *Server) Shutdown() error {
+func (s *Server[T]) Shutdown() error {
 	return s.server.Shutdown(context.Background())
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Server[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Match the webSocket router
 	if r.Method != http.MethodGet {

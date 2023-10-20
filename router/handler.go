@@ -15,25 +15,25 @@ import (
 	"strings"
 )
 
-type MethodsHandler[T any] struct {
+type MethodsHandler[T any,P any] struct {
 	method []string
-	group  *Group[T]
+	group  *Group[T,P]
 }
 
-func (m *MethodsHandler[T]) Route(path ...string) *Route[T] {
-	return &Route[T]{
+func (m *MethodsHandler[T,P]) Route(path ...string) *Route[T,P] {
+	return &Route[T,P]{
 		method: m.method, path: path, group: m.group,
 		before: append([]Before[T]{}, m.group.before...),
 		after:  append([]After[T]{}, m.group.after...),
 	}
 }
 
-type Handler[T any] struct {
-	group *Group[T]
+type Handler[T any, P any] struct {
+	group *Group[T, P]
 }
 
-func (rh *Handler[T]) Group(path ...string) *Group[T] {
-	return &Group[T]{
+func (rh *Handler[T,P]) Group(path ...string) *Group[T,P] {
+	return &Group[T,P]{
 		path:   rh.group.path + strings.Join(path, ""),
 		desc:   append([]string{}, rh.group.desc...),
 		before: append([]Before[T]{}, rh.group.before...),
@@ -42,55 +42,55 @@ func (rh *Handler[T]) Group(path ...string) *Group[T] {
 	}
 }
 
-func (rh *Handler[T]) Route(path ...string) *Route[T] {
-	return &Route[T]{
+func (rh *Handler[T,P]) Route(path ...string) *Route[T,P] {
+	return &Route[T,P]{
 		method: []string{"GET"}, path: path, group: rh.group,
 		before: append([]Before[T]{}, rh.group.before...),
 		after:  append([]After[T]{}, rh.group.after...),
 	}
 }
 
-func (rh *Handler[T]) Method(method ...string) *MethodsHandler[T] {
-	return &MethodsHandler[T]{method: method, group: rh.group}
+func (rh *Handler[T,P]) Method(method ...string) *MethodsHandler[T,P] {
+	return &MethodsHandler[T,P]{method: method, group: rh.group}
 }
 
-func (rh *Handler[T]) Get(path ...string) *Route[T] {
+func (rh *Handler[T,P]) Get(path ...string) *Route[T,P] {
 	return rh.Method(http2.MethodGet).Route(path...)
 }
 
-func (rh *Handler[T]) Post(path ...string) *Route[T] {
+func (rh *Handler[T,P]) Post(path ...string) *Route[T,P] {
 	return rh.Method(http2.MethodPost).Route(path...)
 }
 
-func (rh *Handler[T]) Delete(path ...string) *Route[T] {
+func (rh *Handler[T,P]) Delete(path ...string) *Route[T,P] {
 	return rh.Method(http2.MethodDelete).Route(path...)
 }
 
-func (rh *Handler[T]) Put(path ...string) *Route[T] {
+func (rh *Handler[T,P]) Put(path ...string) *Route[T,P] {
 	return rh.Method(http2.MethodPut).Route(path...)
 }
 
-func (rh *Handler[T]) Patch(path ...string) *Route[T] {
+func (rh *Handler[T,P]) Patch(path ...string) *Route[T,P] {
 	return rh.Method(http2.MethodPatch).Route(path...)
 }
 
-func (rh *Handler[T]) Head(path ...string) *Route[T] {
+func (rh *Handler[T,P]) Head(path ...string) *Route[T,P] {
 	return rh.Method(http2.MethodHead).Route(path...)
 }
 
-func (rh *Handler[T]) Options(path ...string) *Route[T] {
+func (rh *Handler[T,P]) Options(path ...string) *Route[T,P] {
 	return rh.Method(http2.MethodOptions).Route(path...)
 }
 
-func (rh *Handler[T]) Connect(path ...string) *Route[T] {
+func (rh *Handler[T,P]) Connect(path ...string) *Route[T,P] {
 	return rh.Method(http2.MethodConnect).Route(path...)
 }
 
-func (rh *Handler[T]) Trace(path ...string) *Route[T] {
+func (rh *Handler[T,P]) Trace(path ...string) *Route[T,P] {
 	return rh.Method(http2.MethodTrace).Route(path...)
 }
 
-func (rh *Handler[T]) Remove(path ...string) {
+func (rh *Handler[T,P]) Remove(path ...string) {
 	if rh.group.router.trie == nil {
 		return
 	}

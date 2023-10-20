@@ -41,12 +41,12 @@ func runHttpServer() {
 
 	var ready = make(chan struct{})
 
-	var httpServer = kitty.NewHttpServer("127.0.0.1:8666")
+	var httpServer = kitty.NewHttpServer[any]("127.0.0.1:8666")
 	// use ssl for https
 	// httpServer.CertFile = "example/ssl/localhost+2.pem"
 	// httpServer.KeyFile = "example/ssl/localhost+2-key.pem"
 
-	var httpServerRouter = kitty.NewHttpServerRouter()
+	var httpServerRouter = kitty.NewHttpServerRouter[any]()
 
 	var httpStaticServerRouter = kitty.NewHttpServerStaticRouter()
 
@@ -159,14 +159,14 @@ func runHttpServer() {
 	})
 
 	// another way to use group router
-	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream[server.Conn]]) {
+	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream[server.Conn], any]) {
 		handler.Get("/hello").Handler(func(t *http.Stream[server.Conn]) error {
 			return t.Sender.Any(os.Getpid())
 		})
 	})
 
-	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream[server.Conn]]) {
-		handler.Group("/hello").Handler(func(handler *router.Handler[*http.Stream[server.Conn]]) {
+	httpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*http.Stream[server.Conn], any]) {
+		handler.Group("/hello").Handler(func(handler *router.Handler[*http.Stream[server.Conn], any]) {
 			handler.Get("/hello").Handler(func(t *http.Stream[server.Conn]) error {
 				return t.Sender.Any(os.Getpid())
 			})

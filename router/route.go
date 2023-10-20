@@ -19,26 +19,27 @@ import (
 	"github.com/lemonyxk/structure/trie"
 )
 
-type Route[T any] struct {
+type Route[T any, P any] struct {
 	path   []string
 	method []string
 	before []Before[T]
 	after  []After[T]
-	group  *Group[T]
+	group  *Group[T, P]
 	desc   []string
+	data   P
 }
 
-func (r *Route[T]) Desc(desc ...string) *Route[T] {
+func (r *Route[T, P]) Desc(desc ...string) *Route[T, P] {
 	r.desc = append(r.desc, desc...)
 	return r
 }
 
-func (r *Route[T]) Before(before ...Before[T]) *Route[T] {
+func (r *Route[T, P]) Before(before ...Before[T]) *Route[T, P] {
 	r.before = append(r.before, before...)
 	return r
 }
 
-func (r *Route[T]) RemoveBefore(before ...Before[T]) *Route[T] {
+func (r *Route[T, P]) RemoveBefore(before ...Before[T]) *Route[T, P] {
 	for i := 0; i < len(before); i++ {
 		for j := 0; j < len(r.before); j++ {
 			if *(*unsafe.Pointer)(unsafe.Pointer(&r.before[j])) ==
@@ -51,17 +52,17 @@ func (r *Route[T]) RemoveBefore(before ...Before[T]) *Route[T] {
 	return r
 }
 
-func (r *Route[T]) CancelBefore() *Route[T] {
+func (r *Route[T, P]) CancelBefore() *Route[T, P] {
 	r.before = nil
 	return r
 }
 
-func (r *Route[T]) After(after ...After[T]) *Route[T] {
+func (r *Route[T, P]) After(after ...After[T]) *Route[T, P] {
 	r.after = append(r.after, after...)
 	return r
 }
 
-func (r *Route[T]) RemoveAfter(after ...After[T]) *Route[T] {
+func (r *Route[T, P]) RemoveAfter(after ...After[T]) *Route[T, P] {
 	for i := 0; i < len(after); i++ {
 		for j := 0; j < len(r.after); j++ {
 			if *(*unsafe.Pointer)(unsafe.Pointer(&r.after[j])) ==
@@ -74,12 +75,17 @@ func (r *Route[T]) RemoveAfter(after ...After[T]) *Route[T] {
 	return r
 }
 
-func (r *Route[T]) CancelAfter() *Route[T] {
+func (r *Route[T, P]) CancelAfter() *Route[T, P] {
 	r.after = nil
 	return r
 }
 
-func (r *Route[T]) Handler(fn Func[T]) {
+func (r *Route[T, P]) Data(data P) *Route[T, P] {
+	r.data = data
+	return r
+}
+
+func (r *Route[T, P]) Handler(fn Func[T]) {
 
 	if len(r.path) == 0 {
 		panic("route path can not empty")
@@ -97,7 +103,7 @@ func (r *Route[T]) Handler(fn Func[T]) {
 	}
 
 	if g == nil {
-		g = new(Group[T])
+		g = new(Group[T, P])
 	}
 
 	for i := 0; i < len(r.path); i++ {
@@ -107,10 +113,10 @@ func (r *Route[T]) Handler(fn Func[T]) {
 		var path = router.formatPath(originPath)
 
 		if router.trie == nil {
-			router.trie = trie.New[*Node[T]]()
+			router.trie = trie.New[*Node[T, P]]()
 		}
 
-		var cba = &Node[T]{}
+		var cba = &Node[T, P]{}
 
 		cba.Info = ci.File + ":" + strconv.Itoa(ci.Line)
 

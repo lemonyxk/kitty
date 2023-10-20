@@ -10,14 +10,6 @@
 
 package server
 
-type Conn interface {
-	Server() *Server
-}
+type Conn interface {}
 
-type conn struct {
-	server *Server
-}
-
-func (c *conn) Server() *Server {
-	return c.server
-}
+type conn struct {}

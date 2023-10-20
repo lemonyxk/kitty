@@ -30,7 +30,6 @@ type Conn interface {
 	Read() (int, []byte, error)
 	LastPong() time.Time
 	SetLastPong(t time.Time)
-	Client() *Client
 	Ping() error
 	Pong() error
 	Conn() *websocket.Conn
@@ -42,7 +41,6 @@ type Conn interface {
 type conn struct {
 	name         string
 	conn         *websocket.Conn
-	client       *Client
 	lastPong     time.Time
 	mux          sync.RWMutex
 	subProtocols []string
@@ -63,10 +61,6 @@ func (c *conn) SetName(name string) {
 
 func (c *conn) Conn() *websocket.Conn {
 	return c.conn
-}
-
-func (c *conn) Client() *Client {
-	return c.client
 }
 
 func (c *conn) SubProtocols() []string {

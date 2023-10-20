@@ -21,24 +21,24 @@ import (
 	"github.com/lemonyxk/kitty/socket/tcp/server"
 )
 
-var tcpServer *server.Server
+var tcpServer *server.Server[any]
 
-var tcpClient *client.Client
+var tcpClient *client.Client[any]
 
 func runTcpServer() {
 
 	var ready = make(chan struct{})
 
-	tcpServer = kitty.NewTcpServer("127.0.0.1:8888")
+	tcpServer = kitty.NewTcpServer[any]("127.0.0.1:8888")
 
 	tcpServer.HeartBeatTimeout = time.Second * 5
 
 	// tcpServer.CertFile = "example/ssl/localhost+2.pem"
 	// tcpServer.KeyFile = "example/ssl/localhost+2-key.pem"
 
-	var tcpServerRouter = kitty.NewTcpServerRouter()
+	var tcpServerRouter = kitty.NewTcpServerRouter[any]()
 
-	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data()))
 			var sender, _ = tcpServer.Sender(100)
@@ -64,7 +64,7 @@ func runTcpClient() {
 	var ready = make(chan struct{})
 	var isRun = false
 
-	tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
+	tcpClient = kitty.NewTcpClient[any]("127.0.0.1:8888")
 
 	tcpClient.HeartBeatTimeout = time.Second * 3
 	tcpClient.HeartBeatInterval = time.Second * 1
@@ -72,9 +72,9 @@ func runTcpClient() {
 	// tcpClient.CertFile = "example/ssl/localhost+2.pem"
 	// tcpClient.KeyFile = "example/ssl/localhost+2-key.pem"
 
-	var clientRouter = kitty.NewTcpClientRouter()
+	var clientRouter = kitty.NewTcpClientRouter[any]()
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
 			return stream.Emit(stream.Event(), stream.Data())

@@ -3,7 +3,6 @@ package http
 import (
 	"bytes"
 	"fmt"
-	"github.com/lemonyxk/kitty/router"
 	"net"
 	"net/http"
 	"strconv"
@@ -18,7 +17,7 @@ import (
 type Stream[T Packer] struct {
 	sender[T]
 
-	Node *router.Node[*Stream[T]]
+	//Node *router.Node[*Stream[T]]
 
 	Response http.ResponseWriter
 	Request  *http.Request

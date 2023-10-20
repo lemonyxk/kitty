@@ -22,26 +22,26 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type asyncClient[T Packer] interface {
+type asyncClient[T Packer,P any] interface {
 	Conn() T
-	GetRouter() *router.Router[*Stream[T]]
+	GetRouter() *router.Router[*Stream[T], P]
 	GetDailTimeout() time.Duration
 }
 
-type AsyncClient[T Packer] struct {
-	client asyncClient[T]
+type AsyncClient[T Packer,P any] struct {
+	client asyncClient[T,P]
 	mux    sync.Mutex
 	*sender[T]
 }
 
-func NewAsyncClient[T Packer](client asyncClient[T]) *AsyncClient[T] {
-	return &AsyncClient[T]{
+func NewAsyncClient[T Packer,P any](client asyncClient[T,P]) *AsyncClient[T,P] {
+	return &AsyncClient[T,P]{
 		sender: &sender[T]{conn: client.Conn(), code: 0, messageID: 0},
 		client: client,
 	}
 }
 
-func (c *AsyncClient[T]) Emit(event string, data []byte) (*Stream[T], error) {
+func (c *AsyncClient[T,P]) Emit(event string, data []byte) (*Stream[T], error) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
@@ -68,7 +68,7 @@ func (c *AsyncClient[T]) Emit(event string, data []byte) (*Stream[T], error) {
 	}
 }
 
-func (c *AsyncClient[T]) JsonEmit(event string, data any) (*Stream[T], error) {
+func (c *AsyncClient[T,P]) JsonEmit(event string, data any) (*Stream[T], error) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
@@ -100,7 +100,7 @@ func (c *AsyncClient[T]) JsonEmit(event string, data any) (*Stream[T], error) {
 	}
 }
 
-func (c *AsyncClient[T]) ProtoBufEmit(event string, data proto.Message) (*Stream[T], error) {
+func (c *AsyncClient[T,P]) ProtoBufEmit(event string, data proto.Message) (*Stream[T], error) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 

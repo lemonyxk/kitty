@@ -30,7 +30,6 @@ type Conn interface {
 	Read([]byte) (int, error)
 	LastPong() time.Time
 	SetLastPong(time.Time)
-	Client() *Client
 	Ping() error
 	Pong() error
 	SetDeadline(t time.Time) error
@@ -40,7 +39,6 @@ type Conn interface {
 type conn struct {
 	name     string
 	conn     net.Conn
-	client   *Client
 	lastPong time.Time
 	mux      sync.RWMutex
 	protocol.Protocol
@@ -60,10 +58,6 @@ func (c *conn) SetName(name string) {
 
 func (c *conn) Conn() net.Conn {
 	return c.conn
-}
-
-func (c *conn) Client() *Client {
-	return c.client
 }
 
 func (c *conn) Ping() error {

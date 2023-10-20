@@ -16,23 +16,23 @@ import (
 	"github.com/lemonyxk/structure/trie"
 )
 
-type Router[T any] struct {
+type Router[T any, P any] struct {
 	StrictMode   bool
-	trie         *trie.Node[*Node[T]]
+	trie         *trie.Node[*Node[T, P]]
 	globalAfter  []After[T]
 	globalBefore []Before[T]
 }
 
-func (r *Router[T]) SetGlobalBefore(before ...Before[T]) {
+func (r *Router[T, P]) SetGlobalBefore(before ...Before[T]) {
 	r.globalBefore = append(r.globalBefore, before...)
 }
 
-func (r *Router[T]) SetGlobalAfter(after ...After[T]) {
+func (r *Router[T, P]) SetGlobalAfter(after ...After[T]) {
 	r.globalAfter = append(r.globalAfter, after...)
 }
 
-func (r *Router[T]) GetAllRouters() []*Node[T] {
-	var res []*Node[T]
+func (r *Router[T, P]) GetAllRouters() []*Node[T, P] {
+	var res []*Node[T, P]
 	var tires = r.trie.GetAllValue()
 	for i := 0; i < len(tires); i++ {
 		res = append(res, tires[i].Data)
@@ -40,14 +40,14 @@ func (r *Router[T]) GetAllRouters() []*Node[T] {
 	return res
 }
 
-func (r *Router[T]) Group(path ...string) *Group[T] {
-	var g = new(Group[T])
+func (r *Router[T, P]) Group(path ...string) *Group[T, P] {
+	var g = new(Group[T, P])
 	g.path = strings.Join(path, "")
 	g.router = r
 	return g
 }
 
-func (r *Router[T]) Remove(path ...string) {
+func (r *Router[T, P]) Remove(path ...string) {
 	if r.trie == nil {
 		return
 	}
@@ -58,28 +58,28 @@ func (r *Router[T]) Remove(path ...string) {
 	r.trie.Delete(dp)
 }
 
-func (r *Router[T]) Create() *Handler[T] {
-	return &Handler[T]{group: r.Group("")}
+func (r *Router[T, P]) Create() *Handler[T, P] {
+	return &Handler[T, P]{group: r.Group("")}
 }
 
-func (r *Router[T]) Route(path ...string) *Route[T] {
-	return (&Handler[T]{group: r.Group("")}).Route(path...)
+func (r *Router[T, P]) Route(path ...string) *Route[T, P] {
+	return (&Handler[T, P]{group: r.Group("")}).Route(path...)
 }
 
-func (r *Router[T]) Method(method ...string) *MethodsRouter[T] {
-	return &MethodsRouter[T]{router: r, method: method}
+func (r *Router[T, P]) Method(method ...string) *MethodsRouter[T, P] {
+	return &MethodsRouter[T, P]{router: r, method: method}
 }
 
-type MethodsRouter[T any] struct {
-	router *Router[T]
+type MethodsRouter[T any, P any] struct {
+	router *Router[T, P]
 	method []string
 }
 
-func (m *MethodsRouter[T]) Route(path ...string) *Route[T] {
-	return (&Handler[T]{group: m.router.Group("")}).Method(m.method...).Route(path...)
+func (m *MethodsRouter[T, P]) Route(path ...string) *Route[T, P] {
+	return (&Handler[T, P]{group: m.router.Group("")}).Method(m.method...).Route(path...)
 }
 
-func (r *Router[T]) GetRoute(path string) (*trie.Node[*Node[T]], string) {
+func (r *Router[T, P]) GetRoute(path string) (*trie.Node[*Node[T, P]], string) {
 	if r.trie == nil {
 		return nil, ""
 	}
@@ -94,7 +94,7 @@ func (r *Router[T]) GetRoute(path string) (*trie.Node[*Node[T]], string) {
 	return t, path
 }
 
-func (r *Router[T]) formatPath(path string) string {
+func (r *Router[T, P]) formatPath(path string) string {
 	if !r.StrictMode {
 		path = strings.ToLower(path)
 	}

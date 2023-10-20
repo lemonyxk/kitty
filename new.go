@@ -26,12 +26,12 @@ import (
 
 // HTTP
 
-func NewHttpServer(addr string) *httpServer.Server {
-	return &httpServer.Server{Addr: addr}
+func NewHttpServer[T any](addr string) *httpServer.Server[T] {
+	return &httpServer.Server[T]{Addr: addr}
 }
 
-func NewHttpServerRouter() *router.Router[*http.Stream[httpServer.Conn]] {
-	return &router.Router[*http.Stream[httpServer.Conn]]{}
+func NewHttpServerRouter[T any]() *router.Router[*http.Stream[httpServer.Conn], T] {
+	return &router.Router[*http.Stream[httpServer.Conn], T]{}
 }
 
 func NewHttpServerStaticRouter() *httpServer.StaticRouter {
@@ -48,54 +48,54 @@ func NewHttpClient() *httpClient.Client {
 
 // WEB SOCKET
 
-func NewWebSocketClientRouter() *router.Router[*socket.Stream[webSocketClient.Conn]] {
-	return &router.Router[*socket.Stream[webSocketClient.Conn]]{}
+func NewWebSocketClientRouter[T any]() *router.Router[*socket.Stream[webSocketClient.Conn], T] {
+	return &router.Router[*socket.Stream[webSocketClient.Conn], T]{}
 }
 
-func NewWebSocketClient(addr string) *webSocketClient.Client {
-	return &webSocketClient.Client{Addr: addr}
+func NewWebSocketClient[T any](addr string) *webSocketClient.Client[T] {
+	return &webSocketClient.Client[T]{Addr: addr}
 }
 
-func NewWebSocketServer(addr string) *webSocketServer.Server {
-	return &webSocketServer.Server{Addr: addr}
+func NewWebSocketServer[T any](addr string) *webSocketServer.Server[T] {
+	return &webSocketServer.Server[T]{Addr: addr}
 }
 
-func NewWebSocketServerRouter() *router.Router[*socket.Stream[webSocketServer.Conn]] {
-	return &router.Router[*socket.Stream[webSocketServer.Conn]]{}
+func NewWebSocketServerRouter[T any]() *router.Router[*socket.Stream[webSocketServer.Conn], T] {
+	return &router.Router[*socket.Stream[webSocketServer.Conn], T]{}
 }
 
 // UDP
 
-func NewUdpServer(addr string) *udpServer.Server {
-	return &udpServer.Server{Addr: addr}
+func NewUdpServer[T any](addr string) *udpServer.Server[T] {
+	return &udpServer.Server[T]{Addr: addr}
 }
 
-func NewUdpServerRouter() *router.Router[*socket.Stream[udpServer.Conn]] {
-	return &router.Router[*socket.Stream[udpServer.Conn]]{}
+func NewUdpServerRouter[T any]() *router.Router[*socket.Stream[udpServer.Conn], T] {
+	return &router.Router[*socket.Stream[udpServer.Conn], T]{}
 }
 
-func NewUdpClient(addr string) *udpClient.Client {
-	return &udpClient.Client{Addr: addr}
+func NewUdpClient[T any](addr string) *udpClient.Client[T] {
+	return &udpClient.Client[T]{Addr: addr}
 }
 
-func NewUdpClientRouter() *router.Router[*socket.Stream[udpClient.Conn]] {
-	return &router.Router[*socket.Stream[udpClient.Conn]]{}
+func NewUdpClientRouter[T any]() *router.Router[*socket.Stream[udpClient.Conn], T] {
+	return &router.Router[*socket.Stream[udpClient.Conn], T]{}
 }
 
 // TCP
 
-func NewTcpServer(addr string) *tcpServer.Server {
-	return &tcpServer.Server{Addr: addr}
+func NewTcpServer[T any](addr string) *tcpServer.Server[T] {
+	return &tcpServer.Server[T]{Addr: addr}
 }
 
-func NewTcpServerRouter() *router.Router[*socket.Stream[tcpServer.Conn]] {
-	return &router.Router[*socket.Stream[tcpServer.Conn]]{}
+func NewTcpServerRouter[T any]() *router.Router[*socket.Stream[tcpServer.Conn], T] {
+	return &router.Router[*socket.Stream[tcpServer.Conn], T]{}
 }
 
-func NewTcpClient(addr string) *tcpClient.Client {
-	return &tcpClient.Client{Addr: addr}
+func NewTcpClient[T any](addr string) *tcpClient.Client[T] {
+	return &tcpClient.Client[T]{Addr: addr}
 }
 
-func NewTcpClientRouter() *router.Router[*socket.Stream[tcpClient.Conn]] {
-	return &router.Router[*socket.Stream[tcpClient.Conn]]{}
+func NewTcpClientRouter[T any]() *router.Router[*socket.Stream[tcpClient.Conn], T] {
+	return &router.Router[*socket.Stream[tcpClient.Conn], T]{}
 }

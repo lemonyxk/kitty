@@ -37,13 +37,13 @@ func shutdown() {
 	stop <- true
 }
 
-var udpServer *server.Server
+var udpServer *server.Server[any]
 
-var udpServerRouter *router.Router[*socket.Stream[server.Conn]]
+var udpServerRouter *router.Router[*socket.Stream[server.Conn], any]
 
-var udpClient *client.Client
+var udpClient *client.Client[any]
 
-var clientRouter *router.Router[*socket.Stream[client.Conn]]
+var clientRouter *router.Router[*socket.Stream[client.Conn], any]
 
 var addr = "127.0.0.1:8668"
 
@@ -54,7 +54,7 @@ func initServer() {
 	var ready = make(chan bool)
 
 	// create server
-	udpServer = kitty.NewUdpServer(addr)
+	udpServer = kitty.NewUdpServer[any](addr)
 	udpServer.HeartBeatTimeout = 5 * time.Second
 	udpServer.ReadBufferSize = 1024 * 1024
 
@@ -72,10 +72,10 @@ func initServer() {
 	})
 
 	// create router
-	udpServerRouter = &router.Router[*socket.Stream[server.Conn]]{StrictMode: true}
+	udpServerRouter = &router.Router[*socket.Stream[server.Conn], any]{StrictMode: true}
 
 	// set group route
-	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	udpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			return stream.JsonEmit(stream.Event(), "i am server")
 		})
@@ -117,7 +117,7 @@ func initClient() {
 	var isRun = false
 
 	// create client
-	udpClient = kitty.NewUdpClient(addr)
+	udpClient = kitty.NewUdpClient[any](addr)
 	udpClient.ReconnectInterval = time.Second
 	udpClient.HeartBeatInterval = time.Second
 	udpClient.ReadBufferSize = 1024 * 1024
@@ -129,7 +129,7 @@ func initClient() {
 	udpClient.OnMessage = func(client client.Conn, msg []byte) {}
 
 	// create router
-	clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
+	clientRouter = &router.Router[*socket.Stream[client.Conn], any]{StrictMode: true}
 
 	clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
 		return stream.JsonEmit(stream.Event(), string(stream.Data()))
@@ -179,7 +179,7 @@ func Test_UDP_Client(t *testing.T) {
 	var messageIDTotal uint64 = 0
 	var countTotal uint64 = 0
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			if atomic.AddUint64(&countTotal, 1) == uint64(count) {
 				mux.Done()
@@ -219,7 +219,7 @@ func Test_UDP_Client(t *testing.T) {
 
 func Test_UDP_Client_Async(t *testing.T) {
 
-	var asyncClient = socket.NewAsyncClient[client.Conn](udpClient)
+	var asyncClient = socket.NewAsyncClient[client.Conn, any](udpClient)
 
 	var wait = sync.WaitGroup{}
 
@@ -336,7 +336,7 @@ func Test_UDP_ProtobufEmit(t *testing.T) {
 
 func Test_UDP_Server_Async(t *testing.T) {
 
-	var asyncServer = socket.NewAsyncServer[server.Conn](udpServer)
+	var asyncServer = socket.NewAsyncServer[server.Conn, any](udpServer)
 
 	var wait = sync.WaitGroup{}
 
@@ -423,7 +423,7 @@ func Test_UDP_Multi_Client(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		go func() {
 			// create client
-			var uClient = kitty.NewUdpClient(addr)
+			var uClient = kitty.NewUdpClient[any](addr)
 			uClient.ReconnectInterval = time.Second
 			uClient.HeartBeatInterval = time.Millisecond * 1000 / 60
 
@@ -434,7 +434,7 @@ func Test_UDP_Multi_Client(t *testing.T) {
 			uClient.OnMessage = func(client client.Conn, msg []byte) {}
 
 			// create router
-			var clientRouter = &router.Router[*socket.Stream[client.Conn]]{StrictMode: true}
+			var clientRouter = &router.Router[*socket.Stream[client.Conn], any]{StrictMode: true}
 
 			clientRouter.Route("/asyncServer").Handler(func(stream *socket.Stream[client.Conn]) error {
 				return stream.JsonEmit(stream.Event(), string(stream.Data()))

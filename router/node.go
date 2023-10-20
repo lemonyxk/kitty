@@ -10,7 +10,8 @@
 
 package router
 
-type Node[T any] struct {
+type Node[T any, P any] struct {
+	Data     P
 	Info     string
 	Desc     []string
 	Route    []byte

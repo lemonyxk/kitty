@@ -37,21 +37,21 @@ import (
 // 		IsUnknown(messageType byte) bool
 // 	}
 
-var tcpServer *server.Server
+var tcpServer *server.Server[any]
 
-var tcpClient *client.Client
+var tcpClient *client.Client[any]
 
 func asyncTcpServer() {
 
 	var ready = make(chan struct{})
 
-	tcpServer = kitty.NewTcpServer("127.0.0.1:8888")
+	tcpServer = kitty.NewTcpServer[any]("127.0.0.1:8888")
 
 	tcpServer.Protocol = &CustomTcp{}
 
-	var tcpServerRouter = kitty.NewTcpServerRouter()
+	var tcpServerRouter = kitty.NewTcpServerRouter[any]()
 
-	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn]]) {
+	tcpServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			log.Println(string(stream.Data()))
 			return stream.Emit(stream.Event(), stream.Data())
@@ -72,17 +72,17 @@ func asyncTcpClient() {
 	var ready = make(chan struct{})
 	var isRun = false
 
-	tcpClient = kitty.NewTcpClient("127.0.0.1:8888")
+	tcpClient = kitty.NewTcpClient[any]("127.0.0.1:8888")
 
 	tcpClient.Protocol = &CustomTcp{}
 
-	var clientRouter = kitty.NewTcpClientRouter()
+	var clientRouter = kitty.NewTcpClientRouter[any]()
 
 	tcpClient.OnError = func(stream *socket.Stream[client.Conn], err error) {
 		log.Println(err)
 	}
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn]]) {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			time.Sleep(time.Second)
 			return stream.Emit(stream.Event(), stream.Data())

@@ -32,7 +32,6 @@ type Conn interface {
 	SetLastPing(t time.Time)
 	Name() string
 	SetName(name string)
-	Server() *Server
 	Conn() net.Conn
 	SetDeadline(t time.Time) error
 	socket.Packer
@@ -42,7 +41,6 @@ type conn struct {
 	name     string
 	fd       int64
 	conn     net.Conn
-	server   *Server
 	lastPing time.Time
 	mux      sync.RWMutex
 	protocol.Protocol
@@ -58,10 +56,6 @@ func (c *conn) Name() string {
 
 func (c *conn) SetName(name string) {
 	c.name = name
-}
-
-func (c *conn) Server() *Server {
-	return c.server
 }
 
 func (c *conn) Conn() net.Conn {

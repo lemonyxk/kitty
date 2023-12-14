@@ -17,7 +17,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"net/url"
+	url2 "net/url"
 	"strconv"
 	"strings"
 
@@ -45,6 +45,8 @@ import (
 //}
 
 func doRaw(method string, url string, info *Request, body io.Reader) (*http.Request, context.CancelFunc, error) {
+
+	url = fixScheme(url)
 
 	if body == nil {
 		body = bytes.NewReader([]byte{})
@@ -95,6 +97,8 @@ func doRaw(method string, url string, info *Request, body io.Reader) (*http.Requ
 
 func doProtobuf(method string, url string, info *Request, body ...proto.Message) (*http.Request, context.CancelFunc, error) {
 
+	url = fixScheme(url)
+
 	var protobufBody []byte
 
 	for i := 0; i < len(body); i++ {
@@ -120,6 +124,7 @@ type file interface {
 }
 
 func doFormData(method string, url string, info *Request, body ...kitty.M) (*http.Request, context.CancelFunc, error) {
+	url = fixScheme(url)
 	out, in := io.Pipe()
 	part := multipart.NewWriter(in)
 	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
@@ -209,6 +214,8 @@ func doFormData(method string, url string, info *Request, body ...kitty.M) (*htt
 
 func doJson(method string, url string, info *Request, body ...any) (*http.Request, context.CancelFunc, error) {
 
+	url = fixScheme(url)
+
 	var jsonBody []byte
 
 	for i := 0; i < len(body); i++ {
@@ -229,6 +236,7 @@ func doJson(method string, url string, info *Request, body ...any) (*http.Reques
 }
 
 func doFormUrlencoded(method string, url string, info *Request, body ...kitty.M) (*http.Request, context.CancelFunc, error) {
+	url = fixScheme(url)
 	var buff bytes.Buffer
 	for i := 0; i < len(body); i++ {
 		for key, value := range body[i] {
@@ -259,13 +267,14 @@ func doFormUrlencoded(method string, url string, info *Request, body ...kitty.M)
 	return request, cancel, err
 }
 
-func doUrl(method string, u string, info *Request, body ...kitty.M) (*http.Request, context.CancelFunc, error) {
-	Url, err := url.Parse(u)
+func doUrl(method string, url string, info *Request, body ...kitty.M) (*http.Request, context.CancelFunc, error) {
+	url = fixScheme(url)
+	parseUrl, err := url2.Parse(url)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var params = url.Values{}
+	var params = url2.Values{}
 
 	for i := 0; i < len(body); i++ {
 		for key, value := range body[i] {
@@ -285,15 +294,15 @@ func doUrl(method string, u string, info *Request, body ...kitty.M) (*http.Reque
 	var pStr = params.Encode()
 
 	if pStr != "" {
-		if Url.RawQuery != "" {
-			Url.RawQuery = Url.RawQuery + "&" + pStr
+		if parseUrl.RawQuery != "" {
+			parseUrl.RawQuery = parseUrl.RawQuery + "&" + pStr
 		} else {
-			Url.RawQuery = pStr
+			parseUrl.RawQuery = pStr
 		}
 	}
 
 	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
-	request, err := http.NewRequestWithContext(ctx, method, Url.String(), nil)
+	request, err := http.NewRequestWithContext(ctx, method, parseUrl.String(), nil)
 	if err != nil {
 		cancel()
 		return nil, nil, err
@@ -308,6 +317,13 @@ func getContentType(info *Request) string {
 		}
 	}
 	return ""
+}
+
+func fixScheme(url string) string {
+	if !strings.Contains(url, "://") {
+		return "http" + "://" + url
+	}
+	return url
 }
 
 func send(info *Request, req *http.Request, cancel context.CancelFunc) *Response {

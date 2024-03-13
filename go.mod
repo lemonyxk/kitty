@@ -9,7 +9,7 @@ require (
 	github.com/lemonyxk/structure v0.0.0-20230801021443-5292061aabb4
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/stretchr/testify v1.8.2
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (

@@ -235,7 +235,7 @@ func (s *Server[T]) Shutdown() error {
 
 func (s *Server[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method != http.MethodGet && r.Header.Get("Upgrade") == "websocket" {
+	if r.Method == http.MethodGet && r.Header.Get("Upgrade") == "websocket" {
 		if s.OnRaw != nil {
 			s.OnRaw(w, r)
 			return

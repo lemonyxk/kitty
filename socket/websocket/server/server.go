@@ -237,9 +237,9 @@ func (s *Server[T]) process(w http.ResponseWriter, r *http.Request) {
 		Subprotocols:     s.SubProtocols,
 	}
 
-	var swp = strings.Split(r.Header.Get(header.SecWebsocketProtocol), ",")
+	var swp = strings.Split(r.Header.Get(header.SecWebsocketProtocol), ", ")
 	for i := 0; i < len(swp); i++ {
-		upgrade.Subprotocols = append(upgrade.Subprotocols, strings.TrimSpace(swp[i]))
+		upgrade.Subprotocols = append(upgrade.Subprotocols, swp[i])
 	}
 
 	netConn, err := upgrade.Upgrade(w, r, nil)

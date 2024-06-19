@@ -29,6 +29,7 @@ type Server[T any] struct {
 	OnMessage func(stream *http2.Stream[Conn])
 	OnClose   func(stream *http2.Stream[Conn])
 	OnError   func(stream *http2.Stream[Conn], err error)
+	OnRaw     func(w http.ResponseWriter, r *http.Request)
 	OnSuccess func()
 
 	ReadTimeout       time.Duration
@@ -233,6 +234,16 @@ func (s *Server[T]) Shutdown() error {
 }
 
 func (s *Server[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodGet && r.Header.Get("Upgrade") == "websocket" {
+		if s.OnRaw != nil {
+			s.OnRaw(w, r)
+			return
+		}
+
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	// static file
 	if s.staticRouter != nil && s.staticRouter.IsAllowMethod(r.Method) {

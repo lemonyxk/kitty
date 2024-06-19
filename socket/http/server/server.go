@@ -240,9 +240,6 @@ func (s *Server[T]) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			s.OnRaw(w, r)
 			return
 		}
-
-		w.WriteHeader(http.StatusInternalServerError)
-		return
 	}
 
 	// static file

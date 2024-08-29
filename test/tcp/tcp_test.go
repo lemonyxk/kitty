@@ -12,6 +12,7 @@ package tcp
 
 import (
 	"fmt"
+	"github.com/goccy/go-json"
 	"math/rand"
 	"strings"
 	"sync"
@@ -19,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty"
 	hello "github.com/lemonyxk/kitty/example/protobuf"
 	kitty2 "github.com/lemonyxk/kitty/kitty"
@@ -88,7 +88,7 @@ func initServer() {
 	var tcpRouter = tcpServerRouter.Create()
 	tcpRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res kitty2.M
-		_ = jsoniter.Unmarshal(stream.Data(), &res)
+		_ = json.Unmarshal(stream.Data(), &res)
 		return stream.JsonEmit(stream.Event(), res)
 	})
 
@@ -257,7 +257,7 @@ func Test_TCP_JsonEmit(t *testing.T) {
 
 	tcpRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[client.Conn]) error {
 		var res kitty2.M
-		_ = jsoniter.Unmarshal(stream.Data(), &res)
+		_ = json.Unmarshal(stream.Data(), &res)
 		assert.True(t, res["name"] == "kitty", res)
 		assert.True(t, res["age"] == "18", res)
 		mux.Done()

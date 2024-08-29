@@ -11,7 +11,7 @@
 package socket
 
 import (
-	jsoniter "github.com/json-iterator/go"
+	"github.com/goccy/go-json"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/socket/protocol"
@@ -74,7 +74,7 @@ func (s *Stream[T]) Emit(event string, data []byte) error {
 }
 
 func (s *Stream[T]) JsonEmit(event string, data any) error {
-	msg, err := jsoniter.Marshal(data)
+	msg, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}

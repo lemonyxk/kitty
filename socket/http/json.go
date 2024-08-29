@@ -11,7 +11,8 @@
 package http
 
 import (
-	"github.com/json-iterator/go"
+	"github.com/goccy/go-json"
+	jsoniter "github.com/json-iterator/go"
 )
 
 type Any struct {
@@ -39,7 +40,7 @@ func (a *Any) Int64() int64 {
 }
 
 func (a *Any) Decode(v any) error {
-	return jsoniter.Unmarshal(a.Bytes(), v)
+	return json.Unmarshal(a.Bytes(), v)
 }
 
 type Json struct {
@@ -48,7 +49,7 @@ type Json struct {
 }
 
 func (j *Json) Reset(data any) *Any {
-	bts, _ := jsoniter.Marshal(data)
+	bts, _ := json.Marshal(data)
 	j.any = jsoniter.Get(bts)
 	j.bts = bts
 	return &Any{Any: j.any}
@@ -105,7 +106,7 @@ func (j *Json) Array(path ...any) Array {
 }
 
 func (j *Json) Decode(v any) error {
-	return jsoniter.Unmarshal(j.bts, v)
+	return json.Unmarshal(j.bts, v)
 }
 
 type Array []*Any

@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/fasthttp/websocket v1.5.2
+	github.com/goccy/go-json v0.10.3
 	github.com/json-iterator/go v1.1.12
 	github.com/lemonyxk/caller v0.0.0-20230423070323-e226a04be497
 	github.com/lemonyxk/structure v0.0.0-20230801021443-5292061aabb4
@@ -17,7 +18,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee // indirect

@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/json-iterator/go"
+	"github.com/goccy/go-json"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/kitty/header"
@@ -219,7 +219,7 @@ func doJson(method string, url string, info *Request, body ...any) (*http.Reques
 	var jsonBody []byte
 
 	for i := 0; i < len(body); i++ {
-		b, err := jsoniter.Marshal(body[i])
+		b, err := json.Marshal(body[i])
 		if err != nil {
 			return nil, nil, err
 		}

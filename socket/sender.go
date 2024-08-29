@@ -11,9 +11,9 @@
 package socket
 
 import (
+	"github.com/goccy/go-json"
 	"sync/atomic"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/socket/protocol"
 	"google.golang.org/protobuf/proto"
@@ -72,7 +72,7 @@ func (s *sender[T]) Emit(event string, data []byte) error {
 }
 
 func (s *sender[T]) JsonEmit(event string, data any) error {
-	msg, err := jsoniter.Marshal(data)
+	msg, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}

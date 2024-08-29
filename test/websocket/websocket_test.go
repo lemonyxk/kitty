@@ -12,6 +12,8 @@ package websocket
 
 import (
 	"fmt"
+	"github.com/goccy/go-json"
+	jsoniter "github.com/json-iterator/go"
 	"math/rand"
 	"strings"
 	"sync"
@@ -19,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty"
 	hello "github.com/lemonyxk/kitty/example/protobuf"
 	kitty2 "github.com/lemonyxk/kitty/kitty"
@@ -45,11 +46,11 @@ func shutdown() {
 
 var webSocketServer *server.Server[any]
 
-var webSocketServerRouter *router.Router[*socket.Stream[server.Conn],any]
+var webSocketServerRouter *router.Router[*socket.Stream[server.Conn], any]
 
 var webSocketClient *client.Client[any]
 
-var clientRouter *router.Router[*socket.Stream[client.Conn],any]
+var clientRouter *router.Router[*socket.Stream[client.Conn], any]
 
 var addr = "127.0.0.1:8669"
 
@@ -94,7 +95,7 @@ func initServer() {
 	webSocketServerRouter = kitty.NewWebSocketServerRouter[any]()
 
 	// set group route
-	webSocketServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn],any]) {
+	webSocketServerRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[server.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[server.Conn]) error {
 			return stream.JsonEmit("/hello/world", "i am server")
 		})
@@ -114,7 +115,7 @@ func initServer() {
 	var wsRouter = webSocketServerRouter.Create()
 	wsRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[server.Conn]) error {
 		var res kitty2.M
-		_ = jsoniter.Unmarshal(stream.Data(), &res)
+		_ = json.Unmarshal(stream.Data(), &res)
 		return stream.JsonEmit(stream.Event(), res)
 	})
 
@@ -220,7 +221,7 @@ func Test_WS_Client(t *testing.T) {
 	var messageIDTotal uint64 = 0
 	var countTotal uint64 = 0
 
-	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn],any]) {
+	clientRouter.Group("/hello").Handler(func(handler *router.Handler[*socket.Stream[client.Conn], any]) {
 		handler.Route("/world").Handler(func(stream *socket.Stream[client.Conn]) error {
 			if atomic.AddUint64(&countTotal, 1) == uint64(count) {
 				mux.Done()
@@ -255,7 +256,7 @@ func Test_WS_Client(t *testing.T) {
 
 func Test_WS_Client_Async(t *testing.T) {
 
-	var asyncClient = socket.NewAsyncClient[client.Conn,any](webSocketClient)
+	var asyncClient = socket.NewAsyncClient[client.Conn, any](webSocketClient)
 
 	var wait = sync.WaitGroup{}
 
@@ -297,7 +298,7 @@ func Test_WS_JsonEmit(t *testing.T) {
 
 	wsRouter.Route("/JsonFormat").Handler(func(stream *socket.Stream[client.Conn]) error {
 		var res kitty2.M
-		_ = jsoniter.Unmarshal(stream.Data(), &res)
+		_ = json.Unmarshal(stream.Data(), &res)
 		assert.True(t, res["name"] == "kitty", res)
 		assert.True(t, res["age"] == "18", res)
 		mux.Done()
@@ -362,7 +363,7 @@ func Test_WS_ProtobufEmit(t *testing.T) {
 
 func Test_WS_Server_Async(t *testing.T) {
 
-	var asyncServer = socket.NewAsyncServer[server.Conn,any](webSocketServer)
+	var asyncServer = socket.NewAsyncServer[server.Conn, any](webSocketServer)
 
 	var wait = sync.WaitGroup{}
 
@@ -519,7 +520,7 @@ func Test_WS_Shutdown(t *testing.T) {
 }
 
 func ClientJson(c *client.Client[any], pack JsonPack) error {
-	data, err := jsoniter.Marshal(pack)
+	data, err := json.Marshal(pack)
 	if err != nil {
 		return err
 	}
@@ -527,7 +528,7 @@ func ClientJson(c *client.Client[any], pack JsonPack) error {
 }
 
 func ServerJson(stream *socket.Stream[server.Conn], pack JsonPack) error {
-	data, err := jsoniter.Marshal(pack)
+	data, err := json.Marshal(pack)
 	if err != nil {
 		return err
 	}

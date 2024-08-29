@@ -12,10 +12,10 @@ package http
 
 import (
 	"fmt"
+	"github.com/goccy/go-json"
 	"io"
 	"net/http"
 
-	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/kitty/header"
 	"google.golang.org/protobuf/proto"
 )
@@ -55,7 +55,7 @@ func (s *Sender) Any(data any) error {
 
 func (s *Sender) Json(data any) error {
 	s.response.Header().Set(header.ContentType, header.ApplicationJson)
-	bts, err := jsoniter.Marshal(data)
+	bts, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (s *Sender) Bytes(data []byte) error {
 	return err
 }
 
-func (s *Sender) RespondWithError(code int,err error) error {
+func (s *Sender) RespondWithError(code int, err error) error {
 	var e = s.Respond(code, err.Error())
 	if e != nil {
 		return e

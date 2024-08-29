@@ -11,11 +11,11 @@
 package socket
 
 import (
+	"github.com/goccy/go-json"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket/protocol"
@@ -97,7 +97,7 @@ func (s *ServerSender[T, P]) JsonEmit(event string, data any) (*Stream[T], error
 
 	defer func() { s.server.GetRouter().Remove(event) }()
 
-	msg, err := jsoniter.Marshal(data)
+	msg, err := json.Marshal(data)
 	if err != nil {
 		return nil, err
 	}

@@ -13,7 +13,7 @@ package http
 import (
 	"bytes"
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/goccy/go-json"
 	"github.com/lemonyxk/kitty/errors"
 	http2 "net/http"
 	"sync"
@@ -80,7 +80,7 @@ func (s *Sse[T]) Json(data any) error {
 	if s.isClose {
 		return errors.New("Write called after Handler finished")
 	}
-	var bts, err = jsoniter.Marshal(data)
+	var bts, err = json.Marshal(data)
 	if err != nil {
 		return err
 	}

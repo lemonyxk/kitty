@@ -11,12 +11,12 @@
 package http
 
 import (
+	jsoniter "github.com/json-iterator/go"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/kitty/header"
 )
 

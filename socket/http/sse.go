@@ -13,7 +13,7 @@ package http
 import (
 	"bytes"
 	"fmt"
-	"github.com/goccy/go-json"
+	json "github.com/json-iterator/go"
 	"github.com/lemonyxk/kitty/errors"
 	http2 "net/http"
 	"sync"

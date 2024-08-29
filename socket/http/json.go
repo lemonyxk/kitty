@@ -11,7 +11,7 @@
 package http
 
 import (
-	"github.com/goccy/go-json"
+	json "github.com/json-iterator/go"
 	jsoniter "github.com/json-iterator/go"
 )
 

@@ -4,7 +4,6 @@ go 1.20
 
 require (
 	github.com/fasthttp/websocket v1.5.2
-	github.com/goccy/go-json v0.10.3
 	github.com/json-iterator/go v1.1.12
 	github.com/lemonyxk/caller v0.0.0-20230423070323-e226a04be497
 	github.com/lemonyxk/structure v0.0.0-20230801021443-5292061aabb4

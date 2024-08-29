@@ -12,7 +12,7 @@ package http
 
 import (
 	"fmt"
-	"github.com/goccy/go-json"
+	json "github.com/json-iterator/go"
 	"io"
 	"net/http"
 

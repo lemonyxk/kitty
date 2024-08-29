@@ -13,7 +13,6 @@ package websocket
 import (
 	"fmt"
 	"github.com/goccy/go-json"
-	jsoniter "github.com/json-iterator/go"
 	"math/rand"
 	"strings"
 	"sync"
@@ -78,17 +77,20 @@ func initServer() {
 	})
 
 	// handle unknown proto
+	type data struct {
+		Event     string `json:"event"`
+		Data      string `json:"data"`
+		MessageID uint64 `json:"message_id"`
+		Code      uint32 `json:"code"`
+	}
 	webSocketServer.OnUnknown = func(conn server.Conn, message []byte, next server.Middle) {
-		var j = jsoniter.Get(message)
-		var route = j.Get("event").ToString()
-		var data = j.Get("data").ToString()
-		var messageID = j.Get("message_id").ToUint64()
-		var code = j.Get("code").ToUint32()
+		var data data
+		_ = json.Unmarshal(message, &data)
 
-		if route == "" {
+		if data.Event == "" {
 			return
 		}
-		next(socket.NewStream(conn, 0, 0, code, messageID, []byte(route), []byte(data)))
+		next(socket.NewStream(conn, 0, 0, data.Code, data.MessageID, []byte(data.Event), []byte(data.Data)))
 	}
 
 	// create router
@@ -158,16 +160,19 @@ func initClient() {
 	webSocketClient.OnMessage = func(c client.Conn, messageType int, msg []byte) {}
 
 	// handle unknown proto
+	type data struct {
+		Event     string `json:"event"`
+		Data      string `json:"data"`
+		MessageID uint64 `json:"message_id"`
+		Code      uint32 `json:"code"`
+	}
 	webSocketClient.OnUnknown = func(c client.Conn, message []byte, next client.Middle) {
-		var j = jsoniter.Get(message)
-		var route = j.Get("event").ToString()
-		var data = j.Get("data").ToString()
-		var messageID = j.Get("message_id").ToUint64()
-		var code = j.Get("code").ToUint32()
-		if route == "" {
+		var data data
+		_ = json.Unmarshal(message, &data)
+		if data.Event == "" {
 			return
 		}
-		next(socket.NewStream(c, 0, 0, code, messageID, []byte(route), []byte(data)))
+		next(socket.NewStream(c, 0, 0, data.Code, data.MessageID, []byte(data.Event), []byte(data.Data)))
 	}
 
 	// create router
@@ -484,16 +489,19 @@ func Test_WS_Multi_Client(t *testing.T) {
 			wClient.OnMessage = func(c client.Conn, messageType int, msg []byte) {}
 
 			// handle unknown proto
+			type data struct {
+				Event     string `json:"event"`
+				Data      string `json:"data"`
+				MessageID uint64 `json:"message_id"`
+				Code      uint32 `json:"code"`
+			}
 			wClient.OnUnknown = func(c client.Conn, message []byte, next client.Middle) {
-				var j = jsoniter.Get(message)
-				var route = j.Get("event").ToString()
-				var data = j.Get("data").ToString()
-				var messageID = j.Get("message_id").ToUint64()
-				var code = j.Get("code").ToUint32()
-				if route == "" {
+				var data data
+				_ = json.Unmarshal(message, &data)
+				if data.Event == "" {
 					return
 				}
-				next(socket.NewStream(c, 0, 0, code, messageID, []byte(route), []byte(data)))
+				next(socket.NewStream(c, 0, 0, data.Code, data.MessageID, []byte(data.Event), []byte(data.Data)))
 			}
 
 			// create router

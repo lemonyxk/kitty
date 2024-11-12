@@ -35,9 +35,10 @@ var defaultTransport = &http.Transport{
 	TLSHandshakeTimeout:   10 * time.Second,
 	ResponseHeaderTimeout: 15 * time.Second,
 	ExpectContinueTimeout: 2 * time.Second,
-	MaxIdleConns:          runtime.NumCPU() * 2,
-	MaxIdleConnsPerHost:   runtime.NumCPU() * 2,
-	MaxConnsPerHost:       runtime.NumCPU() * 2,
+	IdleConnTimeout:       60 * time.Second,
+	MaxIdleConns:          runtime.NumCPU() * 8,
+	MaxIdleConnsPerHost:   runtime.NumCPU() * 4,
+	MaxConnsPerHost:       runtime.NumCPU() * 8,
 	DialContext:           defaultDialer.DialContext,
 	TLSClientConfig:       &tls.Config{},
 }

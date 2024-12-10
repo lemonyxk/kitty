@@ -185,24 +185,38 @@ func Wrapf(err error, f string, args ...any) error {
 
 func Is(err, target error) bool {
 	if e, ok := err.(*Error); ok {
+		if e1, ok1 := target.(*Error); ok1 {
+			for i := 0; i < len(e.errs); i++ {
+				for j := 0; j < len(e1.errs); j++ {
+					if errors.Is(e.errs[i], e1.errs[j]) {
+						return true
+					}
+				}
+			}
+			return false
+		}
 		for i := 0; i < len(e.errs); i++ {
 			if errors.Is(e.errs[i], target) {
 				return true
 			}
 		}
 		return false
+	} else {
+		if e1, ok1 := target.(*Error); ok1 {
+			for i := 0; i < len(e1.errs); i++ {
+				if errors.Is(err, e1.errs[i]) {
+					return true
+				}
+			}
+			return false
+		}
+		return errors.Is(err, target)
 	}
-	return errors.Is(err, target)
 }
 
 func Unwrap(err error) error {
 	if e, ok := err.(*Error); ok {
-		if len(e.errs) == 0 {
-			return nil
-		}
-		var err = e.errs[len(e.errs)-1]
-		e.errs = e.errs[:len(e.errs)-1]
-		return err
+		return e.Unwrap()
 	}
 	return errors.Unwrap(err)
 }

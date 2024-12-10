@@ -74,3 +74,15 @@ func TestStack(t *testing.T) {
 	assert.True(t, strings.Contains(stack, "TestStack"))
 	assert.True(t, strings.Contains(stack, "errors_test.go:64"))
 }
+
+func TestIs(t *testing.T) {
+
+	var fn = func() error {
+		return StopPropagation
+	}
+
+	var err = fn()
+	if !Is(err, StopPropagation) {
+		t.Fatal(err)
+	}
+}

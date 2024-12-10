@@ -90,166 +90,170 @@ func (s *Stream[T]) ClientIP() string {
 	return ""
 }
 
-func (s *Stream[T]) Has(key string) bool {
-	if !s.Parser.HasParse() {
-		return false
-	}
+//func (s *Stream[T]) Has(key string) bool {
+//	if !s.Parser.HasParse() {
+//		return false
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodGet {
+//		return s.Query.Has(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodHead {
+//		return s.Query.Has(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodTrace {
+//		return s.Query.Has(key)
+//	}
+//
+//	// May have a request body
+//	if strings.ToUpper(s.Request.Method) == http.MethodDelete {
+//		return s.Form.Has(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodOptions {
+//		return s.Query.Has(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodConnect {
+//		return s.Query.Has(key)
+//	}
+//
+//	var contentType = s.Request.Header.Get(header.ContentType)
+//
+//	if strings.HasPrefix(contentType, header.MultipartFormData) {
+//		return s.Form.Has(key) || s.Files.Has(key)
+//	}
+//
+//	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
+//		return s.Form.Has(key)
+//	}
+//
+//	// Don't support protobuf
+//	//if strings.HasPrefix(contentType, header.ApplicationJson) {
+//	//	return s.Json.Has(key)
+//	//}
+//
+//	// Don't support protobuf
+//	// if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
+//	//
+//	// }
+//
+//	return false
+//}
+//
+//func (s *Stream[T]) Empty(key string) bool {
+//
+//	if !s.Parser.HasParse() {
+//		return false
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodGet {
+//		return s.Query.Empty(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodHead {
+//		return s.Query.Empty(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodTrace {
+//		return s.Query.Empty(key)
+//	}
+//
+//	// May have a request body
+//	if strings.ToUpper(s.Request.Method) == http.MethodDelete {
+//		return s.Form.Empty(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodOptions {
+//		return s.Query.Empty(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodConnect {
+//		return s.Query.Empty(key)
+//	}
+//
+//	var contentType = s.Request.Header.Get(header.ContentType)
+//
+//	if strings.HasPrefix(contentType, header.MultipartFormData) {
+//		return s.Form.Empty(key) || s.Files.Empty(key)
+//	}
+//
+//	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
+//		return s.Form.Empty(key)
+//	}
+//
+//
+//	// Don't support protobuf
+//	//if strings.HasPrefix(contentType, header.ApplicationJson) {
+//	//	return s.Json.Empty(key)
+//	//}
+//
+//	// Don't support protobuf
+//	// if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
+//	//
+//	// }
+//
+//	return false
+//}
 
-	if strings.ToUpper(s.Request.Method) == http.MethodGet {
-		return s.Query.Has(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodHead {
-		return s.Query.Has(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodTrace {
-		return s.Query.Has(key)
-	}
-
-	// May have a request body
-	if strings.ToUpper(s.Request.Method) == http.MethodDelete {
-		return s.Form.Has(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodOptions {
-		return s.Query.Has(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodConnect {
-		return s.Query.Has(key)
-	}
-
-	var contentType = s.Request.Header.Get(header.ContentType)
-
-	if strings.HasPrefix(contentType, header.MultipartFormData) {
-		return s.Form.Has(key) || s.Files.Has(key)
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
-		return s.Form.Has(key)
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationJson) {
-		return s.Json.Has(key)
-	}
-
-	// Don't support protobuf
-	// if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
-	//
-	// }
-
-	return false
-}
-
-func (s *Stream[T]) Empty(key string) bool {
-
-	if !s.Parser.HasParse() {
-		return false
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodGet {
-		return s.Query.Empty(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodHead {
-		return s.Query.Empty(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodTrace {
-		return s.Query.Empty(key)
-	}
-
-	// May have a request body
-	if strings.ToUpper(s.Request.Method) == http.MethodDelete {
-		return s.Form.Empty(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodOptions {
-		return s.Query.Empty(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodConnect {
-		return s.Query.Empty(key)
-	}
-
-	var contentType = s.Request.Header.Get(header.ContentType)
-
-	if strings.HasPrefix(contentType, header.MultipartFormData) {
-		return s.Form.Empty(key) || s.Files.Empty(key)
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
-		return s.Form.Empty(key)
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationJson) {
-		return s.Json.Empty(key)
-	}
-
-	// Don't support protobuf
-	// if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
-	//
-	// }
-
-	return false
-}
-
-func (s *Stream[T]) AutoGet(key string) Value {
-	if !s.Parser.HasParse() {
-		return Value{}
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodGet {
-		return s.Query.First(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodHead {
-		return s.Query.First(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodTrace {
-		return s.Query.First(key)
-	}
-
-	// May have a request body
-	if strings.ToUpper(s.Request.Method) == http.MethodDelete {
-		return s.Form.First(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodOptions {
-		return s.Query.First(key)
-	}
-
-	if strings.ToUpper(s.Request.Method) == http.MethodConnect {
-		return s.Query.First(key)
-	}
-
-	var contentType = s.Request.Header.Get(header.ContentType)
-
-	if strings.HasPrefix(contentType, header.MultipartFormData) {
-		var res = s.Form.First(key)
-		if res.v != nil && *res.v != "" {
-			return res
-		}
-		return s.Files.Name(key)
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
-		return s.Form.First(key)
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationJson) {
-		return s.Json.Get(key)
-	}
-
-	// Don't support protobuf
-	// if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
-	//
-	// }
-
-	return Value{}
-}
+//func (s *Stream[T]) AutoGet(key string) Value {
+//	if !s.Parser.HasParse() {
+//		return Value{}
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodGet {
+//		return s.Query.First(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodHead {
+//		return s.Query.First(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodTrace {
+//		return s.Query.First(key)
+//	}
+//
+//	// May have a request body
+//	if strings.ToUpper(s.Request.Method) == http.MethodDelete {
+//		return s.Form.First(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodOptions {
+//		return s.Query.First(key)
+//	}
+//
+//	if strings.ToUpper(s.Request.Method) == http.MethodConnect {
+//		return s.Query.First(key)
+//	}
+//
+//	var contentType = s.Request.Header.Get(header.ContentType)
+//
+//	if strings.HasPrefix(contentType, header.MultipartFormData) {
+//		var res = s.Form.First(key)
+//		if res.v != nil && *res.v != "" {
+//			return res
+//		}
+//		return s.Files.Name(key)
+//	}
+//
+//	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
+//		return s.Form.First(key)
+//	}
+//
+//	// Don't support json
+//	//if strings.HasPrefix(contentType, header.ApplicationJson) {
+//	//	return s.Json.Get(key)
+//	//}
+//
+//	// Don't support protobuf
+//	// if strings.HasPrefix(header, kitty.ApplicationProtobuf) {
+//	//
+//	// }
+//
+//	return Value{}
+//}
 
 func (s *Stream[T]) Url() string {
 	var buf bytes.Buffer

@@ -163,7 +163,7 @@ func Test_HTTP_PostJson(t *testing.T) {
 	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
-		assert.True(t, stream.Json.Get("a").String() == "2")
+		assert.True(t, stream.Json.String() == `{"a":2}`)
 		return stream.Sender.String("hello group!")
 	})
 

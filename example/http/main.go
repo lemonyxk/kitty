@@ -140,7 +140,6 @@ func runHttpServer() {
 	// or you can just use original router
 	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
-		log.Println(stream.AutoGet("name").String())
 		var res hello.AwesomeMessage
 		var msg = stream.Protobuf.Bytes()
 		var err = proto.Unmarshal(msg, &res)

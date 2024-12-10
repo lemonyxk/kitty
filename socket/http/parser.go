@@ -11,7 +11,7 @@
 package http
 
 import (
-	jsoniter "github.com/json-iterator/go"
+	"bytes"
 	"io"
 	"net/http"
 	"net/url"
@@ -56,14 +56,15 @@ func (s *Parser[T]) Json() {
 
 	s.hasParseJson = true
 
-	jsonBody, err := io.ReadAll(s.request.Body)
+	var buf = new(bytes.Buffer)
+
+	_, err := io.Copy(buf, s.request.Body)
 	if err != nil {
 		s.err = err
 		return
 	}
 
-	s.stream.Json.any = jsoniter.Get(jsonBody)
-	s.stream.Json.bts = jsonBody
+	s.stream.Json.buf = buf
 
 	return
 }

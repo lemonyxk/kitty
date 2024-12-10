@@ -12,7 +12,7 @@ package tcp
 
 import (
 	"fmt"
-	json "github.com/json-iterator/go"
+	"github.com/goccy/go-json"
 	"math/rand"
 	"strings"
 	"sync"

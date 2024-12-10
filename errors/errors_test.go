@@ -41,14 +41,14 @@ func TestWrapf(t *testing.T) {
 
 func TestWrapNil(t *testing.T) {
 	var err = Wrap(nil, "wrap")
-	if err != nil {
+	if err.Error() != "wrap" {
 		t.Fatal(err)
 	}
 }
 
 func TestWrapfNil(t *testing.T) {
 	var err = Wrapf(nil, "wrap %s", "test")
-	if err != nil {
+	if err.Error() != "wrap test" {
 		t.Fatal(err)
 	}
 }

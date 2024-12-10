@@ -11,6 +11,7 @@
 package errors
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -30,20 +31,33 @@ func WithStack(b bool) {
 }
 
 type Error struct {
-	message string
-	err     error
-	stack   []caller.Info
+	errs  []error
+	stack []caller.Info
+	buf   *bytes.Buffer
 }
 
 func (e *Error) Error() string {
-	return e.message
+	if len(e.errs) == 0 {
+		return ""
+	}
+
+	if e.buf == nil {
+		e.buf = new(bytes.Buffer)
+		for i := len(e.errs) - 1; i >= 0; i-- {
+			if i != len(e.errs)-1 {
+				_, _ = io.WriteString(e.buf, ": ")
+			}
+			_, _ = io.WriteString(e.buf, e.errs[i].Error())
+		}
+	}
+	return e.buf.String()
 }
 
 func (e *Error) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			_, _ = io.WriteString(s, e.message)
+			_, _ = io.WriteString(s, e.Error())
 			if len(e.stack) != 0 {
 				_, _ = io.WriteString(s, "\n")
 			}
@@ -58,14 +72,19 @@ func (e *Error) Format(s fmt.State, verb rune) {
 		}
 		fallthrough
 	case 's':
-		_, _ = io.WriteString(s, e.message)
+		_, _ = io.WriteString(s, e.Error())
 	case 'q':
-		_, _ = fmt.Fprintf(s, "%q", e.message)
+		_, _ = fmt.Fprintf(s, "%q", e.Error())
 	}
 }
 
 func (e *Error) Unwrap() error {
-	return e.err
+	if len(e.errs) == 0 {
+		return nil
+	}
+	var err = e.errs[len(e.errs)-1]
+	e.errs = e.errs[:len(e.errs)-1]
+	return err
 }
 
 func New(text any) error {
@@ -77,13 +96,19 @@ func New(text any) error {
 	case *Error:
 		return text.(*Error)
 	case error:
-		var r = &Error{message: text.(error).Error()}
+		var r = &Error{errs: []error{text.(error)}}
+		if withStack {
+			r.stack = caller.Deeps(2)
+		}
+		return r
+	case string:
+		var r = &Error{errs: []error{errors.New(text.(string))}}
 		if withStack {
 			r.stack = caller.Deeps(2)
 		}
 		return r
 	default:
-		var r = &Error{message: fmt.Sprintf("%+v", text)}
+		var r = &Error{errs: []error{fmt.Errorf("%+v", text)}}
 		if withStack {
 			r.stack = caller.Deeps(2)
 		}
@@ -92,7 +117,7 @@ func New(text any) error {
 }
 
 func Errorf(f string, args ...any) error {
-	var r = &Error{message: fmt.Sprintf(f, args...)}
+	var r = &Error{errs: []error{fmt.Errorf(f, args...)}}
 	if withStack {
 		r.stack = caller.Deeps(2)
 	}
@@ -100,13 +125,25 @@ func Errorf(f string, args ...any) error {
 }
 
 func Wrap(err error, text any) error {
-	if err == nil {
-		return nil
+	if reflect2.IsNil(text) {
+		return err
 	}
 
-	var r = &Error{
-		message: fmt.Sprintf("%+v", text) + ": " + err.Error(),
-		err:     err,
+	var r = &Error{}
+
+	if err != nil {
+		r.errs = append(r.errs, err)
+	}
+
+	switch text.(type) {
+	case *Error:
+		r.errs = append(r.errs, text.(*Error))
+	case error:
+		r.errs = append(r.errs, text.(error))
+	case string:
+		r.errs = append(r.errs, errors.New(text.(string)))
+	default:
+		r.errs = append(r.errs, fmt.Errorf("%+v", text))
 	}
 
 	if e, ok := err.(*Error); ok {
@@ -122,14 +159,17 @@ func Wrap(err error, text any) error {
 }
 
 func Wrapf(err error, f string, args ...any) error {
-	if err == nil {
-		return nil
+	if len(args) == 0 {
+		return err
 	}
 
-	var r = &Error{
-		message: fmt.Sprintf(f, args...) + ": " + err.Error(),
-		err:     err,
+	var r = &Error{}
+
+	if err != nil {
+		r.errs = append(r.errs, err)
 	}
+
+	r.errs = append(r.errs, fmt.Errorf(f, args...))
 
 	if e, ok := err.(*Error); ok {
 		r.stack = e.stack
@@ -144,9 +184,25 @@ func Wrapf(err error, f string, args ...any) error {
 }
 
 func Is(err, target error) bool {
+	if e, ok := err.(*Error); ok {
+		for i := 0; i < len(e.errs); i++ {
+			if errors.Is(e.errs[i], target) {
+				return true
+			}
+		}
+		return false
+	}
 	return errors.Is(err, target)
 }
 
 func Unwrap(err error) error {
+	if e, ok := err.(*Error); ok {
+		if len(e.errs) == 0 {
+			return nil
+		}
+		var err = e.errs[len(e.errs)-1]
+		e.errs = e.errs[:len(e.errs)-1]
+		return err
+	}
 	return errors.Unwrap(err)
 }

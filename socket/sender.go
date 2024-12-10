@@ -11,7 +11,7 @@
 package socket
 
 import (
-	json "github.com/json-iterator/go"
+	"github.com/goccy/go-json"
 	"sync/atomic"
 
 	"github.com/lemonyxk/kitty/errors"

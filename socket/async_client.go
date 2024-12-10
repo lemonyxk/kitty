@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	json "github.com/json-iterator/go"
+	"github.com/goccy/go-json"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket/protocol"

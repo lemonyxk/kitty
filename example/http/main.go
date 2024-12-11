@@ -104,6 +104,24 @@ func runHttpServer() {
 		return stream.Sender.String("hello world!")
 	})
 
+	type Request struct {
+		Name string `json:"name" validate:"required"`
+		Addr string `json:"addr" validate:"required"`
+		Age  int    `json:"age" validate:"required,gte:0,lte:100"`
+	}
+
+	httpRouter.Post("/json").Before(before).After(after).Handler(func(stream *http.Stream[server.Conn]) error {
+		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
+
+		var request Request
+		var err = stream.Json.Validate(&request)
+		if err != nil {
+			return stream.Sender.Json(err)
+		}
+
+		return stream.Sender.Json(request)
+	})
+
 	httpRouter.Post("/post").Before(before).After(after).Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println(stream.Form.String())
 		return stream.Sender.String("hello world!")
@@ -264,6 +282,24 @@ func main() {
 			log.Println(res.Error())
 		} else {
 			log.Println("res:", res.String())
+		}
+
+	}()
+
+	go func() {
+		var f, err = os.Open("./new.go")
+		if err != nil {
+			panic(err)
+		}
+
+		defer func() { _ = f.Close() }()
+
+		var res = client.Post("http://127.0.0.1:8666/json").Json(kitty2.M{"name": "lemon", "addr": "shanghai", "age": 18}).Send()
+
+		if res.Error() != nil {
+			log.Println(res.Error())
+		} else {
+			log.Println("res:", res.Bytes())
 		}
 
 	}()

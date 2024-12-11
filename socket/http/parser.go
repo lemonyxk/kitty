@@ -36,9 +36,9 @@ type Parser[T Packer] struct {
 	err error
 }
 
-func (s *Parser[T]) HasParse() bool {
-	return s.hasParseQuery || s.hasParseForm || s.hasParseMultipart || s.hasParseJson || s.hasParseProtobuf
-}
+//func (s *Parser[T]) HasParse() bool {
+//	return s.hasParseQuery || s.hasParseForm || s.hasParseMultipart || s.hasParseJson || s.hasParseProtobuf
+//}
 
 func (s *Parser[T]) Error() error {
 	return s.err

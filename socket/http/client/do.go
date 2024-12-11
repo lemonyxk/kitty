@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/goccy/go-json"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -21,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/goccy/go-json"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/kitty/header"
@@ -216,18 +216,28 @@ func doJson(method string, url string, info *Request, body ...any) (*http.Reques
 
 	url = fixScheme(url)
 
-	var jsonBody []byte
+	var jsonBody = new(bytes.Buffer)
 
 	for i := 0; i < len(body); i++ {
 		b, err := json.Marshal(body[i])
 		if err != nil {
 			return nil, nil, err
 		}
-		jsonBody = append(jsonBody, b...)
+		_, err = jsonBody.Write(b)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if i != len(body)-1 {
+			_, err = jsonBody.Write([]byte("\r\n"))
+			if err != nil {
+				return nil, nil, err
+			}
+		}
 	}
 
 	var ctx, cancel = context.WithTimeout(context.Background(), info.clientTimeout)
-	request, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(jsonBody))
+	request, err := http.NewRequestWithContext(ctx, method, url, jsonBody)
 	if err != nil {
 		cancel()
 		return nil, nil, err

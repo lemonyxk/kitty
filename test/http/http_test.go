@@ -17,6 +17,7 @@ import (
 	http2 "net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
 	"testing"
 
 	"github.com/lemonyxk/kitty"
@@ -163,7 +164,7 @@ func Test_HTTP_PostJson(t *testing.T) {
 	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("POST").Route("/hello").Handler(func(stream *http.Stream[server.Conn]) error {
-		assert.True(t, stream.Json.String() == `{"a":2}`)
+		assert.True(t, reflect.DeepEqual(stream.Json.Bytes(), []byte("{\"a\":2}")), string(stream.Json.Bytes()))
 		return stream.Sender.String("hello group!")
 	})
 

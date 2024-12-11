@@ -20,16 +20,13 @@ type Json struct {
 }
 
 func (j *Json) Reset(data any) error {
-	bts, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
 	j.buf.Reset()
-	_, err = j.buf.Write(bts)
+	var bts, err = json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	return nil
+	_, err = j.buf.Write(bts)
+	return err
 }
 
 func (j *Json) Bytes() []byte {
@@ -42,4 +39,16 @@ func (j *Json) String() string {
 
 func (j *Json) Decode(v any) error {
 	return json.Unmarshal(j.buf.Bytes(), v)
+}
+
+func (j *Json) Read(p []byte) (n int, err error) {
+	return j.buf.Read(p)
+}
+
+func (j *Json) Write(p []byte) (n int, err error) {
+	return j.buf.Write(p)
+}
+
+func (j *Json) Validate(t any) error {
+	return NewValidator[any]().From(j.Bytes()).Bind(t)
 }

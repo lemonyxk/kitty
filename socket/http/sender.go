@@ -55,7 +55,14 @@ func (s *Sender) Any(data any) error {
 
 func (s *Sender) Json(data any) error {
 	s.response.Header().Set(header.ContentType, header.ApplicationJson)
-	return json.NewEncoder(s.response).Encode(data)
+	var bts, err = json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = s.response.Write(bts)
+	return err
+	// will have a \n at the end
+	//return json.NewEncoder(s.response).Encode(data)
 }
 
 func (s *Sender) Protobuf(data proto.Message) error {
@@ -74,6 +81,15 @@ func (s *Sender) String(data string) error {
 
 func (s *Sender) Bytes(data []byte) error {
 	_, err := s.response.Write(data)
+	return err
+}
+
+func (s *Sender) Redirect(url string, code int) {
+	http.Redirect(s.response, s.request, url, code)
+}
+
+func (s *Sender) Write(r io.Reader) error {
+	_, err := io.Copy(s.response, r)
 	return err
 }
 

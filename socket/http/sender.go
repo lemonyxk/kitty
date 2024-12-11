@@ -55,12 +55,7 @@ func (s *Sender) Any(data any) error {
 
 func (s *Sender) Json(data any) error {
 	s.response.Header().Set(header.ContentType, header.ApplicationJson)
-	bts, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-	_, err = s.response.Write(bts)
-	return err
+	return json.NewEncoder(s.response).Encode(data)
 }
 
 func (s *Sender) Protobuf(data proto.Message) error {
@@ -74,8 +69,7 @@ func (s *Sender) Protobuf(data proto.Message) error {
 }
 
 func (s *Sender) String(data string) error {
-	_, err := s.response.Write([]byte(data))
-	return err
+	return s.Bytes([]byte(data))
 }
 
 func (s *Sender) Bytes(data []byte) error {

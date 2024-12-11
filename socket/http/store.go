@@ -12,117 +12,11 @@ package http
 
 import (
 	"bytes"
-	"reflect"
-	"strconv"
 )
 
 type Store struct {
 	keys   []string
 	values [][]string
-}
-
-func (s *Store) Struct(input any) {
-
-	if input == nil {
-		panic("input can not be nil")
-	}
-
-	var kf = reflect.TypeOf(input)
-
-	var kv = reflect.ValueOf(input)
-
-	if kf.Kind() != reflect.Ptr {
-		panic("input must be a pointer")
-	}
-
-	if kf.Elem().Kind() != reflect.Struct {
-		panic("input must be a struct")
-	}
-
-	if !kv.IsValid() || kv.IsNil() {
-		panic("input is invalid or nil")
-	}
-
-	var findIndex = func(k1 string) int {
-		for i := 0; i < kf.Elem().NumField(); i++ {
-			var k2 = kf.Elem().Field(i).Tag.Get("json")
-			if k1 == k2 {
-				return i
-			}
-		}
-		return -1
-	}
-
-	for i := 0; i < len(s.keys); i++ {
-		var k = s.keys[i]
-		var v = s.values[i]
-
-		var index = findIndex(k)
-		if index == -1 {
-			continue
-		}
-
-		var vv = kv.Elem().Field(index)
-
-		// v at least more than 1 item
-		switch vv.Interface().(type) {
-		case bool:
-			vv.SetBool(v[0] == "TRUE")
-		case int, int8, int16, int32, int64:
-			r, _ := strconv.ParseInt(v[0], 10, 64)
-			vv.SetInt(r)
-		case uint, uint8, uint16, uint32, uint64:
-			r, _ := strconv.ParseUint(v[0], 10, 64)
-			vv.SetUint(r)
-		case float32, float64:
-			r, _ := strconv.ParseFloat(v[0], 64)
-			vv.SetFloat(r)
-		case string:
-			vv.SetString(v[0])
-		case []bool:
-			var res []bool
-			for j := 0; j < len(v); j++ {
-				res = append(res, v[j] == "TRUE")
-			}
-			vv.Set(reflect.ValueOf(res))
-		case []int, []int8, []int16, []int32, []int64:
-			var res []int64
-			for j := 0; j < len(v); j++ {
-				r, _ := strconv.ParseInt(v[j], 10, 64)
-				res = append(res, r)
-			}
-			vv.Set(reflect.ValueOf(res))
-		case []uint, []uint16, []uint32, []uint64:
-			var res []uint64
-			for j := 0; j < len(v); j++ {
-				r, _ := strconv.ParseUint(v[j], 10, 64)
-				res = append(res, r)
-			}
-			vv.Set(reflect.ValueOf(res))
-		case []float32, []float64:
-			var res []float64
-			for j := 0; j < len(v); j++ {
-				r, _ := strconv.ParseFloat(v[j], 64)
-				res = append(res, r)
-			}
-			vv.Set(reflect.ValueOf(res))
-		case []string:
-			var res []string
-			for j := 0; j < len(v); j++ {
-				res = append(res, v[j])
-			}
-			vv.Set(reflect.ValueOf(res))
-		case []byte:
-			var res = []byte(v[0])
-			vv.Set(reflect.ValueOf(res))
-		case [][]byte:
-			var res [][]byte
-			for j := 0; j < len(v); j++ {
-				res = append(res, []byte(v[j]))
-			}
-			vv.Set(reflect.ValueOf(res))
-		}
-	}
 }
 
 func (s *Store) Has(key string) bool {
@@ -220,7 +114,5 @@ func (s *Store) String() string {
 		return ""
 	}
 
-	var res = buff.String()
-
-	return res[:len(res)-1]
+	return string(buff.Bytes())
 }

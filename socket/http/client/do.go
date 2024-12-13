@@ -14,7 +14,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/goccy/go-json"
+	json "github.com/bytedance/sonic"
 	"io"
 	"mime/multipart"
 	"net/http"

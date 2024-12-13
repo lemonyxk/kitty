@@ -8,7 +8,7 @@ package main
 
 import (
 	"bytes"
-	"github.com/goccy/go-json"
+	json "github.com/bytedance/sonic"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/socket/http"
 	"log"
@@ -77,7 +77,7 @@ func main() {
 
 	var buf = new(bytes.Buffer)
 
-	if err := json.NewEncoder(buf).Encode(a); err != nil {
+	if err := json.ConfigDefault.NewEncoder(buf).Encode(a); err != nil {
 		log.Println(err)
 	}
 

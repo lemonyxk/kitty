@@ -12,7 +12,7 @@ package websocket
 
 import (
 	"fmt"
-	"github.com/goccy/go-json"
+	json "github.com/bytedance/sonic"
 	"math/rand"
 	"strings"
 	"sync"

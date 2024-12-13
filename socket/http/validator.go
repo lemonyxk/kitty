@@ -12,7 +12,7 @@ package http
 
 import (
 	"bytes"
-	"github.com/goccy/go-json"
+	json "github.com/bytedance/sonic"
 	"github.com/lemonyxk/kitty/errors"
 	"io"
 	"reflect"

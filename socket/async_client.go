@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/goccy/go-json"
+	json "github.com/bytedance/sonic"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/router"
 	"github.com/lemonyxk/kitty/socket/protocol"

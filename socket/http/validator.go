@@ -43,20 +43,20 @@ func (i *InvalidError[T]) Message() string {
 
 	var k = reflect.ValueOf(i.Value)
 
-	if !k.IsZero() {
-		builder.WriteString(", value: ")
-		switch k.Kind() {
-		case reflect.String:
-			builder.WriteString(k.String())
-		case reflect.Int64:
-			builder.WriteString(strconv.FormatInt(k.Int(), 10))
-		case reflect.Uint64:
-			builder.WriteString(strconv.FormatUint(k.Uint(), 10))
-		case reflect.Float64:
-			builder.WriteString(strconv.FormatFloat(k.Float(), 'f', -1, 64))
-		default:
-			builder.WriteString("unknown")
-		}
+	builder.WriteString(", value: ")
+	switch k.Kind() {
+	case reflect.Bool:
+		builder.WriteString(strconv.FormatBool(k.Bool()))
+	case reflect.String:
+		builder.WriteString(k.String())
+	case reflect.Int64:
+		builder.WriteString(strconv.FormatInt(k.Int(), 10))
+	case reflect.Uint64:
+		builder.WriteString(strconv.FormatUint(k.Uint(), 10))
+	case reflect.Float64:
+		builder.WriteString(strconv.FormatFloat(k.Float(), 'f', -1, 64))
+	default:
+		builder.WriteString("unknown")
 	}
 
 	if i.Contract != "" {
@@ -74,15 +74,14 @@ func (i *InvalidError[T]) Error() string {
 	var builder strings.Builder
 
 	builder.WriteString(i.Key)
-	builder.WriteString(" should")
 
 	switch i.Op {
 	case "required":
-		builder.WriteString(" required")
-		return builder.String()
+		builder.WriteString(" is required")
+		builder.WriteString(" but got ")
 	case "nonempty":
-		builder.WriteString(" nonempty")
-		return builder.String()
+		builder.WriteString(" must nonempty")
+		builder.WriteString(" but got ")
 	case "gte":
 		builder.WriteString(" >= ")
 		builder.WriteString(i.Contract)
@@ -107,19 +106,19 @@ func (i *InvalidError[T]) Error() string {
 
 	var k = reflect.ValueOf(i.Value)
 
-	if !k.IsZero() {
-		switch k.Kind() {
-		case reflect.String:
-			builder.WriteString(k.String())
-		case reflect.Int64:
-			builder.WriteString(strconv.FormatInt(k.Int(), 10))
-		case reflect.Uint64:
-			builder.WriteString(strconv.FormatUint(k.Uint(), 10))
-		case reflect.Float64:
-			builder.WriteString(strconv.FormatFloat(k.Float(), 'f', -1, 64))
-		default:
-			builder.WriteString("unknown")
-		}
+	switch k.Kind() {
+	case reflect.Bool:
+		builder.WriteString(strconv.FormatBool(k.Bool()))
+	case reflect.String:
+		builder.WriteString(k.String())
+	case reflect.Int64:
+		builder.WriteString(strconv.FormatInt(k.Int(), 10))
+	case reflect.Uint64:
+		builder.WriteString(strconv.FormatUint(k.Uint(), 10))
+	case reflect.Float64:
+		builder.WriteString(strconv.FormatFloat(k.Float(), 'f', -1, 64))
+	default:
+		builder.WriteString("unknown")
 	}
 
 	return builder.String()
@@ -402,15 +401,65 @@ func validate(t reflect.StructField, v reflect.Value) error {
 	//	return nil
 	//}
 
+	var key = t.Tag.Get("json")
+	if key == "" {
+		key = t.Name
+	}
+
 	//var parse = parseTag(tags)
 	if parse.Required {
 		if v.IsZero() {
-			return &InvalidError[string]{
-				Key:  t.Name,
-				Type: v.Type().String(),
-				//Value:    v.String(),
-				//Contract: "required",
-				Op: "required",
+			switch v.Kind() {
+			case reflect.Bool:
+				return &InvalidError[bool]{
+					Key:   key,
+					Type:  v.Type().String(),
+					Value: v.Bool(),
+					//Contract: "required",
+					Op: "required",
+				}
+			case reflect.String:
+				return &InvalidError[string]{
+					Key:   key,
+					Type:  v.Type().String(),
+					Value: v.String(),
+					//Contract: "required",
+					Op: "required",
+				}
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				return &InvalidError[int64]{
+					Key:   key,
+					Type:  v.Type().String(),
+					Value: v.Int(),
+					//Contract: "required",
+					Op: "required",
+				}
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				return &InvalidError[uint64]{
+					Key:   key,
+					Type:  v.Type().String(),
+					Value: v.Uint(),
+					//Contract: "required",
+					Op: "required",
+				}
+			case reflect.Float32, reflect.Float64:
+				return &InvalidError[float64]{
+					Key:   key,
+					Type:  v.Type().String(),
+					Value: v.Float(),
+					//Contract: "required",
+					Op: "required",
+				}
+			case reflect.Array, reflect.Slice, reflect.Map:
+				return &InvalidError[string]{
+					Key:   key,
+					Type:  v.Type().String(),
+					Value: "nil",
+					//Contract: "required",
+					Op: "required",
+				}
+			default:
+
 			}
 		}
 	}
@@ -418,11 +467,22 @@ func validate(t reflect.StructField, v reflect.Value) error {
 	if parse.NonEmpty {
 		if v.Kind() == reflect.Array || v.Kind() == reflect.Slice || v.Kind() == reflect.Map {
 			if v.Len() == 0 {
+				var vv string
+
+				switch v.Kind() {
+				case reflect.Array, reflect.Slice:
+					vv = "[]"
+				case reflect.Map:
+					vv = "{}"
+				default:
+					vv = "unknown"
+				}
+
 				return &InvalidError[string]{
-					Key:  t.Name,
-					Type: v.Type().String(),
-					//Value:    v.String(),
-					//Contract: "nonempty",
+					Key:   key,
+					Type:  v.Type().String(),
+					Value: vv,
+					//Contract: "required",
 					Op: "nonempty",
 				}
 			}
@@ -463,7 +523,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Int()
 			if vv < val {
 				return &InvalidError[int64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Gte,
@@ -475,7 +535,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Uint()
 			if vv < val {
 				return &InvalidError[uint64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Gte,
@@ -487,7 +547,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Float()
 			if vv < val {
 				return &InvalidError[float64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Gte,
@@ -507,7 +567,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Int()
 			if vv > val {
 				return &InvalidError[int64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Lte,
@@ -519,7 +579,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Uint()
 			if vv > val {
 				return &InvalidError[uint64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Lte,
@@ -531,7 +591,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Float()
 			if vv > val {
 				return &InvalidError[float64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Lte,
@@ -551,7 +611,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Int()
 			if vv <= val {
 				return &InvalidError[int64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Gt,
@@ -563,7 +623,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Uint()
 			if vv <= val {
 				return &InvalidError[uint64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Gt,
@@ -575,7 +635,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Float()
 			if vv <= val {
 				return &InvalidError[float64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Gt,
@@ -595,7 +655,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Int()
 			if vv >= val {
 				return &InvalidError[int64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Lt,
@@ -607,7 +667,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Uint()
 			if vv >= val {
 				return &InvalidError[uint64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Lt,
@@ -619,7 +679,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Float()
 			if vv >= val {
 				return &InvalidError[float64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Lt,
@@ -639,7 +699,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Int()
 			if vv != val {
 				return &InvalidError[int64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Eq,
@@ -651,7 +711,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Uint()
 			if vv != val {
 				return &InvalidError[uint64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Eq,
@@ -663,7 +723,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 			var vv = v.Float()
 			if vv != val {
 				return &InvalidError[float64]{
-					Key:      t.Name,
+					Key:      key,
 					Type:     v.Type().String(),
 					Value:    vv,
 					Contract: parse.Eq,

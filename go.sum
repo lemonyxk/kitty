@@ -30,8 +30,6 @@ github.com/lemonyxk/caller v0.0.0-20230423070323-e226a04be497 h1:Bb7PsEFG28sebks
 github.com/lemonyxk/caller v0.0.0-20230423070323-e226a04be497/go.mod h1:6TuWfAU2LFD6jtjJsFC2dNyvJiDtlhI5oK/pfOa13SQ=
 github.com/lemonyxk/structure v0.0.0-20230801021443-5292061aabb4 h1:SQOV5woXJyAC8IDVSV+q53nM12yncmWZnQkWOJLaTV8=
 github.com/lemonyxk/structure v0.0.0-20230801021443-5292061aabb4/go.mod h1:7nt3U1dKeVPpqdhrxvYgfftsABObkjHky6kf6ylYfEI=
-github.com/modern-go/reflect2 v1.0.2 h1:xBagoLtFs94CBntxluKeaWgTMpvLxC4ur3nMaC9Gz0M=
-github.com/modern-go/reflect2 v1.0.2/go.mod h1:yWuevngMOJpCy52FWWMvUC8ws7m/LJsjYzDa0/r8luk=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e h1:fD57ERR4JtEqsWbfPhv4DMiApHyliiK5xCTNVSPiaAs=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

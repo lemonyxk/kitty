@@ -7,7 +7,6 @@ require (
 	github.com/fasthttp/websocket v1.5.11
 	github.com/lemonyxk/caller v0.0.0-20230423070323-e226a04be497
 	github.com/lemonyxk/structure v0.0.0-20230801021443-5292061aabb4
-	github.com/modern-go/reflect2 v1.0.2
 	github.com/stretchr/testify v1.8.2
 	google.golang.org/protobuf v1.35.2
 )

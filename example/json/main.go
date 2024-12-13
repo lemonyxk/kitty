@@ -9,6 +9,7 @@ package main
 import (
 	"bytes"
 	json "github.com/bytedance/sonic"
+	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/socket/http"
 	"log"
@@ -22,8 +23,8 @@ type User struct {
 	Gender         string `validate:"default:unknown"`
 	FavouriteColor string
 	IsAdmin        bool              `validate:"default:true"`
-	Addresses      []*Address        `validate:"required,nonempty"` // a person can have a home and cottage...
-	Maps           map[string]string `validate:"required"`          // a person can have a home and cottage...
+	Addresses      []*Address        `json:"addresses" validate:"required,nonempty"` // a person can have a home and cottage...
+	Maps           map[string]string `validate:"required"`                           // a person can have a home and cottage...
 }
 
 // Address houses a users address information
@@ -82,4 +83,7 @@ func main() {
 	}
 
 	log.Println(buf.Bytes())
+
+	var err *errors.Error
+	log.Println(kitty.IsNil(err))
 }

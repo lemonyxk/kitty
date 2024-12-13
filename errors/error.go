@@ -14,13 +14,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/lemonyxk/kitty/kitty"
 	"io"
 	"path/filepath"
 	"strconv"
 	"strings"
 
 	"github.com/lemonyxk/caller"
-	"github.com/modern-go/reflect2"
 )
 
 var space = strings.Repeat(" ", 4) + "at "
@@ -88,7 +88,8 @@ func (e *Error) Unwrap() error {
 }
 
 func New(text any) error {
-	if reflect2.IsNil(text) {
+
+	if kitty.IsNil(text) {
 		return nil
 	}
 
@@ -125,7 +126,7 @@ func Errorf(f string, args ...any) error {
 }
 
 func Wrap(err error, text any) error {
-	if reflect2.IsNil(text) {
+	if kitty.IsNil(text) {
 		return err
 	}
 

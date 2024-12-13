@@ -12,6 +12,8 @@ package errors
 
 import (
 	"fmt"
+	kitty2 "github.com/lemonyxk/kitty/kitty"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -84,5 +86,17 @@ func TestIs(t *testing.T) {
 	var err = fn()
 	if !Is(err, StopPropagation) {
 		t.Fatal(err)
+	}
+}
+
+func BenchmarkIsNil(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		kitty2.IsNil(&Error{})
+	}
+}
+
+func BenchmarkIsNil2(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		reflect.ValueOf(&Error{}).IsNil()
 	}
 }

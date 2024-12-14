@@ -13,8 +13,8 @@ package http
 import (
 	"bytes"
 	"fmt"
-	json "github.com/bytedance/sonic"
 	"github.com/lemonyxk/kitty/errors"
+	json "github.com/lemonyxk/kitty/json"
 	http2 "net/http"
 	"sync"
 	"sync/atomic"

@@ -12,7 +12,8 @@ package http
 
 import (
 	"bytes"
-	json "github.com/bytedance/sonic"
+	"github.com/lemonyxk/kitty/errors"
+	json "github.com/lemonyxk/kitty/json"
 )
 
 type Json struct {
@@ -50,5 +51,8 @@ func (j *Json) Write(p []byte) (n int, err error) {
 }
 
 func (j *Json) Validate(t any) error {
+	if j.buf == nil {
+		return errors.New("header is not application/json")
+	}
 	return NewValidator[any]().From(j.Bytes()).Bind(t)
 }

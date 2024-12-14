@@ -12,7 +12,7 @@ package udp
 
 import (
 	"fmt"
-	json "github.com/bytedance/sonic"
+	json "github.com/lemonyxk/kitty/json"
 	"math/rand"
 	"strings"
 	"sync"

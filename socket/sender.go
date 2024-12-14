@@ -11,7 +11,7 @@
 package socket
 
 import (
-	json "github.com/bytedance/sonic"
+	json "github.com/lemonyxk/kitty/json"
 	"sync/atomic"
 
 	"github.com/lemonyxk/kitty/errors"

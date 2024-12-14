@@ -74,7 +74,7 @@ func TestStack(t *testing.T) {
 	}
 
 	assert.True(t, strings.Contains(stack, "TestStack"))
-	assert.True(t, strings.Contains(stack, "errors_test.go:64"))
+	assert.True(t, strings.Contains(stack, "errors_test.go:66"), stack)
 }
 
 func TestIs(t *testing.T) {

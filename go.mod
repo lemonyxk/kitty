@@ -5,6 +5,7 @@ go 1.23
 require (
 	github.com/bytedance/sonic v1.12.5
 	github.com/fasthttp/websocket v1.5.11
+	github.com/json-iterator/go v1.1.12
 	github.com/lemonyxk/caller v0.0.0-20230423070323-e226a04be497
 	github.com/lemonyxk/structure v0.0.0-20230801021443-5292061aabb4
 	github.com/stretchr/testify v1.8.2
@@ -20,6 +21,8 @@ require (
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
+	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/savsgio/gotils v0.0.0-20240704082632-aef3928b8a38 // indirect

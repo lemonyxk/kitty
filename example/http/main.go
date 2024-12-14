@@ -116,7 +116,7 @@ func runHttpServer() {
 		var request Request
 		var err = stream.Json.Validate(&request)
 		if err != nil {
-			return stream.Sender.Json(err)
+			return stream.Sender.Json(err.Error())
 		}
 
 		return stream.Sender.Json(request)

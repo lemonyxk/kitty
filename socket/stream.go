@@ -11,8 +11,8 @@
 package socket
 
 import (
-	json "github.com/bytedance/sonic"
 	"github.com/lemonyxk/kitty/errors"
+	json "github.com/lemonyxk/kitty/json"
 	"github.com/lemonyxk/kitty/kitty"
 	"github.com/lemonyxk/kitty/socket/protocol"
 	"google.golang.org/protobuf/proto"

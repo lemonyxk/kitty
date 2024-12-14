@@ -12,7 +12,7 @@ package http
 
 import (
 	"fmt"
-	json "github.com/bytedance/sonic"
+	json "github.com/lemonyxk/kitty/json"
 	"io"
 	"net/http"
 

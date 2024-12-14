@@ -12,8 +12,8 @@ package http
 
 import (
 	"bytes"
-	json "github.com/bytedance/sonic"
 	"github.com/lemonyxk/kitty/errors"
+	"github.com/lemonyxk/kitty/json"
 	"io"
 	"reflect"
 	"strconv"
@@ -27,11 +27,11 @@ var mux sync.Mutex
 var mux1 sync.Mutex
 
 type InvalidError[T any] struct {
-	Key      string
-	Type     string
-	Value    T
-	Contract string
-	Op       string
+	Key      string `json:"key"`
+	Type     string `json:"type"`
+	Value    T      `json:"value"`
+	Contract string `json:"contract"`
+	Op       string `json:"op"`
 }
 
 func (i *InvalidError[T]) Message() string {
@@ -110,7 +110,12 @@ func (i *InvalidError[T]) Error() string {
 	case reflect.Bool:
 		builder.WriteString(strconv.FormatBool(k.Bool()))
 	case reflect.String:
-		builder.WriteString(k.String())
+		v := k.String()
+		if v == "" {
+			builder.WriteString("''")
+		} else {
+			builder.WriteString(k.String())
+		}
 	case reflect.Int64:
 		builder.WriteString(strconv.FormatInt(k.Int(), 10))
 	case reflect.Uint64:

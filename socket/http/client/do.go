@@ -14,7 +14,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	json "github.com/bytedance/sonic"
+	json "github.com/lemonyxk/kitty/json"
 	"io"
 	"mime/multipart"
 	"net/http"

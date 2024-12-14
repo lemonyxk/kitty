@@ -88,3 +88,30 @@ func (s *Stream[T]) ProtoBufEmit(event string, data proto.Message) error {
 	}
 	return s.conn.Pack(s.order, protocol.ProtoBuf, s.code, s.messageID, []byte(event), msg)
 }
+
+type Jv struct {
+	Event string
+	Data  any
+}
+
+func (s *Stream[T]) Json(data Jv) error {
+	return s.JsonEmit(data.Event, data.Data)
+}
+
+type Pv struct {
+	Event string
+	Data  proto.Message
+}
+
+func (s *Stream[T]) ProtoBuf(data Pv) error {
+	return s.ProtoBufEmit(data.Event, data.Data)
+}
+
+type Rv struct {
+	Event string
+	Data  []byte
+}
+
+func (s *Stream[T]) Send(data Rv) error {
+	return s.Emit(data.Event, data.Data)
+}

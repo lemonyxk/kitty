@@ -21,6 +21,9 @@ type Json struct {
 }
 
 func (j *Json) Reset(data any) error {
+	if j.buf == nil {
+		return errors.New("header is not application/json")
+	}
 	j.buf.Reset()
 	var bts, err = json.Marshal(data)
 	if err != nil {
@@ -31,22 +34,37 @@ func (j *Json) Reset(data any) error {
 }
 
 func (j *Json) Bytes() []byte {
+	if j.buf == nil {
+		return nil
+	}
 	return j.buf.Bytes()
 }
 
 func (j *Json) String() string {
+	if j.buf == nil {
+		return ""
+	}
 	return string(j.buf.Bytes())
 }
 
 func (j *Json) Decode(v any) error {
+	if j.buf == nil {
+		return errors.New("header is not application/json")
+	}
 	return json.Unmarshal(j.buf.Bytes(), v)
 }
 
 func (j *Json) Read(p []byte) (n int, err error) {
+	if j.buf == nil {
+		return 0, errors.New("header is not application/json")
+	}
 	return j.buf.Read(p)
 }
 
 func (j *Json) Write(p []byte) (n int, err error) {
+	if j.buf == nil {
+		return 0, errors.New("header is not application/json")
+	}
 	return j.buf.Write(p)
 }
 

@@ -7,6 +7,7 @@
 package json
 
 import (
+	"github.com/bytedance/sonic"
 	jsoniter "github.com/json-iterator/go"
 	"io"
 )
@@ -16,5 +17,8 @@ func NewDecoder(reader io.Reader) *jsoniter.Decoder {
 }
 
 func Unmarshal(data []byte, v interface{}) error {
+	if len(data) < 1024*3 { // 3KB
+		return sonic.ConfigFastest.Unmarshal(data, v)
+	}
 	return jsoniter.ConfigFastest.Unmarshal(data, v)
 }

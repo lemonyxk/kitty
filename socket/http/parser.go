@@ -57,14 +57,13 @@ func (s *Parser[T]) Json() {
 	s.hasParseJson = true
 
 	var buf = new(bytes.Buffer)
-
 	_, err := io.Copy(buf, s.request.Body)
 	if err != nil {
 		s.err = err
 		return
 	}
 
-	s.stream.Json.buf = buf
+	s.stream.Json.bts = buf.Bytes()
 
 	return
 }
@@ -77,13 +76,14 @@ func (s *Parser[T]) Protobuf() {
 
 	s.hasParseProtobuf = true
 
-	protobufBody, err := io.ReadAll(s.request.Body)
+	var buf = new(bytes.Buffer)
+	_, err := io.Copy(buf, s.request.Body)
 	if err != nil {
 		s.err = err
 		return
 	}
 
-	s.stream.Protobuf.bts = protobufBody
+	s.stream.Protobuf.bts = buf.Bytes()
 
 	return
 }

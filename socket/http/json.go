@@ -11,66 +11,40 @@
 package http
 
 import (
-	"bytes"
-	"github.com/lemonyxk/kitty/errors"
 	json "github.com/lemonyxk/kitty/json"
 )
 
 type Json struct {
-	buf *bytes.Buffer
+	bts []byte
 }
 
 func (j *Json) Reset(data any) error {
-	if j.buf == nil {
-		return errors.New("header is not application/json")
-	}
-	j.buf.Reset()
 	var bts, err = json.Marshal(data)
 	if err != nil {
 		return err
 	}
-	_, err = j.buf.Write(bts)
+	j.bts = bts
 	return err
 }
 
 func (j *Json) Bytes() []byte {
-	if j.buf == nil {
-		return nil
-	}
-	return j.buf.Bytes()
+	return j.bts
 }
 
 func (j *Json) String() string {
-	if j.buf == nil {
-		return ""
-	}
-	return string(j.buf.Bytes())
+	return string(j.bts)
 }
 
 func (j *Json) Decode(v any) error {
-	if j.buf == nil {
-		return errors.New("header is not application/json")
+	if len(j.bts) == 0 {
+		return nil
 	}
-	return json.Unmarshal(j.buf.Bytes(), v)
-}
-
-func (j *Json) Read(p []byte) (n int, err error) {
-	if j.buf == nil {
-		return 0, errors.New("header is not application/json")
-	}
-	return j.buf.Read(p)
-}
-
-func (j *Json) Write(p []byte) (n int, err error) {
-	if j.buf == nil {
-		return 0, errors.New("header is not application/json")
-	}
-	return j.buf.Write(p)
+	return json.Unmarshal(j.bts, v)
 }
 
 func (j *Json) Validate(t any) error {
-	if j.buf == nil {
-		return errors.New("header is not application/json")
+	if len(j.bts) == 0 {
+		return nil
 	}
-	return NewValidator[any]().From(j.Bytes()).Bind(t)
+	return NewValidator[any]().From(j.bts).Bind(t)
 }

@@ -101,6 +101,8 @@ func runHttpServer() {
 	var httpRouter = httpServerRouter.Create()
 	httpRouter.Get("/hello").Before(before).After(after).Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
+		var t = map[string]interface{}{}
+		log.Println(stream.Json.Decode(&t))
 		return stream.Sender.String("hello world!")
 	})
 

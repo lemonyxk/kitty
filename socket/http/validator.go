@@ -11,7 +11,6 @@
 package http
 
 import (
-	"bytes"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/json"
 	"io"
@@ -132,28 +131,37 @@ func (i *InvalidError[T]) Error() string {
 type Validator[T any] struct {
 	visited map[uintptr]bool
 	deep    int
+	err     error
 
-	buf *bytes.Buffer
+	bts []byte
 }
 
 func NewValidator[T any]() *Validator[T] {
-	return &Validator[T]{visited: make(map[uintptr]bool), deep: 0, buf: new(bytes.Buffer)}
+	return &Validator[T]{visited: make(map[uintptr]bool), deep: 0}
 }
 
 func (v *Validator[T]) From(bts []byte) *Validator[T] {
-	v.buf.Reset()
-	v.buf.Write(bts)
+	v.bts = bts
 	return v
 }
 
 func (v *Validator[T]) Stream(read io.Reader) *Validator[T] {
-	_, _ = io.Copy(v.buf, read)
+	var bts, err = io.ReadAll(read)
+	if err != nil {
+		v.err = err
+		return v
+	}
+	v.bts = bts
 	return v
 }
 
 func (v *Validator[T]) Bind(t T) error {
 
-	var err = json.Unmarshal(v.buf.Bytes(), t)
+	if v.err != nil {
+		return v.err
+	}
+
+	var err = json.Unmarshal(v.bts, t)
 	if err != nil {
 		return err
 	}

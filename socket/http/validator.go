@@ -20,10 +20,8 @@ import (
 	"sync"
 )
 
-var globalFields = make(map[string]*reflect.StructField)
 var globalTags = make(map[string]*Type)
 var mux sync.Mutex
-var mux1 sync.Mutex
 
 type InvalidError[T any] struct {
 	Key      string `json:"key"`
@@ -327,21 +325,14 @@ func (v *Validator[T]) printStruct(rv reflect.Value) error {
 		return nil
 	}
 
+	var rt = rv.Type()
+
 	for i := 0; i < rv.NumField(); i++ {
 		value := rv.Field(i)
 
-		var key = rv.Type().String() + ":" + strconv.Itoa(i)
+		typ := rt.Field(i)
 
-		mux1.Lock()
-		var typ = globalFields[key]
-		if typ == nil {
-			var a = rv.Type().Field(i)
-			globalFields[key] = &a
-			typ = &a
-		}
-		mux1.Unlock()
-
-		if err := validate(*typ, value); err != nil {
+		if err := validate(typ, value); err != nil {
 			return err
 		}
 

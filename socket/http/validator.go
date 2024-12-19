@@ -330,7 +330,8 @@ func (v *Validator[T]) printStruct(rv reflect.Value) error {
 	for i := 0; i < rv.NumField(); i++ {
 		value := rv.Field(i)
 
-		var key = rv.Type().String() + strconv.Itoa(i)
+		var key = rv.Type().String() + ":" + strconv.Itoa(i)
+
 		mux1.Lock()
 		var typ = globalFields[key]
 		if typ == nil {
@@ -391,7 +392,6 @@ func validate(t reflect.StructField, v reflect.Value) error {
 	if tag == "" {
 		return nil
 	}
-
 	mux.Lock()
 	var exists = globalTags[tag]
 	if exists == nil {
@@ -463,7 +463,7 @@ func validate(t reflect.StructField, v reflect.Value) error {
 					//Contract: "required",
 					Op: "required",
 				}
-			case reflect.Array, reflect.Slice, reflect.Map:
+			default:
 				return &InvalidError[string]{
 					Key:   key,
 					Type:  v.Type().String(),
@@ -471,8 +471,6 @@ func validate(t reflect.StructField, v reflect.Value) error {
 					//Contract: "required",
 					Op: "required",
 				}
-			default:
-
 			}
 		}
 	}

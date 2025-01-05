@@ -101,7 +101,6 @@ func (i *InvalidError[T]) MarshalJSON() ([]byte, error) {
 	return i.Builder().Bytes(), nil
 }
 
-/
 //
 //func (i *InvalidError[T]) Message() string {
 //	var builder strings.Builder

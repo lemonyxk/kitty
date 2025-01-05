@@ -90,7 +90,7 @@ func main() {
 	var buf = new(bytes.Buffer)
 
 	if err := json.NewEncoder(buf).Encode(a); err != nil {
-		log.Println(err)
+		log.Println(err.Error())
 	}
 
 	log.Println(buf.Bytes())

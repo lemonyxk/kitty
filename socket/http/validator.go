@@ -11,6 +11,7 @@
 package http
 
 import (
+	"bytes"
 	"github.com/lemonyxk/kitty/errors"
 	"github.com/lemonyxk/kitty/json"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unsafe"
 )
 
 var globalTags = make(map[string]*Type)
@@ -31,44 +33,8 @@ type InvalidError[T any] struct {
 	Op       string `json:"op"`
 }
 
-func (i *InvalidError[T]) Message() string {
-	var builder strings.Builder
-	builder.WriteString("key: ")
-	builder.WriteString(i.Key)
-	builder.WriteString(", type: ")
-	builder.WriteString(i.Type)
-
-	var k = reflect.ValueOf(i.Value)
-
-	builder.WriteString(", value: ")
-	switch k.Kind() {
-	case reflect.Bool:
-		builder.WriteString(strconv.FormatBool(k.Bool()))
-	case reflect.String:
-		builder.WriteString(k.String())
-	case reflect.Int64:
-		builder.WriteString(strconv.FormatInt(k.Int(), 10))
-	case reflect.Uint64:
-		builder.WriteString(strconv.FormatUint(k.Uint(), 10))
-	case reflect.Float64:
-		builder.WriteString(strconv.FormatFloat(k.Float(), 'f', -1, 64))
-	default:
-		builder.WriteString("unknown")
-	}
-
-	if i.Contract != "" {
-		builder.WriteString(", contract: ")
-		builder.WriteString(i.Contract)
-	}
-
-	builder.WriteString(", op: ")
-	builder.WriteString(i.Op)
-
-	return builder.String()
-}
-
-func (i *InvalidError[T]) Error() string {
-	var builder strings.Builder
+func (i *InvalidError[T]) Builder() *bytes.Buffer {
+	var builder bytes.Buffer
 
 	builder.WriteString(i.Key)
 
@@ -123,7 +89,58 @@ func (i *InvalidError[T]) Error() string {
 		builder.WriteString("unknown")
 	}
 
-	return builder.String()
+	return &builder
+}
+
+func (i *InvalidError[T]) String() string {
+	var bys = i.Builder().Bytes()
+	return *(*string)(unsafe.Pointer(&bys))
+}
+
+func (i *InvalidError[T]) MarshalJSON() ([]byte, error) {
+	return i.Builder().Bytes(), nil
+}
+
+/
+//
+//func (i *InvalidError[T]) Message() string {
+//	var builder strings.Builder
+//	builder.WriteString("key: ")
+//	builder.WriteString(i.Key)
+//	builder.WriteString(", type: ")
+//	builder.WriteString(i.Type)
+//
+//	var k = reflect.ValueOf(i.Value)
+//
+//	builder.WriteString(", value: ")
+//	switch k.Kind() {
+//	case reflect.Bool:
+//		builder.WriteString(strconv.FormatBool(k.Bool()))
+//	case reflect.String:
+//		builder.WriteString(k.String())
+//	case reflect.Int64:
+//		builder.WriteString(strconv.FormatInt(k.Int(), 10))
+//	case reflect.Uint64:
+//		builder.WriteString(strconv.FormatUint(k.Uint(), 10))
+//	case reflect.Float64:
+//		builder.WriteString(strconv.FormatFloat(k.Float(), 'f', -1, 64))
+//	default:
+//		builder.WriteString("unknown")
+//	}
+//
+//	if i.Contract != "" {
+//		builder.WriteString(", contract: ")
+//		builder.WriteString(i.Contract)
+//	}
+//
+//	builder.WriteString(", op: ")
+//	builder.WriteString(i.Op)
+//
+//	return builder.String()
+//}
+
+func (i *InvalidError[T]) Error() string {
+	return i.String()
 }
 
 type Validator[T any] struct {

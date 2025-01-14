@@ -107,7 +107,9 @@ func (s *Store) String() string {
 				buff.WriteString(",")
 			}
 		}
-		buff.WriteString(" ")
+		if i != len(s.keys)-1 {
+			buff.WriteString(" ")
+		}
 	}
 
 	if buff.Len() == 0 {

@@ -252,14 +252,24 @@ func doFormUrlencoded(method string, url string, info *Request, body ...kitty.M)
 		for key, value := range body[i] {
 			switch value.(type) {
 			case string:
-				buff.WriteString(key + "=" + value.(string) + "&")
+				buff.WriteString(key)
+				buff.WriteString("=")
+				buff.WriteString(value.(string))
 			case int:
-				buff.WriteString(key + "=" + strconv.Itoa(value.(int)) + "&")
+				buff.WriteString(key)
+				buff.WriteString("=")
+				buff.WriteString(strconv.Itoa(value.(int)))
 			case float64:
-				buff.WriteString(key + "=" + strconv.FormatFloat(value.(float64), 'f', -1, 64) + "&")
+				buff.WriteString(key)
+				buff.WriteString("=")
+				buff.WriteString(strconv.FormatFloat(value.(float64), 'f', -1, 64))
 			default:
-				buff.WriteString(key + "=" + fmt.Sprintf("%+v", value) + "&")
+				buff.WriteString(key)
+				buff.WriteString("=")
+				buff.WriteString(fmt.Sprintf("%+v", value))
 			}
+
+			buff.WriteString("&")
 		}
 	}
 

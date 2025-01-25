@@ -12,12 +12,10 @@ package http
 
 import (
 	"bytes"
+	"github.com/lemonyxk/kitty/kitty/header"
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
-
-	"github.com/lemonyxk/kitty/kitty/header"
 )
 
 type Parser[T Packer] struct {
@@ -170,29 +168,22 @@ func (s *Parser[T]) Form() {
 }
 
 func (s *Parser[T]) Auto() {
-	if strings.ToUpper(s.request.Method) == http.MethodGet {
-		s.Query()
-		return
-	}
 
-	if strings.ToUpper(s.request.Method) == http.MethodHead {
+	switch s.request.Method {
+	case http.MethodGet:
 		s.Query()
-		return
-	}
-
-	if strings.ToUpper(s.request.Method) == http.MethodTrace {
+	case http.MethodHead:
 		s.Query()
-		return
-	}
-
-	if strings.ToUpper(s.request.Method) == http.MethodConnect {
+	case http.MethodTrace:
 		s.Query()
-		return
-	}
+	case http.MethodConnect:
+		s.Query()
+	case http.MethodOptions:
+		s.Query()
+	case http.MethodDelete:
+		// May have a request body
+		// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE
 
-	// May have a request body
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/DELETE
-	if strings.ToUpper(s.request.Method) == http.MethodDelete {
 		// cuz DELETE method may have a request body,
 		// so we need to parse it.
 		// but we need to change the method to post,
@@ -201,33 +192,17 @@ func (s *Parser[T]) Auto() {
 		s.request.Method = http.MethodPost
 		s.Form()
 		s.request.Method = http.MethodDelete
-		return
-	}
+	default:
 
-	if strings.ToUpper(s.request.Method) == http.MethodOptions {
-		s.Query()
-		return
-	}
-
-	var contentType = s.request.Header.Get(header.ContentType)
-
-	if strings.HasPrefix(contentType, header.MultipartFormData) {
-		s.Multipart()
-		return
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
-		s.Form()
-		return
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationJson) {
-		s.Json()
-		return
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationProtobuf) {
-		s.Protobuf()
-		return
+		switch s.request.Header.Get(header.ContentType) {
+		case header.MultipartFormData:
+			s.Multipart()
+		case header.ApplicationFormUrlencoded:
+			s.Form()
+		case header.ApplicationJson:
+			s.Json()
+		case header.ApplicationProtobuf:
+			s.Protobuf()
+		}
 	}
 }

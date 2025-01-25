@@ -62,11 +62,16 @@ func (e *Error) Format(s fmt.State, verb rune) {
 				_, _ = io.WriteString(s, "\n")
 			}
 			for i, f := range e.stack {
-				var str = space + filepath.Base(f.Func) + " in " + f.File + ":" + strconv.Itoa(f.Line)
+				//var str = space + filepath.Base(f.Func) + " in " + f.File + ":" + strconv.Itoa(f.Line)
+				_, _ = io.WriteString(s, space)
+				_, _ = io.WriteString(s, filepath.Base(f.Func))
+				_, _ = io.WriteString(s, " in ")
+				_, _ = io.WriteString(s, f.File)
+				_, _ = io.WriteString(s, ":")
+				_, _ = io.WriteString(s, strconv.Itoa(f.Line))
 				if i != len(e.stack)-1 {
-					str = str + "\n"
+					_, _ = io.WriteString(s, "\n")
 				}
-				_, _ = io.WriteString(s, str)
 			}
 			return
 		}

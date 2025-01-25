@@ -16,6 +16,7 @@ import (
 	"github.com/lemonyxk/kitty/errors"
 	json "github.com/lemonyxk/kitty/json"
 	http2 "net/http"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,7 +50,7 @@ func (s *Sse[T]) String(data string) error {
 	}
 	atomic.AddInt64(&s.LasTEventID, 1)
 	buf.WriteString("id: ")
-	buf.WriteString(fmt.Sprintf("%d\n", s.LasTEventID))
+	buf.WriteString(strconv.Itoa(int(s.LasTEventID)) + "\n")
 	buf.WriteString("data: ")
 	buf.WriteString(data)
 	buf.WriteString("\n\n")
@@ -66,7 +67,7 @@ func (s *Sse[T]) Bytes(data any) error {
 	}
 	atomic.AddInt64(&s.LasTEventID, 1)
 	buf.WriteString("id: ")
-	buf.WriteString(fmt.Sprintf("%d\n", s.LasTEventID))
+	buf.WriteString(strconv.Itoa(int(s.LasTEventID)) + "\n")
 	buf.WriteString("data: ")
 	buf.Write(data.([]byte))
 	buf.WriteString("\n\n")
@@ -87,7 +88,7 @@ func (s *Sse[T]) Json(data any) error {
 	var buf bytes.Buffer
 	atomic.AddInt64(&s.LasTEventID, 1)
 	buf.WriteString("id: ")
-	buf.WriteString(fmt.Sprintf("%d\n", s.LasTEventID))
+	buf.WriteString(strconv.Itoa(int(s.LasTEventID)) + "\n")
 	buf.WriteString("data: ")
 	buf.Write(bts)
 	buf.WriteString("\n\n")
@@ -104,7 +105,7 @@ func (s *Sse[T]) Any(data any) error {
 	}
 	atomic.AddInt64(&s.LasTEventID, 1)
 	buf.WriteString("id: ")
-	buf.WriteString(fmt.Sprintf("%d\n", s.LasTEventID))
+	buf.WriteString(strconv.Itoa(int(s.LasTEventID)) + "\n")
 	buf.WriteString("data: ")
 	buf.WriteString(fmt.Sprintf("%+v", data))
 	buf.WriteString("\n\n")

@@ -16,6 +16,7 @@ import (
 
 type Json struct {
 	bts []byte
+	t   any
 }
 
 func (j *Json) Reset(data any) error {
@@ -39,6 +40,7 @@ func (j *Json) Decode(v any) error {
 	if len(j.bts) == 0 {
 		return nil
 	}
+	j.t = v
 	return json.Unmarshal(j.bts, v)
 }
 
@@ -46,5 +48,6 @@ func (j *Json) Validate(t any) error {
 	if len(j.bts) == 0 {
 		return nil
 	}
+	j.t = t
 	return NewValidator[any]().From(j.bts).Bind(t)
 }

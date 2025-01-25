@@ -11,6 +11,10 @@
 package header
 
 const (
+	AccessControlAllowOrigin  = "Access-Control-Allow-Origin"
+	AccessControlAllowMethods = "Access-Control-Allow-Methods"
+	AccessControlAllowHeaders = "Access-Control-Allow-Headers"
+
 	XForwardedFor   = "X-Forwarded-For"
 	XForwardedHost  = "X-Forwarded-Host"
 	XForwardedProto = "X-Forwarded-Proto"
@@ -27,6 +31,8 @@ const (
 	Origin         = "Origin"
 	Referer        = "Referer"
 	UserAgent      = "User-Agent"
+	Nocache        = "no-cache"
+	LastEventID    = "Last-Event-ID"
 
 	Host                   = "Host"
 	ContentType            = "Content-Type"
@@ -40,6 +46,7 @@ const (
 	SecWebsocketVersion    = "Sec-Websocket-Version"
 	SecWebsocketAccept     = "Sec-Websocket-Accept"
 	SecWebsocketExtensions = "Sec-Websocket-Extensions"
+	CacheControl           = "Cache-Control"
 
 	ApplicationFormUrlencoded = "application/x-www-form-urlencoded"
 	ApplicationProtobuf       = "application/x-protobuf"
@@ -60,6 +67,8 @@ const (
 	ApplicationSvg            = "application/image/svg+xml"
 	MultipartFormData         = "multipart/form-data"
 	MultipartMixed            = "multipart/mixed"
+
+	TextEventStream = "text/event-stream"
 
 	ApplicationVndAppleMpegUrl = "application/vnd.apple.mpegurl"
 	ApplicationXAppleMpegUrl   = "application/x-apple-mpegurl"

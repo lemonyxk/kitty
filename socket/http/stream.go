@@ -2,7 +2,6 @@ package http
 
 import (
 	"bytes"
-	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -270,29 +269,53 @@ func (s *Stream[T]) Url() string {
 
 func (s *Stream[T]) String() string {
 
-	var contentType = s.Request.Header.Get(header.ContentType)
-
-	if strings.ToUpper(s.Request.Method) == "GET" {
+	if s.Request.Method == http.MethodGet {
 		return s.Query.String()
 	}
 
-	if strings.HasPrefix(contentType, header.MultipartFormData) {
+	var contentType = s.Request.Header.Get(header.ContentType)
+
+	switch contentType {
+	case header.MultipartFormData:
 		return strings.Join([]string{s.Form.String(), s.Files.String()}, " ")
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationFormUrlencoded) {
+	case header.ApplicationFormUrlencoded:
 		return s.Form.String()
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationJson) {
+	case header.ApplicationJson:
 		return s.Json.String()
-	}
-
-	if strings.HasPrefix(contentType, header.ApplicationProtobuf) {
+	case header.ApplicationProtobuf:
 		return "<Protobuf: " + strconv.Itoa(len(s.Protobuf.Bytes())) + " >"
+	default:
+		return ""
+	}
+}
+
+func (s *Stream[T]) Object() any {
+
+	if s.Request.Method == http.MethodGet {
+		return s.Request.URL.RawQuery
 	}
 
-	return ""
+	var contentType = s.Request.Header.Get(header.ContentType)
+
+	switch contentType {
+	case header.MultipartFormData:
+		var res []any
+		if len(s.Request.Form) > 0 {
+			res = append(res, s.Request.Form)
+		}
+		if len(s.Request.MultipartForm.File) > 0 {
+			res = append(res, s.Request.MultipartForm.File)
+		}
+		return []interface{}{s.Request.Form, s.Request.MultipartForm.File}
+	case header.ApplicationFormUrlencoded:
+		return s.Request.Form
+	case header.ApplicationJson:
+		return s.Json.t
+	case header.ApplicationProtobuf:
+		return "<Protobuf: " + strconv.Itoa(len(s.Protobuf.Bytes())) + " >"
+	default:
+		return nil
+	}
 }
 
 func (s *Stream[T]) Scheme() string {
@@ -304,13 +327,13 @@ func (s *Stream[T]) Scheme() string {
 }
 
 func (s *Stream[T]) UpgradeSse(config *SseConfig) (*Sse[T], error) {
-	s.Response.Header().Set("Content-Type", "text/event-stream")
-	s.Response.Header().Set("Cache-Control", "no-cache")
-	s.Response.Header().Set("Connection", "keep-alive")
+	s.Response.Header().Set(header.ContentType, header.TextEventStream)
+	s.Response.Header().Set(header.CacheControl, header.Nocache)
+	s.Response.Header().Set(header.Connection, header.KeepAlive)
 
 	s.Response.WriteHeader(http.StatusOK)
 
-	var lastEventId = s.Request.Header.Get("Last-Event-ID")
+	var lastEventId = s.Request.Header.Get(header.LastEventID)
 
 	var id, _ = strconv.ParseInt(lastEventId, 10, 64)
 
@@ -318,7 +341,7 @@ func (s *Stream[T]) UpgradeSse(config *SseConfig) (*Sse[T], error) {
 		config = &SseConfig{Retry: 3 * time.Second}
 	}
 
-	_, err := s.Response.Write([]byte(fmt.Sprintf("retry: %d\n", config.Retry.Milliseconds())))
+	_, err := s.Response.Write([]byte(`retry: ` + strconv.Itoa(int(config.Retry.Milliseconds())) + "\n"))
 	if err != nil {
 		return nil, err
 	}

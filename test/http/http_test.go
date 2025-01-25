@@ -272,10 +272,10 @@ func Test_HTTP_Multipart(t *testing.T) {
 	var httpServerRouter = &router.Router[*http.Stream[server.Conn], any]{}
 
 	httpServerRouter.Method("POST").Route("/PostFile").Handler(func(stream *http.Stream[server.Conn]) error {
-		assert.True(t, stream.Files.First("file").Filename == "1.png")
-		assert.True(t, stream.Files.First("file").Size == 2853516)
-		assert.True(t, stream.Files.First("file1") == nil)
-		assert.True(t, stream.Form.First("a").Int() == 1)
+		assert.True(t, stream.File.First("file").Filename == "1.png")
+		assert.True(t, stream.File.First("file").Size == 2853516)
+		assert.True(t, stream.File.First("file1") == nil)
+		assert.True(t, stream.Form.First("a").Int() == 1, stream.Form.String())
 		return stream.Sender.String("hello PostFile!")
 	})
 

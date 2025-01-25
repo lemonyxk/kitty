@@ -25,7 +25,7 @@ type Stream[T Packer] struct {
 
 	Query    *Store
 	Form     *Store
-	Files    *Files
+	File     *File
 	Json     *Json
 	Protobuf *Protobuf
 
@@ -47,7 +47,7 @@ func NewStream[T Packer](conn T, w http.ResponseWriter, r *http.Request) *Stream
 		Query:    &Store{},
 		Form:     &Store{},
 		Json:     &Json{},
-		Files:    &Files{},
+		File:     &File{},
 		Sender:   &Sender{response: w, request: r},
 		Parser:   &Parser[T]{response: w, request: r, maxMemory: 6 * 1024 * 1024},
 	}
@@ -274,16 +274,27 @@ func (s *Stream[T]) String() string {
 	}
 
 	var contentType = s.Request.Header.Get(header.ContentType)
+	var index = strings.Index(contentType, ";")
+	if index > 0 {
+		contentType = contentType[:index]
+	}
 
 	switch contentType {
 	case header.MultipartFormData:
-		return strings.Join([]string{s.Form.String(), s.Files.String()}, " ")
+		var res []string
+		if len(s.Form.Values) > 0 {
+			res = append(res, s.Form.String())
+		}
+		if len(s.File.FileHeader) > 0 {
+			res = append(res, s.File.String())
+		}
+		return strings.Join(res, " ")
 	case header.ApplicationFormUrlencoded:
 		return s.Form.String()
 	case header.ApplicationJson:
 		return s.Json.String()
 	case header.ApplicationProtobuf:
-		return "<Protobuf: " + strconv.Itoa(len(s.Protobuf.Bytes())) + " >"
+		return s.Protobuf.String()
 	default:
 		return ""
 	}
@@ -296,23 +307,27 @@ func (s *Stream[T]) Object() any {
 	}
 
 	var contentType = s.Request.Header.Get(header.ContentType)
+	var index = strings.Index(contentType, ";")
+	if index > 0 {
+		contentType = contentType[:index]
+	}
 
 	switch contentType {
 	case header.MultipartFormData:
 		var res []any
-		if len(s.Request.Form) > 0 {
-			res = append(res, s.Request.Form)
+		if len(s.Form.Values) > 0 {
+			res = append(res, s.Form.Values)
 		}
-		if len(s.Request.MultipartForm.File) > 0 {
-			res = append(res, s.Request.MultipartForm.File)
+		if len(s.File.FileHeader) > 0 {
+			res = append(res, s.File.FileHeader)
 		}
-		return []interface{}{s.Request.Form, s.Request.MultipartForm.File}
+		return res
 	case header.ApplicationFormUrlencoded:
-		return s.Request.Form
+		return s.Form.Values
 	case header.ApplicationJson:
 		return s.Json.t
 	case header.ApplicationProtobuf:
-		return "<Protobuf: " + strconv.Itoa(len(s.Protobuf.Bytes())) + " >"
+		return s.Protobuf.t
 	default:
 		return nil
 	}

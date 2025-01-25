@@ -16,6 +16,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type Parser[T Packer] struct {
@@ -107,14 +108,9 @@ func (s *Parser[T]) Multipart() {
 	// that url query will be parsed into Form.
 	// only when Content-Type is multipart/form-data
 	// that file will be parsed into MultipartForm.File
-	var parse = s.request.Form
 
-	for k, v := range parse {
-		s.stream.Form.keys = append(s.stream.Form.keys, k)
-		s.stream.Form.values = append(s.stream.Form.values, v)
-	}
-
-	s.stream.Files.files = s.request.MultipartForm.File
+	s.stream.Form.Values = s.request.MultipartForm.Value
+	s.stream.File.FileHeader = s.request.MultipartForm.File
 
 	return
 }
@@ -135,10 +131,7 @@ func (s *Parser[T]) Query() {
 		return
 	}
 
-	for k, v := range parse {
-		s.stream.Query.keys = append(s.stream.Query.keys, k)
-		s.stream.Query.values = append(s.stream.Query.values, v)
-	}
+	s.stream.Query.Values = parse
 
 	return
 }
@@ -157,12 +150,7 @@ func (s *Parser[T]) Form() {
 		return
 	}
 
-	var parse = s.request.Form
-
-	for k, v := range parse {
-		s.stream.Form.keys = append(s.stream.Form.keys, k)
-		s.stream.Form.values = append(s.stream.Form.values, v)
-	}
+	s.stream.Form.Values = s.request.Form
 
 	return
 }
@@ -194,7 +182,13 @@ func (s *Parser[T]) Auto() {
 		s.request.Method = http.MethodDelete
 	default:
 
-		switch s.request.Header.Get(header.ContentType) {
+		var contentType = s.request.Header.Get(header.ContentType)
+		var index = strings.Index(contentType, ";")
+		if index > 0 {
+			contentType = contentType[:index]
+		}
+
+		switch contentType {
 		case header.MultipartFormData:
 			s.Multipart()
 		case header.ApplicationFormUrlencoded:

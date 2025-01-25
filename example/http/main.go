@@ -27,7 +27,6 @@ import (
 	"github.com/lemonyxk/kitty/socket/http"
 	"github.com/lemonyxk/kitty/socket/http/client"
 	"github.com/lemonyxk/kitty/socket/http/server"
-	"google.golang.org/protobuf/proto"
 )
 
 //go:embed public/**
@@ -130,8 +129,9 @@ func runHttpServer() {
 	})
 
 	httpRouter.Post("/file").Before(before).After(after).Handler(func(stream *http.Stream[server.Conn]) error {
-		log.Println(stream.Files.String())
-		log.Println(stream.Form.String())
+		//log.Println(stream.Files.String())
+		//log.Println(stream.Form.String())
+		log.Println(stream.File)
 		return stream.Sender.String("hello world!")
 	})
 
@@ -161,8 +161,7 @@ func runHttpServer() {
 	httpServerRouter.Method("POST").Route("/proto").Handler(func(stream *http.Stream[server.Conn]) error {
 		log.Println("addr:", stream.Request.RemoteAddr, stream.Request.Host)
 		var res hello.AwesomeMessage
-		var msg = stream.Protobuf.Bytes()
-		var err = proto.Unmarshal(msg, &res)
+		var err = stream.Protobuf.Decode(&res)
 		if err != nil {
 			return stream.Sender.String(err.Error())
 		}

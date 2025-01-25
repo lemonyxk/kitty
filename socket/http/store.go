@@ -12,16 +12,16 @@ package http
 
 import (
 	"bytes"
+	"net/url"
 )
 
 type Store struct {
-	keys   []string
-	values [][]string
+	url.Values
 }
 
 func (s *Store) Has(key string) bool {
-	for i := 0; i < len(s.keys); i++ {
-		if s.keys[i] == key {
+	for k := range s.Values {
+		if k == key {
 			return true
 		}
 	}
@@ -35,9 +35,9 @@ func (s *Store) Empty(key string) bool {
 
 func (s *Store) First(key string) Value {
 	var res Value
-	for i := 0; i < len(s.keys); i++ {
-		if s.keys[i] == key {
-			res.v = &s.values[i][0]
+	for k, v := range s.Values {
+		if k == key {
+			res.v = &v[0]
 			return res
 		}
 	}
@@ -46,75 +46,54 @@ func (s *Store) First(key string) Value {
 
 func (s *Store) Index(key string, index int) Value {
 	var res Value
-	for i := 0; i < len(s.keys); i++ {
-		if s.keys[i] == key {
-			res.v = &s.values[i][index]
-			return res
+	for k, v := range s.Values {
+		if k == key {
+			if index < len(v) {
+				res.v = &v[index]
+				return res
+			}
 		}
 	}
 	return res
 }
 
 func (s *Store) All(key string) Values {
-	var res []string
-	for i := 0; i < len(s.keys); i++ {
-		if s.keys[i] == key {
-			for j := 0; j < len(s.values[i]); j++ {
-				res = append(res, s.values[i][j])
-			}
+	for k, v := range s.Values {
+		if k == key {
+			return v
 		}
 	}
-	return res
+	return nil
 }
 
 func (s *Store) Add(key string, value []string) {
-	s.keys = append(s.keys, key)
-	s.values = append(s.values, value)
+	s.Values[key] = value
 }
 
 func (s *Store) Remove(key string) {
-	var index = -1
-	for i := 0; i < len(s.keys); i++ {
-		if s.keys[i] == key {
-			index = i
-			break
-		}
-	}
-	if index == -1 {
-		return
-	}
-	s.keys = append(s.keys[0:index], s.keys[index+1:]...)
-	s.values = append(s.values[0:index], s.values[index+1:]...)
-}
-
-func (s *Store) Keys() []string {
-	return s.keys
-}
-
-func (s *Store) Values() [][]string {
-	return s.values
+	delete(s.Values, key)
 }
 
 func (s *Store) String() string {
 
 	var buff bytes.Buffer
 
-	for i := 0; i < len(s.keys); i++ {
-		buff.WriteString(s.keys[i] + ":")
-		for j := 0; j < len(s.values[i]); j++ {
-			buff.WriteString(s.values[i][j])
-			if j != len(s.values[i])-1 {
+	for k, v := range s.Values {
+		buff.WriteString(k + ":")
+		for i := 0; i < len(v); i++ {
+			buff.WriteString(v[i])
+			if i != len(v)-1 {
 				buff.WriteString(",")
 			}
 		}
-		if i != len(s.keys)-1 {
-			buff.WriteString(" ")
-		}
+		buff.WriteString(" ")
 	}
 
 	if buff.Len() == 0 {
 		return ""
 	}
 
-	return string(buff.Bytes())
+	var bts = buff.Bytes()
+
+	return string(bts[:len(bts)-1])
 }

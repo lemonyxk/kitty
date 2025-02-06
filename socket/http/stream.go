@@ -303,7 +303,7 @@ func (s *Stream[T]) String() string {
 func (s *Stream[T]) Object() any {
 
 	if s.Request.Method == http.MethodGet {
-		return s.Query
+		return s.Query.Values
 	}
 
 	var contentType = s.Request.Header.Get(header.ContentType)

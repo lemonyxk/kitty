@@ -58,7 +58,7 @@ func (s *Sse[T]) String(data string) error {
 	return s.Stream.Sender.String(buf.String())
 }
 
-func (s *Sse[T]) Bytes(data any) error {
+func (s *Sse[T]) Bytes(data []byte) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	var buf bytes.Buffer
@@ -69,7 +69,7 @@ func (s *Sse[T]) Bytes(data any) error {
 	buf.WriteString("id: ")
 	buf.WriteString(strconv.Itoa(int(s.LasTEventID)) + "\n")
 	buf.WriteString("data: ")
-	buf.Write(data.([]byte))
+	buf.Write(data)
 	buf.WriteString("\n\n")
 	defer s.Flush()
 	return s.Stream.Sender.Bytes(buf.Bytes())

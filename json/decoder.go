@@ -8,6 +8,7 @@ package json
 
 import (
 	"github.com/bytedance/sonic"
+	"github.com/bytedance/sonic/ast"
 	"io"
 )
 
@@ -17,4 +18,8 @@ func NewDecoder(reader io.Reader) sonic.Decoder {
 
 func Unmarshal(data []byte, v interface{}) error {
 	return sonic.ConfigFastest.Unmarshal(data, v)
+}
+
+func Get(data []byte, path ...interface{}) (ast.Node, error) {
+	return sonic.Get(data, path...)
 }

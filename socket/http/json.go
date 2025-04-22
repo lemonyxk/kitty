@@ -16,6 +16,7 @@ import (
 )
 
 type Json struct {
+	t    any
 	bts  []byte
 	root *Node
 }
@@ -109,9 +110,11 @@ func (j *Json) String() string {
 }
 
 func (j *Json) Decode(v any) error {
+	j.t = v
 	return json.Unmarshal(j.bts, v)
 }
 
-func (j *Json) Validate(t any) error {
-	return NewValidator[any]().From(j.bts).Bind(t)
+func (j *Json) Validate(v any) error {
+	j.t = v
+	return NewValidator[any]().From(j.bts).Bind(v)
 }

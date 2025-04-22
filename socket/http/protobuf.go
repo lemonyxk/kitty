@@ -16,6 +16,7 @@ import (
 )
 
 type Protobuf struct {
+	t   proto.Message
 	bts []byte
 }
 
@@ -37,5 +38,10 @@ func (p *Protobuf) String() string {
 }
 
 func (p *Protobuf) Decode(v proto.Message) error {
+	p.t = v
 	return proto.Unmarshal(p.bts, v)
+}
+
+func (p *Protobuf) Encode() ([]byte, error) {
+	return proto.Marshal(p.t)
 }

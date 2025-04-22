@@ -7,12 +7,8 @@
 package main
 
 import (
-	"bytes"
-	"github.com/lemonyxk/kitty/errors"
-	json "github.com/lemonyxk/kitty/json"
-	"github.com/lemonyxk/kitty/kitty"
-	"github.com/lemonyxk/kitty/socket/http"
-	"log"
+	"fmt"
+	"github.com/lemonyxk/kitty/json"
 )
 
 type User struct {
@@ -47,54 +43,96 @@ type Address struct {
 	Phone  string
 }
 
+type Profile struct {
+	// 自我介绍
+	Bio string `json:"bio,omitempty" bson:"bio,omitempty"`
+	// 详细地址
+	Address string `json:"address,omitempty" bson:"address,omitempty"`
+	// 性别
+	Gender int `json:"gender,omitempty" bson:"gender,omitempty"`
+	// 生日
+	Birthday int64 `json:"birthday,omitempty" bson:"birthday,omitempty"`
+}
+
+type Request struct {
+	ID      string   `json:"id" validate:"required"`
+	Profile *Profile `json:"profile" validate:"required"`
+}
+
+type LogEntry struct {
+	Level  string          `json:"level"`
+	Time   string          `json:"time"`
+	Params json.RawMessage `json:"params"` // 关键：使用 json.RawMessage
+	// 其他字段...
+}
+
 func main() {
-	var validate = http.NewValidator[any]()
+	rawJSON := `{
+		"level": "INF",
+		"time": "2025-04-22 15:26:07",
+		"params": ` + "{\"id\":\"2400000002\",\"profile\":{\"bio\":\"2021年主打产品\",\"gender\":1}}" + `
+	}`
 
-	user := &User{}
-
-	var bts = []byte(`{
-	"FirstName": "Badger",
-	"LastName": "Smith",
-	"Age": 135,
-	"Gender": "111",
-	"Email": "B",
-	"Addresses": [],
-	"Maps": {"a": "b"}
-}`)
-
-	if err := validate.From(bts).Bind(user); err != nil {
-		log.Println(err)
-	} else {
-		log.Printf("%+v", user)
+	// 解析 JSON 到结构体
+	var entry LogEntry
+	err := json.Unmarshal([]byte(rawJSON), &entry)
+	if err != nil {
+		panic(err)
 	}
 
-	user1 := &User1{}
-
-	var bts1 = []byte(`{
-	"FirstName": "Badger",
-	"LastName": "Smith",
-	"Age": 135,
-	"Gender": "1111",
-	"Email": "B",
-	"Addresses": "1"
-}`)
-
-	if err := validate.From(bts1).Bind(user1); err != nil {
-		log.Println(err)
-	} else {
-		log.Printf("%+v", user1)
+	// 重新 Marshal（params 保持原样）
+	outputJSON, err := json.Marshal(entry)
+	if err != nil {
+		panic(err)
 	}
 
-	var a = kitty.M{"a": 2}
+	fmt.Println(string(outputJSON))
 
-	var buf = new(bytes.Buffer)
-
-	if err := json.NewEncoder(buf).Encode(a); err != nil {
-		log.Println(err.Error())
-	}
-
-	log.Println(buf.Bytes())
-
-	var err *errors.Error
-	log.Println(kitty.IsNil(err))
+	//	user := &User{}
+	//
+	//	var bts = []byte(`{
+	//	"FirstName": "Badger",
+	//	"LastName": "Smith",
+	//	"Age": 135,
+	//	"Gender": "111",
+	//	"Email": "B",
+	//	"Addresses": [],
+	//	"Maps": {"a": "b"}
+	//}`)
+	//
+	//	if err := validate.From(bts).Bind(user); err != nil {
+	//		log.Println(err)
+	//	} else {
+	//		log.Printf("%+v", user)
+	//	}
+	//
+	//	user1 := &User1{}
+	//
+	//	var bts1 = []byte(`{
+	//	"FirstName": "Badger",
+	//	"LastName": "Smith",
+	//	"Age": 135,
+	//	"Gender": "1111",
+	//	"Email": "B",
+	//	"Addresses": "1"
+	//}`)
+	//
+	//	if err := validate.From(bts1).Bind(user1); err != nil {
+	//		log.Println(err)
+	//	} else {
+	//		log.Printf("%+v", user1)
+	//	}
+	//
+	//	var a = kitty.M{"a": 2}
+	//
+	//	var buf = new(bytes.Buffer)
+	//
+	//	if err := json.NewEncoder(buf).Encode(a); err != nil {
+	//		log.Println(err.Error())
+	//	}
+	//
+	//	log.Println(buf.Bytes())
+	//
+	//	var err *errors.Error
+	//	log.Println(kitty.IsNil(err))
 }

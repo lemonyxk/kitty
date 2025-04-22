@@ -318,7 +318,6 @@ func Test_HTTP_Protobuf(t *testing.T) {
 		if err != nil {
 			return stream.Sender.String(err.Error())
 		}
-
 		assert.True(t, res.AwesomeField == "1", res.String())
 		assert.True(t, res.AwesomeKey == "2", res.String())
 

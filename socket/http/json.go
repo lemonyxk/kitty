@@ -12,13 +12,11 @@ package http
 
 import (
 	"github.com/bytedance/sonic/ast"
-	json "github.com/lemonyxk/kitty/json"
+	"github.com/lemonyxk/kitty/json"
 )
 
 type Json struct {
-	bts []byte
-	t   any
-
+	bts  []byte
 	root *Node
 }
 
@@ -32,13 +30,6 @@ func (n *Node) Get(path ...any) *Node {
 		ast: node,
 	}
 }
-
-//func (n *Node) Get(path string) *Node {
-//	var node = n.ast.Get(path)
-//	return &Node{
-//		ast: node,
-//	}
-//}
 
 func (n *Node) Int64() int64 {
 	r, _ := n.ast.StrictInt64()
@@ -118,17 +109,9 @@ func (j *Json) String() string {
 }
 
 func (j *Json) Decode(v any) error {
-	if len(j.bts) == 0 {
-		return nil
-	}
-	j.t = v
 	return json.Unmarshal(j.bts, v)
 }
 
 func (j *Json) Validate(t any) error {
-	if len(j.bts) == 0 {
-		return nil
-	}
-	j.t = t
 	return NewValidator[any]().From(j.bts).Bind(t)
 }

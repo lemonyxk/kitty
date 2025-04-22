@@ -300,10 +300,10 @@ func (s *Stream[T]) String() string {
 	}
 }
 
-func (s *Stream[T]) Object() any {
+func (s *Stream[T]) Object() string {
 
 	if s.Request.Method == http.MethodGet {
-		return s.Query.Values
+		return s.Query.String()
 	}
 
 	var contentType = s.Request.Header.Get(header.ContentType)
@@ -314,22 +314,22 @@ func (s *Stream[T]) Object() any {
 
 	switch contentType {
 	case header.MultipartFormData:
-		var res []any
+		var arr []string
 		if len(s.Form.Values) > 0 {
-			res = append(res, s.Form.Values)
+			arr = append(arr, s.Form.Encode())
 		}
 		if len(s.File.FileHeader) > 0 {
-			res = append(res, s.File.FileHeader)
+			arr = append(arr, s.File.String())
 		}
-		return res
+		return strings.Join(arr, " ")
 	case header.ApplicationFormUrlencoded:
-		return s.Form.Values
+		return s.Form.String()
 	case header.ApplicationJson:
-		return s.Json.t
+		return s.Json.String()
 	case header.ApplicationProtobuf:
-		return s.Protobuf.t
+		return s.Protobuf.String()
 	default:
-		return nil
+		return ""
 	}
 }
 

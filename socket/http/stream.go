@@ -66,6 +66,12 @@ func (s *Stream[T]) SetHeader(header string, content string) {
 }
 
 func (s *Stream[T]) Host() string {
+	if host := strings.Split(s.Request.Header.Get(header.XForwardedHost), ",")[0]; host != "" {
+		return host
+	}
+	if host := s.Request.Header.Get(header.XRealHost); host != "" {
+		return host
+	}
 	if host := s.Request.Header.Get(header.Host); host != "" {
 		return host
 	}
@@ -73,19 +79,15 @@ func (s *Stream[T]) Host() string {
 }
 
 func (s *Stream[T]) ClientIP() string {
-
 	if ip := strings.Split(s.Request.Header.Get(header.XForwardedFor), ",")[0]; ip != "" {
 		return ip
 	}
-
 	if ip := s.Request.Header.Get(header.XRealIP); ip != "" {
 		return ip
 	}
-
 	if ip, _, err := net.SplitHostPort(s.Request.RemoteAddr); err == nil {
 		return ip
 	}
-
 	return ""
 }
 

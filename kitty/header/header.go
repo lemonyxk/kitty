@@ -18,6 +18,7 @@ const (
 	XForwardedFor   = "X-Forwarded-For"
 	XForwardedHost  = "X-Forwarded-Host"
 	XForwardedProto = "X-Forwarded-Proto"
+	XRealHost       = "X-Real-Host"
 	XRealIP         = "X-Real-IP"
 	XRequestID      = "X-Request-ID"
 

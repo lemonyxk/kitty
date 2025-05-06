@@ -6,7 +6,9 @@
 
 package kitty
 
-import "unsafe"
+import (
+	"unsafe"
+)
 
 type ef struct {
 	typ  unsafe.Pointer

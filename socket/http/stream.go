@@ -44,6 +44,7 @@ func NewStream[T Packer](conn T, w http.ResponseWriter, r *http.Request) *Stream
 		sender:   sender[T]{conn: conn},
 		Time:     time.Now(),
 		Response: w, Request: r,
+		Xml:      &Xml{},
 		Protobuf: &Protobuf{},
 		Query:    &Store{},
 		Form:     &Store{},

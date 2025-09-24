@@ -12,11 +12,12 @@ package http
 
 import (
 	"bytes"
-	"github.com/lemonyxk/kitty/kitty/header"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/lemonyxk/kitty/kitty/header"
 )
 
 type Parser[T Packer] struct {
@@ -31,6 +32,7 @@ type Parser[T Packer] struct {
 	hasParseMultipart bool
 	hasParseJson      bool
 	hasParseProtobuf  bool
+	hasParseXml       bool
 
 	err error
 }
@@ -83,6 +85,25 @@ func (s *Parser[T]) Protobuf() {
 	}
 
 	s.stream.Protobuf.bts = buf.Bytes()
+
+	return
+}
+
+func (s *Parser[T]) Xml() {
+	if s.hasParseXml {
+		return
+	}
+
+	s.hasParseXml = true
+
+	var buf = new(bytes.Buffer)
+	_, err := io.Copy(buf, s.request.Body)
+	if err != nil {
+		s.err = err
+		return
+	}
+
+	s.stream.Xml.bts = buf.Bytes()
 
 	return
 }
@@ -197,6 +218,8 @@ func (s *Parser[T]) Auto() {
 			s.Json()
 		case header.ApplicationProtobuf:
 			s.Protobuf()
+		case header.TextXml:
+			s.Xml()
 		}
 	}
 }

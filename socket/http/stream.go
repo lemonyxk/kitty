@@ -28,6 +28,7 @@ type Stream[T Packer] struct {
 	File     *File
 	Json     *Json
 	Protobuf *Protobuf
+	Xml      *Xml
 
 	Params  socket.Params
 	Context kitty.Context

@@ -7,9 +7,10 @@
 package object
 
 import (
-	"github.com/lemonyxk/kitty/errors"
 	"reflect"
 	"strings"
+
+	"github.com/lemonyxk/kitty/errors"
 )
 
 func doStruct(dstRv reflect.Value, srcRv reflect.Value, mapKeys map[string]struct{}, remove bool) error {
@@ -122,6 +123,10 @@ func doStruct(dstRv reflect.Value, srcRv reflect.Value, mapKeys map[string]struc
 }
 
 func doPtr(dstRv reflect.Value, srcRv reflect.Value) error {
+	if !srcRv.IsValid() {
+		return nil
+	}
+
 	if dstRv.IsNil() {
 		dstRv = reflect.New(dstRv.Type().Elem()).Elem()
 	} else {
@@ -142,8 +147,12 @@ func doPtr(dstRv reflect.Value, srcRv reflect.Value) error {
 }
 
 func doSlice(dstRv reflect.Value, srcRv reflect.Value) error {
-	if srcRv.Kind() != reflect.Slice && srcRv.Kind() != reflect.Array {
-		return errors.New("source must be a slice or array")
+	//if srcRv.Kind() != reflect.Slice && srcRv.Kind() != reflect.Array {
+	//	return errors.New("source must be a slice or array")
+	//}
+
+	if !srcRv.IsValid() {
+		return nil
 	}
 
 	if srcRv.Len() == 0 {
@@ -167,6 +176,10 @@ func doSlice(dstRv reflect.Value, srcRv reflect.Value) error {
 }
 
 func doMap(dstRv reflect.Value, srcRv reflect.Value) error {
+	if !srcRv.IsValid() {
+		return nil
+	}
+
 	if srcRv.Len() == 0 {
 		return nil
 	}

@@ -7,8 +7,9 @@
 package main
 
 import (
-	"fmt"
 	"github.com/lemonyxk/kitty/json"
+	"github.com/lemonyxk/kitty/kitty"
+	"github.com/lemonyxk/kitty/kitty/object"
 )
 
 type User struct {
@@ -66,27 +67,40 @@ type LogEntry struct {
 	// 其他字段...
 }
 
+type User111 struct {
+	FirstName      string `json:"first_name" validate:"required"`
+	LastName       string `json:"last_name" validate:"required"`
+	Age            uint8  `json:"age" validate:"gte:0,lte:190"`
+	Email          string `json:"email"`
+	Gender         string
+	FavouriteColor string
+	IsAdmin        bool                `validate:"default:true"`
+	Addresses      []*Address          `json:"addresses" validate:"required,nonempty"` // a person can have a home and cottage...
+	Maps           map[string]LogEntry `validate:"required" json:"maps"`               // a person can have a home and cottage...
+	LogEntry
+}
+
 func main() {
-	rawJSON := `{
-		"level": "INF",
-		"time": "2025-04-22 15:26:07",
-		"params": ` + "{\"id\":\"2400000002\",\"profile\":{\"bio\":\"2021年主打产品\",\"gender\":1}}" + `
-	}`
-
-	// 解析 JSON 到结构体
-	var entry LogEntry
-	err := json.Unmarshal([]byte(rawJSON), &entry)
-	if err != nil {
-		panic(err)
-	}
-
-	// 重新 Marshal（params 保持原样）
-	outputJSON, err := json.Marshal(entry)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(string(outputJSON))
+	//rawJSON := `{
+	//	"level": "INF",
+	//	"time": "2025-04-22 15:26:07",
+	//	"params": ` + "{\"id\":\"2400000002\",\"profile\":{\"bio\":\"2021年主打产品\",\"gender\":1}}" + `
+	//}`
+	//
+	//// 解析 JSON 到结构体
+	//var entry LogEntry
+	//err := json.Unmarshal([]byte(rawJSON), &entry)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//// 重新 Marshal（params 保持原样）
+	//outputJSON, err := json.Marshal(entry)
+	//if err != nil {
+	//	panic(err)
+	//}
+	//
+	//fmt.Println(string(outputJSON))
 
 	//	user := &User{}
 	//
@@ -135,4 +149,70 @@ func main() {
 	//
 	//	var err *errors.Error
 	//	log.Println(kitty.IsNil(err))
+
+	//(map[string]interface{}{
+	//	"1": map[string]interface{}{
+	//		"2": []int{1, 3},
+	//		"belongs": map[string]interface{}{
+	//			"jjj": map[string]interface{}{
+	//				"kk": 11,
+	//				"pp": nil,
+	//				"pro.p111": &Profile{
+	//					Bio:      "1",
+	//					Address:  "1",
+	//					Gender:   2,
+	//					Birthday: 2,
+	//				},
+	//				"hh": []any{1, []int{1}},
+	//			},
+	//		},
+	//	},
+	//}, "")
+
+	//var obj = kitty.M{
+	//	"first_name": "John",
+	//	"last_name":  "Doe",
+	//	"age":        30,
+	//	"email":      "1",
+	//	"addresses": []kitty.M{
+	//		{
+	//			"street": "123 Main St",
+	//			"city":   "Anytown",
+	//			"planet": "Earth",
+	//			"phone":  "555-1234",
+	//		},
+	//	},
+	//	"maps": kitty.M{
+	//		"log1": kitty.M{
+	//			"level": "INFO",
+	//		},
+	//	},
+	//}
+
+	var str = `{"level":{"level1":"a"},"last_name":"Doe","age":30,"email":"1","addresses":[{"street":"123 Main St","city":"Anytown","planet":"Earth","phone":"555-1234"}],"maps":{"log1":{"level":"INFO"}}}`
+
+	var obj kitty.M
+	if err := json.Unmarshal([]byte(str), &obj); err != nil {
+		panic(err)
+	}
+
+	if err := object.Omitempty[User111](obj); err != nil {
+		panic(err)
+	}
+
+	var bts, err = json.Marshal(obj)
+	if err != nil {
+		panic(err)
+	}
+
+	println(string(bts))
+
+	var o = object.DotNotation(obj)
+
+	bts, err = json.Marshal(o)
+	if err != nil {
+		panic(err)
+	}
+
+	println(string(bts))
 }

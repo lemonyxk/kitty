@@ -48,9 +48,9 @@ func doStruct(dstRv reflect.Value, srcRv reflect.Value, mapKeys map[string]struc
 		return errors.New("source map must be string to interface")
 	}
 
-	if srcRv.CanConvert(reflect.TypeOf(map[string]any{})) {
-		srcRv = srcRv.Convert(reflect.TypeOf(map[string]any{}))
-	}
+	//if srcRv.CanConvert(reflect.TypeOf(map[string]any{})) {
+	//	srcRv = srcRv.Convert(reflect.TypeOf(map[string]any{}))
+	//}
 
 	var src, ok = srcRv.Interface().(map[string]any)
 	if !ok {
@@ -200,7 +200,40 @@ func doMap(dstRv reflect.Value, srcRv reflect.Value) error {
 	}
 }
 
-func Omitempty[T any](src any) error {
+func toDotNotation(obj map[string]any, prefix string) map[string]any {
+	result := make(map[string]any)
+	traverse(obj, prefix, result)
+	return result
+}
+
+func traverse(current map[string]any, path string, result map[string]any) {
+	for key, value := range current {
+		newPath := key
+		if path != "" {
+			newPath = path + "." + key
+		}
+
+		if value == nil {
+			result[newPath] = nil
+			continue
+		}
+
+		v := reflect.ValueOf(value)
+
+		switch v.Kind() {
+		case reflect.Map:
+			if nestedMap, ok := value.(map[string]any); ok {
+				traverse(nestedMap, newPath, result)
+			}
+		case reflect.Slice, reflect.Array:
+			result[newPath] = value
+		default:
+			result[newPath] = value
+		}
+	}
+}
+
+func Omitempty[T any](src map[string]any) error {
 	var srcRv = reflect.ValueOf(src)
 	var dstRv = reflect.ValueOf(new(T))
 
@@ -216,4 +249,8 @@ func Omitempty[T any](src any) error {
 	default:
 		return nil
 	}
+}
+
+func DotNotation(src map[string]any) map[string]any {
+	return toDotNotation(src, "")
 }
